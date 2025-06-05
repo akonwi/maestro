@@ -1,37 +1,37 @@
 # Soccer Statistics App Development Plan
 
-## Phase 1: Basic UI Structure & Types
+## Phase 1: Basic UI Structure & Types ✅
 
-- [ ] Set up TypeScript interfaces/types
-  - [ ] Team interface
-  - [ ] Match interface
-  - [ ] Statistics interface
-- [ ] Set up main app layout using DaisyUI
-- [ ] Create navigation/routing structure
-- [ ] Add responsive design foundation
+- [x] Set up TypeScript interfaces/types
+  - [x] Team interface
+  - [x] Match interface
+  - [x] Statistics interface
+- [x] Set up main app layout using DaisyUI
+- [x] Create navigation/routing structure
+- [x] Add responsive design foundation
 
-## Phase 2: Foundation & Data Layer
+## Phase 2: Foundation & Data Layer ✅
 
-- [ ] Set up IndexedDB database structure
-  - [ ] Teams table (id, name, created_at)
-  - [ ] Matches table (id, date, home_team_id, away_team_id, home_score, away_score, created_at)
-- [ ] Create database utility functions
-  - [ ] Initialize database
-  - [ ] CRUD operations for teams
-  - [ ] CRUD operations for matches
+- [x] Set up IndexedDB database structure
+  - [x] Teams table (id, name, created_at)
+  - [x] Matches table (id, date, homeId, awayId, home_score, away_score, created_at)
+- [x] Create database utility functions
+  - [x] Initialize database
+  - [x] CRUD operations for teams
+  - [x] CRUD operations for matches
 
-## Phase 3: Team Management
+## Phase 3: Team Management ✅
 
-- [ ] Create "Add Team" form
-  - [ ] Input field for team name
-  - [ ] Form validation
-  - [ ] Save to IndexedDB
-- [ ] Create teams list/grid view
-  - [ ] Display all teams
-  - [ ] Search/filter functionality
-- [ ] Create team detail page
-  - [ ] Basic team info display
-  - [ ] Navigation from teams list
+- [x] Create "Add Team" form
+  - [x] Input field for team name
+  - [x] Form validation
+  - [x] Save to IndexedDB
+- [x] Create teams list/grid view
+  - [x] Display all teams
+  - [x] Search/filter functionality
+- [x] Create team detail page
+  - [x] Basic team info display
+  - [x] Navigation from teams list
 
 ## Phase 4: Match Recording
 

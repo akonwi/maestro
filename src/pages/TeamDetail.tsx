@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
-import { Team } from '../types';
-import { getTeamById } from '../utils/database';
+import { Team, Match, TeamStatistics } from '../types';
+import { getTeamById, getMatchesByTeam } from '../utils/database';
+import { calculateTeamStatistics, formatRecord, formatGoalRatio, formatCleanSheetPercentage, formatAverage, getFormRating } from '../utils/statistics';
 
 interface TeamDetailProps {
 	teamId: string;
@@ -8,6 +9,8 @@ interface TeamDetailProps {
 
 export function TeamDetail({ teamId }: TeamDetailProps) {
 	const [team, setTeam] = useState<Team | null>(null);
+	const [matches, setMatches] = useState<Match[]>([]);
+	const [stats, setStats] = useState<TeamStatistics | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -18,9 +21,16 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
 	const loadTeam = async () => {
 		try {
 			setLoading(true);
-			const foundTeam = await getTeamById(teamId);
+			const [foundTeam, teamMatches] = await Promise.all([
+				getTeamById(teamId),
+				getMatchesByTeam(teamId)
+			]);
+			
 			if (foundTeam) {
 				setTeam(foundTeam);
+				setMatches(teamMatches);
+				const teamStats = calculateTeamStatistics(teamId, teamMatches);
+				setStats(teamStats);
 				setError(null);
 			} else {
 				setError('Team not found');
@@ -84,20 +94,65 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
 					<div className="card bg-base-100 shadow-xl">
 						<div className="card-body">
 							<h2 className="card-title">Quick Stats</h2>
-							<div className="stats stats-vertical shadow">
-								<div className="stat">
-									<div className="stat-title">Games</div>
-									<div className="stat-value">-</div>
+							{stats && (
+								<div className="stats stats-vertical shadow">
+									<div className="stat">
+										<div className="stat-title">Games</div>
+										<div className="stat-value">{stats.gamesPlayed}</div>
+									</div>
+									<div className="stat">
+										<div className="stat-title">W-L-D</div>
+										<div className="stat-value text-sm">{formatRecord(stats)}</div>
+									</div>
+									<div className="stat">
+										<div className="stat-title">Goals</div>
+										<div className="stat-value text-sm">{formatGoalRatio(stats)}</div>
+									</div>
+									<div className="stat">
+										<div className="stat-title">Goal Diff</div>
+										<div className={`stat-value text-sm ${stats.goalDifference >= 0 ? 'text-success' : 'text-error'}`}>
+											{stats.goalDifference >= 0 ? '+' : ''}{stats.goalDifference}
+										</div>
+									</div>
 								</div>
-								<div className="stat">
-									<div className="stat-title">W-L-D</div>
-									<div className="stat-value text-sm">-</div>
+							)}
+						</div>
+					</div>
+
+					<div className="card bg-base-100 shadow-xl">
+						<div className="card-body">
+							<h2 className="card-title">Detailed Stats</h2>
+							{stats && (
+								<div className="space-y-4">
+									<div className="grid grid-cols-2 gap-4">
+										<div>
+											<div className="text-sm text-base-content/60">Clean Sheets</div>
+											<div className="text-lg font-semibold">{stats.cleanSheets} ({formatCleanSheetPercentage(stats)})</div>
+										</div>
+										<div>
+											<div className="text-sm text-base-content/60">Form Rating</div>
+											<div className={`badge ${
+												getFormRating(stats) === 'excellent' ? 'badge-success' :
+												getFormRating(stats) === 'good' ? 'badge-info' :
+												getFormRating(stats) === 'average' ? 'badge-warning' :
+												'badge-error'
+											}`}>
+												{getFormRating(stats)}
+											</div>
+										</div>
+									</div>
+									<div className="grid grid-cols-2 gap-4">
+										<div>
+											<div className="text-sm text-base-content/60">Avg Goals For</div>
+											<div className="text-lg font-semibold">{formatAverage(stats.averageGoalsFor)}</div>
+										</div>
+										<div>
+											<div className="text-sm text-base-content/60">Avg Goals Against</div>
+											<div className="text-lg font-semibold">{formatAverage(stats.averageGoalsAgainst)}</div>
+										</div>
+									</div>
 								</div>
-								<div className="stat">
-									<div className="stat-title">Goals</div>
-									<div className="stat-value text-sm">- : -</div>
-								</div>
-							</div>
+							)}
 						</div>
 					</div>
 				</div>
@@ -106,9 +161,50 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
 			<div className="card bg-base-100 shadow-xl">
 				<div className="card-body">
 					<h2 className="card-title">Recent Matches</h2>
-					<div className="text-center py-8 text-base-content/60">
-						No matches recorded yet
-					</div>
+					{matches.length === 0 ? (
+						<div className="text-center py-8 text-base-content/60">
+							No matches recorded yet
+						</div>
+					) : (
+						<div className="space-y-2">
+							{matches.slice(0, 5).map(match => {
+								const isHome = match.homeId === teamId;
+								const teamScore = isHome ? match.homeScore : match.awayScore;
+								const opponentScore = isHome ? match.awayScore : match.homeScore;
+								const result = teamScore > opponentScore ? 'W' : teamScore < opponentScore ? 'L' : 'D';
+								
+								return (
+									<div key={match.id} className="flex justify-between items-center p-3 bg-base-200 rounded">
+										<div>
+											<div className="font-semibold">
+												{isHome ? 'vs' : '@'} {/* Team name would go here */}
+											</div>
+											<div className="text-sm text-base-content/60">
+												{new Date(match.date).toLocaleDateString()}
+											</div>
+										</div>
+										<div className="text-right">
+											<div className={`badge ${
+												result === 'W' ? 'badge-success' :
+												result === 'L' ? 'badge-error' :
+												'badge-warning'
+											}`}>
+												{result}
+											</div>
+											<div className="text-sm mt-1">
+												{teamScore} - {opponentScore}
+											</div>
+										</div>
+									</div>
+								);
+							})}
+							{matches.length > 5 && (
+								<div className="text-center pt-2">
+									<a href="/matches" className="btn btn-sm btn-outline">View All Matches</a>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
