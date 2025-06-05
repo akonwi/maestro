@@ -1,212 +1,267 @@
-import { useState, useEffect } from 'preact/hooks';
-import { Team, Match, TeamStatistics } from '../types';
-import { getTeamById, getMatchesByTeam } from '../utils/database';
-import { calculateTeamStatistics, formatRecord, formatGoalRatio, formatCleanSheetPercentage, formatAverage, getFormRating } from '../utils/statistics';
+import { useState, useEffect } from "preact/hooks";
+import { Team, Match, TeamStatistics } from "../types";
+import { getTeamById, getMatchesByTeam } from "../utils/database";
+import {
+  calculateTeamStatistics,
+  formatRecord,
+  formatGoalRatio,
+  formatCleanSheetPercentage,
+  formatAverage,
+  getFormRating,
+} from "../utils/statistics";
 
 interface TeamDetailProps {
-	teamId: string;
+  teamId: string;
 }
 
 export function TeamDetail({ teamId }: TeamDetailProps) {
-	const [team, setTeam] = useState<Team | null>(null);
-	const [matches, setMatches] = useState<Match[]>([]);
-	const [stats, setStats] = useState<TeamStatistics | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+  const [team, setTeam] = useState<Team | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [stats, setStats] = useState<TeamStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		loadTeam();
-	}, [teamId]);
+  useEffect(() => {
+    loadTeam();
+  }, [teamId]);
 
-	const loadTeam = async () => {
-		try {
-			setLoading(true);
-			const [foundTeam, teamMatches] = await Promise.all([
-				getTeamById(teamId),
-				getMatchesByTeam(teamId)
-			]);
-			
-			if (foundTeam) {
-				setTeam(foundTeam);
-				setMatches(teamMatches);
-				const teamStats = calculateTeamStatistics(teamId, teamMatches);
-				setStats(teamStats);
-				setError(null);
-			} else {
-				setError('Team not found');
-			}
-		} catch (err) {
-			setError('Failed to load team');
-			console.error('Error loading team:', err);
-		} finally {
-			setLoading(false);
-		}
-	};
+  const loadTeam = async () => {
+    try {
+      setLoading(true);
+      const [foundTeam, teamMatches] = await Promise.all([
+        getTeamById(teamId),
+        getMatchesByTeam(teamId),
+      ]);
 
-	if (loading) {
-		return (
-			<div className="text-center py-12">
-				<span className="loading loading-spinner loading-lg"></span>
-			</div>
-		);
-	}
+      if (foundTeam) {
+        setTeam(foundTeam);
+        setMatches(teamMatches);
+        const teamStats = calculateTeamStatistics(teamId, teamMatches);
+        setStats(teamStats);
+        setError(null);
+      } else {
+        setError("Team not found");
+      }
+    } catch (err) {
+      setError("Failed to load team");
+      console.error("Error loading team:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	if (error) {
-		return (
-			<div className="space-y-6">
-				<div className="alert alert-error">
-					<span>{error}</span>
-				</div>
-				<a href="/" className="btn btn-outline">
-					← Back to Teams
-				</a>
-			</div>
-		);
-	}
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
 
-	if (!team) {
-		return null;
-	}
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="alert alert-error">
+          <span>{error}</span>
+        </div>
+        <a href="/" className="btn btn-outline">
+          ← Teams
+        </a>
+      </div>
+    );
+  }
 
-	return (
-		<div className="space-y-6">
-			<div className="flex items-center gap-4">
-				<a href="/" className="btn btn-ghost btn-sm">
-					← Back to Teams
-				</a>
-				<h1 className="text-3xl font-bold">{team.name}</h1>
-			</div>
+  if (!team) {
+    return null;
+  }
 
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-				<div className="lg:col-span-2">
-					<div className="card bg-base-100 shadow-xl">
-						<div className="card-body">
-							<h2 className="card-title">Team Information</h2>
-							<div className="space-y-2">
-								<p><span className="font-semibold">Name:</span> {team.name}</p>
-								<p><span className="font-semibold">Created:</span> {team.createdAt.toLocaleDateString()}</p>
-							</div>
-						</div>
-					</div>
-				</div>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <a href="/" className="btn btn-ghost btn-sm">
+          ← Teams
+        </a>
+        <h1 className="text-3xl font-bold">{team.name}</h1>
+      </div>
 
-				<div>
-					<div className="card bg-base-100 shadow-xl">
-						<div className="card-body">
-							<h2 className="card-title">Quick Stats</h2>
-							{stats && (
-								<div className="stats stats-vertical shadow">
-									<div className="stat">
-										<div className="stat-title">Games</div>
-										<div className="stat-value">{stats.gamesPlayed}</div>
-									</div>
-									<div className="stat">
-										<div className="stat-title">W-L-D</div>
-										<div className="stat-value text-sm">{formatRecord(stats)}</div>
-									</div>
-									<div className="stat">
-										<div className="stat-title">Goals</div>
-										<div className="stat-value text-sm">{formatGoalRatio(stats)}</div>
-									</div>
-									<div className="stat">
-										<div className="stat-title">Goal Diff</div>
-										<div className={`stat-value text-sm ${stats.goalDifference >= 0 ? 'text-success' : 'text-error'}`}>
-											{stats.goalDifference >= 0 ? '+' : ''}{stats.goalDifference}
-										</div>
-									</div>
-								</div>
-							)}
-						</div>
-					</div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Team Information</h2>
+              <div className="space-y-2">
+                <p>
+                  <span className="font-semibold">Name:</span> {team.name}
+                </p>
+                <p>
+                  <span className="font-semibold">Created:</span>{" "}
+                  {team.createdAt.toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-					<div className="card bg-base-100 shadow-xl">
-						<div className="card-body">
-							<h2 className="card-title">Detailed Stats</h2>
-							{stats && (
-								<div className="space-y-4">
-									<div className="grid grid-cols-2 gap-4">
-										<div>
-											<div className="text-sm text-base-content/60">Clean Sheets</div>
-											<div className="text-lg font-semibold">{stats.cleanSheets} ({formatCleanSheetPercentage(stats)})</div>
-										</div>
-										<div>
-											<div className="text-sm text-base-content/60">Form Rating</div>
-											<div className={`badge ${
-												getFormRating(stats) === 'excellent' ? 'badge-success' :
-												getFormRating(stats) === 'good' ? 'badge-info' :
-												getFormRating(stats) === 'average' ? 'badge-warning' :
-												'badge-error'
-											}`}>
-												{getFormRating(stats)}
-											</div>
-										</div>
-									</div>
-									<div className="grid grid-cols-2 gap-4">
-										<div>
-											<div className="text-sm text-base-content/60">Avg Goals For</div>
-											<div className="text-lg font-semibold">{formatAverage(stats.averageGoalsFor)}</div>
-										</div>
-										<div>
-											<div className="text-sm text-base-content/60">Avg Goals Against</div>
-											<div className="text-lg font-semibold">{formatAverage(stats.averageGoalsAgainst)}</div>
-										</div>
-									</div>
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
-			</div>
+        <div>
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Quick Stats</h2>
+              {stats && (
+                <div className="stats stats-vertical shadow">
+                  <div className="stat">
+                    <div className="stat-title">Games</div>
+                    <div className="stat-value">{stats.gamesPlayed}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">W-L-D</div>
+                    <div className="stat-value text-sm">
+                      {formatRecord(stats)}
+                    </div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Goals</div>
+                    <div className="stat-value text-sm">
+                      {formatGoalRatio(stats)}
+                    </div>
+                  </div>
+                  <div className="stat">
+                    <div className="stat-title">Goal Diff</div>
+                    <div
+                      className={`stat-value text-sm ${stats.goalDifference >= 0 ? "text-success" : "text-error"}`}
+                    >
+                      {stats.goalDifference >= 0 ? "+" : ""}
+                      {stats.goalDifference}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-			<div className="card bg-base-100 shadow-xl">
-				<div className="card-body">
-					<h2 className="card-title">Recent Matches</h2>
-					{matches.length === 0 ? (
-						<div className="text-center py-8 text-base-content/60">
-							No matches recorded yet
-						</div>
-					) : (
-						<div className="space-y-2">
-							{matches.slice(0, 5).map(match => {
-								const isHome = match.homeId === teamId;
-								const teamScore = isHome ? match.homeScore : match.awayScore;
-								const opponentScore = isHome ? match.awayScore : match.homeScore;
-								const result = teamScore > opponentScore ? 'W' : teamScore < opponentScore ? 'L' : 'D';
-								
-								return (
-									<div key={match.id} className="flex justify-between items-center p-3 bg-base-200 rounded">
-										<div>
-											<div className="font-semibold">
-												{isHome ? 'vs' : '@'} {/* Team name would go here */}
-											</div>
-											<div className="text-sm text-base-content/60">
-												{new Date(match.date).toLocaleDateString()}
-											</div>
-										</div>
-										<div className="text-right">
-											<div className={`badge ${
-												result === 'W' ? 'badge-success' :
-												result === 'L' ? 'badge-error' :
-												'badge-warning'
-											}`}>
-												{result}
-											</div>
-											<div className="text-sm mt-1">
-												{teamScore} - {opponentScore}
-											</div>
-										</div>
-									</div>
-								);
-							})}
-							{matches.length > 5 && (
-								<div className="text-center pt-2">
-									<a href="/matches" className="btn btn-sm btn-outline">View All Matches</a>
-								</div>
-							)}
-						</div>
-					)}
-				</div>
-			</div>
-		</div>
-	);
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Detailed Stats</h2>
+              {stats && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-base-content/60">
+                        Clean Sheets
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {stats.cleanSheets} ({formatCleanSheetPercentage(stats)}
+                        )
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-base-content/60">
+                        Form Rating
+                      </div>
+                      <div
+                        className={`badge ${
+                          getFormRating(stats) === "excellent"
+                            ? "badge-success"
+                            : getFormRating(stats) === "good"
+                              ? "badge-info"
+                              : getFormRating(stats) === "average"
+                                ? "badge-warning"
+                                : "badge-error"
+                        }`}
+                      >
+                        {getFormRating(stats)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-base-content/60">
+                        Avg Goals For
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatAverage(stats.averageGoalsFor)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-base-content/60">
+                        Avg Goals Against
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatAverage(stats.averageGoalsAgainst)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h2 className="card-title">Recent Matches</h2>
+          {matches.length === 0 ? (
+            <div className="text-center py-8 text-base-content/60">
+              No matches recorded yet
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {matches.slice(0, 5).map((match) => {
+                const isHome = match.homeId === teamId;
+                const teamScore = isHome ? match.homeScore : match.awayScore;
+                const opponentScore = isHome
+                  ? match.awayScore
+                  : match.homeScore;
+                const result =
+                  teamScore > opponentScore
+                    ? "W"
+                    : teamScore < opponentScore
+                      ? "L"
+                      : "D";
+
+                return (
+                  <div
+                    key={match.id}
+                    className="flex justify-between items-center p-3 bg-base-200 rounded"
+                  >
+                    <div>
+                      <div className="font-semibold">
+                        {isHome ? "vs" : "@"} {/* Team name would go here */}
+                      </div>
+                      <div className="text-sm text-base-content/60">
+                        {new Date(match.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className={`badge ${
+                          result === "W"
+                            ? "badge-success"
+                            : result === "L"
+                              ? "badge-error"
+                              : "badge-warning"
+                        }`}
+                      >
+                        {result}
+                      </div>
+                      <div className="text-sm mt-1">
+                        {teamScore} - {opponentScore}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {matches.length > 5 && (
+                <div className="text-center pt-2">
+                  <a href="/matches" className="btn btn-sm btn-outline">
+                    View All Matches
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
