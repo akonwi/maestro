@@ -1,21 +1,23 @@
 import { render } from 'preact';
 import { LocationProvider, Router, Route } from 'preact-iso';
 
-import { Header } from './components/Header.jsx';
-import { Home } from './pages/Home/index.jsx';
-import { NotFound } from './pages/_404.jsx';
+import { Header } from './components/Header';
+import { Teams } from './pages/Teams';
+import { NotFound } from './pages/_404';
 import './style.css';
 
 export function App() {
 	return (
 		<LocationProvider>
-			<Header />
-			<main>
-				<Router>
-					<Route path="/" component={Home} />
-					<Route default component={NotFound} />
-				</Router>
-			</main>
+			<div className="min-h-screen bg-base-200">
+				<Header />
+				<main className="container mx-auto px-4 py-8">
+					<Router>
+						<Route path="/" component={Teams} />
+						<Route default component={NotFound} />
+					</Router>
+				</main>
+			</div>
 		</LocationProvider>
 	);
 }
