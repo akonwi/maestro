@@ -1,3 +1,4 @@
+# Maestro
 This project is a single page web app for managing and viewing soccer statistics.
 
 # Technology
