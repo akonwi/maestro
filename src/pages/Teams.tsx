@@ -1,22 +1,50 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Team } from '../types';
+import { addTeam, getAllTeams } from '../utils/database';
 
 export function Teams() {
 	const [teams, setTeams] = useState<Team[]>([]);
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [newTeamName, setNewTeamName] = useState('');
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 
-	const handleAddTeam = (e: Event) => {
+	useEffect(() => {
+		loadTeams();
+	}, []);
+
+	const loadTeams = async () => {
+		try {
+			setLoading(true);
+			const allTeams = await getAllTeams();
+			setTeams(allTeams);
+			setError(null);
+		} catch (err) {
+			setError('Failed to load teams');
+			console.error('Error loading teams:', err);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleAddTeam = async (e: Event) => {
 		e.preventDefault();
 		if (newTeamName.trim()) {
-			const newTeam: Team = {
-				id: crypto.randomUUID(),
-				name: newTeamName.trim(),
-				createdAt: new Date()
-			};
-			setTeams(prev => [...prev, newTeam]);
-			setNewTeamName('');
-			setShowAddForm(false);
+			try {
+				const newTeam: Team = {
+					id: crypto.randomUUID(),
+					name: newTeamName.trim(),
+					createdAt: new Date()
+				};
+				await addTeam(newTeam);
+				setTeams(prev => [...prev, newTeam]);
+				setNewTeamName('');
+				setShowAddForm(false);
+				setError(null);
+			} catch (err) {
+				setError('Failed to add team');
+				console.error('Error adding team:', err);
+			}
 		}
 	};
 
@@ -31,6 +59,12 @@ export function Teams() {
 					Add Team
 				</button>
 			</div>
+
+			{error && (
+				<div className="alert alert-error">
+					<span>{error}</span>
+				</div>
+			)}
 
 			{showAddForm && (
 				<div className="card bg-base-100 shadow-xl">
@@ -71,7 +105,11 @@ export function Teams() {
 				</div>
 			)}
 
-			{teams.length === 0 ? (
+			{loading ? (
+				<div className="text-center py-12">
+					<span className="loading loading-spinner loading-lg"></span>
+				</div>
+			) : teams.length === 0 ? (
 				<div className="text-center py-12">
 					<div className="text-base-content/60 text-lg">No teams yet</div>
 					<div className="text-base-content/40 text-sm mt-2">

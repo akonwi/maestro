@@ -6,9 +6,9 @@ export interface Team {
 
 export interface Match {
   id: string;
-  date: Date;
-  homeTeamId: string;
-  awayTeamId: string;
+  date: string;
+  homeId: string;
+  awayId: string;
   homeScore: number;
   awayScore: number;
   createdAt: Date;
