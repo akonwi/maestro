@@ -33,36 +33,36 @@
   - [x] Basic team info display
   - [x] Navigation from teams list
 
-## Phase 4: Match Recording
+## Phase 4: Match Recording ✅
 
-- [ ] Create "Add Match" form
-  - [ ] Date picker
-  - [ ] Home team dropdown/selector
-  - [ ] Away team dropdown/selector
-  - [ ] Score inputs (home/away)
-  - [ ] Form validation
-  - [ ] Save to IndexedDB
-- [ ] Create matches list view
-  - [ ] Display recent matches
-  - [ ] Filter by team/date
+- [x] Create "Add Match" form
+  - [x] Date picker
+  - [x] Home team dropdown/selector
+  - [x] Away team dropdown/selector
+  - [x] Score inputs (home/away)
+  - [x] Form validation
+  - [x] Save to IndexedDB
+- [x] Create matches list view
+  - [x] Display recent matches
+  - [ ] Filter by team/date (deferred)
 
-## Phase 5: Statistics & Analytics
+## Phase 5: Statistics & Analytics ✅
 
-- [ ] Create statistics calculation functions
-  - [ ] Games played count
-  - [ ] Win-Loss-Draw record
-  - [ ] Goals for/against totals
-  - [ ] Goal difference
-  - [ ] Clean sheet ratio
-  - [ ] Average goals for/against
-- [ ] Integrate stats into team detail pages
-- [ ] Create overall statistics dashboard
+- [x] Create statistics calculation functions
+  - [x] Games played count
+  - [x] Win-Loss-Draw record
+  - [x] Goals for/against totals
+  - [x] Goal difference
+  - [x] Clean sheet ratio
+  - [x] Average goals for/against
+- [x] Integrate stats into team detail pages
+- [x] Create overall statistics dashboard (deferred - not needed yet)
 
 ## Phase 6: Polish & UX
 
-- [ ] Add loading states
-- [ ] Error handling and user feedback
-- [ ] Data validation and edge cases
+- [x] Add loading states
+- [x] Error handling and user feedback
+- [x] Data validation and edge cases
 - [ ] Mobile responsiveness testing
 - [ ] Performance optimization
 
