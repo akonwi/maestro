@@ -8,6 +8,7 @@ export function Teams() {
 	const [newTeamName, setNewTeamName] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [searchTerm, setSearchTerm] = useState('');
 
 	useEffect(() => {
 		loadTeams();
@@ -47,6 +48,10 @@ export function Teams() {
 			}
 		}
 	};
+
+	const filteredTeams = teams.filter(team =>
+		team.name.toLowerCase().includes(searchTerm.toLowerCase())
+	);
 
 	return (
 		<div className="space-y-6">
@@ -105,9 +110,28 @@ export function Teams() {
 				</div>
 			)}
 
+			{!loading && teams.length > 0 && (
+				<div className="form-control">
+					<input 
+						type="text"
+						className="input input-bordered"
+						placeholder="Search teams..."
+						value={searchTerm}
+						onInput={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
+					/>
+				</div>
+			)}
+
 			{loading ? (
 				<div className="text-center py-12">
 					<span className="loading loading-spinner loading-lg"></span>
+				</div>
+			) : filteredTeams.length === 0 && searchTerm ? (
+				<div className="text-center py-12">
+					<div className="text-base-content/60 text-lg">No teams found</div>
+					<div className="text-base-content/40 text-sm mt-2">
+						Try adjusting your search term
+					</div>
 				</div>
 			) : teams.length === 0 ? (
 				<div className="text-center py-12">
@@ -118,7 +142,7 @@ export function Teams() {
 				</div>
 			) : (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-					{teams.map(team => (
+					{filteredTeams.map(team => (
 						<div key={team.id} className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
 							<div className="card-body">
 								<h2 className="card-title">{team.name}</h2>
@@ -126,7 +150,7 @@ export function Teams() {
 									Added {team.createdAt.toLocaleDateString()}
 								</p>
 								<div className="card-actions justify-end">
-									<button className="btn btn-sm btn-outline">View Details</button>
+									<a href={`/team/${team.id}`} className="btn btn-sm btn-outline">View Details</a>
 								</div>
 							</div>
 						</div>
