@@ -1,5 +1,4 @@
-import { useState, useEffect } from "preact/hooks";
-import { Team, Match, TeamStatistics } from "../types";
+import { useMemo } from "preact/hooks";
 import { db } from "../utils/database";
 import {
   calculateTeamStatistics,
@@ -9,51 +8,28 @@ import {
   formatAverage,
   getFormRating,
 } from "../utils/statistics";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface TeamDetailProps {
   teamId: string;
 }
 
 export function TeamDetail({ teamId }: TeamDetailProps) {
-  const [team, setTeam] = useState<Team | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [stats, setStats] = useState<TeamStatistics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadTeam();
+  const data = useLiveQuery(async () => {
+    const [team, homeMatches, awayMatches] = await Promise.all([
+      db.teams.get(teamId),
+      db.matches.where("homeId").equals(teamId).toArray(),
+      db.matches.where("awayId").equals(teamId).toArray(),
+    ]);
+    return { team, matches: [...homeMatches, ...awayMatches] };
   }, [teamId]);
 
-  const loadTeam = async () => {
-    try {
-      setLoading(true);
-      const [foundTeam, homeMatches, awayMatches] = await Promise.all([
-        db.teams.get(teamId),
-        db.matches.where('homeId').equals(teamId).toArray(),
-        db.matches.where('awayId').equals(teamId).toArray()
-      ]);
-      
-      const teamMatches = [...homeMatches, ...awayMatches];
+  const stats = useMemo(() => {
+    if (data?.matches == null) return null;
+    return calculateTeamStatistics(teamId, data.matches);
+  }, [data]);
 
-      if (foundTeam) {
-        setTeam(foundTeam);
-        setMatches(teamMatches);
-        const teamStats = calculateTeamStatistics(teamId, teamMatches);
-        setStats(teamStats);
-        setError(null);
-      } else {
-        setError("Team not found");
-      }
-    } catch (err) {
-      setError("Failed to load team");
-      console.error("Error loading team:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (data == null) {
     return (
       <div className="text-center py-12">
         <span className="loading loading-spinner loading-lg"></span>
@@ -61,22 +37,11 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
-        <a href="/" className="btn btn-outline">
-          ← Teams
-        </a>
-      </div>
-    );
-  }
-
-  if (!team) {
+  if (data.team == null) {
     return null;
   }
+
+  const { team, matches } = data;
 
   return (
     <div className="space-y-6">
