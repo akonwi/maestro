@@ -42,7 +42,7 @@ export function Teams() {
       </div>
 
       <dialog id="form" class="modal">
-        <div className="card bg-base-100 shadow-xl w-1/4">
+        <div className="card bg-base-100 border border-base-300 w-1/4">
           <div className="card-body">
             <h2 className="card-title">New Team</h2>
             <form onSubmit={handleAddTeam} className="space-y-4">
@@ -117,7 +117,7 @@ export function Teams() {
             <a href={`/team/${team.id}`}>
               <div
                 key={team.id}
-                className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+                className="card bg-base-100 border border-base-300 hover:border-primary transition-colors"
               >
                 <div className="card-body">
                   <h2 className="card-title">{team.name}</h2>

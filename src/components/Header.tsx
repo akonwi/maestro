@@ -4,7 +4,7 @@ export function Header() {
   const { url } = useLocation();
 
   return (
-    <div className="navbar bg-base-100 shadow-lg">
+    <div className="navbar bg-base-100 border-b border-base-300">
       <div className="navbar-start">
         <div className="dropdown">
           <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
@@ -34,7 +34,7 @@ export function Header() {
           </div>
           <ul
             tabIndex={0}
-            className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+            className="menu menu-sm dropdown-content mt-3 z-[1] p-2 bg-base-100 border border-base-300 rounded-box w-52"
           >
             <li>
               <a href="/" className={url === "/" ? "active" : ""}>

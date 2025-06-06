@@ -121,7 +121,7 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="card bg-base-100 shadow-xl">
+          <div className="card bg-base-100 border border-base-300">
             <div className="card-body">
               <h2 className="card-title">Team Information</h2>
               <div className="space-y-2">
@@ -138,11 +138,11 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
         </div>
 
         <div>
-          <div className="card bg-base-100 shadow-xl">
+          <div className="card bg-base-100 border border-base-300">
             <div className="card-body">
               <h2 className="card-title">Quick Stats</h2>
               {stats && (
-                <div className="stats stats-vertical shadow">
+                <div className="stats stats-vertical border border-base-300">
                   <div className="stat">
                     <div className="stat-title">Games</div>
                     <div className="stat-value">{stats.gamesPlayed}</div>
@@ -173,7 +173,7 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
             </div>
           </div>
 
-          <div className="card bg-base-100 shadow-xl">
+          <div className="card bg-base-100 border border-base-300">
             <div className="card-body">
               <h2 className="card-title">Detailed Stats</h2>
               {stats && (
@@ -232,7 +232,7 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
         </div>
       </div>
 
-      <div className="card bg-base-100 shadow-xl">
+      <div className="card bg-base-100 border border-base-300">
         <div className="card-body">
           <h2 className="card-title">Recent Matches</h2>
           {matches.length === 0 ? (

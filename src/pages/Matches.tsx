@@ -201,7 +201,7 @@ export function Matches() {
       )}
 
       {(showAddForm || editingMatch) && (
-        <div className="card bg-base-100 shadow-xl">
+        <div className="card bg-base-100 border border-base-300">
           <div className="card-body">
             <h2 className="card-title">{editingMatch ? 'Edit Match' : 'Add New Match'}</h2>
             <form onSubmit={editingMatch ? handleUpdateMatch : handleAddMatch} className="space-y-4">
@@ -341,7 +341,7 @@ export function Matches() {
       ) : (
         <div className="space-y-4">
           {data.matches.map((match) => (
-            <div key={match.id} className="card bg-base-100 shadow-xl">
+            <div key={match.id} className="card bg-base-100 border border-base-300">
               <div className="card-body">
                 <div className="flex justify-between items-center">
                   <div>
