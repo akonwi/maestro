@@ -54,6 +54,18 @@ export function Matches() {
       return;
     }
 
+    // Check for duplicate matches (same teams and date)
+    const existingMatch = data?.matches.find(match => 
+      match.date === matchDate &&
+      match.homeId === homeTeamId &&
+      match.awayId === awayTeamId
+    );
+
+    if (existingMatch) {
+      setError("A match between these teams on this date already exists");
+      return;
+    }
+
     try {
       const newMatch: Match = {
         id: crypto.randomUUID(),
@@ -111,6 +123,19 @@ export function Matches() {
     
     if (isNaN(homeScoreNum) || isNaN(awayScoreNum) || homeScoreNum < 0 || awayScoreNum < 0) {
       setError('Scores must be valid numbers (0 or greater)');
+      return;
+    }
+
+    // Check for duplicate matches (same teams and date), excluding current match
+    const existingMatch = data?.matches.find(match => 
+      match.id !== editingMatch.id && // Exclude current match
+      match.date === matchDate &&
+      match.homeId === homeTeamId &&
+      match.awayId === awayTeamId
+    );
+
+    if (existingMatch) {
+      setError("A match between these teams on this date already exists");
       return;
     }
 
