@@ -26,7 +26,8 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
       db.matches.where("awayId").equals(teamId).toArray(),
       db.teams.toArray(),
     ]);
-    return { team, matches: [...homeMatches, ...awayMatches], teams: allTeams };
+    const allMatches = [...homeMatches, ...awayMatches].sort((a, b) => b.date.localeCompare(a.date));
+    return { team, matches: allMatches, teams: allTeams };
   }, [teamId]);
 
   const stats = useMemo(() => {

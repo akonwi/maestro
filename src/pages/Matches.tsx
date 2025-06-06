@@ -7,7 +7,7 @@ export function Matches() {
   const data = useLiveQuery(async () => {
     const [teams, matches] = await Promise.all([
       db.teams.orderBy("name").toArray(),
-      db.matches.toArray(),
+      db.matches.orderBy('date').reverse().toArray(),
     ]);
     return { teams, matches };
   });
