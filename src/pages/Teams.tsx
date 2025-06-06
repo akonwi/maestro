@@ -3,24 +3,20 @@ import { Team } from "../types";
 import { db } from "../utils/database";
 import { useLiveQuery } from "dexie-react-hooks";
 import { isEmpty } from "../utils/helpers";
-import { useLocation } from "preact-iso";
 
 export function Teams() {
-  const { url, route } = useLocation();
-  const urlParams = new URLSearchParams(url.split('?')[1] || '');
-  const searchQuery = urlParams.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
   
   const teams = useLiveQuery(() => {
-    if (searchQuery) {
+    if (searchTerm) {
       return db.teams
         .orderBy('name')
-        .filter(team => team.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter(team => team.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .toArray();
     }
     return db.teams.orderBy('name').toArray();
-  }, [searchQuery]);
-  
-  const [newTeamName, setNewTeamName] = useState("");
+  }, [searchTerm]);
 
   const handleAddTeam = async (e: Event) => {
     e.preventDefault();
@@ -36,10 +32,7 @@ export function Teams() {
     }
   };
 
-  const handleSearchChange = (value: string) => {
-    const newUrl = value ? `/?search=${encodeURIComponent(value)}` : '/';
-    route(newUrl);
-  };
+
 
   return (
     <div className="space-y-6">
@@ -101,8 +94,8 @@ export function Teams() {
             type="text"
             className="input input-bordered"
             placeholder="Search teams..."
-            value={searchQuery}
-            onInput={(e) => handleSearchChange((e.target as HTMLInputElement).value)}
+            value={searchTerm}
+            onInput={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
           />
         </div>
       )}
@@ -111,7 +104,7 @@ export function Teams() {
         <div className="text-center py-12">
           <span className="loading loading-spinner loading-lg"></span>
         </div>
-      ) : isEmpty(teams) && searchQuery !== "" ? (
+      ) : isEmpty(teams) && searchTerm !== "" ? (
         <div className="text-center py-12">
           <div className="text-base-content/60 text-lg">No teams found</div>
           <div className="text-base-content/40 text-sm mt-2">
