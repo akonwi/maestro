@@ -1,53 +1,29 @@
-import { useState, useEffect } from "preact/hooks";
+import { useState } from "preact/hooks";
 import { Team } from "../types";
 import { db } from "../utils/database";
+import { useLiveQuery } from "dexie-react-hooks";
+import { isEmpty } from "../utils/helpers";
 
 export function Teams() {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const teams = useLiveQuery(() => db.teams.toArray());
   const [newTeamName, setNewTeamName] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-
-  useEffect(() => {
-    loadTeams();
-  }, []);
-
-  const loadTeams = async () => {
-    try {
-      setLoading(true);
-      const allTeams = await db.teams.toArray();
-      setTeams(allTeams);
-      setError(null);
-    } catch (err) {
-      setError("Failed to load teams");
-      console.error("Error loading teams:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddTeam = async (e: Event) => {
     e.preventDefault();
     if (newTeamName.trim()) {
-      try {
-        const newTeam: Team = {
-          id: crypto.randomUUID(),
-          name: newTeamName.trim(),
-          createdAt: new Date(),
-        };
-        await db.teams.add(newTeam);
-        setTeams((prev) => [...prev, newTeam]);
-        setNewTeamName("");
-        setError(null);
-      } catch (err) {
-        setError("Failed to add team");
-        console.error("Error adding team:", err);
-      }
+      const newTeam: Team = {
+        id: crypto.randomUUID(),
+        name: newTeamName.trim(),
+        createdAt: new Date(),
+      };
+      await db.teams.add(newTeam);
+      setNewTeamName("");
+      (document.getElementById("form") as HTMLDialogElement).close();
     }
   };
 
-  const filteredTeams = teams.filter((team) =>
+  const filteredTeams = teams?.filter((team) =>
     team.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
@@ -64,12 +40,6 @@ export function Teams() {
           Add
         </button>
       </div>
-
-      {error && (
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
-      )}
 
       <dialog id="form" class="modal">
         <div className="card bg-base-100 shadow-xl w-1/4">
@@ -111,7 +81,7 @@ export function Teams() {
         </div>
       </dialog>
 
-      {!loading && teams.length > 0 && (
+      {!isEmpty(teams) && (
         <div className="form-control">
           <input
             type="text"
@@ -123,18 +93,18 @@ export function Teams() {
         </div>
       )}
 
-      {loading ? (
+      {teams == null ? (
         <div className="text-center py-12">
           <span className="loading loading-spinner loading-lg"></span>
         </div>
-      ) : filteredTeams.length === 0 && searchTerm ? (
+      ) : isEmpty(filteredTeams) && searchTerm !== "" ? (
         <div className="text-center py-12">
           <div className="text-base-content/60 text-lg">No teams found</div>
           <div className="text-base-content/40 text-sm mt-2">
             Try adjusting your search term
           </div>
         </div>
-      ) : teams.length === 0 ? (
+      ) : isEmpty(teams) ? (
         <div className="text-center py-12">
           <div className="text-base-content/60 text-lg">No teams yet</div>
           <div className="text-base-content/40 text-sm mt-2">
@@ -143,7 +113,7 @@ export function Teams() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTeams.map((team) => (
+          {filteredTeams?.map((team) => (
             <a href={`/team/${team.id}`}>
               <div
                 key={team.id}
