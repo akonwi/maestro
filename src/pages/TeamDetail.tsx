@@ -1,4 +1,4 @@
-import { useMemo } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 import { db } from "../utils/database";
 import {
   calculateTeamStatistics,
@@ -15,6 +15,10 @@ interface TeamDetailProps {
 }
 
 export function TeamDetail({ teamId }: TeamDetailProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
   const data = useLiveQuery(async () => {
     const [team, homeMatches, awayMatches] = await Promise.all([
       db.teams.get(teamId),
@@ -28,6 +32,38 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
     if (data?.matches == null) return null;
     return calculateTeamStatistics(teamId, data.matches);
   }, [data]);
+
+  const handleEditStart = () => {
+    setEditName(data?.team?.name || '');
+    setIsEditing(true);
+    setError(null);
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+    setEditName('');
+    setError(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editName.trim()) {
+      setError('Team name cannot be empty');
+      return;
+    }
+
+    if (!data?.team) return;
+
+    try {
+      const updatedTeam = { ...data.team, name: editName.trim() };
+      await db.teams.put(updatedTeam);
+      setIsEditing(false);
+      setEditName('');
+      setError(null);
+    } catch (err) {
+      setError('Failed to update team name');
+      console.error('Error updating team:', err);
+    }
+  };
 
   if (data == null) {
     return (
@@ -45,12 +81,43 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <a href="/" className="btn btn-ghost btn-sm">
-          ← Teams
-        </a>
-        <h1 className="text-3xl font-bold">{team.name}</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <a href="/" className="btn btn-ghost btn-sm">
+            ← Teams
+          </a>
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <input 
+                type="text"
+                className="input input-bordered text-3xl font-bold"
+                value={editName}
+                onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
+                autoFocus
+              />
+              <button className="btn btn-sm btn-success" onClick={handleEditSave}>
+                Save
+              </button>
+              <button className="btn btn-sm btn-ghost" onClick={handleEditCancel}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <h1 className="text-3xl font-bold">{team.name}</h1>
+          )}
+        </div>
+        {!isEditing && (
+          <button className="btn btn-sm btn-outline" onClick={handleEditStart}>
+            Edit Name
+          </button>
+        )}
       </div>
+
+      {error && (
+        <div className="alert alert-error">
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

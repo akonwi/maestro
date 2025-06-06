@@ -13,6 +13,7 @@ export function Matches() {
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
 
   // Form state
   const [matchDate, setMatchDate] = useState("");
@@ -80,6 +81,75 @@ export function Matches() {
     }
   };
 
+  const handleEditMatch = (match: Match) => {
+    setEditingMatch(match);
+    setMatchDate(match.date);
+    setHomeTeamId(match.homeId);
+    setAwayTeamId(match.awayId);
+    setHomeScore(match.homeScore.toString());
+    setAwayScore(match.awayScore.toString());
+    setError(null);
+  };
+
+  const handleUpdateMatch = async (e: Event) => {
+    e.preventDefault();
+    
+    if (!editingMatch) return;
+    
+    if (!matchDate || !homeTeamId || !awayTeamId || homeScore === '' || awayScore === '') {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (homeTeamId === awayTeamId) {
+      setError('Home and away teams must be different');
+      return;
+    }
+
+    const homeScoreNum = parseInt(homeScore);
+    const awayScoreNum = parseInt(awayScore);
+    
+    if (isNaN(homeScoreNum) || isNaN(awayScoreNum) || homeScoreNum < 0 || awayScoreNum < 0) {
+      setError('Scores must be valid numbers (0 or greater)');
+      return;
+    }
+
+    try {
+      const updatedMatch: Match = {
+        ...editingMatch,
+        date: matchDate,
+        homeId: homeTeamId,
+        awayId: awayTeamId,
+        homeScore: homeScoreNum,
+        awayScore: awayScoreNum,
+      };
+
+      await db.matches.put(updatedMatch);
+
+      // Reset form
+      setEditingMatch(null);
+      setMatchDate("");
+      setHomeTeamId("");
+      setAwayTeamId("");
+      setHomeScore("");
+      setAwayScore("");
+      setError(null);
+    } catch (err) {
+      setError("Failed to update match");
+      console.error("Error updating match:", err);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMatch(null);
+    setMatchDate("");
+    setHomeTeamId("");
+    setAwayTeamId("");
+    setHomeScore("");
+    setAwayScore("");
+    setError(null);
+  };
+
   const getTeamName = (teamId: string) => {
     const team = data?.teams.find((t) => t.id === teamId);
     return team ? team.name : "Unknown Team";
@@ -130,11 +200,11 @@ export function Matches() {
         </div>
       )}
 
-      {showAddForm && (
+      {(showAddForm || editingMatch) && (
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
-            <h2 className="card-title">Add New Match</h2>
-            <form onSubmit={handleAddMatch} className="space-y-4">
+            <h2 className="card-title">{editingMatch ? 'Edit Match' : 'Add New Match'}</h2>
+            <form onSubmit={editingMatch ? handleUpdateMatch : handleAddMatch} className="space-y-4">
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Match Date</span>
@@ -238,7 +308,7 @@ export function Matches() {
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => {
+                  onClick={editingMatch ? handleCancelEdit : () => {
                     setShowAddForm(false);
                     setMatchDate("");
                     setHomeTeamId("");
@@ -251,7 +321,7 @@ export function Matches() {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Add Match
+                  {editingMatch ? 'Update Match' : 'Add Match'}
                 </button>
               </div>
             </form>
@@ -282,10 +352,16 @@ export function Matches() {
                       {new Date(match.date).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center gap-4">
                     <div className="text-2xl font-bold">
                       {match.homeScore} - {match.awayScore}
                     </div>
+                    <button 
+                      className="btn btn-sm btn-outline"
+                      onClick={() => handleEditMatch(match)}
+                    >
+                      Edit
+                    </button>
                   </div>
                 </div>
               </div>

@@ -63,8 +63,8 @@
 - [x] Add loading states
 - [x] Error handling and user feedback
 - [x] Data validation and edge cases
-- [ ] Mobile responsiveness testing
-- [ ] Performance optimization
+- [x] ability to edit team names
+- [x] ability to edit match details
 
 ## Technical Notes
 
