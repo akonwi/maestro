@@ -3,11 +3,24 @@ import { Team } from "../types";
 import { db } from "../utils/database";
 import { useLiveQuery } from "dexie-react-hooks";
 import { isEmpty } from "../utils/helpers";
+import { useLocation } from "preact-iso";
 
 export function Teams() {
-  const teams = useLiveQuery(() => db.teams.toArray());
+  const { url, route } = useLocation();
+  const urlParams = new URLSearchParams(url.split('?')[1] || '');
+  const searchQuery = urlParams.get('search') || '';
+  
+  const teams = useLiveQuery(() => {
+    if (searchQuery) {
+      return db.teams
+        .orderBy('name')
+        .filter(team => team.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .toArray();
+    }
+    return db.teams.orderBy('name').toArray();
+  }, [searchQuery]);
+  
   const [newTeamName, setNewTeamName] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
 
   const handleAddTeam = async (e: Event) => {
     e.preventDefault();
@@ -23,9 +36,10 @@ export function Teams() {
     }
   };
 
-  const filteredTeams = teams?.filter((team) =>
-    team.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const handleSearchChange = (value: string) => {
+    const newUrl = value ? `/?search=${encodeURIComponent(value)}` : '/';
+    route(newUrl);
+  };
 
   return (
     <div className="space-y-6">
@@ -87,8 +101,8 @@ export function Teams() {
             type="text"
             className="input input-bordered"
             placeholder="Search teams..."
-            value={searchTerm}
-            onInput={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
+            value={searchQuery}
+            onInput={(e) => handleSearchChange((e.target as HTMLInputElement).value)}
           />
         </div>
       )}
@@ -97,7 +111,7 @@ export function Teams() {
         <div className="text-center py-12">
           <span className="loading loading-spinner loading-lg"></span>
         </div>
-      ) : isEmpty(filteredTeams) && searchTerm !== "" ? (
+      ) : isEmpty(teams) && searchQuery !== "" ? (
         <div className="text-center py-12">
           <div className="text-base-content/60 text-lg">No teams found</div>
           <div className="text-base-content/40 text-sm mt-2">
@@ -113,7 +127,7 @@ export function Teams() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTeams?.map((team) => (
+          {teams?.map((team) => (
             <a href={`/team/${team.id}`}>
               <div
                 key={team.id}
