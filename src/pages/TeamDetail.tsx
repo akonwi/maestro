@@ -1,6 +1,6 @@
 import { useState, useEffect } from "preact/hooks";
 import { Team, Match, TeamStatistics } from "../types";
-import { getTeamById, getMatchesByTeam } from "../utils/database";
+import { db } from "../utils/database";
 import {
   calculateTeamStatistics,
   formatRecord,
@@ -28,10 +28,13 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
   const loadTeam = async () => {
     try {
       setLoading(true);
-      const [foundTeam, teamMatches] = await Promise.all([
-        getTeamById(teamId),
-        getMatchesByTeam(teamId),
+      const [foundTeam, homeMatches, awayMatches] = await Promise.all([
+        db.teams.get(teamId),
+        db.matches.where('homeId').equals(teamId).toArray(),
+        db.matches.where('awayId').equals(teamId).toArray()
       ]);
+      
+      const teamMatches = [...homeMatches, ...awayMatches];
 
       if (foundTeam) {
         setTeam(foundTeam);

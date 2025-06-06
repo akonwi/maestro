@@ -1,6 +1,6 @@
 import { useState, useEffect } from "preact/hooks";
 import { Team } from "../types";
-import { addTeam, getAllTeams } from "../utils/database";
+import { db } from "../utils/database";
 
 export function Teams() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -16,7 +16,7 @@ export function Teams() {
   const loadTeams = async () => {
     try {
       setLoading(true);
-      const allTeams = await getAllTeams();
+      const allTeams = await db.teams.toArray();
       setTeams(allTeams);
       setError(null);
     } catch (err) {
@@ -36,10 +36,9 @@ export function Teams() {
           name: newTeamName.trim(),
           createdAt: new Date(),
         };
-        await addTeam(newTeam);
+        await db.teams.add(newTeam);
         setTeams((prev) => [...prev, newTeam]);
         setNewTeamName("");
-        setShowAddForm(false);
         setError(null);
       } catch (err) {
         setError("Failed to add team");

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Team, Match } from '../types';
-import { getAllTeams, addMatch, getAllMatches } from '../utils/database';
+import { db } from '../utils/database';
 
 export function Matches() {
 	const [teams, setTeams] = useState<Team[]>([]);
@@ -24,8 +24,8 @@ export function Matches() {
 		try {
 			setLoading(true);
 			const [allTeams, allMatches] = await Promise.all([
-				getAllTeams(),
-				getAllMatches()
+				db.teams.toArray(),
+				db.matches.toArray()
 			]);
 			setTeams(allTeams);
 			setMatches(allMatches);
@@ -70,7 +70,7 @@ export function Matches() {
 				createdAt: new Date()
 			};
 
-			await addMatch(newMatch);
+			await db.matches.add(newMatch);
 			setMatches(prev => [newMatch, ...prev]);
 			
 			// Reset form
