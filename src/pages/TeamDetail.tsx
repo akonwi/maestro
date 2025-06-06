@@ -20,18 +20,24 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
   const [error, setError] = useState<string | null>(null);
 
   const data = useLiveQuery(async () => {
-    const [team, homeMatches, awayMatches] = await Promise.all([
+    const [team, homeMatches, awayMatches, allTeams] = await Promise.all([
       db.teams.get(teamId),
       db.matches.where("homeId").equals(teamId).toArray(),
       db.matches.where("awayId").equals(teamId).toArray(),
+      db.teams.toArray(),
     ]);
-    return { team, matches: [...homeMatches, ...awayMatches] };
+    return { team, matches: [...homeMatches, ...awayMatches], teams: allTeams };
   }, [teamId]);
 
   const stats = useMemo(() => {
     if (data?.matches == null) return null;
     return calculateTeamStatistics(teamId, data.matches);
   }, [data]);
+
+  const getTeamName = (teamId: string) => {
+    const team = data?.teams?.find(t => t.id === teamId);
+    return team ? team.name : 'Unknown Team';
+  };
 
   const handleEditStart = () => {
     setEditName(data?.team?.name || '');
@@ -77,7 +83,7 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
     return null;
   }
 
-  const { team, matches } = data;
+  const { team, matches, teams } = data;
 
   return (
     <div className="space-y-6">
@@ -260,9 +266,9 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
                     className="flex justify-between items-center p-3 bg-base-200 rounded"
                   >
                     <div>
-                      <div className="font-semibold">
-                        {isHome ? "vs" : "@"} {/* Team name would go here */}
-                      </div>
+                    <div className="font-semibold">
+                    {isHome ? "vs" : "@"} {getTeamName(isHome ? match.awayId : match.homeId)}
+                    </div>
                       <div className="text-sm text-base-content/60">
                         {new Date(match.date).toLocaleDateString()}
                       </div>
