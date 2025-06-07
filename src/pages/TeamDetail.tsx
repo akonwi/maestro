@@ -8,6 +8,7 @@ import {
   formatAverage,
   getFormRating,
 } from "../utils/statistics";
+import { formatMatchDate } from "../utils/helpers";
 import { useLiveQuery } from "dexie-react-hooks";
 
 interface TeamDetailProps {
@@ -271,7 +272,7 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
                     {isHome ? "vs" : "@"} {getTeamName(isHome ? match.awayId : match.homeId)}
                     </div>
                       <div className="text-sm text-base-content/60">
-                        {new Date(match.date).toLocaleDateString()}
+                        {formatMatchDate(match.date)}
                       </div>
                     </div>
                     <div className="text-right">

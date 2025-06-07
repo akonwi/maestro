@@ -2,6 +2,7 @@ import { useState } from "preact/hooks";
 import { Match } from "../types";
 import { db } from "../utils/database";
 import { useLiveQuery } from "dexie-react-hooks";
+import { formatMatchDate } from "../utils/helpers";
 
 export function Matches() {
   const data = useLiveQuery(async () => {
@@ -374,7 +375,7 @@ export function Matches() {
                       {formatMatchResult(match)}
                     </h3>
                     <p className="text-base-content/60 text-sm">
-                      {new Date(match.date).toLocaleDateString()}
+                      {formatMatchDate(match.date)}
                     </p>
                   </div>
                   <div className="text-right flex items-center gap-4">
