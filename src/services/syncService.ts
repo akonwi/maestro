@@ -1,4 +1,4 @@
-import { db } from '../utils/database';
+import { db, CURRENT_DB_VERSION } from '../utils/database';
 
 export interface SyncConfig {
   githubToken: string;
@@ -55,7 +55,7 @@ export const exportAllData = async () => {
   ]);
 
   return {
-    version: '1.0',
+    dbVersion: CURRENT_DB_VERSION,
     exported: new Date().toISOString(),
     data: { teams, matches, bets }
   };
@@ -65,6 +65,21 @@ export const exportAllData = async () => {
 export const importAllData = async (exportedData: any) => {
   if (!exportedData.data) {
     throw new Error('Invalid data format');
+  }
+
+  // Check database version compatibility
+  if (exportedData.dbVersion && exportedData.dbVersion > CURRENT_DB_VERSION) {
+    throw new Error(
+      `Data was exported from a newer version (DB v${exportedData.dbVersion}). ` +
+      `Current version is v${CURRENT_DB_VERSION}. Please update the app to import this data.`
+    );
+  }
+
+  if (exportedData.dbVersion && exportedData.dbVersion < CURRENT_DB_VERSION) {
+    console.warn(
+      `Importing data from older version (DB v${exportedData.dbVersion}). ` +
+      `Current version is v${CURRENT_DB_VERSION}. Data will be migrated.`
+    );
   }
 
   const { teams, matches, bets } = exportedData.data;
@@ -80,10 +95,11 @@ export const importAllData = async (exportedData: any) => {
     createdAt: new Date(match.createdAt)
   })) || [];
 
-  const processBets = bets?.map((bet: any) => ({
+  // Handle missing bets table for DB version 1 imports
+  const processBets = (bets?.map((bet: any) => ({
     ...bet,
     createdAt: new Date(bet.createdAt)
-  })) || [];
+  })) || []);
 
   await db.transaction('rw', [db.teams, db.matches, db.bets], async () => {
     // Clear existing data

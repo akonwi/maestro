@@ -2,6 +2,9 @@ import Dexie, { type EntityTable } from "dexie";
 import { Team, Match } from "../types";
 import { Bet } from "../services/betService";
 
+// Current database version
+export const CURRENT_DB_VERSION = 2;
+
 // Define the database schema
 class MaestroDB extends Dexie {
 	teams!: EntityTable<Team, "id">;
