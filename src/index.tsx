@@ -5,6 +5,8 @@ import { Header } from "./components/Header";
 import { Teams } from "./pages/Teams";
 import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
+import { MatchDetail } from "./pages/MatchDetail";
+import { BettingPerformance } from "./pages/BettingPerformance";
 import { NotFound } from "./pages/_404";
 import "./style.css";
 
@@ -18,6 +20,8 @@ export function App() {
             <Route path="/" component={Teams} />
             <Route path="/team/:teamId" component={TeamDetail} />
             <Route path="/matches" component={Matches} />
+            <Route path="/match/:matchId" component={MatchDetail} />
+            <Route path="/betting" component={BettingPerformance} />
             <Route default component={NotFound} />
           </Router>
         </main>

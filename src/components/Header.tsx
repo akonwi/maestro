@@ -42,7 +42,14 @@ export function Header() {
               </a>
             </li>
             <li>
-              <a href="/matches">Matches</a>
+              <a href="/matches" className={url === "/matches" ? "active" : ""}>
+                Matches
+              </a>
+            </li>
+            <li>
+              <a href="/betting" className={url === "/betting" ? "active" : ""}>
+                Betting
+              </a>
             </li>
           </ul>
         </div>
@@ -58,7 +65,14 @@ export function Header() {
             </a>
           </li>
           <li>
-            <a href="/matches">Matches</a>
+            <a href="/matches" className={url === "/matches" ? "active" : ""}>
+              Matches
+            </a>
+          </li>
+          <li>
+            <a href="/betting" className={url === "/betting" ? "active" : ""}>
+              Betting
+            </a>
           </li>
         </ul>
       </div>

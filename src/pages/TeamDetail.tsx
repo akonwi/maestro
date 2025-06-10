@@ -263,9 +263,10 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
                       : "D";
 
                 return (
-                  <div
+                  <a
                     key={match.id}
-                    className="flex justify-between items-center p-3 bg-base-200 rounded"
+                    href={`/match/${match.id}`}
+                    className="flex justify-between items-center p-3 bg-base-200 rounded hover:bg-base-300 transition-colors cursor-pointer"
                   >
                     <div>
                     <div className="font-semibold">
@@ -291,7 +292,7 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
                         {teamScore} - {opponentScore}
                       </div>
                     </div>
-                  </div>
+                  </a>
                 );
               })}
               {matches.length > 5 && (

@@ -3,6 +3,8 @@ import { Match } from "../types";
 import { db } from "../utils/database";
 import { useLiveQuery } from "dexie-react-hooks";
 import { formatMatchDate } from "../utils/helpers";
+import BetForm from "../components/betting/BetForm";
+import BetList from "../components/betting/BetList";
 
 export function Matches() {
   const data = useLiveQuery(async () => {
@@ -15,6 +17,9 @@ export function Matches() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [showBetForm, setShowBetForm] = useState(false);
+  const [selectedMatchForBet, setSelectedMatchForBet] = useState<string | null>(null);
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
   // Form state
   const [matchDate, setMatchDate] = useState("");
@@ -174,6 +179,25 @@ export function Matches() {
     setHomeScore("");
     setAwayScore("");
     setError(null);
+  };
+
+  const handleRecordBet = (matchId: string) => {
+    setSelectedMatchForBet(matchId);
+    setShowBetForm(true);
+  };
+
+  const handleBetCreated = () => {
+    setShowBetForm(false);
+    setSelectedMatchForBet(null);
+  };
+
+  const handleCancelBet = () => {
+    setShowBetForm(false);
+    setSelectedMatchForBet(null);
+  };
+
+  const toggleMatchExpansion = (matchId: string) => {
+    setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
   };
 
   const getTeamName = (teamId: string) => {
@@ -367,33 +391,61 @@ export function Matches() {
       ) : (
         <div className="space-y-4">
           {data.matches.map((match) => (
-            <div key={match.id} className="card bg-base-100 border border-base-300">
+            <div key={match.id} className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow">
               <div className="card-body">
                 <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold">
+                  <div 
+                    className="cursor-pointer flex-1"
+                    onClick={() => window.location.href = `/match/${match.id}`}
+                  >
+                    <h3 className="text-lg font-semibold hover:text-primary transition-colors">
                       {formatMatchResult(match)}
                     </h3>
                     <p className="text-base-content/60 text-sm">
                       {formatMatchDate(match.date)}
                     </p>
                   </div>
-                  <div className="text-right flex items-center gap-4">
+                  <div className="text-right flex items-center gap-2">
                     <div className="text-2xl font-bold">
                       {match.homeScore} - {match.awayScore}
                     </div>
+                    <button 
+                      className="btn btn-sm btn-primary"
+                      onClick={() => handleRecordBet(match.id)}
+                    >
+                      Record Bet
+                    </button>
                     <button 
                       className="btn btn-sm btn-outline"
                       onClick={() => handleEditMatch(match)}
                     >
                       Edit
                     </button>
+                    <button 
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => toggleMatchExpansion(match.id)}
+                    >
+                      {expandedMatchId === match.id ? '−' : '+'}
+                    </button>
                   </div>
                 </div>
+                {expandedMatchId === match.id && (
+                  <div className="mt-4 pt-4 border-t border-base-300">
+                    <BetList matchId={match.id} />
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {showBetForm && selectedMatchForBet && (
+        <BetForm
+          matchId={selectedMatchForBet}
+          onBetCreated={handleBetCreated}
+          onCancel={handleCancelBet}
+        />
       )}
     </div>
   );
