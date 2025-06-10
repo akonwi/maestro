@@ -51,6 +51,11 @@ export function Header() {
                 Betting
               </a>
             </li>
+            <li>
+              <a href="/settings" className={url === "/settings" ? "active" : ""}>
+                Settings
+              </a>
+            </li>
           </ul>
         </div>
         <a href="/" className="btn btn-ghost normal-case text-xl">
@@ -72,6 +77,11 @@ export function Header() {
           <li>
             <a href="/betting" className={url === "/betting" ? "active" : ""}>
               Betting
+            </a>
+          </li>
+          <li>
+            <a href="/settings" className={url === "/settings" ? "active" : ""}>
+              Settings
             </a>
           </li>
         </ul>

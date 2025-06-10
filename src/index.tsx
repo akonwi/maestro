@@ -7,6 +7,7 @@ import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
 import { MatchDetail } from "./pages/MatchDetail";
 import { BettingPerformance } from "./pages/BettingPerformance";
+import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/_404";
 import "./style.css";
 
@@ -22,6 +23,7 @@ export function App() {
             <Route path="/matches" component={Matches} />
             <Route path="/match/:matchId" component={MatchDetail} />
             <Route path="/betting" component={BettingPerformance} />
+            <Route path="/settings" component={Settings} />
             <Route default component={NotFound} />
           </Router>
         </main>
