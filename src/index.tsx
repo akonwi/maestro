@@ -18,13 +18,12 @@ export function App() {
         <Header />
         <main className="container mx-auto px-4 py-8">
           <Router>
-            <Route path="/" component={Teams} />
+            <Route default component={Teams} />
             <Route path="/team/:teamId" component={TeamDetail} />
             <Route path="/matches" component={Matches} />
             <Route path="/match/:matchId" component={MatchDetail} />
             <Route path="/betting" component={BettingPerformance} />
             <Route path="/settings" component={Settings} />
-            <Route default component={NotFound} />
           </Router>
         </main>
       </div>
