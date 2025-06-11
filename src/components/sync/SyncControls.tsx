@@ -78,8 +78,6 @@ export default function SyncControls() {
       try {
         await importFromFile(file);
         alert("Data imported successfully");
-        // Reload the page to reflect the new data
-        window.location.reload();
       } catch (error) {
         console.error("Import failed:", error);
         alert(error instanceof Error ? error.message : "Import failed");
