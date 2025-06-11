@@ -5,4 +5,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
 	base: "/maestro/",
 	plugins: [preact(), tailwindcss()],
+	build: {
+		rollupOptions: {
+			external: ["dexie"],
+		},
+	},
 });
