@@ -8,7 +8,6 @@ import { Matches } from "./pages/Matches";
 import { MatchDetail } from "./pages/MatchDetail";
 import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
-import { NotFound } from "./pages/_404";
 import "./style.css";
 
 export function App() {

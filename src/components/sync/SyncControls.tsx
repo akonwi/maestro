@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'preact/hooks';
-import { 
-  getSyncConfig, 
-  getSyncStatus, 
-  syncToGitHub, 
-  syncFromGitHub, 
-  exportToFile, 
-  importFromFile 
-} from '../../services/syncService';
-import SyncSettings from './SyncSettings';
+import { useState, useEffect } from "preact/hooks";
+import {
+  getSyncConfig,
+  getSyncStatus,
+  syncToGitHub,
+  syncFromGitHub,
+  exportToFile,
+  importFromFile,
+} from "../../services/syncService";
+import SyncSettings from "./SyncSettings";
 
 export default function SyncControls() {
   const [showSettings, setShowSettings] = useState(false);
@@ -35,21 +35,23 @@ export default function SyncControls() {
       await syncToGitHub();
       setSyncStatus(getSyncStatus());
     } catch (error) {
-      console.error('Sync up failed:', error);
-      alert(error instanceof Error ? error.message : 'Sync failed');
+      console.error("Sync up failed:", error);
+      alert(error instanceof Error ? error.message : "Sync failed");
     }
   };
 
   const handleSyncDown = async () => {
-    if (confirm('This will replace all local data with data from GitHub. Are you sure?')) {
+    if (
+      confirm(
+        "This will replace all local data with data from GitHub. Are you sure?",
+      )
+    ) {
       try {
         await syncFromGitHub();
         setSyncStatus(getSyncStatus());
-        // Reload the page to reflect the new data
-        window.location.reload();
       } catch (error) {
-        console.error('Sync down failed:', error);
-        alert(error instanceof Error ? error.message : 'Sync failed');
+        console.error("Sync down failed:", error);
+        alert(error instanceof Error ? error.message : "Sync failed");
       }
     }
   };
@@ -58,8 +60,8 @@ export default function SyncControls() {
     try {
       await exportToFile();
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed');
+      console.error("Export failed:", error);
+      alert("Export failed");
     }
   };
 
@@ -68,29 +70,33 @@ export default function SyncControls() {
     const file = input.files?.[0];
     if (!file) return;
 
-    if (confirm('This will replace all local data with data from the file. Are you sure?')) {
+    if (
+      confirm(
+        "This will replace all local data with data from the file. Are you sure?",
+      )
+    ) {
       try {
         await importFromFile(file);
-        alert('Data imported successfully');
+        alert("Data imported successfully");
         // Reload the page to reflect the new data
         window.location.reload();
       } catch (error) {
-        console.error('Import failed:', error);
-        alert(error instanceof Error ? error.message : 'Import failed');
+        console.error("Import failed:", error);
+        alert(error instanceof Error ? error.message : "Import failed");
       }
     }
 
     // Reset the input
-    input.value = '';
+    input.value = "";
   };
 
   const formatLastSync = (date: Date | null) => {
-    if (!date) return 'Never';
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!date) return "Never";
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
@@ -121,12 +127,16 @@ export default function SyncControls() {
                   </div>
                 )}
                 {syncStatus.lastError && (
-                  <div className="text-error">Error: {syncStatus.lastError}</div>
+                  <div className="text-error">
+                    Error: {syncStatus.lastError}
+                  </div>
                 )}
               </div>
             </div>
-            <div className={`badge ${isConfigured ? 'badge-success' : 'badge-warning'}`}>
-              {isConfigured ? 'Configured' : 'Not Configured'}
+            <div
+              className={`badge ${isConfigured ? "badge-success" : "badge-warning"}`}
+            >
+              {isConfigured ? "Configured" : "Not Configured"}
             </div>
           </div>
         </div>
@@ -136,10 +146,12 @@ export default function SyncControls() {
       <div className="card bg-base-100 border border-base-300">
         <div className="card-body p-4">
           <h3 className="font-medium mb-3">GitHub Sync</h3>
-          
+
           {!isConfigured ? (
             <div className="text-center py-4">
-              <p className="text-base-content/60 mb-3">Configure GitHub sync to sync across devices</p>
+              <p className="text-base-content/60 mb-3">
+                Configure GitHub sync to sync across devices
+              </p>
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => setShowSettings(true)}
@@ -173,10 +185,7 @@ export default function SyncControls() {
         <div className="card-body p-4">
           <h3 className="font-medium mb-3">Manual Backup</h3>
           <div className="grid grid-cols-2 gap-2">
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={handleExport}
-            >
+            <button className="btn btn-outline btn-sm" onClick={handleExport}>
               📁 Export to File
             </button>
             <label className="btn btn-outline btn-sm cursor-pointer">
@@ -192,9 +201,7 @@ export default function SyncControls() {
         </div>
       </div>
 
-      {showSettings && (
-        <SyncSettings onClose={() => setShowSettings(false)} />
-      )}
+      {showSettings && <SyncSettings onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
