@@ -2,6 +2,7 @@
   "name": "Maestro - Soccer Stats & Betting Tracker",
   "short_name": "Maestro",
   "description": "Track soccer statistics and betting performance across all your devices",
+  "id": "/maestro/",
   "start_url": "/maestro/",
   "display": "standalone",
   "background_color": "#1e293b",
