@@ -9,17 +9,11 @@ import { MatchDetail } from "./pages/MatchDetail";
 import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/_404";
-import { swManager } from "./services/serviceWorkerManager";
+import { autoSyncManager } from "./services/autoSyncManager";
 import "./style.css";
 
-// Register service worker for background sync
-if (swManager.isSupported()) {
-  swManager.register().then(success => {
-    if (success) {
-      console.log('Service Worker registered for background sync');
-    }
-  });
-}
+// Initialize auto-sync manager
+autoSyncManager.init();
 
 export function App() {
   return (

@@ -8,9 +8,10 @@ import {
   importFromFile,
 } from "../../services/syncService";
 import {
-  swManager,
+  autoSyncManager,
   getAutoSyncSettings,
-} from "../../services/serviceWorkerManager";
+  setAutoSyncSettings
+} from "../../services/autoSyncManager";
 import SyncSettings from "./SyncSettings";
 
 export default function SyncControls() {
@@ -98,15 +99,14 @@ export default function SyncControls() {
 
   const handleAutoSyncToggle = async () => {
     if (autoSyncSettings.enabled) {
-      await swManager.stopAutoSync();
+      autoSyncManager.disable();
     } else {
-      const success = await swManager.startAutoSync();
-      if (!success) {
-        alert(
-          "Failed to start auto-sync. Make sure sync is configured properly.",
-        );
+      const config = getSyncConfig();
+      if (!config) {
+        alert("Please configure GitHub sync first");
         return;
       }
+      autoSyncManager.enable();
     }
     setAutoSyncSettingsState(getAutoSyncSettings());
   };
@@ -168,7 +168,7 @@ export default function SyncControls() {
         <div className="card-body p-4">
           <div className="flex justify-between items-center mb-3">
             <h3 className="font-medium">GitHub Sync</h3>
-            {isConfigured && swManager.isSupported() && (
+            {isConfigured && (
               <div className="form-control">
                 <label className="label cursor-pointer gap-2">
                   <span className="label-text text-sm">Auto-sync</span>
@@ -217,12 +217,15 @@ export default function SyncControls() {
           {isConfigured && autoSyncSettings.enabled && (
             <div className="mt-3 p-2 bg-base-200 rounded text-sm">
               <div className="flex justify-between items-center">
-                <span>Auto-sync every hour</span>
+                <span>Auto-sync on focus change</span>
                 <span className="text-base-content/60">
                   {autoSyncSettings.lastAutoSync
                     ? `Last: ${formatLastSync(autoSyncSettings.lastAutoSync)}`
                     : "Never"}
                 </span>
+              </div>
+              <div className="text-xs text-base-content/50 mt-1">
+                Uploads when app loses focus, downloads when regaining focus
               </div>
             </div>
           )}
