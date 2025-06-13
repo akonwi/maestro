@@ -7,20 +7,12 @@ import {
   exportToFile,
   importFromFile,
 } from "../../services/syncService";
-import {
-  autoSyncManager,
-  getAutoSyncSettings,
-  setAutoSyncSettings
-} from "../../services/autoSyncManager";
 import SyncSettings from "./SyncSettings";
 
 export default function SyncControls() {
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState(getSyncStatus());
   const [isConfigured, setIsConfigured] = useState(!!getSyncConfig());
-  const [autoSyncSettings, setAutoSyncSettingsState] = useState(
-    getAutoSyncSettings(),
-  );
 
   // Update status every second when sync is in progress
   useEffect(() => {
@@ -36,7 +28,6 @@ export default function SyncControls() {
   useEffect(() => {
     setSyncStatus(getSyncStatus());
     setIsConfigured(!!getSyncConfig());
-    setAutoSyncSettingsState(getAutoSyncSettings());
   }, [showSettings]);
 
   const handleSyncUp = async () => {
@@ -97,20 +88,6 @@ export default function SyncControls() {
     input.value = "";
   };
 
-  const handleAutoSyncToggle = async () => {
-    if (autoSyncSettings.enabled) {
-      autoSyncManager.disable();
-    } else {
-      const config = getSyncConfig();
-      if (!config) {
-        alert("Please configure GitHub sync first");
-        return;
-      }
-      autoSyncManager.enable();
-    }
-    setAutoSyncSettingsState(getAutoSyncSettings());
-  };
-
   const formatLastSync = (date: Date | null) => {
     if (!date) return "Never";
     return new Intl.DateTimeFormat("en-US", {
@@ -166,22 +143,7 @@ export default function SyncControls() {
       {/* GitHub Sync Controls */}
       <div className="card bg-base-100 border border-base-300">
         <div className="card-body p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium">GitHub Sync</h3>
-            {isConfigured && (
-              <div className="form-control">
-                <label className="label cursor-pointer gap-2">
-                  <span className="label-text text-sm">Auto-sync</span>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-sm"
-                    checked={autoSyncSettings.enabled}
-                    onChange={handleAutoSyncToggle}
-                  />
-                </label>
-              </div>
-            )}
-          </div>
+          <h3 className="font-medium mb-3">GitHub Sync</h3>
 
           {!isConfigured ? (
             <div className="text-center py-4">
@@ -211,22 +173,6 @@ export default function SyncControls() {
               >
                 ↓ Download from GitHub
               </button>
-            </div>
-          )}
-
-          {isConfigured && autoSyncSettings.enabled && (
-            <div className="mt-3 p-2 bg-base-200 rounded text-sm">
-              <div className="flex justify-between items-center">
-                <span>Auto-sync on focus change</span>
-                <span className="text-base-content/60">
-                  {autoSyncSettings.lastAutoSync
-                    ? `Last: ${formatLastSync(autoSyncSettings.lastAutoSync)}`
-                    : "Never"}
-                </span>
-              </div>
-              <div className="text-xs text-base-content/50 mt-1">
-                Uploads when app loses focus, downloads when regaining focus
-              </div>
             </div>
           )}
         </div>

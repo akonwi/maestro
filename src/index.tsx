@@ -9,11 +9,7 @@ import { MatchDetail } from "./pages/MatchDetail";
 import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/_404";
-import { autoSyncManager } from "./services/autoSyncManager";
 import "./style.css";
-
-// Initialize auto-sync manager
-autoSyncManager.init();
 
 export function App() {
   return (
