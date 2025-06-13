@@ -409,24 +409,63 @@ export function Matches() {
                     <div className="text-2xl font-bold">
                       {match.homeScore} - {match.awayScore}
                     </div>
-                    <button 
-                      className="btn btn-sm btn-primary"
-                      onClick={() => handleRecordBet(match.id)}
-                    >
-                      Record Bet
-                    </button>
-                    <button 
-                      className="btn btn-sm btn-outline"
-                      onClick={() => handleEditMatch(match)}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => toggleMatchExpansion(match.id)}
-                    >
-                      {expandedMatchId === match.id ? '−' : '+'}
-                    </button>
+                    
+                    {/* Desktop buttons - hidden on small screens */}
+                    <div className="hidden sm:flex items-center gap-2">
+                      <button 
+                        className="btn btn-sm btn-primary"
+                        onClick={() => handleRecordBet(match.id)}
+                      >
+                        Record Bet
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-outline"
+                        onClick={() => handleEditMatch(match)}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => toggleMatchExpansion(match.id)}
+                      >
+                        {expandedMatchId === match.id ? '−' : '+'}
+                      </button>
+                    </div>
+
+                    {/* Mobile dropdown - shown only on small screens */}
+                    <div className="dropdown dropdown-end sm:hidden">
+                      <label tabIndex={0} className="btn btn-sm btn-ghost">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </label>
+                      <ul tabIndex={0} className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10">
+                        <li>
+                          <a onClick={() => handleRecordBet(match.id)} className="text-primary">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Record Bet
+                          </a>
+                        </li>
+                        <li>
+                          <a onClick={() => handleEditMatch(match)} className="text-base-content">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit Match
+                          </a>
+                        </li>
+                        <li>
+                          <a onClick={() => toggleMatchExpansion(match.id)} className="text-base-content">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={expandedMatchId === match.id ? "M19 9l-7 7-7-7" : "M9 5l7 7-7 7"} />
+                            </svg>
+                            {expandedMatchId === match.id ? 'Hide Bets' : 'Show Bets'}
+                          </a>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
                 {expandedMatchId === match.id && (
