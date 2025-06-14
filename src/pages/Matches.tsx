@@ -200,6 +200,17 @@ export function Matches() {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
   };
 
+  const handleDeleteMatch = async (match: Match) => {
+    if (confirm(`Are you sure you want to delete the match "${formatMatchResult(match)}"? This action cannot be undone.`)) {
+      try {
+        await db.matches.delete(match.id);
+      } catch (error) {
+        console.error('Failed to delete match:', error);
+        alert('Failed to delete match');
+      }
+    }
+  };
+
   const getTeamName = (teamId: string) => {
     const team = data?.teams.find((t) => t.id === teamId);
     return team ? team.name : "Unknown Team";
@@ -430,6 +441,12 @@ export function Matches() {
                       >
                         {expandedMatchId === match.id ? '−' : '+'}
                       </button>
+                      <button 
+                        className="btn btn-sm btn-error btn-outline"
+                        onClick={() => handleDeleteMatch(match)}
+                      >
+                        Delete
+                      </button>
                     </div>
 
                     {/* Mobile dropdown - shown only on small screens */}
@@ -462,6 +479,14 @@ export function Matches() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={expandedMatchId === match.id ? "M19 9l-7 7-7-7" : "M9 5l7 7-7 7"} />
                             </svg>
                             {expandedMatchId === match.id ? 'Hide Bets' : 'Show Bets'}
+                          </a>
+                        </li>
+                        <li>
+                          <a onClick={() => handleDeleteMatch(match)} className="text-error">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Match
                           </a>
                         </li>
                       </ul>
