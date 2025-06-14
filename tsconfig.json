@@ -6,6 +6,7 @@
     "noEmit": true,
     "allowJs": true,
     "checkJs": true,
+    "noUncheckedIndexedAccess": true,
     "strict": true,
 
     /* Preact Config */
