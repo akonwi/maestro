@@ -15,27 +15,32 @@ import "./style.css";
 
 const router = createBrowserRouter([
   {
-    ErrorBoundary: NotFound,
-    Component: function Layout() {
-      return (
-        <div class="min-h-screen bg-base-200">
-          <Header />
-          <main class="container mx-auto px-4 py-8">
-            <Outlet />
-          </main>
-        </div>
-      );
-    },
+    path: "/maestro",
     children: [
-      { index: true, Component: Teams },
       {
-        path: "/team/:teamId",
-        Component: TeamDetail,
+        ErrorBoundary: NotFound,
+        Component: function Layout() {
+          return (
+            <div class="min-h-screen bg-base-200">
+              <Header />
+              <main class="container mx-auto px-4 py-8">
+                <Outlet />
+              </main>
+            </div>
+          );
+        },
+        children: [
+          { index: true, Component: Teams },
+          {
+            path: "/maestro/team/:teamId",
+            Component: TeamDetail,
+          },
+          { path: "/maestro/matches", Component: Matches },
+          { path: "/maestro/match/:matchId", Component: MatchDetail },
+          { path: "/maestro/betting", Component: BettingPerformance },
+          { path: "/maestro/settings", Component: Settings },
+        ],
       },
-      { path: "/matches", Component: Matches },
-      { path: "/match/:matchId", Component: MatchDetail },
-      { path: "/betting", Component: BettingPerformance },
-      { path: "/settings", Component: Settings },
     ],
   },
 ]);
