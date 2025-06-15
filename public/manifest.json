@@ -12,12 +12,12 @@
   "categories": ["sports", "utilities"],
   "icons": [
     {
-      "src": "/maestro/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/maestro/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
@@ -28,10 +28,10 @@
       "name": "Add Match",
       "short_name": "Add Match",
       "description": "Record a new match result",
-      "url": "/maestro/matches",
+      "url": "/matches",
       "icons": [
         {
-          "src": "/maestro/icon-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -40,10 +40,10 @@
       "name": "Betting",
       "short_name": "Betting",
       "description": "View betting performance",
-      "url": "/maestro/betting",
+      "url": "/betting",
       "icons": [
         {
-          "src": "/maestro/icon-192.png",
+          "src": "/icon-192.png",
           "sizes": "192x192"
         }
       ]
