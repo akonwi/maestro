@@ -10,14 +10,13 @@ import {
 } from "../utils/statistics";
 import { formatMatchDate } from "../utils/helpers";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useParams } from "react-router";
 
-interface TeamDetailProps {
-  teamId: string;
-}
-
-export function TeamDetail({ teamId }: TeamDetailProps) {
+export function TeamDetail() {
+  const params = useParams();
+  const teamId = params.teamId!;
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
+  const [editName, setEditName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const data = useLiveQuery(async () => {
@@ -27,7 +26,9 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
       db.matches.where("awayId").equals(teamId).toArray(),
       db.teams.toArray(),
     ]);
-    const allMatches = [...homeMatches, ...awayMatches].sort((a, b) => b.date.localeCompare(a.date));
+    const allMatches = [...homeMatches, ...awayMatches].sort((a, b) =>
+      b.date.localeCompare(a.date),
+    );
     return { team, matches: allMatches, teams: allTeams };
   }, [teamId]);
 
@@ -37,25 +38,25 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
   }, [data]);
 
   const getTeamName = (teamId: string) => {
-    const team = data?.teams?.find(t => t.id === teamId);
-    return team ? team.name : 'Unknown Team';
+    const team = data?.teams?.find((t) => t.id === teamId);
+    return team ? team.name : "Unknown Team";
   };
 
   const handleEditStart = () => {
-    setEditName(data?.team?.name || '');
+    setEditName(data?.team?.name || "");
     setIsEditing(true);
     setError(null);
   };
 
   const handleEditCancel = () => {
     setIsEditing(false);
-    setEditName('');
+    setEditName("");
     setError(null);
   };
 
   const handleEditSave = async () => {
     if (!editName.trim()) {
-      setError('Team name cannot be empty');
+      setError("Team name cannot be empty");
       return;
     }
 
@@ -65,11 +66,11 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
       const updatedTeam = { ...data.team, name: editName.trim() };
       await db.teams.put(updatedTeam);
       setIsEditing(false);
-      setEditName('');
+      setEditName("");
       setError(null);
     } catch (err) {
-      setError('Failed to update team name');
-      console.error('Error updating team:', err);
+      setError("Failed to update team name");
+      console.error("Error updating team:", err);
     }
   };
 
@@ -96,17 +97,25 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
           </a>
           {isEditing ? (
             <div className="flex items-center gap-2">
-              <input 
+              <input
                 type="text"
                 className="input input-bordered text-3xl font-bold"
                 value={editName}
-                onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
+                onInput={(e) =>
+                  setEditName((e.target as HTMLInputElement).value)
+                }
                 autoFocus
               />
-              <button className="btn btn-sm btn-success" onClick={handleEditSave}>
+              <button
+                className="btn btn-sm btn-success"
+                onClick={handleEditSave}
+              >
                 Save
               </button>
-              <button className="btn btn-sm btn-ghost" onClick={handleEditCancel}>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={handleEditCancel}
+              >
                 Cancel
               </button>
             </div>
@@ -269,9 +278,10 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
                     className="flex justify-between items-center p-3 bg-base-200 rounded hover:bg-base-300 transition-colors cursor-pointer"
                   >
                     <div>
-                    <div className="font-semibold">
-                    {isHome ? "vs" : "@"} {getTeamName(isHome ? match.awayId : match.homeId)}
-                    </div>
+                      <div className="font-semibold">
+                        {isHome ? "vs" : "@"}{" "}
+                        {getTeamName(isHome ? match.awayId : match.homeId)}
+                      </div>
                       <div className="text-sm text-base-content/60">
                         {formatMatchDate(match.date)}
                       </div>

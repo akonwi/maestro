@@ -1,7 +1,7 @@
-import { useLocation } from "preact-iso";
+import { useLocation } from "react-router";
 
 export function Header() {
-  const { url } = useLocation();
+  const { pathname: url } = useLocation();
 
   return (
     <div className="navbar bg-base-100 border-b border-base-300">
@@ -52,7 +52,10 @@ export function Header() {
               </a>
             </li>
             <li>
-              <a href="/settings" className={url === "/settings" ? "active" : ""}>
+              <a
+                href="/settings"
+                className={url === "/settings" ? "active" : ""}
+              >
                 Settings
               </a>
             </li>

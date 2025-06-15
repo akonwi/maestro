@@ -1,5 +1,4 @@
 import { render } from "preact";
-import { LocationProvider, Router, Route } from "preact-iso";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { Outlet } from "react-router";
@@ -27,29 +26,18 @@ const router = createBrowserRouter([
         </div>
       );
     },
-    children: [{ index: true, Component: Teams }],
+    children: [
+      { index: true, Component: Teams },
+      {
+        path: "/team/:teamId",
+        Component: TeamDetail,
+      },
+      { path: "/matches", Component: Matches },
+      { path: "/match/:matchId", Component: MatchDetail },
+      { path: "/betting", Component: BettingPerformance },
+      { path: "/settings", Component: Settings },
+    ],
   },
 ]);
-
-function App() {
-  return (
-    <LocationProvider>
-      <div className="min-h-screen bg-base-200">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <Router>
-            <Route path="/" component={Teams} />
-            <Route path="/team/:teamId" component={TeamDetail} />
-            <Route path="/matches" component={Matches} />
-            <Route path="/match/:matchId" component={MatchDetail} />
-            <Route path="/betting" component={BettingPerformance} />
-            <Route path="/settings" component={Settings} />
-            <Route default component={NotFound} />
-          </Router>
-        </main>
-      </div>
-    </LocationProvider>
-  );
-}
 
 render(<RouterProvider router={router} />, document.getElementById("app")!);

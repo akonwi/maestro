@@ -1,16 +1,15 @@
-import { useState, useEffect } from 'preact/hooks';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../utils/database';
-import { Match, Team } from '../types';
-import { formatMatchDate } from '../utils/helpers';
-import BetForm from '../components/betting/BetForm';
-import BetList from '../components/betting/BetList';
+import { useState, useEffect } from "preact/hooks";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../utils/database";
+import { Match } from "../types";
+import { formatMatchDate } from "../utils/helpers";
+import BetForm from "../components/betting/BetForm";
+import BetList from "../components/betting/BetList";
+import { useParams } from "react-router";
 
-interface MatchDetailProps {
-  matchId: string;
-}
-
-export function MatchDetail({ matchId }: MatchDetailProps) {
+export function MatchDetail() {
+  const params = useParams();
+  const matchId = params.matchId!;
   const [showBetForm, setShowBetForm] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [matchDate, setMatchDate] = useState("");
@@ -51,7 +50,13 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
 
     if (!editingMatch || !data?.teams) return;
 
-    if (!matchDate || !homeTeamId || !awayTeamId || homeScore === "" || awayScore === "") {
+    if (
+      !matchDate ||
+      !homeTeamId ||
+      !awayTeamId ||
+      homeScore === "" ||
+      awayScore === ""
+    ) {
       setError("Please fill in all fields");
       return;
     }
@@ -64,8 +69,13 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
     const homeScoreNum = parseInt(homeScore);
     const awayScoreNum = parseInt(awayScore);
 
-    if (isNaN(homeScoreNum) || isNaN(awayScoreNum) || homeScoreNum < 0 || awayScoreNum < 0) {
-      setError('Scores must be valid numbers (0 or greater)');
+    if (
+      isNaN(homeScoreNum) ||
+      isNaN(awayScoreNum) ||
+      homeScoreNum < 0 ||
+      awayScoreNum < 0
+    ) {
+      setError("Scores must be valid numbers (0 or greater)");
       return;
     }
 
@@ -123,8 +133,12 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
     <div className="space-y-6">
       <div className="breadcrumbs text-sm">
         <ul>
-          <li><a href="/matches">Matches</a></li>
-          <li>{homeTeam.name} vs {awayTeam.name}</li>
+          <li>
+            <a href="/matches">Matches</a>
+          </li>
+          <li>
+            {homeTeam.name} vs {awayTeam.name}
+          </li>
         </ul>
       </div>
 
@@ -133,7 +147,7 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
           {editingMatch ? (
             <form onSubmit={handleEditMatch} className="space-y-4">
               <h2 className="card-title">Edit Match</h2>
-              
+
               {error && (
                 <div className="alert alert-error">
                   <span>{error}</span>
@@ -148,7 +162,9 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                   <input
                     type="date"
                     value={matchDate}
-                    onInput={(e) => setMatchDate((e.target as HTMLInputElement).value)}
+                    onInput={(e) =>
+                      setMatchDate((e.target as HTMLInputElement).value)
+                    }
                     className="input input-bordered"
                     required
                   />
@@ -160,7 +176,9 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                   </label>
                   <select
                     value={homeTeamId}
-                    onChange={(e) => setHomeTeamId((e.target as HTMLSelectElement).value)}
+                    onChange={(e) =>
+                      setHomeTeamId((e.target as HTMLSelectElement).value)
+                    }
                     className="select select-bordered"
                     required
                   >
@@ -179,7 +197,9 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                   </label>
                   <select
                     value={awayTeamId}
-                    onChange={(e) => setAwayTeamId((e.target as HTMLSelectElement).value)}
+                    onChange={(e) =>
+                      setAwayTeamId((e.target as HTMLSelectElement).value)
+                    }
                     className="select select-bordered"
                     required
                   >
@@ -201,7 +221,9 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                       type="number"
                       min="0"
                       value={homeScore}
-                      onInput={(e) => setHomeScore((e.target as HTMLInputElement).value)}
+                      onInput={(e) =>
+                        setHomeScore((e.target as HTMLInputElement).value)
+                      }
                       className="input input-bordered"
                       required
                     />
@@ -214,7 +236,9 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                       type="number"
                       min="0"
                       value={awayScore}
-                      onInput={(e) => setAwayScore((e.target as HTMLInputElement).value)}
+                      onInput={(e) =>
+                        setAwayScore((e.target as HTMLInputElement).value)
+                      }
                       className="input input-bordered"
                       required
                     />
@@ -223,7 +247,11 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
               </div>
 
               <div className="card-actions">
-                <button type="button" className="btn btn-ghost" onClick={handleCancelEdit}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={handleCancelEdit}
+                >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -247,13 +275,13 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                     {match.homeScore} - {match.awayScore}
                   </div>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       className="btn btn-primary"
                       onClick={() => setShowBetForm(true)}
                     >
                       Record Bet
                     </button>
-                    <button 
+                    <button
                       className="btn btn-outline"
                       onClick={() => setEditingMatch(match)}
                     >
@@ -281,13 +309,18 @@ export function MatchDetail({ matchId }: MatchDetailProps) {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Final Score:</span>
-                      <span className="font-bold">{match.homeScore} - {match.awayScore}</span>
+                      <span className="font-bold">
+                        {match.homeScore} - {match.awayScore}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Result:</span>
                       <span className="font-bold">
-                        {match.homeScore > match.awayScore ? `${homeTeam.name} Win` :
-                         match.awayScore > match.homeScore ? `${awayTeam.name} Win` : 'Draw'}
+                        {match.homeScore > match.awayScore
+                          ? `${homeTeam.name} Win`
+                          : match.awayScore > match.homeScore
+                            ? `${awayTeam.name} Win`
+                            : "Draw"}
                       </span>
                     </div>
                   </div>
