@@ -1,6 +1,12 @@
+export interface League {
+  id: string;
+  name: string;
+}
+
 export interface Team {
   id: string;
   name: string;
+  leagueId: string;
   createdAt: Date;
 }
 
@@ -11,6 +17,7 @@ export interface Match {
   awayId: string;
   homeScore: number;
   awayScore: number;
+  leagueId: string;
   createdAt: Date;
 }
 

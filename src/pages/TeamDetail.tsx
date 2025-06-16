@@ -92,7 +92,7 @@ export function TeamDetail() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <a href="/" className="btn btn-ghost btn-sm">
+          <a href="/maestro/" className="btn btn-ghost btn-sm">
             ← Teams
           </a>
           {isEditing ? (
@@ -274,7 +274,7 @@ export function TeamDetail() {
                 return (
                   <a
                     key={match.id}
-                    href={`/match/${match.id}`}
+                    href={`/maestro/match/${match.id}`}
                     className="flex justify-between items-center p-3 bg-base-200 rounded hover:bg-base-300 transition-colors cursor-pointer"
                   >
                     <div>
@@ -307,7 +307,7 @@ export function TeamDetail() {
               })}
               {matches.length > 5 && (
                 <div className="text-center pt-2">
-                  <a href="/matches" className="btn btn-sm btn-outline">
+                  <a href="/maestro/matches" className="btn btn-sm btn-outline">
                     View All Matches
                   </a>
                 </div>

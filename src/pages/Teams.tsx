@@ -7,15 +7,17 @@ import { isEmpty } from "../utils/helpers";
 export function Teams() {
   const [searchTerm, setSearchTerm] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
-  
+
   const teams = useLiveQuery(() => {
     if (searchTerm) {
       return db.teams
-        .orderBy('name')
-        .filter(team => team.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .orderBy("name")
+        .filter((team) =>
+          team.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
         .toArray();
     }
-    return db.teams.orderBy('name').toArray();
+    return db.teams.orderBy("name").toArray();
   }, [searchTerm]);
 
   const handleAddTeam = async (e: Event) => {
@@ -31,8 +33,6 @@ export function Teams() {
       (document.getElementById("form") as HTMLDialogElement).close();
     }
   };
-
-
 
   return (
     <div className="space-y-6">
@@ -121,7 +121,7 @@ export function Teams() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams?.map((team) => (
-            <a href={`/team/${team.id}`}>
+            <a href={`/maestro/team/${team.id}`}>
               <div
                 key={team.id}
                 className="card bg-base-100 border border-base-300 hover:border-primary transition-colors"

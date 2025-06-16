@@ -134,7 +134,7 @@ export function MatchDetail() {
       <div className="breadcrumbs text-sm">
         <ul>
           <li>
-            <a href="/matches">Matches</a>
+            <a href="/maestro/matches">Matches</a>
           </li>
           <li>
             {homeTeam.name} vs {awayTeam.name}

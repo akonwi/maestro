@@ -37,23 +37,29 @@ export function Header() {
             className="menu menu-sm dropdown-content mt-3 z-[1] p-2 bg-base-100 border border-base-300 rounded-box w-52"
           >
             <li>
-              <a href="/" className={url === "/" ? "active" : ""}>
+              <a href="/maestro/" className={url === "/" ? "active" : ""}>
                 Teams
               </a>
             </li>
             <li>
-              <a href="/matches" className={url === "/matches" ? "active" : ""}>
+              <a
+                href="/maestro/matches"
+                className={url === "/matches" ? "active" : ""}
+              >
                 Matches
               </a>
             </li>
             <li>
-              <a href="/betting" className={url === "/betting" ? "active" : ""}>
+              <a
+                href="/maestro/betting"
+                className={url === "/betting" ? "active" : ""}
+              >
                 Betting
               </a>
             </li>
             <li>
               <a
-                href="/settings"
+                href="/maestro/settings"
                 className={url === "/settings" ? "active" : ""}
               >
                 Settings
@@ -61,29 +67,38 @@ export function Header() {
             </li>
           </ul>
         </div>
-        <a href="/" className="btn btn-ghost normal-case text-xl">
+        <a href="/maestro/" className="btn btn-ghost normal-case text-xl">
           Maestro
         </a>
       </div>
       <div className="navbar-end hidden lg:flex">
         <ul className="menu menu-horizontal px-1">
           <li>
-            <a href="/" className={url === "/" ? "active" : ""}>
+            <a href="/maestro/" className={url === "/" ? "active" : ""}>
               Teams
             </a>
           </li>
           <li>
-            <a href="/matches" className={url === "/matches" ? "active" : ""}>
+            <a
+              href="/maestro/matches"
+              className={url === "/matches" ? "active" : ""}
+            >
               Matches
             </a>
           </li>
           <li>
-            <a href="/betting" className={url === "/betting" ? "active" : ""}>
+            <a
+              href="/maestro/betting"
+              className={url === "/betting" ? "active" : ""}
+            >
               Betting
             </a>
           </li>
           <li>
-            <a href="/settings" className={url === "/settings" ? "active" : ""}>
+            <a
+              href="/maestro/settings"
+              className={url === "/settings" ? "active" : ""}
+            >
               Settings
             </a>
           </li>
