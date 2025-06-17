@@ -1,4 +1,5 @@
 import SyncControls from '../components/sync/SyncControls';
+import { ApiFootballSettings } from '../components/import/ApiFootballSettings';
 
 export function Settings() {
   return (
@@ -7,8 +8,14 @@ export function Settings() {
         <h1 className="text-3xl font-bold">Settings</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-8">
         <div>
+          <h2 className="text-xl font-semibold mb-4">Match Import</h2>
+          <ApiFootballSettings />
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Data Sync</h2>
           <SyncControls />
         </div>
         
