@@ -51,6 +51,14 @@ export function Header() {
             </li>
             <li>
               <a
+                href="/maestro/leagues"
+                className={url === "/leagues" ? "active" : ""}
+              >
+                Leagues
+              </a>
+            </li>
+            <li>
+              <a
                 href="/maestro/betting"
                 className={url === "/betting" ? "active" : ""}
               >
@@ -84,6 +92,14 @@ export function Header() {
               className={url === "/matches" ? "active" : ""}
             >
               Matches
+            </a>
+          </li>
+          <li>
+            <a
+              href="/maestro/leagues"
+              className={url === "/leagues" ? "active" : ""}
+            >
+              Leagues
             </a>
           </li>
           <li>

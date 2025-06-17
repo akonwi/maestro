@@ -8,6 +8,7 @@ import { Teams } from "./pages/Teams";
 import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
 import { MatchDetail } from "./pages/MatchDetail";
+import { Leagues } from "./pages/Leagues";
 import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/_404";
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
           },
           { path: "/maestro/matches", Component: Matches },
           { path: "/maestro/match/:matchId", Component: MatchDetail },
+          { path: "/maestro/leagues", Component: Leagues },
           { path: "/maestro/betting", Component: BettingPerformance },
           { path: "/maestro/settings", Component: Settings },
         ],
