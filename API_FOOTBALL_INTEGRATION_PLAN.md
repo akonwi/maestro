@@ -87,7 +87,7 @@ GET /fixtures?live=all
 
 **Implemented "Match Import" Section:**
 1. ✅ **API Configuration**
-   - Secure API key input field
+   - API key configured in build environment (`VITE_API_FOOTBALL_KEY`)
    - Test connection button with status feedback
    - Removed usage tracking (subscription tier)
 
@@ -112,9 +112,9 @@ GET /fixtures?live=all
 ### ✅ Import Process Flow - IMPLEMENTED
 
 ```
-[API Key Setup] → [Select Leagues] → [Choose League+Season] → [Configure Mappings] → [Import]
-      ↓                    ↓                      ↓                     ↓                ↓
- Test connection    GET /leagues         Load teams/seasons    Smart suggestions   Batch import
+[Environment Setup] → [Select Leagues] → [Choose League+Season] → [Configure Mappings] → [Import]
+       ↓                      ↓                      ↓                     ↓                ↓
+ Build-time config     GET /leagues         Load teams/seasons    Smart suggestions   Batch import
 ```
 
 ## 🔄 Request Optimization
@@ -164,12 +164,14 @@ src/types/
 ```typescript
 // Stored in localStorage
 interface ApiFootballConfig {
-  apiKey: string;
   selectedLeagues: number[];
   teamMappings: { [apiTeamId: number]: string };
   lastImport: { [leagueId: number]: Date };
-  // Note: Removed requestsUsed (subscription tier)
+  // Note: API key now configured in environment variables
 }
+
+// Environment Variables (.env)
+VITE_API_FOOTBALL_KEY=your_api_key_here
 ```
 
 ### ✅ Error Handling - IMPLEMENTED
@@ -199,13 +201,14 @@ interface ApiFootballConfig {
 ## 💡 Getting Started Checklist
 
 1. ✅ **Get API Key** from RapidAPI or API-Football
-2. ✅ **Implement Base Service** with authentication
-3. ✅ **Create League Selection UI**
-4. ✅ **Build Team Mapping Interface**
-5. ✅ **Add Import Progress Tracking**
-6. ✅ **Test with Small Dataset** (1 league, 1 season)
-7. ✅ **Polish User Experience**
-8. ✅ **Add League Management** (database schema v3)
+2. ✅ **Configure Environment** (add `VITE_API_FOOTBALL_KEY` to `.env`)
+3. ✅ **Implement Base Service** with authentication
+4. ✅ **Create League Selection UI**
+5. ✅ **Build Team Mapping Interface**
+6. ✅ **Add Import Progress Tracking**
+7. ✅ **Test with Small Dataset** (1 league, 1 season)
+8. ✅ **Polish User Experience**
+9. ✅ **Add League Management** (database schema v3)
 
 ## ✅ IMPLEMENTATION COMPLETE
 
@@ -221,7 +224,7 @@ interface ApiFootballConfig {
 - ✅ Database schema includes leagues (v3 migration)
 
 **Ready for Production:**
-Users can now configure their API key, select leagues, map teams, and automatically import completed matches instead of manual data entry.
+With the API key configured at build time, users can immediately select leagues, map teams, and automatically import completed matches instead of manual data entry.
 
 ## 🎯 Success Metrics
 

@@ -9,7 +9,6 @@ import { ImportProgress } from "./ImportProgress";
 import { ImportProgress as ImportProgressType, ApiFootballLeague } from "../../types/apiFootball";
 
 export function ApiFootballSettings() {
-  const [apiKey, setApiKey] = useState("");
   const [selectedLeagues, setSelectedLeagues] = useState<number[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<{
     tested: boolean;
@@ -43,27 +42,11 @@ export function ApiFootballSettings() {
   const loadConfig = () => {
     const config = apiFootballService.getConfig();
     if (config) {
-      setApiKey(config.apiKey);
       setSelectedLeagues(config.selectedLeagues);
     }
   };
 
-  const handleApiKeyChange = (newApiKey: string) => {
-    setApiKey(newApiKey);
-    apiFootballService.updateConfig({ apiKey: newApiKey });
-    setConnectionStatus({ tested: false, success: false });
-  };
-
   const testConnection = async () => {
-    if (!apiKey.trim()) {
-      setConnectionStatus({
-        tested: true,
-        success: false,
-        error: "Please enter an API key"
-      });
-      return;
-    }
-
     try {
       const result = await apiFootballService.testConnection();
       setConnectionStatus({
@@ -151,26 +134,19 @@ export function ApiFootballSettings() {
         <div class="card-body">
           <h2 class="card-title">API Configuration</h2>
           
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">API Football Key</span>
-            </label>
-            <div class="join">
-              <input
-                type="password"
-                placeholder="Enter your API key"
-                class="input input-bordered join-item flex-1"
-                value={apiKey}
-                onInput={(e) => handleApiKeyChange((e.target as HTMLInputElement).value)}
-              />
-              <button 
-                class="btn btn-outline join-item"
-                onClick={testConnection}
-                disabled={!apiKey.trim()}
-              >
-                Test
-              </button>
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-lg font-medium">API Football Integration</h3>
+              <p class="text-sm text-base-content/60">
+                Import match data automatically from API-Football
+              </p>
             </div>
+            <button 
+              class="btn btn-outline"
+              onClick={testConnection}
+            >
+              Test Connection
+            </button>
           </div>
 
           {connectionStatus.tested && (
@@ -185,7 +161,7 @@ export function ApiFootballSettings() {
         </div>
       </div>
 
-      {connectionStatus.success && (
+      {apiFootballService.isConfigured() && (
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h2 class="card-title">League Selection</h2>

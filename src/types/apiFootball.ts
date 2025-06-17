@@ -104,7 +104,6 @@ export interface ApiFootballMatch {
 
 // Configuration interfaces
 export interface ApiFootballConfig {
-  apiKey: string;
   selectedLeagues: number[];
   teamMappings: { [apiTeamId: number]: string }; // API ID -> Local Team ID
   lastImport: { [leagueId: number]: Date };

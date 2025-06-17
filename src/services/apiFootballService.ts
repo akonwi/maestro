@@ -30,9 +30,9 @@ class ApiFootballService {
 		endpoint: string,
 		params: Record<string, string> = {},
 	): Promise<T[]> {
-		const config = this.getConfig();
-		if (!config?.apiKey) {
-			throw new Error("API key not configured");
+		const apiKey = import.meta.env.VITE_API_FOOTBALL_KEY;
+		if (!apiKey) {
+			throw new Error("API key not configured in environment variables");
 		}
 
 
@@ -44,7 +44,7 @@ class ApiFootballService {
 
 		const response = await fetch(url.toString(), {
 			headers: {
-				"x-rapidapi-key": config.apiKey,
+				"x-rapidapi-key": apiKey,
 				"x-rapidapi-host": "v3.football.api-sports.io",
 			},
 		});
@@ -169,7 +169,6 @@ class ApiFootballService {
 	// Configuration methods
 	updateConfig(updates: Partial<ApiFootballConfig>): void {
 		const config = this.getConfig() || {
-			apiKey: "",
 			selectedLeagues: [],
 			teamMappings: {},
 			lastImport: {},
@@ -188,8 +187,8 @@ class ApiFootballService {
 	}
 
 	isConfigured(): boolean {
-		const config = this.getConfig();
-		return !!(config?.apiKey && config.apiKey.trim().length > 0);
+		const apiKey = import.meta.env.VITE_API_FOOTBALL_KEY;
+		return !!(apiKey && apiKey.trim().length > 0);
 	}
 }
 
