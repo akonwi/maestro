@@ -10,7 +10,7 @@ import {
 } from "../utils/statistics";
 import { formatMatchDate } from "../utils/helpers";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 export function TeamDetail() {
   const params = useParams();
@@ -92,9 +92,7 @@ export function TeamDetail() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <a href="/maestro/" className="btn btn-ghost btn-sm">
-            ← Teams
-          </a>
+          <Link to="/maestro/">← Teams</Link>
           {isEditing ? (
             <div className="flex items-center gap-2">
               <input
@@ -272,9 +270,9 @@ export function TeamDetail() {
                       : "D";
 
                 return (
-                  <a
+                  <Link
                     key={match.id}
-                    href={`/maestro/match/${match.id}`}
+                    to={`/maestro/match/${match.id}`}
                     className="flex justify-between items-center p-3 bg-base-200 rounded hover:bg-base-300 transition-colors cursor-pointer"
                   >
                     <div>
@@ -302,14 +300,17 @@ export function TeamDetail() {
                         {teamScore} - {opponentScore}
                       </div>
                     </div>
-                  </a>
+                  </Link>
                 );
               })}
               {matches.length > 5 && (
                 <div className="text-center pt-2">
-                  <a href="/maestro/matches" className="btn btn-sm btn-outline">
+                  <Link
+                    to="/maestro/matches"
+                    className="btn btn-sm btn-outline"
+                  >
                     View All Matches
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>

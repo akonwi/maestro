@@ -3,6 +3,7 @@ import { Team } from "../types";
 import { db } from "../utils/database";
 import { useLiveQuery } from "dexie-react-hooks";
 import { isEmpty } from "../utils/helpers";
+import { Link } from "react-router";
 
 export function Teams() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,7 +122,7 @@ export function Teams() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {teams?.map((team) => (
-            <a href={`/maestro/team/${team.id}`}>
+            <Link to={`/maestro/team/${team.id}`}>
               <div
                 key={team.id}
                 className="card bg-base-100 border border-base-300 hover:border-primary transition-colors"
@@ -130,7 +131,7 @@ export function Teams() {
                   <h2 className="card-title">{team.name}</h2>
                 </div>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       )}

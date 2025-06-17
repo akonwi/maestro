@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { formatMatchDate } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
+import { Link } from "react-router";
 
 export function Matches() {
   const data = useLiveQuery(async () => {
@@ -266,10 +267,7 @@ export function Matches() {
         <div className="alert alert-warning">
           <span>
             You need at least 2 teams to record matches.{" "}
-            <a href="/maestro/" className="link">
-              Add teams first
-            </a>
-            .
+            <Link to="/maestro/">Add teams first</Link>.
           </span>
         </div>
       )}

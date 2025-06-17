@@ -6,6 +6,7 @@ import { formatMatchDate } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
 import { useParams } from "react-router";
+import { Link } from "react-router";
 
 export function MatchDetail() {
   const params = useParams();
@@ -134,7 +135,7 @@ export function MatchDetail() {
       <div className="breadcrumbs text-sm">
         <ul>
           <li>
-            <a href="/maestro/matches">Matches</a>
+            <Link to="/maestro/matches">Matches</Link>
           </li>
           <li>
             {homeTeam.name} vs {awayTeam.name}

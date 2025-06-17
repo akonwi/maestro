@@ -1,4 +1,4 @@
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 
 export function Header() {
   const { pathname: url } = useLocation();
@@ -37,86 +37,86 @@ export function Header() {
             className="menu menu-sm dropdown-content mt-3 z-[1] p-2 bg-base-100 border border-base-300 rounded-box w-52"
           >
             <li>
-              <a href="/maestro/" className={url === "/" ? "active" : ""}>
+              <Link to="/maestro/" className={url === "/" ? "active" : ""}>
                 Teams
-              </a>
+              </Link>
             </li>
             <li>
-              <a
-                href="/maestro/matches"
+              <Link
+                to="/maestro/matches"
                 className={url === "/matches" ? "active" : ""}
               >
                 Matches
-              </a>
+              </Link>
             </li>
             <li>
-              <a
-                href="/maestro/leagues"
+              <Link
+                to="/maestro/leagues"
                 className={url === "/leagues" ? "active" : ""}
               >
                 Leagues
-              </a>
+              </Link>
             </li>
             <li>
-              <a
-                href="/maestro/betting"
+              <Link
+                to="/maestro/betting"
                 className={url === "/betting" ? "active" : ""}
               >
                 Betting
-              </a>
+              </Link>
             </li>
             <li>
-              <a
-                href="/maestro/settings"
+              <Link
+                to="/maestro/settings"
                 className={url === "/settings" ? "active" : ""}
               >
                 Settings
-              </a>
+              </Link>
             </li>
           </ul>
         </div>
-        <a href="/maestro/" className="btn btn-ghost normal-case text-xl">
+        <Link to="/maestro/" className="btn btn-ghost normal-case text-xl">
           Maestro
-        </a>
+        </Link>
       </div>
       <div className="navbar-end hidden lg:flex">
         <ul className="menu menu-horizontal px-1">
           <li>
-            <a href="/maestro/" className={url === "/" ? "active" : ""}>
+            <Link to="/maestro/" className={url === "/" ? "active" : ""}>
               Teams
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/maestro/matches"
+            <Link
+              to="/maestro/matches"
               className={url === "/matches" ? "active" : ""}
             >
               Matches
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/maestro/leagues"
+            <Link
+              to="/maestro/leagues"
               className={url === "/leagues" ? "active" : ""}
             >
               Leagues
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/maestro/betting"
+            <Link
+              to="/maestro/betting"
               className={url === "/betting" ? "active" : ""}
             >
               Betting
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/maestro/settings"
+            <Link
+              to="/maestro/settings"
               className={url === "/settings" ? "active" : ""}
             >
               Settings
-            </a>
+            </Link>
           </li>
         </ul>
       </div>
