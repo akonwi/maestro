@@ -108,7 +108,6 @@ export interface ApiFootballConfig {
   selectedLeagues: number[];
   teamMappings: { [apiTeamId: number]: string }; // API ID -> Local Team ID
   lastImport: { [leagueId: number]: Date };
-  requestsUsed: { date: string; count: number };
 }
 
 export interface TeamMapping {

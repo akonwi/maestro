@@ -15,7 +15,6 @@ export function ApiFootballSettings() {
     tested: boolean;
     success: boolean;
     error?: string;
-    remainingRequests?: number;
   }>({ tested: false, success: false });
 
   // Import state
@@ -70,8 +69,7 @@ export function ApiFootballSettings() {
       setConnectionStatus({
         tested: true,
         success: result.success,
-        error: result.error,
-        remainingRequests: result.remainingRequests
+        error: result.error
       });
     } catch (error) {
       setConnectionStatus({
@@ -145,7 +143,7 @@ export function ApiFootballSettings() {
     }
   };
 
-  const usage = apiFootballService.getApiUsage();
+
 
   return (
     <div class="space-y-6">
@@ -178,32 +176,12 @@ export function ApiFootballSettings() {
           {connectionStatus.tested && (
             <div class={`alert ${connectionStatus.success ? "alert-success" : "alert-error"}`}>
               {connectionStatus.success ? (
-                <div>
-                  <span>✓ Connection successful!</span>
-                  {connectionStatus.remainingRequests !== undefined && (
-                    <span class="text-sm">({connectionStatus.remainingRequests} requests remaining today)</span>
-                  )}
-                </div>
+                <span>✓ Connection successful!</span>
               ) : (
                 <span>✗ {connectionStatus.error}</span>
               )}
             </div>
           )}
-
-          <div class="bg-base-200 p-3 rounded-lg">
-            <div class="text-sm">
-              <div class="font-medium">API Usage Today</div>
-              <div class="flex justify-between">
-                <span>Used: {usage.used}/100</span>
-                <span>Remaining: {usage.remaining}</span>
-              </div>
-              <progress 
-                class="progress progress-primary w-full mt-1" 
-                value={usage.used} 
-                max="100"
-              ></progress>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -35,8 +35,7 @@ class ApiFootballService {
 			throw new Error("API key not configured");
 		}
 
-		// Track API usage
-		this.trackRequest();
+
 
 		const url = new URL(`${API_BASE_URL}${endpoint}`);
 		Object.entries(params).forEach(([key, value]) => {
@@ -64,41 +63,23 @@ class ApiFootballService {
 		return data.response;
 	}
 
-	private trackRequest(): void {
-		const config = this.getConfig();
-		if (!config) return;
 
-		const today = new Date().toISOString().split("T")[0];
 
-		if (config.requestsUsed.date !== today) {
-			// Reset counter for new day
-			config.requestsUsed = { date: today, count: 1 };
-		} else {
-			config.requestsUsed.count++;
-		}
-
-		this.saveConfig(config);
-	}
-
-	private isCacheValid(cacheEntry: { expires: Date } | null | undefined): boolean {
+	private isCacheValid(
+		cacheEntry: { expires: Date } | null | undefined,
+	): boolean {
 		return cacheEntry != null && cacheEntry.expires > new Date();
 	}
 
 	async testConnection(): Promise<{
 		success: boolean;
 		error?: string;
-		remainingRequests?: number;
 	}> {
 		try {
 			// Simple test request to verify API key
 			await this.makeRequest("/status");
 
-			const config = this.getConfig();
-			const remainingRequests = config
-				? Math.max(0, 100 - config.requestsUsed.count)
-				: 100;
-
-			return { success: true, remainingRequests };
+			return { success: true };
 		} catch (error) {
 			return {
 				success: false,
@@ -158,7 +139,7 @@ class ApiFootballService {
 		const cacheKey = `fixtures_${leagueId}_${season}_${status}`;
 
 		if (this.isCacheValid(this.cache.fixtures[cacheKey])) {
-			return this.cache.fixtures[cacheKey].data;
+			return this.cache.fixtures[cacheKey]!.data;
 		}
 
 		const fixtures = await this.makeRequest<ApiFootballMatch>("/fixtures", {
@@ -192,28 +173,10 @@ class ApiFootballService {
 			selectedLeagues: [],
 			teamMappings: {},
 			lastImport: {},
-			requestsUsed: { date: new Date().toISOString().split("T")[0], count: 0 },
 		};
 
 		const updatedConfig = { ...config, ...updates };
 		this.saveConfig(updatedConfig);
-	}
-
-	getApiUsage(): { used: number; remaining: number; date: string } {
-		const config = this.getConfig();
-		if (!config) {
-			const today = new Date().toISOString().split("T")[0];
-			return { used: 0, remaining: 100, date: today };
-		}
-
-		const today = new Date().toISOString().split("T")[0];
-		const isToday = config.requestsUsed.date === today;
-
-		return {
-			used: isToday ? config.requestsUsed.count : 0,
-			remaining: isToday ? Math.max(0, 100 - config.requestsUsed.count) : 100,
-			date: today,
-		};
 	}
 
 	clearCache(): void {
