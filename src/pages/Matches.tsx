@@ -5,7 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { formatMatchDate } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
-import { QuickImport } from "../components/import/QuickImport";
+import { useQuickImport } from "../hooks/useQuickImport";
 import { Link } from "react-router";
 
 export function Matches() {
@@ -24,7 +24,13 @@ export function Matches() {
     null,
   );
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
-  const [showQuickImport, setShowQuickImport] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    success: boolean;
+    message: string;
+    errors?: string[];
+  } | null>(null);
+
+  const { isImporting, progress, canQuickImport, quickImport } = useQuickImport();
 
   // Form state
   const [matchDate, setMatchDate] = useState("");
@@ -214,8 +220,14 @@ export function Matches() {
     setSelectedMatchForBet(null);
   };
 
-  const handleImportComplete = () => {
-    setShowQuickImport(false);
+  const handleRefreshClick = async () => {
+    setImportResult(null);
+    const result = await quickImport();
+    setImportResult(result);
+  };
+
+  const handleCloseImportResult = () => {
+    setImportResult(null);
   };
 
   const toggleMatchExpansion = (matchId: string) => {
@@ -263,9 +275,17 @@ export function Matches() {
         <div className="flex gap-2">
           <button
             className="btn btn-secondary"
-            onClick={() => setShowQuickImport(!showQuickImport)}
+            onClick={handleRefreshClick}
+            disabled={isImporting || !canQuickImport().canImport}
           >
-            {showQuickImport ? 'Hide Import' : 'Refresh'}
+            {isImporting ? (
+              <>
+                <span className="loading loading-spinner loading-sm"></span>
+                Importing...
+              </>
+            ) : (
+              'Refresh'
+            )}
           </button>
           <button
             className="btn btn-primary"
@@ -286,14 +306,73 @@ export function Matches() {
         </div>
       )}
 
-      {showQuickImport && (
-        <div className="card bg-base-100 border border-base-300">
-          <div className="card-body">
-            <h2 className="card-title">Quick Import Matches</h2>
-            <p className="text-sm text-base-content/60 mb-4">
-              Import matches from your configured API-Football leagues
-            </p>
-            <QuickImport onImportComplete={handleImportComplete} />
+      {progress && (
+        <div className="alert alert-info">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="flex-1">
+            <div className="text-sm font-medium">{progress.current}</div>
+            {progress.total > 0 && (
+              <div className="flex items-center gap-2 mt-1">
+                <progress 
+                  className="progress progress-primary w-full" 
+                  value={progress.completed} 
+                  max={progress.total}
+                ></progress>
+                <span className="text-xs text-base-content/60">
+                  {progress.completed}/{progress.total}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {importResult && (
+        <div className={`alert ${importResult.success ? 'alert-success' : 'alert-error'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+              d={importResult.success 
+                ? "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                : "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              } 
+            />
+          </svg>
+          <div className="flex-1">
+            <div className="font-medium">{importResult.message}</div>
+            {importResult.errors && importResult.errors.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm">
+                  {importResult.errors.length} error{importResult.errors.length !== 1 ? 's' : ''}
+                </summary>
+                <ul className="list-disc list-inside text-xs mt-1 ml-4">
+                  {importResult.errors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+          <button 
+            className="btn btn-sm btn-ghost" 
+            onClick={handleCloseImportResult}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {!canQuickImport().canImport && (
+        <div className="alert alert-info">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h3 className="font-bold">Import Not Available</h3>
+            <div className="text-sm">
+              {canQuickImport().reason} - <Link to="/settings" className="link">Configure in Settings</Link>
+            </div>
           </div>
         </div>
       )}

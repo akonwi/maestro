@@ -1,6 +1,4 @@
 import { useState } from "preact/hooks";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../../utils/database";
 import { useQuickImport } from "../../hooks/useQuickImport";
 import { Link } from "react-router";
 
@@ -9,7 +7,6 @@ interface QuickImportProps {
 }
 
 export function QuickImport({ onImportComplete }: QuickImportProps) {
-  const [selectedLeagueId, setSelectedLeagueId] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -20,15 +17,12 @@ export function QuickImport({ onImportComplete }: QuickImportProps) {
   } | null>(null);
 
   const { isImporting, progress, canQuickImport, quickImport } = useQuickImport();
-  const leagues = useLiveQuery(() => db.leagues.orderBy("name").toArray());
 
   const { canImport, reason } = canQuickImport();
 
   const handleQuickImport = async () => {
-    if (!selectedLeagueId) return;
-
     setShowResult(false);
-    const importResult = await quickImport(selectedLeagueId);
+    const importResult = await quickImport();
     setResult(importResult);
     setShowResult(true);
 
@@ -60,26 +54,11 @@ export function QuickImport({ onImportComplete }: QuickImportProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <select
-            className="select select-bordered w-full"
-            value={selectedLeagueId}
-            onChange={(e) => setSelectedLeagueId((e.target as HTMLSelectElement).value)}
-            disabled={isImporting}
-          >
-            <option value="">Select league to import to...</option>
-            {leagues?.map((league) => (
-              <option key={league.id} value={league.id}>
-                {league.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex justify-center">
         <button
           className="btn btn-primary"
           onClick={handleQuickImport}
-          disabled={!selectedLeagueId || isImporting}
+          disabled={isImporting}
         >
           {isImporting ? (
             <>
@@ -91,7 +70,7 @@ export function QuickImport({ onImportComplete }: QuickImportProps) {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Quick Import
+              Import All Configured Leagues
             </>
           )}
         </button>

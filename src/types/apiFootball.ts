@@ -107,6 +107,10 @@ export interface ApiFootballConfig {
   selectedLeagues: number[];
   teamMappings: { [apiTeamId: number]: string }; // API ID -> Local Team ID
   lastImport: { [leagueId: number]: Date };
+  importPreferences?: {
+    leagueMappings: { [apiLeagueId: number]: string }; // API League ID -> Local League ID
+    selectedSeason: number;
+  };
 }
 
 export interface TeamMapping {

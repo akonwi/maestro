@@ -43,6 +43,19 @@ export function ApiFootballSettings() {
     const config = apiFootballService.getConfig();
     if (config) {
       setSelectedLeagues(config.selectedLeagues);
+      
+      // Load import preferences
+      if (config.importPreferences) {
+        setSelectedSeason(config.importPreferences.selectedSeason);
+        
+        // Set the first mapped league as selected if available
+        const mappings = config.importPreferences.leagueMappings;
+        const firstApiLeague = Object.keys(mappings).map(Number)[0];
+        if (firstApiLeague) {
+          setSelectedApiLeague(firstApiLeague);
+          setSelectedLocalLeague(mappings[firstApiLeague]);
+        }
+      }
     }
   };
 
@@ -93,11 +106,67 @@ export function ApiFootballSettings() {
     apiFootballService.updateConfig({ selectedLeagues: leagueIds });
   };
 
+  const saveImportPreferences = () => {
+    if (!selectedApiLeague || !selectedLocalLeague) return;
+    
+    const config = apiFootballService.getConfig() || {
+      selectedLeagues: [],
+      teamMappings: {},
+      lastImport: {}
+    };
+
+    const currentMappings = config.importPreferences?.leagueMappings || {};
+    
+    apiFootballService.updateConfig({
+      importPreferences: {
+        leagueMappings: {
+          ...currentMappings,
+          [selectedApiLeague]: selectedLocalLeague
+        },
+        selectedSeason
+      }
+    });
+  };
+
+  const handleApiLeagueChange = (apiLeagueId: number | null) => {
+    setSelectedApiLeague(apiLeagueId);
+    
+    // Load existing mapping for this league if it exists
+    const config = apiFootballService.getConfig();
+    if (config?.importPreferences?.leagueMappings && apiLeagueId) {
+      const existingMapping = config.importPreferences.leagueMappings[apiLeagueId];
+      if (existingMapping) {
+        setSelectedLocalLeague(existingMapping);
+      } else {
+        setSelectedLocalLeague("");
+      }
+    } else {
+      setSelectedLocalLeague("");
+    }
+  };
+
+  const handleLocalLeagueChange = (localLeagueId: string) => {
+    setSelectedLocalLeague(localLeagueId);
+    
+    // Save preferences when both API league and local league are selected
+    if (selectedApiLeague && localLeagueId) {
+      setTimeout(() => saveImportPreferences(), 0); // Async to ensure state is updated
+    }
+  };
+
+  const handleSeasonChange = (season: number) => {
+    setSelectedSeason(season);
+    saveImportPreferences();
+  };
+
   const startImport = async () => {
     if (!selectedApiLeague || !selectedLocalLeague) {
       alert("Please select both API league and local league");
       return;
     }
+
+    // Save current preferences
+    saveImportPreferences();
 
     setIsImporting(true);
     setImportProgress(null);
@@ -186,7 +255,7 @@ export function ApiFootballSettings() {
                 <select
                   class="select select-bordered"
                   value={selectedApiLeague || ""}
-                  onChange={(e) => setSelectedApiLeague(Number((e.target as HTMLSelectElement).value) || null)}
+                  onChange={(e) => handleApiLeagueChange(Number((e.target as HTMLSelectElement).value) || null)}
                 >
                   <option value="">Select API League</option>
                   {selectedLeagues.map(leagueId => (
@@ -204,7 +273,7 @@ export function ApiFootballSettings() {
                 <select
                   class="select select-bordered"
                   value={selectedSeason}
-                  onChange={(e) => setSelectedSeason(Number((e.target as HTMLSelectElement).value))}
+                  onChange={(e) => handleSeasonChange(Number((e.target as HTMLSelectElement).value))}
                   disabled={loadingSeasons || availableSeasons.length === 0}
                 >
                   {loadingSeasons ? (
@@ -228,7 +297,7 @@ export function ApiFootballSettings() {
                 <select
                   class="select select-bordered"
                   value={selectedLocalLeague}
-                  onChange={(e) => setSelectedLocalLeague((e.target as HTMLSelectElement).value)}
+                  onChange={(e) => handleLocalLeagueChange((e.target as HTMLSelectElement).value)}
                 >
                   <option value="">Select Local League</option>
                   {localLeagues.map(league => (

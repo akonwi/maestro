@@ -22,17 +22,22 @@ export function useQuickImport() {
       return { canImport: false, reason: "API-Football not configured" };
     }
 
-    // Check if there are any configured leagues with mappings
     const config = apiFootballService.getConfig();
-    if (!config || config.selectedLeagues.length === 0) {
-      return { canImport: false, reason: "No leagues configured" };
+    if (!config) {
+      return { canImport: false, reason: "No configuration found" };
     }
 
-    // Check if there are team mappings for at least one league
+    // Check if there are league mappings
+    if (!config.importPreferences?.leagueMappings || Object.keys(config.importPreferences.leagueMappings).length === 0) {
+      return { canImport: false, reason: "No league mappings configured" };
+    }
+
+    // Check if there are team mappings for the mapped leagues
+    const season = config.importPreferences?.selectedSeason || new Date().getFullYear();
     let hasAnyMappings = false;
-    for (const leagueId of config.selectedLeagues) {
-      const currentYear = new Date().getFullYear();
-      const mappings = teamMappingService.getTeamMappings(leagueId, currentYear);
+    
+    for (const apiLeagueId of Object.keys(config.importPreferences.leagueMappings).map(Number)) {
+      const mappings = teamMappingService.getTeamMappings(apiLeagueId, season);
       if (mappings.length > 0) {
         hasAnyMappings = true;
         break;
@@ -46,7 +51,7 @@ export function useQuickImport() {
     return { canImport: true };
   }, []);
 
-  const quickImport = useCallback(async (localLeagueId: string): Promise<QuickImportResult> => {
+  const quickImport = useCallback(async (): Promise<QuickImportResult> => {
     const { canImport, reason } = canQuickImport();
     if (!canImport) {
       return { success: false, message: reason || "Cannot import" };
@@ -63,22 +68,25 @@ export function useQuickImport() {
 
     try {
       const config = apiFootballService.getConfig()!;
-      const currentYear = new Date().getFullYear();
+      const season = config.importPreferences?.selectedSeason || new Date().getFullYear();
+      const leagueMappings = config.importPreferences?.leagueMappings || {};
       
       let totalImported = 0;
       let totalSkipped = 0;
       const allErrors: string[] = [];
 
-      // Import from each configured league that has team mappings
-      for (const apiLeagueId of config.selectedLeagues) {
-        const mappings = teamMappingService.getTeamMappings(apiLeagueId, currentYear);
+      // Import from each configured league mapping
+      for (const [apiLeagueIdStr, targetLocalLeagueId] of Object.entries(leagueMappings)) {
+        const apiLeagueId = Number(apiLeagueIdStr);
+        
+        const mappings = teamMappingService.getTeamMappings(apiLeagueId, season);
         if (mappings.length === 0) continue;
 
         try {
           const result = await matchImportService.importMatches(
             apiLeagueId,
-            currentYear,
-            localLeagueId
+            season,
+            targetLocalLeagueId
           );
           
           totalImported += result.imported;
