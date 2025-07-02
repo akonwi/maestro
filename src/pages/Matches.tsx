@@ -10,11 +10,29 @@ import { Link } from "react-router";
 
 export function Matches() {
   const data = useLiveQuery(async () => {
-    const [teams, matches] = await Promise.all([
+    const [teams, allMatches] = await Promise.all([
       db.teams.orderBy("name").toArray(),
-      db.matches.orderBy("date").reverse().toArray(),
+      db.matches.orderBy("date").toArray(),
     ]);
-    return { teams, matches };
+    
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    // Separate completed and upcoming matches
+    const completedMatches = allMatches
+      .filter(match => match.homeScore !== null && match.awayScore !== null)
+      .reverse(); // Most recent first
+      
+    const upcomingMatches = allMatches
+      .filter(match => {
+        // Include matches with null scores or future dates
+        const isUpcoming = match.homeScore === null && match.awayScore === null;
+        const isFuture = match.date >= today;
+        return isUpcoming || isFuture;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date)); // Earliest first
+    
+    return { teams, completedMatches, upcomingMatches };
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +42,7 @@ export function Matches() {
     null,
   );
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'matches' | 'next'>('matches');
   const [importResult, setImportResult] = useState<{
     success: boolean;
     message: string;
@@ -38,6 +57,7 @@ export function Matches() {
   const [awayTeamId, setAwayTeamId] = useState("");
   const [homeScore, setHomeScore] = useState("");
   const [awayScore, setAwayScore] = useState("");
+  const [isUpcomingMatch, setIsUpcomingMatch] = useState(false);
 
   const handleAddMatch = async (e: Event) => {
     e.preventDefault();
@@ -46,10 +66,9 @@ export function Matches() {
       !matchDate ||
       !homeTeamId ||
       !awayTeamId ||
-      homeScore === "" ||
-      awayScore === ""
+      (!isUpcomingMatch && (homeScore === "" || awayScore === ""))
     ) {
-      setError("Please fill in all fields");
+      setError("Please fill in all required fields");
       return;
     }
 
@@ -58,21 +77,27 @@ export function Matches() {
       return;
     }
 
-    const homeScoreNum = parseInt(homeScore);
-    const awayScoreNum = parseInt(awayScore);
+    let homeScoreNum: number | null = null;
+    let awayScoreNum: number | null = null;
 
-    if (
-      isNaN(homeScoreNum) ||
-      isNaN(awayScoreNum) ||
-      homeScoreNum < 0 ||
-      awayScoreNum < 0
-    ) {
-      setError("Scores must be valid numbers (0 or greater)");
-      return;
+    if (!isUpcomingMatch) {
+      homeScoreNum = parseInt(homeScore);
+      awayScoreNum = parseInt(awayScore);
+
+      if (
+        isNaN(homeScoreNum) ||
+        isNaN(awayScoreNum) ||
+        homeScoreNum < 0 ||
+        awayScoreNum < 0
+      ) {
+        setError("Scores must be valid numbers (0 or greater)");
+        return;
+      }
     }
 
     // Check for duplicate matches (same teams and date)
-    const existingMatch = data?.matches.find(
+    const allMatches = [...(data?.completedMatches || []), ...(data?.upcomingMatches || [])];
+    const existingMatch = allMatches.find(
       (match) =>
         match.date === matchDate &&
         match.homeId === homeTeamId &&
@@ -93,6 +118,7 @@ export function Matches() {
         homeScore: homeScoreNum,
         awayScore: awayScoreNum,
         createdAt: new Date(),
+        status: isUpcomingMatch ? 'scheduled' : 'completed',
       };
 
       await db.matches.add(newMatch);
@@ -103,6 +129,7 @@ export function Matches() {
       setAwayTeamId("");
       setHomeScore("");
       setAwayScore("");
+      setIsUpcomingMatch(false);
       setShowAddForm(false);
       setError(null);
     } catch (err) {
@@ -383,6 +410,22 @@ export function Matches() {
         </div>
       )}
 
+      {/* Tab Navigation */}
+      <div className="tabs tabs-bordered">
+        <button 
+          className={`tab tab-lg ${activeTab === 'matches' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('matches')}
+        >
+          Matches
+        </button>
+        <button 
+          className={`tab tab-lg ${activeTab === 'next' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('next')}
+        >
+          Upcoming
+        </button>
+      </div>
+
       {(showAddForm || editingMatch) && (
         <div className="card bg-base-100 border border-base-300">
           <div className="card-body">
@@ -521,18 +564,21 @@ export function Matches() {
         </div>
       )}
 
-      {data.matches.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-base-content/60 text-lg">
-            No matches recorded yet
-          </div>
-          <div className="text-base-content/40 text-sm mt-2">
-            Add your first match to get started
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {data.matches.map((match) => (
+      {/* Tab Content */}
+      {activeTab === 'matches' && (
+        <>
+          {data.completedMatches.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-base-content/60 text-lg">
+                No completed matches yet
+              </div>
+              <div className="text-base-content/40 text-sm mt-2">
+                Add your first match to get started
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {data.completedMatches.map((match) => (
             <div
               key={match.id}
               className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
@@ -707,8 +753,52 @@ export function Matches() {
                 )}
               </div>
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'next' && (
+        <>
+          {data.upcomingMatches.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-base-content/60 text-lg">
+                No upcoming matches scheduled
+              </div>
+              <div className="text-base-content/40 text-sm mt-2">
+                Check the import settings to fetch upcoming fixtures
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {data.upcomingMatches.map((match) => (
+                <div
+                  key={match.id}
+                  className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
+                >
+                  <div className="card-body">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold">
+                          {getTeamName(match.homeId)} vs {getTeamName(match.awayId)}
+                        </h3>
+                        <p className="text-base-content/60 text-sm">
+                          {formatMatchDate(match.date)}
+                        </p>
+                      </div>
+                      <div className="text-right flex items-center gap-2">
+                        <div className="text-lg font-medium text-base-content/60">
+                          Scheduled
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {showBetForm && selectedMatchForBet && (

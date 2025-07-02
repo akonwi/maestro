@@ -159,6 +159,38 @@ class ApiFootballService {
 		return fixtures;
 	}
 
+	async getUpcomingFixtures(
+		leagueId: number,
+		season: number,
+		next?: number,
+	): Promise<ApiFootballMatch[]> {
+		const cacheKey = `upcoming_${leagueId}_${season}_${next || 'all'}`;
+
+		if (this.isCacheValid(this.cache.fixtures[cacheKey])) {
+			return this.cache.fixtures[cacheKey]!.data;
+		}
+
+		const params: Record<string, string> = {
+			league: leagueId.toString(),
+			season: season.toString(),
+			status: "NS", // Not Started status for upcoming matches
+		};
+
+		if (next) {
+			params.next = next.toString();
+		}
+
+		const fixtures = await this.makeRequest<ApiFootballMatch>("/fixtures", params);
+
+		// Cache upcoming fixtures for shorter duration (1 hour)
+		this.cache.fixtures[cacheKey] = {
+			data: fixtures,
+			expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+		};
+
+		return fixtures;
+	}
+
 	async getLiveFixtures(): Promise<ApiFootballMatch[]> {
 		// Don't cache live data
 		return await this.makeRequest<ApiFootballMatch>("/fixtures", {

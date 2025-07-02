@@ -15,10 +15,11 @@ export interface Match {
   date: string;
   homeId: string;
   awayId: string;
-  homeScore: number;
-  awayScore: number;
+  homeScore: number | null; // null for upcoming matches
+  awayScore: number | null; // null for upcoming matches
   leagueId: string;
   createdAt: Date;
+  status?: 'scheduled' | 'completed'; // optional field for match status
 }
 
 export interface TeamStatistics {
