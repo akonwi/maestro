@@ -788,12 +788,14 @@ export function Matches() {
               {data.upcomingMatches.map((match) => (
                 <div
                   key={match.id}
-                  className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleShowTeamComparison(match.homeId, match.awayId)}
+                  className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
                 >
                   <div className="card-body">
                     <div className="flex justify-between items-center">
-                      <div className="flex-1">
+                      <div 
+                        className="cursor-pointer flex-1"
+                        onClick={() => handleShowTeamComparison(match.homeId, match.awayId)}
+                      >
                         <h3 className="text-lg font-semibold hover:text-primary transition-colors">
                           {getTeamName(match.homeId)} vs {getTeamName(match.awayId)}
                         </h3>
@@ -805,11 +807,101 @@ export function Matches() {
                         <div className="text-lg font-medium text-base-content/60">
                           Scheduled
                         </div>
-                        <svg className="w-5 h-5 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+
+                        {/* Desktop buttons - hidden on small screens */}
+                        <div className="hidden sm:flex items-center gap-2">
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => handleRecordBet(match.id)}
+                          >
+                            Record Bet
+                          </button>
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => toggleMatchExpansion(match.id)}
+                          >
+                            {expandedMatchId === match.id ? "−" : "+"}
+                          </button>
+                        </div>
+
+                        {/* Mobile dropdown - shown only on small screens */}
+                        <div className="dropdown dropdown-end sm:hidden">
+                          <label tabIndex={0} className="btn btn-sm btn-ghost">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z"
+                              />
+                            </svg>
+                          </label>
+                          <ul
+                            tabIndex={0}
+                            className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44 z-10"
+                          >
+                            <li>
+                              <a
+                                onClick={() => handleRecordBet(match.id)}
+                                className="text-primary"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                  />
+                                </svg>
+                                Record Bet
+                              </a>
+                            </li>
+                            <li>
+                              <a
+                                onClick={() => toggleMatchExpansion(match.id)}
+                                className="text-base-content"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d={
+                                      expandedMatchId === match.id
+                                        ? "M19 9l-7 7-7-7"
+                                        : "M9 5l7 7-7 7"
+                                    }
+                                  />
+                                </svg>
+                                {expandedMatchId === match.id
+                                  ? "Hide Bets"
+                                  : "Show Bets"}
+                              </a>
+                            </li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
+                    {expandedMatchId === match.id && (
+                      <div className="mt-4 pt-4 border-t border-base-300">
+                        <BetList matchId={match.id} />
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

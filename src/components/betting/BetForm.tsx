@@ -1,5 +1,5 @@
-import { useState } from 'preact/hooks';
-import { createBet, validateBet } from '../../services/betService';
+import { useState } from "preact/hooks";
+import { createBet, validateBet } from "../../services/betService";
 
 interface BetFormProps {
   matchId: string;
@@ -7,9 +7,13 @@ interface BetFormProps {
   onCancel: () => void;
 }
 
-export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProps) {
+export default function BetForm({
+  matchId,
+  onBetCreated,
+  onCancel,
+}: BetFormProps) {
   const [formData, setFormData] = useState({
-    description: '',
+    description: "",
     line: 0,
     odds: 100,
     amount: 0,
@@ -18,9 +22,9 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: field === 'description' ? value : Number(value)
+      [field]: field === "description" ? value : Number(value),
     }));
     setErrors([]);
   };
@@ -45,7 +49,9 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
       await createBet(betData);
       onBetCreated();
     } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Failed to create bet']);
+      setErrors([
+        error instanceof Error ? error.message : "Failed to create bet",
+      ]);
     } finally {
       setIsSubmitting(false);
     }
@@ -55,7 +61,7 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
     <div className="modal modal-open">
       <div className="modal-box w-11/12 max-w-2xl">
         <h3 className="font-bold text-lg mb-4">Record New Bet</h3>
-        
+
         {errors.length > 0 && (
           <div className="alert alert-error mb-4">
             <ul>
@@ -76,7 +82,12 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
               placeholder="e.g., Chelsea to win, Over 2.5 goals"
               className="input input-bordered w-full"
               value={formData.description}
-              onInput={(e) => handleInputChange('description', (e.target as HTMLInputElement).value)}
+              onInput={(e) =>
+                handleInputChange(
+                  "description",
+                  (e.target as HTMLInputElement).value,
+                )
+              }
               required
             />
           </div>
@@ -84,7 +95,7 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Line</span>
+                <span className="label-text">Line (decimal format)</span>
               </label>
               <input
                 type="number"
@@ -92,16 +103,18 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
                 placeholder="e.g., -1.5, 2.5, 0"
                 className="input input-bordered"
                 value={formData.line}
-                onInput={(e) => handleInputChange('line', (e.target as HTMLInputElement).value)}
+                onInput={(e) =>
+                  handleInputChange(
+                    "line",
+                    (e.target as HTMLInputElement).value,
+                  )
+                }
               />
-              <label className="label">
-                <span className="label-text-alt">Point spread or total (use decimals like 1.5)</span>
-              </label>
             </div>
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Odds (American format)</span>
+                <span className="label-text">Odds (American format, +100)</span>
               </label>
               <input
                 type="number"
@@ -109,29 +122,38 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
                 placeholder="e.g., -150, +200"
                 className="input input-bordered"
                 value={formData.odds}
-                onInput={(e) => handleInputChange('odds', (e.target as HTMLInputElement).value)}
+                onInput={(e) =>
+                  handleInputChange(
+                    "odds",
+                    (e.target as HTMLInputElement).value,
+                  )
+                }
                 required
               />
-              <label className="label">
-                <span className="label-text-alt">Use +100 or higher for underdogs, -100 or lower for favorites</span>
-              </label>
             </div>
           </div>
 
           <div className="form-control w-full mb-6">
-            <label className="label">
-              <span className="label-text">Amount ($)</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="100.00"
-              className="input input-bordered"
-              value={formData.amount}
-              onInput={(e) => handleInputChange('amount', (e.target as HTMLInputElement).value)}
-              required
-            />
+            <div class="flex flex-col">
+              <label className="label">
+                <span className="label-text">Amount ($)</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="100.00"
+                className="input input-bordered"
+                value={formData.amount}
+                onInput={(e) =>
+                  handleInputChange(
+                    "amount",
+                    (e.target as HTMLInputElement).value,
+                  )
+                }
+                required
+              />
+            </div>
           </div>
 
           <div className="modal-action">
@@ -148,7 +170,7 @@ export default function BetForm({ matchId, onBetCreated, onCancel }: BetFormProp
               className="btn btn-primary"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Creating...' : 'Create Bet'}
+              {isSubmitting ? "Creating..." : "Create Bet"}
             </button>
           </div>
         </form>
