@@ -804,10 +804,6 @@ export function Matches() {
                         </p>
                       </div>
                       <div className="text-right flex items-center gap-2">
-                        <div className="text-lg font-medium text-base-content/60">
-                          Scheduled
-                        </div>
-
                         {/* Desktop buttons - hidden on small screens */}
                         <div className="hidden sm:flex items-center gap-2">
                           <button
