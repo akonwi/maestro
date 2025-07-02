@@ -30,6 +30,11 @@ export function calculateTeamStatistics(teamId: string, matches: Match[]): TeamS
 	let cleanSheets = 0;
 
 	teamMatches.forEach(match => {
+		// Skip matches without scores (upcoming matches)
+		if (match.homeScore === null || match.awayScore === null) {
+			return;
+		}
+
 		const isHome = match.homeId === teamId;
 		const teamScore = isHome ? match.homeScore : match.awayScore;
 		const opponentScore = isHome ? match.awayScore : match.homeScore;
@@ -50,7 +55,7 @@ export function calculateTeamStatistics(teamId: string, matches: Match[]): TeamS
 		}
 	});
 
-	const gamesPlayed = teamMatches.length;
+	const gamesPlayed = wins + losses + draws; // Only count completed matches
 	const goalDifference = goalsFor - goalsAgainst;
 	const cleanSheetRatio = gamesPlayed > 0 ? cleanSheets / gamesPlayed : 0;
 	const averageGoalsFor = gamesPlayed > 0 ? goalsFor / gamesPlayed : 0;

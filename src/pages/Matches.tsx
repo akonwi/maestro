@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { formatMatchDate } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
+import { TeamComparison } from "../components/TeamComparison";
 import { useQuickImport } from "../hooks/useQuickImport";
 import { Link } from "react-router";
 
@@ -43,6 +44,8 @@ export function Matches() {
   );
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'matches' | 'next'>('matches');
+  const [showTeamComparison, setShowTeamComparison] = useState(false);
+  const [comparisonMatch, setComparisonMatch] = useState<{ homeTeamId: string; awayTeamId: string } | null>(null);
   const [importResult, setImportResult] = useState<{
     success: boolean;
     message: string;
@@ -255,6 +258,16 @@ export function Matches() {
 
   const handleCloseImportResult = () => {
     setImportResult(null);
+  };
+
+  const handleShowTeamComparison = (homeTeamId: string, awayTeamId: string) => {
+    setComparisonMatch({ homeTeamId, awayTeamId });
+    setShowTeamComparison(true);
+  };
+
+  const handleCloseTeamComparison = () => {
+    setShowTeamComparison(false);
+    setComparisonMatch(null);
   };
 
   const toggleMatchExpansion = (matchId: string) => {
@@ -775,12 +788,13 @@ export function Matches() {
               {data.upcomingMatches.map((match) => (
                 <div
                   key={match.id}
-                  className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
+                  className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleShowTeamComparison(match.homeId, match.awayId)}
                 >
                   <div className="card-body">
                     <div className="flex justify-between items-center">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold">
+                        <h3 className="text-lg font-semibold hover:text-primary transition-colors">
                           {getTeamName(match.homeId)} vs {getTeamName(match.awayId)}
                         </h3>
                         <p className="text-base-content/60 text-sm">
@@ -791,6 +805,9 @@ export function Matches() {
                         <div className="text-lg font-medium text-base-content/60">
                           Scheduled
                         </div>
+                        <svg className="w-5 h-5 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
                     </div>
                   </div>
@@ -806,6 +823,14 @@ export function Matches() {
           matchId={selectedMatchForBet}
           onBetCreated={handleBetCreated}
           onCancel={handleCancelBet}
+        />
+      )}
+
+      {showTeamComparison && comparisonMatch && (
+        <TeamComparison
+          homeTeamId={comparisonMatch.homeTeamId}
+          awayTeamId={comparisonMatch.awayTeamId}
+          onClose={handleCloseTeamComparison}
         />
       )}
     </div>
