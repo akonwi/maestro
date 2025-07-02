@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { formatMatchDate } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
+import { QuickImport } from "../components/import/QuickImport";
 import { Link } from "react-router";
 
 export function Matches() {
@@ -23,6 +24,7 @@ export function Matches() {
     null,
   );
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [showQuickImport, setShowQuickImport] = useState(false);
 
   // Form state
   const [matchDate, setMatchDate] = useState("");
@@ -212,6 +214,10 @@ export function Matches() {
     setSelectedMatchForBet(null);
   };
 
+  const handleImportComplete = () => {
+    setShowQuickImport(false);
+  };
+
   const toggleMatchExpansion = (matchId: string) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
   };
@@ -254,13 +260,21 @@ export function Matches() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Matches</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowAddForm(true)}
-          disabled={data.teams.length < 2}
-        >
-          Add Match
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowQuickImport(!showQuickImport)}
+          >
+            {showQuickImport ? 'Hide Import' : 'Refresh'}
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowAddForm(true)}
+            disabled={data.teams.length < 2}
+          >
+            Add Match
+          </button>
+        </div>
       </div>
 
       {data.teams.length < 2 && (
@@ -269,6 +283,18 @@ export function Matches() {
             You need at least 2 teams to record matches.{" "}
             <Link to="/maestro/">Add teams first</Link>.
           </span>
+        </div>
+      )}
+
+      {showQuickImport && (
+        <div className="card bg-base-100 border border-base-300">
+          <div className="card-body">
+            <h2 className="card-title">Quick Import Matches</h2>
+            <p className="text-sm text-base-content/60 mb-4">
+              Import matches from your configured API-Football leagues
+            </p>
+            <QuickImport onImportComplete={handleImportComplete} />
+          </div>
         </div>
       )}
 
