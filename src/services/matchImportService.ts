@@ -68,6 +68,8 @@ class MatchImportService {
       for (let i = 0; i < apiMatches.length; i++) {
         const apiMatch = apiMatches[i];
         
+        if (!apiMatch) continue;
+        
         this.notifyProgress({
           total: apiMatches.length,
           completed: i,
@@ -131,6 +133,11 @@ class MatchImportService {
     // Check if match already exists
     const existingMatch = await this.findExistingMatch(apiMatch, teamMappingLookup, localLeagueId);
     if (existingMatch) {
+      // Update scores if match exists but doesn't have scores yet
+      if (existingMatch.homeScore === null || existingMatch.awayScore === null) {
+        const updatedMatch = await this.updateMatchScores(existingMatch, apiMatch);
+        return { imported: !!updatedMatch };
+      }
       return { imported: false };
     }
 
@@ -149,7 +156,7 @@ class MatchImportService {
 
     // Create local match
     const localMatch: Match = {
-      id: crypto.randomUUID(),
+      id: crypto.randomUUID() as string,
       date: new Date(apiMatch.fixture.date).toISOString().split('T')[0], // Format as YYYY-MM-DD
       homeId: homeTeamId,
       awayId: awayTeamId,
@@ -184,7 +191,28 @@ class MatchImportService {
       )
       .toArray();
 
-    return existingMatches.length > 0 ? existingMatches[0] : null;
+    return existingMatches.length > 0 ? existingMatches[0] || null : null;
+  }
+
+  private async updateMatchScores(
+    existingMatch: Match,
+    apiMatch: ApiFootballMatch
+  ): Promise<Match | null> {
+    // Validate that the API match has valid scores
+    if (apiMatch.goals.home === null || apiMatch.goals.away === null) {
+      return null;
+    }
+
+    // Update the match with the new scores
+    const updatedMatch: Match = {
+      ...existingMatch,
+      homeScore: apiMatch.goals.home,
+      awayScore: apiMatch.goals.away,
+      status: 'completed'
+    };
+
+    await db.matches.update(existingMatch.id, updatedMatch);
+    return updatedMatch;
   }
 
   async getImportHistory(): Promise<Array<{
@@ -251,6 +279,8 @@ class MatchImportService {
       // Process each match
       for (let i = 0; i < apiMatches.length; i++) {
         const apiMatch = apiMatches[i];
+        
+        if (!apiMatch) continue;
         
         this.notifyProgress({
           total: apiMatches.length,
@@ -320,7 +350,7 @@ class MatchImportService {
 
     // Create local upcoming match
     const localMatch: Match = {
-      id: crypto.randomUUID(),
+      id: crypto.randomUUID() as string,
       date: new Date(apiMatch.fixture.date).toISOString().split('T')[0], // Format as YYYY-MM-DD
       homeId: homeTeamId,
       awayId: awayTeamId,
@@ -369,6 +399,101 @@ class MatchImportService {
         alreadyImported: 0,
         toBeImported: 0
       };
+    }
+  }
+
+  async updateExistingMatchScores(
+    apiLeagueId: number, 
+    season: number, 
+    localLeagueId: string
+  ): Promise<{ updated: number; errors: string[] }> {
+    const errors: string[] = [];
+    let updated = 0;
+
+    try {
+      // Get team mappings
+      const mappings = teamMappingService.getTeamMappings(apiLeagueId, season);
+      if (mappings.length === 0) {
+        throw new Error("No team mappings found. Please configure team mappings first.");
+      }
+
+      // Create mapping lookup
+      const teamMappingLookup: { [apiTeamId: number]: string } = {};
+      for (const mapping of mappings) {
+        if (mapping.localTeamId) {
+          teamMappingLookup[mapping.apiTeamId] = mapping.localTeamId;
+        }
+      }
+
+      this.notifyProgress({
+        total: 0,
+        completed: 0,
+        current: "Fetching completed matches from API...",
+        errors: []
+      });
+
+      // Fetch completed matches from API
+      const apiMatches = await apiFootballService.getFixtures(apiLeagueId, season, "FT");
+      
+      this.notifyProgress({
+        total: apiMatches.length,
+        completed: 0,
+        current: `Checking ${apiMatches.length} matches for score updates...`,
+        errors: []
+      });
+
+      // Process each match to update scores
+      for (let i = 0; i < apiMatches.length; i++) {
+        const apiMatch = apiMatches[i];
+        
+        if (!apiMatch) continue;
+        
+        this.notifyProgress({
+          total: apiMatches.length,
+          completed: i,
+          current: `Checking: ${apiMatch.teams.home.name} vs ${apiMatch.teams.away.name}`,
+          errors: []
+        });
+
+        try {
+          const existingMatch = await this.findExistingMatch(apiMatch, teamMappingLookup, localLeagueId);
+          
+          if (existingMatch && (existingMatch.homeScore === null || existingMatch.awayScore === null)) {
+            const updatedMatch = await this.updateMatchScores(existingMatch, apiMatch);
+            if (updatedMatch) {
+              updated++;
+            }
+          }
+        } catch (error) {
+          const errorMsg = `Failed to update ${apiMatch.teams.home.name} vs ${apiMatch.teams.away.name}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`;
+          errors.push(errorMsg);
+          console.error(errorMsg, error);
+        }
+      }
+
+      this.notifyProgress({
+        total: apiMatches.length,
+        completed: apiMatches.length,
+        current: `Completed: ${updated} matches updated`,
+        errors
+      });
+
+      return { updated, errors };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      errors.push(errorMsg);
+      
+      this.notifyProgress({
+        total: 0,
+        completed: 0,
+        current: "Score update failed",
+        errors
+      });
+
+      throw error;
     }
   }
 }

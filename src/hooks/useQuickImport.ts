@@ -114,7 +114,7 @@ export function useQuickImport() {
 						apiLeagueId,
 						season,
 						targetLocalLeagueId,
-						1,
+						15,
 					);
 
 					totalImported += upcomingResult.imported;

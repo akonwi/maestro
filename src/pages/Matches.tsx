@@ -28,8 +28,8 @@ export function Matches() {
       .filter((match) => {
         // Include matches with null scores or future dates
         const isUpcoming = match.homeScore === null && match.awayScore === null;
-        const isFuture = match.date >= today;
-        return isUpcoming || isFuture;
+        // const isFuture = match.date >= today;
+        return isUpcoming; // || isFuture;
       })
       .sort((a, b) => a.date.localeCompare(b.date)); // Earliest first
 
@@ -831,6 +831,7 @@ export function Matches() {
                 <div
                   key={match.id}
                   className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
+                  data-team-match-id={match.id}
                 >
                   <div className="card-body">
                     <div className="flex justify-between items-center">
