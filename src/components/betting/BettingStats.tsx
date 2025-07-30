@@ -1,8 +1,8 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { BettingStats, calculateBettingStats } from '../../services/betService';
+import { useBetOverview } from '../../hooks/use-bet-overview';
 
 export default function BettingStatsComponent() {
-  const stats = useLiveQuery(calculateBettingStats);
+  const { data, loading, error } = useBetOverview();
+  const stats = data;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -15,10 +15,30 @@ export default function BettingStatsComponent() {
     return `${value.toFixed(1)}%`;
   };
 
-  if (!stats) {
+  if (loading) {
     return (
       <div className="flex justify-center p-8">
         <div className="loading loading-spinner loading-lg"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center p-8">
+        <div className="alert alert-error">
+          <span>Error loading betting stats: {error}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex justify-center p-8">
+        <div className="alert alert-warning">
+          <span>No betting data available</span>
+        </div>
       </div>
     );
   }
@@ -27,25 +47,25 @@ export default function BettingStatsComponent() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Bets</div>
-        <div className="stat-value text-primary">{stats.totalBets}</div>
+        <div className="stat-value text-primary">{stats.bets.length}</div>
         <div className="stat-desc">
-          {stats.pendingBets > 0 && `${stats.pendingBets} pending`}
+          {stats.num_pending > 0 && `${stats.num_pending} pending`}
         </div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Wagered</div>
-        <div className="stat-value text-secondary">{formatCurrency(stats.totalWagered)}</div>
+        <div className="stat-value text-secondary">{formatCurrency(stats.total_wagered)}</div>
         <div className="stat-desc">Amount bet</div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Net Profit</div>
-        <div className={`stat-value ${stats.netProfit >= 0 ? 'text-success' : 'text-error'}`}>
-          {formatCurrency(stats.netProfit)}
+        <div className={`stat-value ${stats.net_profit >= 0 ? 'text-success' : 'text-error'}`}>
+          {formatCurrency(stats.net_profit)}
         </div>
         <div className="stat-desc">
-          {stats.netProfit >= 0 ? 'Profit' : 'Loss'}
+          {stats.net_profit >= 0 ? 'Profit' : 'Loss'}
         </div>
       </div>
 
@@ -59,27 +79,27 @@ export default function BettingStatsComponent() {
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Win Rate</div>
-        <div className="stat-value text-accent">{formatPercentage(stats.winRate)}</div>
+        <div className="stat-value text-accent">{formatPercentage(stats.win_rate)}</div>
         <div className="stat-desc">
-          {stats.totalBets - stats.pendingBets} settled bets
+          {stats.bets.length - stats.num_pending} settled bets
         </div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Winnings</div>
-        <div className="stat-value text-success">{formatCurrency(stats.totalWinnings)}</div>
+        <div className="stat-value text-success">{formatCurrency(stats.gross_payout)}</div>
         <div className="stat-desc">Gross winnings</div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Losses</div>
-        <div className="stat-value text-error">{formatCurrency(stats.totalLosses)}</div>
+        <div className="stat-value text-error">{formatCurrency(stats.gross_loss)}</div>
         <div className="stat-desc">Amount lost</div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Pending Bets</div>
-        <div className="stat-value text-warning">{stats.pendingBets}</div>
+        <div className="stat-value text-warning">{stats.num_pending}</div>
         <div className="stat-desc">Awaiting results</div>
       </div>
     </div>
