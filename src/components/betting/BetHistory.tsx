@@ -1,72 +1,21 @@
 import { useState } from "preact/hooks";
-import { useLiveQuery } from "dexie-react-hooks";
-import {
-  Bet,
-  calculatePayout,
-  calculateProfit,
-  updateBet,
-} from "../../services/betService";
-import { db } from "../../utils/database";
-import { Team, Match } from "../../types";
+import { useBetOverview } from "../../hooks/use-bet-overview";
+import { calculateProfit } from "../../services/betService";
 
-interface BetHistoryProps {
-  limit?: number;
-}
+export default function BetHistory() {
+  const [filter, setFilter] = useState<"all" | "win" | "lose" | "pending">(
+    "all",
+  );
 
-interface BetWithMatchData extends Bet {
-  match?: Match;
-  homeTeam?: Team;
-  awayTeam?: Team;
-}
+  const { data, loading, error } = useBetOverview();
 
-export default function BetHistory({ limit }: BetHistoryProps) {
-  const [filter, setFilter] = useState<
-    "all" | "win" | "loss" | "push" | "pending"
-  >("all");
+  const betsData = data?.bets || [];
 
-  const betsWithMatchData = useLiveQuery(async () => {
-    const allBets = await db.bets.orderBy("createdAt").reverse().toArray();
-
-    const betsWithMatchData = await Promise.all(
-      allBets.map(async (bet) => {
-        try {
-          const match = await db.matches.get(bet.matchId);
-          if (match) {
-            const [homeTeam, awayTeam] = await Promise.all([
-              db.teams.get(match.homeId),
-              db.teams.get(match.awayId),
-            ]);
-            return { ...bet, match, homeTeam, awayTeam };
-          }
-          return bet;
-        } catch (error) {
-          console.error("Failed to load match data for bet:", bet.id, error);
-          return bet;
-        }
-      }),
-    );
-
-    return limit ? betsWithMatchData.slice(0, limit) : betsWithMatchData;
+  const filteredBets = betsData.filter((bet) => {
+    if (filter === "all") return true;
+    if (filter === "pending") return bet.result === "pending";
+    return bet.result === filter;
   });
-
-  const filteredBets = betsWithMatchData
-    ? betsWithMatchData.filter((bet) => {
-        if (filter === "all") return true;
-        if (filter === "pending") return !bet.result;
-        return bet.result === filter;
-      })
-    : [];
-
-  const handleResultUpdate = async (
-    betId: string,
-    result: "win" | "loss" | "push",
-  ) => {
-    try {
-      await updateBet(betId, { result });
-    } catch (error) {
-      console.error("Failed to update bet result:", error);
-    }
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -75,35 +24,20 @@ export default function BetHistory({ limit }: BetHistoryProps) {
     }).format(amount);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date);
-  };
-
-  const getResultBadge = (result?: "win" | "loss" | "push") => {
-    if (!result) return <span className="badge badge-ghost">Pending</span>;
-
+  const getResultBadge = (result: string) => {
     switch (result) {
       case "win":
         return <span className="badge badge-success">Win</span>;
-      case "loss":
+      case "lose":
         return <span className="badge badge-error">Loss</span>;
-      case "push":
-        return <span className="badge badge-warning">Push</span>;
+      case "pending":
+        return <span className="badge badge-ghost">Pending</span>;
+      default:
+        return <span className="badge badge-warning">{result}</span>;
     }
   };
 
-  const getMatchDescription = (bet: BetWithMatchData) => {
-    if (bet.homeTeam && bet.awayTeam) {
-      return `${bet.homeTeam.name} vs ${bet.awayTeam.name}`;
-    }
-    return "Match data unavailable";
-  };
-
-  if (!betsWithMatchData) {
+  if (loading) {
     return (
       <div className="flex justify-center p-8">
         <div className="loading loading-spinner loading-lg"></div>
@@ -111,25 +45,31 @@ export default function BetHistory({ limit }: BetHistoryProps) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex justify-center p-8">
+        <div className="alert alert-error">
+          <span>Error loading bet history: {error}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">
-          Bet History {limit && `(Last ${limit})`}
-        </h3>
+        <h3 className="text-lg font-semibold">Bet History</h3>
 
         <div className="tabs tabs-boxed">
-          {(["all", "pending", "win", "loss", "push"] as const).map(
-            (filterOption) => (
-              <button
-                key={filterOption}
-                className={`tab ${filter === filterOption ? "tab-active" : ""}`}
-                onClick={() => setFilter(filterOption)}
-              >
-                {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
-              </button>
-            ),
-          )}
+          {(["all", "pending", "win", "lose"] as const).map((filterOption) => (
+            <button
+              key={filterOption}
+              className={`tab ${filter === filterOption ? "tab-active" : ""}`}
+              onClick={() => setFilter(filterOption)}
+            >
+              {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -142,7 +82,7 @@ export default function BetHistory({ limit }: BetHistoryProps) {
           <table className="table table-zebra w-full">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>ID</th>
                 <th>Match</th>
                 <th>Bet</th>
                 <th>Odds</th>
@@ -155,20 +95,13 @@ export default function BetHistory({ limit }: BetHistoryProps) {
             <tbody>
               {filteredBets.map((bet) => (
                 <tr key={bet.id}>
-                  <td>{formatDate(bet.createdAt)}</td>
+                  <td>{bet.id}</td>
                   <td>
-                    <div className="text-sm">
-                      {getMatchDescription(bet)}
-                      {bet.match && (
-                        <div className="text-xs text-gray-500">
-                          {new Date(bet.match.date).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
+                    <div className="text-sm">{bet.match_id}</div>
                   </td>
                   <td>
                     <div className="text-sm">
-                      {bet.description}
+                      {bet.name}
                       {bet.line !== 0 && (
                         <div className="text-xs text-gray-500">
                           Line: {bet.line}
@@ -185,52 +118,17 @@ export default function BetHistory({ limit }: BetHistoryProps) {
                         +{formatCurrency(calculateProfit(bet.amount, bet.odds))}
                       </span>
                     )}
-                    {bet.result === "loss" && (
+                    {bet.result === "lose" && (
                       <span className="text-error">
                         -{formatCurrency(bet.amount)}
                       </span>
                     )}
-                    {bet.result === "push" && (
-                      <span className="text-warning">$0.00</span>
+                    {bet.result === "pending" && (
+                      <span className="text-gray-500">-</span>
                     )}
-                    {!bet.result && <span className="text-gray-500">-</span>}
                   </td>
                   <td>
-                    {!bet.result ? (
-                      <div className="dropdown dropdown-end">
-                        <label tabIndex={0} className="btn btn-xs btn-primary">
-                          Set Result
-                        </label>
-                        <ul
-                          tabIndex={0}
-                          className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-24 z-10"
-                        >
-                          <li>
-                            <a
-                              onClick={() => handleResultUpdate(bet.id, "win")}
-                            >
-                              Win
-                            </a>
-                          </li>
-                          <li>
-                            <a
-                              onClick={() => handleResultUpdate(bet.id, "loss")}
-                            >
-                              Loss
-                            </a>
-                          </li>
-                          <li>
-                            <a
-                              onClick={() => handleResultUpdate(bet.id, "push")}
-                            >
-                              Push
-                            </a>
-                          </li>
-                        </ul>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
+                    <span className="text-gray-400">-</span>
                   </td>
                 </tr>
               ))}
