@@ -10,7 +10,14 @@ export interface ApiBet {
 	result: string; // "win" | "lose" | "pending"
 }
 
-export interface BetOverviewResponse {
+export interface Team {
+	id: number;
+	name: string;
+	code: string | null;
+	league_id: number;
+}
+
+export interface BetOverview {
 	bets: ApiBet[];
 	num_pending: number;
 	total_wagered: number;
@@ -19,6 +26,11 @@ export interface BetOverviewResponse {
 	net_profit: number;
 	gross_loss: number;
 	roi: number;
+}
+
+export interface BetOverviewResponse {
+	overview: BetOverview;
+	teams: Record<string, Team>;
 }
 
 export function useBetOverview() {

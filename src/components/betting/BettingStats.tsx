@@ -2,7 +2,7 @@ import { useBetOverview } from '../../hooks/use-bet-overview';
 
 export default function BettingStatsComponent() {
   const { data, loading, error } = useBetOverview();
-  const stats = data;
+  const stats = data?.overview;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { useBetOverview } from "../../hooks/use-bet-overview";
+import { useBetOverview, type Team } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
 
 export default function BetHistory() {
@@ -9,7 +9,8 @@ export default function BetHistory() {
 
   const { data, loading, error } = useBetOverview();
 
-  const betsData = data?.bets || [];
+  const betsData = data?.overview?.bets || [];
+  const teamsData = data?.teams || {};
 
   const filteredBets = betsData.filter((bet) => {
     if (filter === "all") return true;
