@@ -11,6 +11,7 @@ export default function BetHistory() {
 
   const betsData = data?.overview?.bets || [];
   const teamsData = data?.teams || {};
+  const matchesData = data?.matches || [];
 
   const filteredBets = betsData.filter((bet) => {
     if (filter === "all") return true;
@@ -23,6 +24,16 @@ export default function BetHistory() {
       style: "currency",
       currency: "USD",
     }).format(amount);
+  };
+
+  const getTeamNames = (matchId: number) => {
+    const match = matchesData.find((m) => m.id === matchId);
+    if (!match) return "Unknown Match";
+    
+    const homeTeam = teamsData[match.home_team_id] || "Unknown";
+    const awayTeam = teamsData[match.away_team_id] || "Unknown";
+    
+    return `${homeTeam} vs ${awayTeam}`;
   };
 
   const getResultBadge = (result: string) => {
@@ -84,7 +95,7 @@ export default function BetHistory() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Match</th>
+                <th>Teams</th>
                 <th>Bet</th>
                 <th>Odds</th>
                 <th>Wager</th>
@@ -98,7 +109,7 @@ export default function BetHistory() {
                 <tr key={bet.id}>
                   <td>{bet.id}</td>
                   <td>
-                    <div className="text-sm">{bet.match_id}</div>
+                    <div className="text-sm">{getTeamNames(bet.match_id)}</div>
                   </td>
                   <td>
                     <div className="text-sm">
