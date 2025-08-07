@@ -4,7 +4,6 @@ import { RouterProvider } from "react-router/dom";
 import { Outlet } from "react-router";
 
 import { Header } from "./components/Header";
-import { Teams } from "./pages/Teams";
 import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
 import { MatchDetail } from "./pages/MatchDetail";
@@ -31,7 +30,7 @@ const router = createBrowserRouter([
           );
         },
         children: [
-          { index: true, Component: Teams },
+          { index: true, Component: BettingPerformance },
           {
             path: "/maestro/team/:teamId",
             Component: TeamDetail,
