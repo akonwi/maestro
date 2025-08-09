@@ -362,7 +362,7 @@ export function Matches() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {future.map((match) => (
+                  {future.reverse().map((match) => (
                     <div
                       key={match.id}
                       className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
