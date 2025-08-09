@@ -37,7 +37,7 @@ export function Header() {
             className="menu menu-sm dropdown-content mt-3 z-[1] p-2 bg-base-100 border border-base-300 rounded-box w-52"
           >
             <li>
-              <Link to="/maestro/" className={url === "/" ? "active" : ""}>
+              <Link to="/maestro/teams" className={url === "/" ? "active" : ""}>
                 Teams
               </Link>
             </li>
@@ -51,15 +51,7 @@ export function Header() {
             </li>
             <li>
               <Link
-                to="/maestro/leagues"
-                className={url === "/leagues" ? "active" : ""}
-              >
-                Leagues
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/maestro/betting"
+                to="/maestro/"
                 className={url === "/betting" ? "active" : ""}
               >
                 Betting
@@ -82,7 +74,7 @@ export function Header() {
       <div className="navbar-end hidden lg:flex">
         <ul className="menu menu-horizontal px-1">
           <li>
-            <Link to="/maestro/" className={url === "/" ? "active" : ""}>
+            <Link to="/maestro/teams" className={url === "/" ? "active" : ""}>
               Teams
             </Link>
           </li>
@@ -92,14 +84,6 @@ export function Header() {
               className={url === "/matches" ? "active" : ""}
             >
               Matches
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/maestro/leagues"
-              className={url === "/leagues" ? "active" : ""}
-            >
-              Leagues
             </Link>
           </li>
           <li>
