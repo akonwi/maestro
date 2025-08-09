@@ -44,7 +44,7 @@ export function useBetOverview() {
 			setError(null);
 
 			const response = await fetch(
-				"https://maestro-api.zeabur.app/bets/overview",
+				`${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
 			);
 
 			if (!response.ok) {
