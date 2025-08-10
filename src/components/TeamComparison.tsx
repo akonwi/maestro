@@ -148,10 +148,20 @@ export function TeamComparison({
     const gamesPlayed = getGamesPlayed(stats);
     if (gamesPlayed === 0) return 'unknown';
     const winRate = stats.wins / gamesPlayed;
-    if (winRate >= 0.7) return 'excellent';
-    if (winRate >= 0.5) return 'good';
-    if (winRate >= 0.3) return 'average';
-    return 'poor';
+    
+    // Research-based thresholds from European league championship data
+    // Sources:
+    // - Sky Sports: https://www.skysports.com/football/news/11667/10054589/ajax-have-the-best-all-time-win-percentage-in-top-european-football
+    // - Bundesliga: https://www.bundesliga.com/en/bundesliga/news/story-of-bayern-munich-record-breaking-11-year-reign-as-bundesliga-champions-27081
+    // - American Soccer Analysis: https://www.americansocceranalysis.com/home/2021/7/12/where-goals-come-from-what-it-takes-for-teams-to-be-elite
+    // - StatChecker: https://www.statschecker.com/stats/win-draw-win/total-wins-stats
+    // - BeSoccer: https://www.besoccer.com/new/bayern-munich-have-best-win-percentage-in-21st-century-842940
+    // Research shows mid-table teams typically achieve ~40% win rates, while champions achieve 65-70%
+    
+    if (winRate >= 0.65) return 'excellent';  // 65%+ (Championship-winning teams)
+    if (winRate >= 0.50) return 'good';       // 50-64% (European competition level)
+    if (winRate >= 0.35) return 'average';    // 35-49% (Mid-table performance)
+    return 'poor';                           // <35% (Relegation zone performance)
   };
 
   const StatRow = ({
