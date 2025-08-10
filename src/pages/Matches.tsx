@@ -78,7 +78,6 @@ export function Matches() {
   );
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"played" | "pending">("pending");
-  const [showTeamComparison, setShowTeamComparison] = useState(false);
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
     awayTeamId: number;
@@ -97,16 +96,6 @@ export function Matches() {
   const handleCancelBet = () => {
     setShowBetForm(false);
     setSelectedMatchForBet(null);
-  };
-
-  const handleShowTeamComparison = (homeTeamId: number, awayTeamId: number) => {
-    setComparisonMatch({ homeTeamId, awayTeamId });
-    setShowTeamComparison(true);
-  };
-
-  const handleCloseTeamComparison = () => {
-    setShowTeamComparison(false);
-    setComparisonMatch(null);
   };
 
   const toggleMatchExpansion = (matchId: string) => {
@@ -224,12 +213,7 @@ export function Matches() {
                     >
                       <div className="card-body">
                         <div className="flex justify-between items-center">
-                          <div
-                            className="cursor-pointer flex-1"
-                            onClick={() =>
-                              (window.location.href = `/match/${match.id}`)
-                            }
-                          >
+                          <div className="cursor-pointer flex-1">
                             <h3 className="text-lg font-semibold hover:text-primary transition-colors">
                               {formatMatchResult(match)}
                             </h3>
@@ -356,9 +340,6 @@ export function Matches() {
                   <div className="text-base-content/60 text-lg">
                     No upcoming matches scheduled
                   </div>
-                  <div className="text-base-content/40 text-sm mt-2">
-                    Check the import settings to fetch upcoming fixtures
-                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -372,12 +353,13 @@ export function Matches() {
                         <div className="flex justify-between items-center">
                           <div
                             className="cursor-pointer flex-1"
-                            onClick={() =>
-                              handleShowTeamComparison(
-                                match.home_team_id,
-                                match.away_team_id,
-                              )
-                            }
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setComparisonMatch({
+                                homeTeamId: match.home_team_id,
+                                awayTeamId: match.away_team_id,
+                              });
+                            }}
                           >
                             <h3 className="text-lg font-semibold hover:text-primary transition-colors">
                               {getTeamName(match.home_team_id)} vs{" "}
@@ -505,14 +487,15 @@ export function Matches() {
         />
       )}
 
-      {
-        showTeamComparison && comparisonMatch && "Todo"
-        // <TeamComparison
-        //   homeTeamId={comparisonMatch.homeTeamId}
-        //   awayTeamId={comparisonMatch.awayTeamId}
-        //   onClose={handleCloseTeamComparison}
-        // />
-      }
+      {comparisonMatch != null && (
+        <TeamComparison
+          homeTeamId={comparisonMatch.homeTeamId}
+          awayTeamId={comparisonMatch.awayTeamId}
+          onClose={() => {
+            setComparisonMatch(null);
+          }}
+        />
+      )}
     </div>
   );
 }

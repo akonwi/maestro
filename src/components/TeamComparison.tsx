@@ -1,19 +1,27 @@
-import { useMemo } from "preact/hooks";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "../utils/database";
-import {
-  calculateTeamStatistics,
-  formatRecord,
-  formatGoalRatio,
-  formatCleanSheetPercentage,
-  formatAverage,
-  getFormRating,
-} from "../utils/statistics";
+import { useState, useEffect } from "preact/hooks";
 
 interface TeamComparisonProps {
-  homeTeamId: string;
-  awayTeamId: string;
+  homeTeamId: number;
+  awayTeamId: number;
   onClose: () => void;
+}
+
+interface TeamStats {
+  id: number;
+  name: string;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  cleansheets: number;
+  one_conceded: number;
+  two_plus_conceded: number;
+}
+
+interface ComparisonData {
+  home: TeamStats;
+  away: TeamStats;
 }
 
 export function TeamComparison({
@@ -21,30 +29,42 @@ export function TeamComparison({
   awayTeamId,
   onClose,
 }: TeamComparisonProps) {
-  const data = useLiveQuery(async () => {
-    const [teams, matches] = await Promise.all([
-      db.teams.orderBy("name").toArray(),
-      db.matches.toArray(),
-    ]);
+  const [data, setData] = useState<ComparisonData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    return { teams, matches };
-  });
+  useEffect(() => {
+    const fetchComparisonData = async () => {
+      setLoading(true);
+      setError(null);
 
-  const homeTeam = data?.teams.find((t) => t.id === homeTeamId);
-  const awayTeam = data?.teams.find((t) => t.id === awayTeamId);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/compare?home=${homeTeamId}&away=${awayTeamId}`,
+        );
 
-  const { homeStats, awayStats } = useMemo(() => {
-    if (!data?.matches) {
-      return { homeStats: null, awayStats: null };
-    }
+        if (!response.ok) {
+          setError(`HTTP error! status: ${response.status}`);
+        }
 
-    return {
-      homeStats: calculateTeamStatistics(homeTeamId, data.matches),
-      awayStats: calculateTeamStatistics(awayTeamId, data.matches),
+        const comparisonData = await response.json();
+        setData(comparisonData);
+      } catch (err) {
+        console.error("Error fetching comparison data:", err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch comparison data",
+        );
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [homeTeamId, awayTeamId, data?.matches]);
 
-  if (!data || !homeTeam || !awayTeam || !homeStats || !awayStats) {
+    fetchComparisonData();
+  }, [homeTeamId, awayTeamId]);
+
+  if (loading) {
     return (
       <div className="modal modal-open">
         <div className="modal-box">
@@ -57,8 +77,29 @@ export function TeamComparison({
     );
   }
 
+  if (error || !data) {
+    return (
+      <div className="modal modal-open">
+        <div className="modal-box">
+          <div className="text-center">
+            <h3 className="text-lg font-bold mb-4">Error</h3>
+            <p className="text-error mb-4">
+              {error || "Failed to load comparison data"}
+            </p>
+            <button className="btn btn-primary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+        <div className="modal-backdrop" onClick={onClose}></div>
+      </div>
+    );
+  }
+
+  const { home: homeStats, away: awayStats } = data;
+
   const getFormBadgeClass = (rating: string) => {
-    switch (rating) {
+    switch (rating.toLowerCase()) {
       case "excellent":
         return "badge-success";
       case "good":
@@ -70,6 +111,47 @@ export function TeamComparison({
       default:
         return "badge-ghost";
     }
+  };
+
+  const formatRecord = (stats: TeamStats) => {
+    return `${stats.wins}-${stats.losses}-${stats.draws}`;
+  };
+
+  const formatGoalRatio = (stats: TeamStats) => {
+    return `${stats.goals_for}:${stats.goals_against}`;
+  };
+
+  const getGamesPlayed = (stats: TeamStats) => {
+    return stats.wins + stats.losses + stats.draws;
+  };
+
+  const getGoalDifference = (stats: TeamStats) => {
+    return stats.goals_for - stats.goals_against;
+  };
+
+  const formatCleanSheetPercentage = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    return gamesPlayed > 0 ? `${Math.round((stats.cleansheets / gamesPlayed) * 100)}%` : '0%';
+  };
+
+  const getAverageGoalsFor = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    return gamesPlayed > 0 ? (stats.goals_for / gamesPlayed).toFixed(2) : '0.00';
+  };
+
+  const getAverageGoalsAgainst = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    return gamesPlayed > 0 ? (stats.goals_against / gamesPlayed).toFixed(2) : '0.00';
+  };
+
+  const getFormRating = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    if (gamesPlayed === 0) return 'unknown';
+    const winRate = stats.wins / gamesPlayed;
+    if (winRate >= 0.7) return 'excellent';
+    if (winRate >= 0.5) return 'good';
+    if (winRate >= 0.3) return 'average';
+    return 'poor';
   };
 
   const StatRow = ({
@@ -105,114 +187,114 @@ export function TeamComparison({
           </button>
         </div>
 
-          {/* Team Names */}
-          <div className="grid grid-cols-7 gap-4 mb-6">
-            <div className="col-span-2 text-center">
-              <h3 className="text-xl font-bold">{homeTeam.name}</h3>
-              <div className="text-sm text-base-content/60">Home</div>
+        {/* Team Names */}
+        <div className="grid grid-cols-7 gap-4 mb-6">
+          <div className="col-span-2 text-center">
+            <h3 className="text-xl font-bold">{homeStats.name}</h3>
+            <div className="text-sm text-base-content/60">Home</div>
+          </div>
+          <div className="col-span-3 text-center">
+            <div className="text-2xl font-bold">VS</div>
+          </div>
+          <div className="col-span-2 text-center">
+            <h3 className="text-xl font-bold">{awayStats.name}</h3>
+            <div className="text-sm text-base-content/60">Away</div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold mb-4">Quick Stats</h4>
+
+          <StatRow
+            label="Games Played"
+            homeValue={getGamesPlayed(homeStats)}
+            awayValue={getGamesPlayed(awayStats)}
+          />
+
+          <StatRow
+            label="W-L-D Record"
+            homeValue={formatRecord(homeStats)}
+            awayValue={formatRecord(awayStats)}
+          />
+
+          <StatRow
+            label="Goals (For:Against)"
+            homeValue={formatGoalRatio(homeStats)}
+            awayValue={formatGoalRatio(awayStats)}
+          />
+
+          <StatRow
+            label="Goal Difference"
+            homeValue={
+              getGoalDifference(homeStats) > 0
+                ? `+${getGoalDifference(homeStats)}`
+                : getGoalDifference(homeStats)
+            }
+            awayValue={
+              getGoalDifference(awayStats) > 0
+                ? `+${getGoalDifference(awayStats)}`
+                : getGoalDifference(awayStats)
+            }
+            homeClass={
+              getGoalDifference(homeStats) > 0
+                ? "text-success"
+                : getGoalDifference(homeStats) < 0
+                  ? "text-error"
+                  : ""
+            }
+            awayClass={
+              getGoalDifference(awayStats) > 0
+                ? "text-success"
+                : getGoalDifference(awayStats) < 0
+                  ? "text-error"
+                  : ""
+            }
+          />
+        </div>
+
+        {/* Detailed Stats */}
+        <div>
+          <h4 className="text-lg font-semibold mb-4">Detailed Stats</h4>
+
+          <StatRow
+            label="Clean Sheets"
+            homeValue={`${homeStats.cleansheets} (${formatCleanSheetPercentage(homeStats)})`}
+            awayValue={`${awayStats.cleansheets} (${formatCleanSheetPercentage(awayStats)})`}
+          />
+
+          <div className="grid grid-cols-7 gap-4 py-2 border-b border-base-200">
+            <div className="col-span-2 text-right">
+              <span
+                className={`badge ${getFormBadgeClass(getFormRating(homeStats))}`}
+              >
+                {getFormRating(homeStats)}
+              </span>
             </div>
-            <div className="col-span-3 text-center">
-              <div className="text-2xl font-bold">VS</div>
+            <div className="col-span-3 text-center font-medium text-base-content/60">
+              Form Rating
             </div>
-            <div className="col-span-2 text-center">
-              <h3 className="text-xl font-bold">{awayTeam.name}</h3>
-              <div className="text-sm text-base-content/60">Away</div>
+            <div className="col-span-2 text-left">
+              <span
+                className={`badge ${getFormBadgeClass(getFormRating(awayStats))}`}
+              >
+                {getFormRating(awayStats)}
+              </span>
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-4">Quick Stats</h4>
+          <StatRow
+            label="Avg Goals For"
+            homeValue={getAverageGoalsFor(homeStats)}
+            awayValue={getAverageGoalsFor(awayStats)}
+          />
 
-            <StatRow
-              label="Games Played"
-              homeValue={homeStats.gamesPlayed}
-              awayValue={awayStats.gamesPlayed}
-            />
-
-            <StatRow
-              label="W-L-D Record"
-              homeValue={formatRecord(homeStats)}
-              awayValue={formatRecord(awayStats)}
-            />
-
-            <StatRow
-              label="Goals (For:Against)"
-              homeValue={formatGoalRatio(homeStats)}
-              awayValue={formatGoalRatio(awayStats)}
-            />
-
-            <StatRow
-              label="Goal Difference"
-              homeValue={
-                homeStats.goalDifference > 0
-                  ? `+${homeStats.goalDifference}`
-                  : homeStats.goalDifference
-              }
-              awayValue={
-                awayStats.goalDifference > 0
-                  ? `+${awayStats.goalDifference}`
-                  : awayStats.goalDifference
-              }
-              homeClass={
-                homeStats.goalDifference > 0
-                  ? "text-success"
-                  : homeStats.goalDifference < 0
-                    ? "text-error"
-                    : ""
-              }
-              awayClass={
-                awayStats.goalDifference > 0
-                  ? "text-success"
-                  : awayStats.goalDifference < 0
-                    ? "text-error"
-                    : ""
-              }
-            />
-          </div>
-
-          {/* Detailed Stats */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Detailed Stats</h4>
-
-            <StatRow
-              label="Clean Sheets"
-              homeValue={`${homeStats.cleanSheets} (${formatCleanSheetPercentage(homeStats)})`}
-              awayValue={`${awayStats.cleanSheets} (${formatCleanSheetPercentage(awayStats)})`}
-            />
-
-            <div className="grid grid-cols-7 gap-4 py-2 border-b border-base-200">
-              <div className="col-span-2 text-right">
-                <span
-                  className={`badge ${getFormBadgeClass(getFormRating(homeStats))}`}
-                >
-                  {getFormRating(homeStats)}
-                </span>
-              </div>
-              <div className="col-span-3 text-center font-medium text-base-content/60">
-                Form Rating
-              </div>
-              <div className="col-span-2 text-left">
-                <span
-                  className={`badge ${getFormBadgeClass(getFormRating(awayStats))}`}
-                >
-                  {getFormRating(awayStats)}
-                </span>
-              </div>
-            </div>
-
-            <StatRow
-              label="Avg Goals For"
-              homeValue={formatAverage(homeStats.averageGoalsFor)}
-              awayValue={formatAverage(awayStats.averageGoalsFor)}
-            />
-
-            <StatRow
-              label="Avg Goals Against"
-              homeValue={formatAverage(homeStats.averageGoalsAgainst)}
-              awayValue={formatAverage(awayStats.averageGoalsAgainst)}
-            />
-          </div>
+          <StatRow
+            label="Avg Goals Against"
+            homeValue={getAverageGoalsAgainst(homeStats)}
+            awayValue={getAverageGoalsAgainst(awayStats)}
+          />
+        </div>
 
         {/* Close Button */}
         <div className="mt-6 text-center">
