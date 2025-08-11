@@ -177,18 +177,18 @@ export function TeamComparison({
     homeClass?: string;
     awayClass?: string;
   }) => (
-    <div className="grid grid-cols-7 gap-4 py-2 border-b border-base-200">
-      <div className={`col-span-2 text-right ${homeClass}`}>{homeValue}</div>
-      <div className="col-span-3 text-center font-medium text-base-content/60">
+    <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
+      <div className={`col-span-1 sm:col-span-2 text-center sm:text-right text-sm sm:text-base ${homeClass}`}>{homeValue}</div>
+      <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
         {label}
       </div>
-      <div className={`col-span-2 text-left ${awayClass}`}>{awayValue}</div>
+      <div className={`col-span-1 sm:col-span-2 text-center sm:text-left text-sm sm:text-base ${awayClass}`}>{awayValue}</div>
     </div>
   );
 
   return (
-    <div className="modal modal-open">
-      <div className="modal-box max-w-2xl">
+    <div className="modal modal-open z-50">
+      <div className="modal-box max-w-2xl w-11/12 max-h-screen overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Team Comparison</h2>
@@ -197,18 +197,18 @@ export function TeamComparison({
           </button>
         </div>
 
-        {/* Team Names */}
-        <div className="grid grid-cols-7 gap-4 mb-6">
-          <div className="col-span-2 text-center">
-            <h3 className="text-xl font-bold">{homeStats.name}</h3>
-            <div className="text-sm text-base-content/60">Home</div>
+        {/* Team Names - Mobile Responsive */}
+        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
+          <div className="col-span-1 sm:col-span-2 text-center">
+            <h3 className="text-lg sm:text-xl font-bold break-words">{homeStats.name}</h3>
+            <div className="text-xs sm:text-sm text-base-content/60">Home</div>
           </div>
-          <div className="col-span-3 text-center">
-            <div className="text-2xl font-bold">VS</div>
+          <div className="col-span-1 sm:col-span-3 text-center flex items-center justify-center">
+            <div className="text-xl sm:text-2xl font-bold">VS</div>
           </div>
-          <div className="col-span-2 text-center">
-            <h3 className="text-xl font-bold">{awayStats.name}</h3>
-            <div className="text-sm text-base-content/60">Away</div>
+          <div className="col-span-1 sm:col-span-2 text-center">
+            <h3 className="text-lg sm:text-xl font-bold break-words">{awayStats.name}</h3>
+            <div className="text-xs sm:text-sm text-base-content/60">Away</div>
           </div>
         </div>
 
@@ -273,20 +273,20 @@ export function TeamComparison({
             awayValue={`${awayStats.cleansheets} (${formatCleanSheetPercentage(awayStats)})`}
           />
 
-          <div className="grid grid-cols-7 gap-4 py-2 border-b border-base-200">
-            <div className="col-span-2 text-right">
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
+            <div className="col-span-1 sm:col-span-2 text-center sm:text-right">
               <span
-                className={`badge ${getFormBadgeClass(getFormRating(homeStats))}`}
+                className={`badge badge-sm sm:badge-md ${getFormBadgeClass(getFormRating(homeStats))}`}
               >
                 {getFormRating(homeStats)}
               </span>
             </div>
-            <div className="col-span-3 text-center font-medium text-base-content/60">
+            <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
               Form Rating
             </div>
-            <div className="col-span-2 text-left">
+            <div className="col-span-1 sm:col-span-2 text-center sm:text-left">
               <span
-                className={`badge ${getFormBadgeClass(getFormRating(awayStats))}`}
+                className={`badge badge-sm sm:badge-md ${getFormBadgeClass(getFormRating(awayStats))}`}
               >
                 {getFormRating(awayStats)}
               </span>
