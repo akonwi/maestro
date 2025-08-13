@@ -88,6 +88,7 @@ export function Matches() {
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
     awayTeamId: number;
+    matchId: string;
   } | null>(null);
 
   const handleRecordBet = (matchId: string) => {
@@ -346,6 +347,7 @@ export function Matches() {
                               setComparisonMatch({
                                 homeTeamId: match.home_team_id,
                                 awayTeamId: match.away_team_id,
+                                matchId: match.id,
                               });
                             }}
                           >
@@ -479,6 +481,7 @@ export function Matches() {
         <TeamComparison
           homeTeamId={comparisonMatch.homeTeamId}
           awayTeamId={comparisonMatch.awayTeamId}
+          matchId={comparisonMatch.matchId}
           onClose={() => {
             setComparisonMatch(null);
           }}
