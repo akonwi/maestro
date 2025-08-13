@@ -1,5 +1,5 @@
 import { useState, useEffect } from "preact/hooks";
-import { formatMatchDate, partition } from "../utils/helpers";
+import { formatMatchDate, isEmpty, partition } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
 import { TeamComparison } from "../components/TeamComparison";
@@ -72,6 +72,13 @@ export function Matches() {
     fetchLeagueData();
   }, [selectedLeagueId]);
 
+  useEffect(() => {
+    // once leagues are loaded, select the first one
+    if (!isEmpty(leaguesData?.leagues)) {
+      setSelectedLeagueId(leaguesData!.leagues?.[0]!.id.toString());
+    }
+  }, [leaguesData?.leagues?.length]);
+
   const [showBetForm, setShowBetForm] = useState(false);
   const [selectedMatchForBet, setSelectedMatchForBet] = useState<string | null>(
     null,
@@ -127,25 +134,6 @@ export function Matches() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Matches</h1>
       </div>
-
-      {!selectedLeagueId && (
-        <div className="alert alert-info">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span>Please select a league to view matches.</span>
-        </div>
-      )}
 
       {apiError && (
         <div className="alert alert-error">
