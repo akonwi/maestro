@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { Outlet } from "react-router";
 
+import { AuthProvider } from "./contexts/AuthContext";
 import { Header } from "./components/Header";
 import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
@@ -46,4 +47,9 @@ const router = createBrowserRouter([
   },
 ]);
 
-render(<RouterProvider router={router} />, document.getElementById("app")!);
+render(
+  <AuthProvider>
+    <RouterProvider router={router} />
+  </AuthProvider>,
+  document.getElementById("app")!
+);

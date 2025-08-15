@@ -1,5 +1,6 @@
 import SyncControls from '../components/sync/SyncControls';
 import { ApiFootballSettings } from '../components/import/ApiFootballSettings';
+import { ApiTokenSettings } from '../components/settings/ApiTokenSettings';
 
 export function Settings() {
   return (
@@ -9,6 +10,11 @@ export function Settings() {
       </div>
 
       <div className="space-y-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-4">API Authentication</h2>
+          <ApiTokenSettings />
+        </div>
+
         <div>
           <h2 className="text-xl font-semibold mb-4">Match Import</h2>
           <ApiFootballSettings />
