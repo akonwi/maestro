@@ -70,9 +70,8 @@ export default function BetForm({
   };
 
   return (
-    <div className="modal modal-open">
-      <div className="modal-backdrop" onClick={onCancel}></div>
-      <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto relative">
+    <div className="modal modal-open" onClick={onCancel}>
+      <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg">Record New Bet</h3>
           <button
@@ -163,10 +162,10 @@ export default function BetForm({
 
         {/* Manual Form Section */}
         {(showManualForm || odds.length === 0) && (
-          <div className="mb-4">
-            {showManualForm && (
+          <>
+            {showManualForm && odds.length > 0 && (
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-semibold text-md">Manual Entry</h4>
+                <h4 className="font-semibold text-md">Bet Details</h4>
                 <button
                   type="button"
                   className="btn btn-sm btn-outline"
@@ -197,15 +196,15 @@ export default function BetForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Line (decimal format)</span>
+                    <span className="label-text">Line</span>
                   </label>
                   <input
                     type="number"
                     step="0.5"
-                    placeholder="e.g., -1.5, 2.5, 0"
+                    placeholder="-1.5, 2.5, 0"
                     className="input input-bordered"
                     value={formData.line}
                     onInput={(e) =>
@@ -219,12 +218,12 @@ export default function BetForm({
 
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Odds (American format, +100)</span>
+                    <span className="label-text">Odds</span>
                   </label>
                   <input
                     type="number"
                     step="1"
-                    placeholder="e.g., -150, +200"
+                    placeholder="-150, +200"
                     className="input input-bordered"
                     value={formData.odds}
                     onInput={(e) =>
@@ -236,10 +235,8 @@ export default function BetForm({
                     required
                   />
                 </div>
-              </div>
 
-              <div className="form-control w-full mb-6">
-                <div class="flex flex-col">
+                <div className="form-control">
                   <label className="label">
                     <span className="label-text">Amount ($)</span>
                   </label>
@@ -279,7 +276,7 @@ export default function BetForm({
                 </button>
               </div>
             </form>
-          </div>
+          </>
         )}
       </div>
     </div>
