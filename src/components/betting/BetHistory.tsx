@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { useBetOverview, type Team } from "../../hooks/use-bet-overview";
+import { useBetOverview } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
 
 export default function BetHistory() {
@@ -29,10 +29,10 @@ export default function BetHistory() {
   const getTeamNames = (matchId: number) => {
     const match = matchesData.find((m) => m.id === matchId);
     if (!match) return "Unknown Match";
-    
+
     const homeTeam = teamsData[match.home_team_id] || "Unknown";
     const awayTeam = teamsData[match.away_team_id] || "Unknown";
-    
+
     return `${homeTeam} vs ${awayTeam}`;
   };
 
@@ -105,7 +105,7 @@ export default function BetHistory() {
               </tr>
             </thead>
             <tbody>
-              {filteredBets.map((bet) => (
+              {filteredBets.reverse().map((bet) => (
                 <tr key={bet.id}>
                   <td>{bet.id}</td>
                   <td>

@@ -138,6 +138,7 @@ export function useUpdateBet() {
 }
 
 export function useDeleteBet() {
+	const queryClient = useQueryClient();
 	const { headers, isReadOnly } = useAuth();
 	return useMutation({
 		mutationFn: async (id: number) => {
@@ -151,6 +152,10 @@ export function useDeleteBet() {
 			if (!response.ok) {
 				throw new Error(`Failed to delete bet: ${response.status}`);
 			}
+		},
+		onSuccess: () => {
+			// todo: auto-normaliztion won't happen because server returns empty body
+			queryClient.invalidateQueries({ queryKey: ["bets"] });
 		},
 	});
 }
