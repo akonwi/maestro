@@ -4,9 +4,10 @@ import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
 import { TeamComparison } from "../components/TeamComparison";
 import { useLeagues } from "../hooks/use-leagues";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Match {
-  id: string;
+  id: number;
   date: string;
   timestamp: number;
   home_team_id: number;
@@ -32,6 +33,7 @@ export function Matches() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const { data: leaguesData } = useLeagues();
+  const { isReadOnly } = useAuth();
 
   // Fetch league data when selectedLeagueId changes
   useEffect(() => {
@@ -80,18 +82,18 @@ export function Matches() {
   }, [leaguesData?.leagues?.length]);
 
   const [showBetForm, setShowBetForm] = useState(false);
-  const [selectedMatchForBet, setSelectedMatchForBet] = useState<string | null>(
+  const [selectedMatchForBet, setSelectedMatchForBet] = useState<number | null>(
     null,
   );
-  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"played" | "pending">("pending");
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
     awayTeamId: number;
-    matchId: string;
+    matchId: number;
   } | null>(null);
 
-  const handleRecordBet = (matchId: string) => {
+  const handleRecordBet = (matchId: number) => {
     setSelectedMatchForBet(matchId);
     setShowBetForm(true);
   };
@@ -106,7 +108,7 @@ export function Matches() {
     setSelectedMatchForBet(null);
   };
 
-  const toggleMatchExpansion = (matchId: string) => {
+  const toggleMatchExpansion = (matchId: number) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
   };
 
@@ -218,7 +220,8 @@ export function Matches() {
                             {/* Desktop buttons - hidden on small screens */}
                             <div className="hidden sm:flex items-center gap-2">
                               <button
-                                className="btn btn-sm btn-primary"
+                                className={`btn btn-sm ${isReadOnly ? "btn-disabled" : "btn-primary"}`}
+                                disabled={isReadOnly}
                                 onClick={() => handleRecordBet(match.id)}
                               >
                                 Record Bet
@@ -257,8 +260,14 @@ export function Matches() {
                               >
                                 <li>
                                   <a
-                                    onClick={() => handleRecordBet(match.id)}
-                                    className="text-primary"
+                                    onClick={() =>
+                                      !isReadOnly && handleRecordBet(match.id)
+                                    }
+                                    className={
+                                      isReadOnly
+                                        ? "text-base-content/40"
+                                        : "text-primary"
+                                    }
                                   >
                                     <svg
                                       className="w-4 h-4"
@@ -363,7 +372,8 @@ export function Matches() {
                             {/* Desktop buttons - hidden on small screens */}
                             <div className="hidden sm:flex items-center gap-2">
                               <button
-                                className="btn btn-sm btn-primary"
+                                className={`btn btn-sm ${isReadOnly ? "btn-disabled" : "btn-primary"}`}
+                                disabled={isReadOnly}
                                 onClick={() => handleRecordBet(match.id)}
                               >
                                 Record Bet
@@ -402,8 +412,14 @@ export function Matches() {
                               >
                                 <li>
                                   <a
-                                    onClick={() => handleRecordBet(match.id)}
-                                    className="text-primary"
+                                    onClick={() =>
+                                      !isReadOnly && handleRecordBet(match.id)
+                                    }
+                                    className={
+                                      isReadOnly
+                                        ? "text-base-content/40"
+                                        : "text-primary"
+                                    }
                                   >
                                     <svg
                                       className="w-4 h-4"

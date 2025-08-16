@@ -2,7 +2,10 @@ import { render } from "preact";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { Outlet } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryNormalizerProvider } from "@normy/react-query";
 
+import { AuthProvider } from "./contexts/AuthContext";
 import { Header } from "./components/Header";
 import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
@@ -12,6 +15,8 @@ import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/_404";
 import "./style.css";
+
+const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
   {
@@ -46,4 +51,13 @@ const router = createBrowserRouter([
   },
 ]);
 
-render(<RouterProvider router={router} />, document.getElementById("app")!);
+render(
+  <QueryNormalizerProvider queryClient={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>
+  </QueryNormalizerProvider>,
+  document.getElementById("app")!,
+);
