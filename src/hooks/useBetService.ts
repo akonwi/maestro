@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 
 export interface Bet {
@@ -170,6 +170,24 @@ export function useBets(matchId?: number) {
 				},
 			});
 			return response.json();
+		},
+	});
+}
+
+export function useDeleteBet() {
+	const { headers, isReadOnly } = useAuth();
+	return useMutation({
+		mutationFn: async (id: number) => {
+			if (isReadOnly) return;
+
+			const response = await fetch(`${baseUrl}/bets/${id}`, {
+				method: "DELETE",
+				headers,
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to delete bet: ${response.status}`);
+			}
 		},
 	});
 }

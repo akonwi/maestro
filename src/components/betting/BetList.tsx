@@ -1,5 +1,11 @@
-import { useBets, useBetService, type Bet } from "../../hooks/useBetService";
+import {
+  useBets,
+  useBetService,
+  useDeleteBet,
+  type Bet,
+} from "../../hooks/useBetService";
 import { useAuth } from "../../contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface BetListProps {
   matchId: number;
@@ -7,23 +13,22 @@ interface BetListProps {
 }
 
 export default function BetList({ matchId, onEditBet }: BetListProps) {
-  const { updateBet, deleteBet } = useBetService();
+  const queryClient = useQueryClient();
+  const { updateBet } = useBetService();
   const { isReadOnly } = useAuth();
   const betsQuery = useBets(matchId);
+  const deleteBet = useDeleteBet();
 
   const handleDelete = async (betId: number) => {
-    if (isReadOnly) return;
-
-    // if (confirm("Are you sure you want to delete this bet?")) {
-    //   try {
-    //     await deleteBet(betId);
-    //     // Refresh bets list
-    //     const matchBets = await getBetsByMatch(matchId);
-    //     setBets(matchBets);
-    //   } catch (error) {
-    //     console.error("Failed to delete bet:", error);
-    //   }
-    // }
+    if (confirm("Are you sure you want to delete this bet?")) {
+      deleteBet.mutate(betId, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["bets", matchId],
+          });
+        },
+      });
+    }
   };
 
   const handleResultUpdate = async (
