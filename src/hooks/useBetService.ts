@@ -67,7 +67,7 @@ export function useBetService() {
 
 export function useBets(matchId?: number) {
 	return useQuery<{ bets: Bet[] }>({
-		queryKey: ["bets", matchId],
+		queryKey: ["bets", { matchId }],
 		queryFn: async () => {
 			const queryParams =
 				matchId != null
@@ -85,11 +85,12 @@ export function useBets(matchId?: number) {
 }
 
 export function useCreateBet() {
+	const queryClient = useQueryClient();
 	const { isReadOnly, headers } = useAuth();
-	return useMutation({
+	return useMutation<Bet, unknown, CreateBetData>({
 		mutationFn: async (betData: CreateBetData) => {
 			if (isReadOnly) {
-				return;
+				return null;
 			}
 
 			const response = await fetch(`${baseUrl}/bets`, {
@@ -103,6 +104,12 @@ export function useCreateBet() {
 			}
 
 			return response.json();
+		},
+		onSuccess: (data) => {
+			// invalidate because if there were no bets in the cache, normalization won't kick in
+			queryClient.invalidateQueries({
+				queryKey: ["bets", { matchId: data.match_id }],
+			});
 		},
 	});
 }
@@ -124,6 +131,7 @@ export function useUpdateBet() {
 			return response.json();
 		},
 		onSuccess: () => {
+			// todo: auto-normaliztion won't happen because server returns empty body
 			queryClient.invalidateQueries({ queryKey: ["bets"] });
 		},
 	});

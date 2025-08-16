@@ -23,8 +23,9 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
     if (confirm("Are you sure you want to delete this bet?")) {
       deleteBet.mutate(betId, {
         onSuccess: () => {
+          // invalidate bets for the match because an empty response can't be normalized
           queryClient.invalidateQueries({
-            queryKey: ["bets", matchId],
+            queryKey: ["bets", { matchId }],
           });
         },
       });

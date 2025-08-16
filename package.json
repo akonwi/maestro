@@ -17,6 +17,7 @@
     "tailwindcss": "^4.1.8"
   },
   "devDependencies": {
+    "@normy/react-query": "^0.20.0",
     "@preact/preset-vite": "^2.9.3",
     "@tanstack/react-query": "^5.85.3",
     "typescript": "^5.8.3",
