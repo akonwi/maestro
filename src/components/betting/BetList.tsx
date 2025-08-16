@@ -1,7 +1,7 @@
 import {
   useBets,
-  useBetService,
   useDeleteBet,
+  useUpdateBet,
   type Bet,
 } from "../../hooks/useBetService";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,10 +14,10 @@ interface BetListProps {
 
 export default function BetList({ matchId, onEditBet }: BetListProps) {
   const queryClient = useQueryClient();
-  const { updateBet } = useBetService();
   const { isReadOnly } = useAuth();
   const betsQuery = useBets(matchId);
   const deleteBet = useDeleteBet();
+  const updateBet = useUpdateBet();
 
   const handleDelete = async (betId: number) => {
     if (confirm("Are you sure you want to delete this bet?")) {
@@ -28,22 +28,6 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
           });
         },
       });
-    }
-  };
-
-  const handleResultUpdate = async (
-    betId: number,
-    result: "win" | "loss" | "push",
-  ) => {
-    if (isReadOnly) return;
-
-    try {
-      // await updateBet(betId, { result });
-      // Refresh bets list
-      // const matchBets = await getBetsByMatch(matchId);
-      // setBets(matchBets);
-    } catch (error) {
-      console.error("Failed to update bet result:", error);
     }
   };
 
@@ -160,17 +144,29 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
                       className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
                     >
                       <li>
-                        <a onClick={() => handleResultUpdate(bet.id, "win")}>
+                        <a
+                          onClick={() =>
+                            updateBet.mutate({ id: bet.id, result: "win" })
+                          }
+                        >
                           Win
                         </a>
                       </li>
                       <li>
-                        <a onClick={() => handleResultUpdate(bet.id, "loss")}>
+                        <a
+                          onClick={() =>
+                            updateBet.mutate({ id: bet.id, result: "loss" })
+                          }
+                        >
                           Loss
                         </a>
                       </li>
                       <li>
-                        <a onClick={() => handleResultUpdate(bet.id, "push")}>
+                        <a
+                          onClick={() =>
+                            updateBet.mutate({ id: bet.id, result: "push" })
+                          }
+                        >
                           Push
                         </a>
                       </li>

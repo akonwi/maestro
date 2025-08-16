@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 
 export interface Bet {
@@ -170,6 +170,28 @@ export function useBets(matchId?: number) {
 				},
 			});
 			return response.json();
+		},
+	});
+}
+
+export function useUpdateBet() {
+	const queryClient = useQueryClient();
+	const { headers, isReadOnly } = useAuth();
+	return useMutation({
+		mutationFn: async (input: { id: number; result: Bet["result"] }) => {
+			if (isReadOnly) return;
+
+			const { id, ...body } = input;
+			const response = await fetch(`${baseUrl}/bets/${id}`, {
+				method: "PATCH",
+				headers,
+				body: JSON.stringify(body),
+			});
+
+			return response.json();
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["bets"] });
 		},
 	});
 }
