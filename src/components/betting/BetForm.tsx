@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { useBetService, type CreateBetData } from "../../hooks/useBetService";
+import { useCreateBet, type CreateBetData } from "../../hooks/useBetService";
 import {
   useMatchOdds,
   type OddsMarket,
@@ -26,11 +26,11 @@ export default function BetForm({
     amount: 0,
   });
   const [errors, setErrors] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
 
   const { isReadOnly } = useAuth();
-  const { createBet } = useBetService();
+  const createBet = useCreateBet();
   const {
     odds,
     loading: oddsLoading,
@@ -55,7 +55,7 @@ export default function BetForm({
   const validateBet = (betData: CreateBetData): string[] => {
     const errors: string[] = [];
 
-    if (!betData.matchId) errors.push("Match is required");
+    if (!betData.match_id) errors.push("Match is required");
     if (!betData.name.trim()) errors.push("Description is required");
     if (betData.odds === 0) errors.push("Odds cannot be zero");
     if (betData.odds > -100 && betData.odds < 100 && betData.odds !== 0) {
@@ -68,10 +68,9 @@ export default function BetForm({
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
     const betData: CreateBetData = {
-      matchId,
+      match_id: matchId,
       name: formData.description,
       line: formData.line,
       odds: formData.odds,
@@ -81,20 +80,10 @@ export default function BetForm({
     const validationErrors = validateBet(betData);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
-      setIsSubmitting(false);
       return;
     }
 
-    try {
-      await createBet(betData);
-      onBetCreated();
-    } catch (error) {
-      setErrors([
-        error instanceof Error ? error.message : "Failed to create bet",
-      ]);
-    } finally {
-      setIsSubmitting(false);
-    }
+    createBet.mutate(betData, { onSuccess: onBetCreated });
   };
 
   if (isReadOnly) {
