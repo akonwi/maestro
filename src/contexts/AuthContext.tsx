@@ -28,7 +28,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     if (token) {
-      baseHeaders["x-api-token"] = token;
+      baseHeaders["X-Api-Token"] = token;
     }
 
     return baseHeaders;

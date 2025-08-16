@@ -7,7 +7,7 @@ import { useLeagues } from "../hooks/use-leagues";
 import { useAuth } from "../contexts/AuthContext";
 
 interface Match {
-  id: string;
+  id: number;
   date: string;
   timestamp: number;
   home_team_id: number;
@@ -82,18 +82,18 @@ export function Matches() {
   }, [leaguesData?.leagues?.length]);
 
   const [showBetForm, setShowBetForm] = useState(false);
-  const [selectedMatchForBet, setSelectedMatchForBet] = useState<string | null>(
+  const [selectedMatchForBet, setSelectedMatchForBet] = useState<number | null>(
     null,
   );
-  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"played" | "pending">("pending");
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
     awayTeamId: number;
-    matchId: string;
+    matchId: number;
   } | null>(null);
 
-  const handleRecordBet = (matchId: string) => {
+  const handleRecordBet = (matchId: number) => {
     setSelectedMatchForBet(matchId);
     setShowBetForm(true);
   };
@@ -108,7 +108,7 @@ export function Matches() {
     setSelectedMatchForBet(null);
   };
 
-  const toggleMatchExpansion = (matchId: string) => {
+  const toggleMatchExpansion = (matchId: number) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
   };
 

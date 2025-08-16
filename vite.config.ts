@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [preact(), tailwindcss()],
 	build: {
 		rollupOptions: {
-			external: ["dexie"],
+			external: ["dexie", "react-query"],
 		},
 	},
 });

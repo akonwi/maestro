@@ -2,6 +2,7 @@ import { render } from "preact";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { Outlet } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { Header } from "./components/Header";
@@ -13,6 +14,8 @@ import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
 import { NotFound } from "./pages/_404";
 import "./style.css";
+
+const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
   {
@@ -48,8 +51,10 @@ const router = createBrowserRouter([
 ]);
 
 render(
-  <AuthProvider>
-    <RouterProvider router={router} />
-  </AuthProvider>,
-  document.getElementById("app")!
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  </QueryClientProvider>,
+  document.getElementById("app")!,
 );

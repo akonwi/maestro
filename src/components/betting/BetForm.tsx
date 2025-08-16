@@ -1,10 +1,15 @@
 import { useState } from "preact/hooks";
-import { createBet, validateBet } from "../../services/betService";
-import { useMatchOdds, type OddsMarket, type OddsValue } from "../../hooks/use-match-odds";
+import { useBetService, type CreateBetData } from "../../hooks/useBetService";
+import {
+  useMatchOdds,
+  type OddsMarket,
+  type OddsValue,
+} from "../../hooks/use-match-odds";
 import { populateBetFromOdds } from "../../utils/betting";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface BetFormProps {
-  matchId: string;
+  matchId: number;
   onBetCreated: () => void;
   onCancel: () => void;
 }
@@ -23,8 +28,14 @@ export default function BetForm({
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
-  
-  const { odds, loading: oddsLoading, error: oddsError } = useMatchOdds(matchId);
+
+  const { isReadOnly } = useAuth();
+  const { createBet } = useBetService();
+  const {
+    odds,
+    loading: oddsLoading,
+    error: oddsError,
+  } = useMatchOdds(matchId);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({
@@ -41,13 +52,30 @@ export default function BetForm({
     setErrors([]);
   };
 
+  const validateBet = (betData: CreateBetData): string[] => {
+    const errors: string[] = [];
+
+    if (!betData.matchId) errors.push("Match is required");
+    if (!betData.name.trim()) errors.push("Description is required");
+    if (betData.odds === 0) errors.push("Odds cannot be zero");
+    if (betData.odds > -100 && betData.odds < 100 && betData.odds !== 0) {
+      errors.push("Odds must be +100 or greater, or -100 or less");
+    }
+    if (betData.amount <= 0) errors.push("Amount must be positive");
+
+    return errors;
+  };
+
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const betData = {
+    const betData: CreateBetData = {
       matchId,
-      ...formData,
+      name: formData.description,
+      line: formData.line,
+      odds: formData.odds,
+      amount: formData.amount,
     };
 
     const validationErrors = validateBet(betData);
@@ -69,9 +97,49 @@ export default function BetForm({
     }
   };
 
+  if (isReadOnly) {
+    return (
+      <div className="modal modal-open" onClick={onCancel}>
+        <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-lg">API Token Required</h3>
+            <button
+              className="btn btn-sm btn-circle btn-ghost"
+              onClick={onCancel}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="text-center py-8">
+            <div className="text-6xl mb-4">🔒</div>
+            <h4 className="text-lg font-medium mb-2">
+              Betting Features Locked
+            </h4>
+            <p className="text-base-content/60 mb-6">
+              Please configure your API token in Settings to record and manage
+              bets.
+            </p>
+            <div className="space-x-2">
+              <button className="btn btn-ghost" onClick={onCancel}>
+                Cancel
+              </button>
+              <a href="/maestro/settings" className="btn btn-primary">
+                Go to Settings
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="modal modal-open" onClick={onCancel}>
-      <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-box w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg">Record New Bet</h3>
           <button
@@ -102,7 +170,9 @@ export default function BetForm({
         {!showManualForm && (
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h4 className="font-semibold text-md">Select from Available Odds</h4>
+              <h4 className="font-semibold text-md">
+                Select from Available Odds
+              </h4>
               <button
                 type="button"
                 className="btn btn-sm btn-outline"
@@ -111,15 +181,19 @@ export default function BetForm({
                 Manual Entry
               </button>
             </div>
-            
+
             {oddsLoading ? (
               <div className="text-center py-8">
                 <span className="loading loading-spinner loading-md"></span>
-                <p className="text-sm text-base-content/60 mt-2">Loading odds...</p>
+                <p className="text-sm text-base-content/60 mt-2">
+                  Loading odds...
+                </p>
               </div>
             ) : odds.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-base-content/60">No odds available for this match</p>
+                <p className="text-base-content/60">
+                  No odds available for this match
+                </p>
                 <button
                   type="button"
                   className="btn btn-sm btn-primary mt-2"
@@ -131,7 +205,10 @@ export default function BetForm({
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {odds.map((market, marketIndex) => (
-                  <div key={marketIndex} className="collapse collapse-arrow bg-base-200">
+                  <div
+                    key={marketIndex}
+                    className="collapse collapse-arrow bg-base-200"
+                  >
                     <input type="checkbox" />
                     <div className="collapse-title text-sm font-medium">
                       {market.name}
@@ -147,7 +224,8 @@ export default function BetForm({
                           >
                             <span className="truncate">{value.name}</span>
                             <span className="font-mono text-xs">
-                              {value.odd > 0 ? '+' : ''}{value.odd}
+                              {value.odd > 0 ? "+" : ""}
+                              {value.odd}
                             </span>
                           </button>
                         ))}
@@ -161,7 +239,7 @@ export default function BetForm({
         )}
 
         {/* Manual Form Section */}
-        {(showManualForm || odds.length === 0) && (
+        {!oddsLoading && (showManualForm || odds.length === 0) && (
           <>
             {showManualForm && odds.length > 0 && (
               <div className="flex justify-between items-center mb-4">
