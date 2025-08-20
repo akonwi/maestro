@@ -1,6 +1,4 @@
-import SyncControls from '../components/sync/SyncControls';
-import { ApiFootballSettings } from '../components/import/ApiFootballSettings';
-import { ApiTokenSettings } from '../components/settings/ApiTokenSettings';
+import { ApiTokenSettings } from "../components/settings/ApiTokenSettings";
 
 export function Settings() {
   return (
@@ -10,21 +8,8 @@ export function Settings() {
       </div>
 
       <div className="space-y-8">
-        <div>
-          <h2 className="text-xl font-semibold mb-4">API Authentication</h2>
-          <ApiTokenSettings />
-        </div>
+        <ApiTokenSettings />
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Match Import</h2>
-          <ApiFootballSettings />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Data Sync</h2>
-          <SyncControls />
-        </div>
-        
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">About</h2>
           <div className="card bg-base-100 border border-base-300">
@@ -34,18 +19,9 @@ export function Settings() {
                 Soccer statistics and betting tracker
               </p>
               <div className="mt-2 text-xs text-base-content/50">
-                Version 1.0.0
+                {/* todo: use git sha */}
+                Version 0.1.0
               </div>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 border border-base-300">
-            <div className="card-body p-4">
-              <h3 className="font-medium">Data Storage</h3>
-              <p className="text-sm text-base-content/60">
-                All data is stored locally in your browser using IndexedDB. 
-                Use sync to back up and share data across devices.
-              </p>
             </div>
           </div>
         </div>
