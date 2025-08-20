@@ -1,6 +1,8 @@
 import { useState } from "preact/hooks";
 import { useBetOverview } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
+import { useDeleteBet, useUpdateBet } from "../../hooks/useBetService";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function BetHistory({
   query,
@@ -12,6 +14,9 @@ export default function BetHistory({
   );
 
   const { data, isLoading, error } = query;
+  const { isReadOnly } = useAuth();
+  const deleteBet = useDeleteBet();
+  const updateBet = useUpdateBet();
 
   const betsData = data?.overview?.bets || [];
   const teamsData = data?.teams || {};
@@ -22,6 +27,12 @@ export default function BetHistory({
     if (filter === "pending") return bet.result === "pending";
     return bet.result === filter;
   });
+
+  const handleDelete = async (betId: number) => {
+    if (confirm("Are you sure you want to delete this bet?")) {
+      deleteBet.mutate(betId);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -144,7 +155,87 @@ export default function BetHistory({
                     )}
                   </td>
                   <td>
-                    <span className="text-gray-400">-</span>
+                    <div className="flex justify-center">
+                      {!isReadOnly ? (
+                        <div className="dropdown dropdown-end">
+                          <label tabIndex={0} className="btn btn-xs btn-ghost">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z"
+                              />
+                            </svg>
+                          </label>
+                          <ul
+                            tabIndex={0}
+                            className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
+                          >
+                            {/* Set Result options - only for pending bets */}
+                            {bet.result === "pending" && (
+                              <>
+                                <li className="menu-title">
+                                  <span>Set Result</span>
+                                </li>
+                                <li>
+                                  <a
+                                    onClick={() =>
+                                      updateBet.mutate({
+                                        id: bet.id,
+                                        result: "win",
+                                      })
+                                    }
+                                  >
+                                    Win
+                                  </a>
+                                </li>
+                                <li>
+                                  <a
+                                    onClick={() =>
+                                      updateBet.mutate({
+                                        id: bet.id,
+                                        result: "loss",
+                                      })
+                                    }
+                                  >
+                                    Loss
+                                  </a>
+                                </li>
+                                <li>
+                                  <a
+                                    onClick={() =>
+                                      updateBet.mutate({
+                                        id: bet.id,
+                                        result: "push",
+                                      })
+                                    }
+                                  >
+                                    Push
+                                  </a>
+                                </li>
+                              </>
+                            )}
+                            {/* Always available actions */}
+                            <li>
+                              <a
+                                onClick={() => handleDelete(bet.id)}
+                                className="text-error"
+                              >
+                                Delete
+                              </a>
+                            </li>
+                          </ul>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

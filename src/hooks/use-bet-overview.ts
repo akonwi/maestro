@@ -8,7 +8,7 @@ export interface Bet {
 	amount: number;
 	line: number;
 	odds: number;
-	result: string; // "win" | "lose" | "pending"
+	result: "win" | "lose" | "pending";
 }
 
 export interface Team {
