@@ -1,25 +1,12 @@
 import { useState } from "preact/hooks";
 import { Team } from "../types";
 import { db } from "../utils/database";
-import { useLiveQuery } from "dexie-react-hooks";
 import { isEmpty } from "../utils/helpers";
 import { Link } from "react-router";
 
 export function Teams() {
   const [searchTerm, setSearchTerm] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
-
-  const teams = useLiveQuery(() => {
-    if (searchTerm) {
-      return db.teams
-        .orderBy("name")
-        .filter((team) =>
-          team.name.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
-        .toArray();
-    }
-    return db.teams.orderBy("name").toArray();
-  }, [searchTerm]);
 
   const handleAddTeam = async (e: Event) => {
     e.preventDefault();

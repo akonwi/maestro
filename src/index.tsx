@@ -7,9 +7,7 @@ import { QueryNormalizerProvider } from "@normy/react-query";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { Header } from "./components/Header";
-import { TeamDetail } from "./pages/TeamDetail";
 import { Matches } from "./pages/Matches";
-import { MatchDetail } from "./pages/MatchDetail";
 import { Leagues } from "./pages/Leagues";
 import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
@@ -36,12 +34,12 @@ const router = createBrowserRouter([
         },
         children: [
           { index: true, Component: BettingPerformance },
-          {
-            path: "/maestro/team/:teamId",
-            Component: TeamDetail,
-          },
+          // {
+          //   path: "/maestro/team/:teamId",
+          //   Component: TeamDetail,
+          // },
           { path: "/maestro/matches", Component: Matches },
-          { path: "/maestro/match/:matchId", Component: MatchDetail },
+          // { path: "/maestro/match/:matchId", Component: MatchDetail },
           { path: "/maestro/leagues", Component: Leagues },
           { path: "/maestro/betting", Component: BettingPerformance },
           { path: "/maestro/settings", Component: Settings },

@@ -9,7 +9,6 @@ import {
   getFormRating,
 } from "../utils/statistics";
 import { formatMatchDate } from "../utils/helpers";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Link, useParams } from "react-router";
 
 export function TeamDetail() {
@@ -18,19 +17,6 @@ export function TeamDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const data = useLiveQuery(async () => {
-    const [team, homeMatches, awayMatches, allTeams] = await Promise.all([
-      db.teams.get(teamId),
-      db.matches.where("homeId").equals(teamId).toArray(),
-      db.matches.where("awayId").equals(teamId).toArray(),
-      db.teams.toArray(),
-    ]);
-    const allMatches = [...homeMatches, ...awayMatches].sort((a, b) =>
-      b.date.localeCompare(a.date),
-    );
-    return { team, matches: allMatches, teams: allTeams };
-  }, [teamId]);
 
   const stats = useMemo(() => {
     if (data?.matches == null) return null;
