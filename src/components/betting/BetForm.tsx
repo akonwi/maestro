@@ -7,6 +7,7 @@ import {
 } from "../../hooks/use-match-odds";
 import { populateBetFromOdds } from "../../utils/betting";
 import { useAuth } from "../../contexts/AuthContext";
+import { MatchPredictions } from "./MatchPredictions";
 
 interface BetFormProps {
   matchId: number;
@@ -126,7 +127,7 @@ export default function BetForm({
   return (
     <div className="modal modal-open" onClick={onCancel}>
       <div
-        className="modal-box w-11/12 max-w-5xl max-h-[90vh] overflow-y-auto"
+        className="modal-box w-11/12 max-w-5xl max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
@@ -154,6 +155,9 @@ export default function BetForm({
             <span>Could not load betting odds: {oddsError}</span>
           </div>
         )}
+
+        {/* Match Predictions Section */}
+        <MatchPredictions matchId={matchId} />
 
         {/* Odds Selection Section */}
         {!showManualForm && (
