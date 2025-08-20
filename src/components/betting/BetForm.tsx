@@ -32,8 +32,8 @@ export default function BetForm({
   const { isReadOnly } = useAuth();
   const createBet = useCreateBet();
   const {
-    odds,
-    loading: oddsLoading,
+    data: odds,
+    isLoading: oddsLoading,
     error: oddsError,
   } = useMatchOdds(matchId);
 
@@ -178,7 +178,7 @@ export default function BetForm({
                   Loading odds...
                 </p>
               </div>
-            ) : odds.length === 0 ? (
+            ) : odds?.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-base-content/60">
                   No odds available for this match
@@ -193,7 +193,7 @@ export default function BetForm({
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {odds.map((market, marketIndex) => (
+                {odds?.map((market, marketIndex) => (
                   <div
                     key={marketIndex}
                     className="collapse collapse-arrow bg-base-200"
@@ -228,9 +228,9 @@ export default function BetForm({
         )}
 
         {/* Manual Form Section */}
-        {!oddsLoading && (showManualForm || odds.length === 0) && (
+        {!oddsLoading && (showManualForm || odds?.length === 0) && (
           <>
-            {showManualForm && odds.length > 0 && (
+            {showManualForm && odds?.length! > 0 && (
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-semibold text-md">Bet Details</h4>
                 <button
