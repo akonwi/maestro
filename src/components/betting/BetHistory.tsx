@@ -2,12 +2,16 @@ import { useState } from "preact/hooks";
 import { useBetOverview } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
 
-export default function BetHistory() {
+export default function BetHistory({
+  query,
+}: {
+  query: ReturnType<typeof useBetOverview>;
+}) {
   const [filter, setFilter] = useState<"all" | "win" | "lose" | "pending">(
     "all",
   );
 
-  const { data, loading, error } = useBetOverview();
+  const { data, isLoading, error } = query;
 
   const betsData = data?.overview?.bets || [];
   const teamsData = data?.teams || {};
@@ -49,7 +53,7 @@ export default function BetHistory() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center p-8">
         <div className="loading loading-spinner loading-lg"></div>

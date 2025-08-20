@@ -1,6 +1,7 @@
-import { useState, useEffect } from "preact/hooks";
+import { useQuery } from "@tanstack/react-query";
+import { Match } from "../types";
 
-export interface ApiBet {
+export interface Bet {
 	id: number;
 	match_id: number;
 	name: string;
@@ -18,7 +19,7 @@ export interface Team {
 }
 
 export interface BetOverview {
-	bets: ApiBet[];
+	bets: Bet[];
 	num_pending: number;
 	total_wagered: number;
 	win_rate: number;
@@ -31,18 +32,13 @@ export interface BetOverview {
 export interface BetOverviewResponse {
 	overview: BetOverview;
 	teams: Record<string, Team>;
+	matches: Match[];
 }
 
 export function useBetOverview() {
-	const [data, setData] = useState<BetOverviewResponse | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	const fetchBetOverview = async () => {
-		try {
-			setLoading(true);
-			setError(null);
-
+	return useQuery({
+		queryKey: ["bets"],
+		queryFn: async function (): Promise<BetOverviewResponse> {
 			const response = await fetch(
 				`${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
 			);
@@ -51,20 +47,7 @@ export function useBetOverview() {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const result = await response.json();
-			setData(result);
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Failed to fetch betting overview",
-			);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		fetchBetOverview();
-	}, []);
-
-	return { data, loading, error, refetch: fetchBetOverview };
+			return response.json();
+		},
+	});
 }

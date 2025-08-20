@@ -1,38 +1,37 @@
 export interface League {
-  id: string;
-  name: string;
+	id: string;
+	name: string;
 }
 
 export interface Team {
-  id: string;
-  name: string;
-  leagueId: string;
-  createdAt: Date;
+	id: string;
+	name: string;
+	leagueId: string;
+	createdAt: Date;
 }
 
 export interface Match {
-  id: string;
-  date: string;
-  homeId: string;
-  awayId: string;
-  homeScore: number | null; // null for upcoming matches
-  awayScore: number | null; // null for upcoming matches
-  leagueId: string;
-  createdAt: Date;
-  status?: 'scheduled' | 'completed'; // optional field for match status
+	id: number;
+	date: string;
+	home_team_id: number;
+	away_team_id: number;
+	home_goals: number;
+	away_goals: number;
+	league_id: number;
+	status: "NS" | "FT" | string;
 }
 
 export interface TeamStatistics {
-  teamId: string;
-  gamesPlayed: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-  cleanSheets: number;
-  cleanSheetRatio: number;
-  averageGoalsFor: number;
-  averageGoalsAgainst: number;
+	teamId: number;
+	gamesPlayed: number;
+	wins: number;
+	losses: number;
+	draws: number;
+	goalsFor: number;
+	goalsAgainst: number;
+	goalDifference: number;
+	cleanSheets: number;
+	cleanSheetRatio: number;
+	averageGoalsFor: number;
+	averageGoalsAgainst: number;
 }

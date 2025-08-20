@@ -1,13 +1,17 @@
-import { useBetOverview } from '../../hooks/use-bet-overview';
+import { useBetOverview } from "../../hooks/use-bet-overview";
 
-export default function BettingStatsComponent() {
-  const { data, loading, error } = useBetOverview();
+export default function BettingStatsComponent({
+  query,
+}: {
+  query: ReturnType<typeof useBetOverview>;
+}) {
+  const { data, isLoading, error } = query;
   const stats = data?.overview;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
     }).format(amount);
   };
 
@@ -15,7 +19,7 @@ export default function BettingStatsComponent() {
     return `${value.toFixed(1)}%`;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center p-8">
         <div className="loading loading-spinner loading-lg"></div>
@@ -55,23 +59,29 @@ export default function BettingStatsComponent() {
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Wagered</div>
-        <div className="stat-value text-secondary">{formatCurrency(stats.total_wagered)}</div>
+        <div className="stat-value text-secondary">
+          {formatCurrency(stats.total_wagered)}
+        </div>
         <div className="stat-desc">Amount bet</div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Net Profit</div>
-        <div className={`stat-value ${stats.net_profit >= 0 ? 'text-success' : 'text-error'}`}>
+        <div
+          className={`stat-value ${stats.net_profit >= 0 ? "text-success" : "text-error"}`}
+        >
           {formatCurrency(stats.net_profit)}
         </div>
         <div className="stat-desc">
-          {stats.net_profit >= 0 ? 'Profit' : 'Loss'}
+          {stats.net_profit >= 0 ? "Profit" : "Loss"}
         </div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">ROI</div>
-        <div className={`stat-value ${stats.roi >= 0 ? 'text-success' : 'text-error'}`}>
+        <div
+          className={`stat-value ${stats.roi >= 0 ? "text-success" : "text-error"}`}
+        >
           {formatPercentage(stats.roi)}
         </div>
         <div className="stat-desc">Return on investment</div>
@@ -79,7 +89,9 @@ export default function BettingStatsComponent() {
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Win Rate</div>
-        <div className="stat-value text-accent">{formatPercentage(stats.win_rate)}</div>
+        <div className="stat-value text-accent">
+          {formatPercentage(stats.win_rate)}
+        </div>
         <div className="stat-desc">
           {stats.bets.length - stats.num_pending} settled bets
         </div>
@@ -87,13 +99,17 @@ export default function BettingStatsComponent() {
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Winnings</div>
-        <div className="stat-value text-success">{formatCurrency(stats.gross_payout)}</div>
+        <div className="stat-value text-success">
+          {formatCurrency(stats.gross_payout)}
+        </div>
         <div className="stat-desc">Gross winnings</div>
       </div>
 
       <div className="stat bg-base-100 rounded-box border border-base-300">
         <div className="stat-title">Total Losses</div>
-        <div className="stat-value text-error">{formatCurrency(stats.gross_loss)}</div>
+        <div className="stat-value text-error">
+          {formatCurrency(stats.gross_loss)}
+        </div>
         <div className="stat-desc">Amount lost</div>
       </div>
 

@@ -1,7 +1,9 @@
-import BettingStats from '../components/betting/BettingStats';
-import BetHistory from '../components/betting/BetHistory';
+import BettingStats from "../components/betting/BettingStats";
+import BetHistory from "../components/betting/BetHistory";
+import { useBetOverview } from "../hooks/use-bet-overview";
 
 export function BettingPerformance() {
+  const query = useBetOverview();
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -11,12 +13,12 @@ export function BettingPerformance() {
       <div className="space-y-8">
         <section>
           <h2 className="text-xl font-semibold mb-4">Overview</h2>
-          <BettingStats />
+          <BettingStats query={query} />
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-          <BetHistory />
+          <BetHistory query={query} />
         </section>
       </div>
     </div>

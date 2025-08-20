@@ -1,8 +1,11 @@
-import { Match, TeamStatistics } from '../types';
+import { Match, TeamStatistics } from "../types";
 
-export function calculateTeamStatistics(teamId: string, matches: Match[]): TeamStatistics {
-	const teamMatches = matches.filter(match => 
-		match.homeId === teamId || match.awayId === teamId
+export function calculateTeamStatistics(
+	teamId: number,
+	matches: Match[],
+): TeamStatistics {
+	const teamMatches = matches.filter(
+		(match) => match.home_team_id === teamId || match.away_team_id === teamId,
 	);
 
 	if (teamMatches.length === 0) {
@@ -18,7 +21,7 @@ export function calculateTeamStatistics(teamId: string, matches: Match[]): TeamS
 			cleanSheets: 0,
 			cleanSheetRatio: 0,
 			averageGoalsFor: 0,
-			averageGoalsAgainst: 0
+			averageGoalsAgainst: 0,
 		};
 	}
 
@@ -29,15 +32,15 @@ export function calculateTeamStatistics(teamId: string, matches: Match[]): TeamS
 	let goalsAgainst = 0;
 	let cleanSheets = 0;
 
-	teamMatches.forEach(match => {
+	teamMatches.forEach((match) => {
 		// Skip matches without scores (upcoming matches)
-		if (match.homeScore === null || match.awayScore === null) {
+		if (match.home_goals === null || match.away_goals === null) {
 			return;
 		}
 
-		const isHome = match.homeId === teamId;
-		const teamScore = isHome ? match.homeScore : match.awayScore;
-		const opponentScore = isHome ? match.awayScore : match.homeScore;
+		const isHome = match.home_team_id === teamId;
+		const teamScore = isHome ? match.home_goals : match.away_goals;
+		const opponentScore = isHome ? match.away_goals : match.home_goals;
 
 		goalsFor += teamScore;
 		goalsAgainst += opponentScore;
@@ -73,7 +76,7 @@ export function calculateTeamStatistics(teamId: string, matches: Match[]): TeamS
 		cleanSheets,
 		cleanSheetRatio,
 		averageGoalsFor,
-		averageGoalsAgainst
+		averageGoalsAgainst,
 	};
 }
 
@@ -86,7 +89,7 @@ export function formatGoalRatio(stats: TeamStatistics): string {
 }
 
 export function formatCleanSheetPercentage(stats: TeamStatistics): string {
-	if (stats.gamesPlayed === 0) return '0%';
+	if (stats.gamesPlayed === 0) return "0%";
 	return `${Math.round(stats.cleanSheetRatio * 100)}%`;
 }
 
@@ -94,13 +97,15 @@ export function formatAverage(value: number): string {
 	return value.toFixed(1);
 }
 
-export function getFormRating(stats: TeamStatistics): 'excellent' | 'good' | 'average' | 'poor' {
-	if (stats.gamesPlayed === 0) return 'average';
-	
+export function getFormRating(
+	stats: TeamStatistics,
+): "excellent" | "good" | "average" | "poor" {
+	if (stats.gamesPlayed === 0) return "average";
+
 	const winPercentage = stats.wins / stats.gamesPlayed;
-	
-	if (winPercentage >= 0.75) return 'excellent';
-	if (winPercentage >= 0.6) return 'good';
-	if (winPercentage >= 0.4) return 'average';
-	return 'poor';
+
+	if (winPercentage >= 0.75) return "excellent";
+	if (winPercentage >= 0.6) return "good";
+	if (winPercentage >= 0.4) return "average";
+	return "poor";
 }
