@@ -3,7 +3,7 @@ import { useState, useEffect } from "preact/hooks";
 interface TeamComparisonProps {
   homeTeamId: number;
   awayTeamId: number;
-  matchId: string;
+  matchId: number;
   onClose: () => void;
 }
 
@@ -313,9 +313,11 @@ export function TeamComparison({
               <div className="col-span-1 sm:col-span-2 text-center sm:text-right text-xs sm:text-sm">
                 {(() => {
                   const avgGoals = parseFloat(getAverageGoalsFor(homeStats));
-                  const predGoals = Math.floor(Math.abs(parseFloat(predictions.home_goals)));
+                  const predGoals = Math.floor(
+                    Math.abs(parseFloat(predictions.home_goals)),
+                  );
                   const diff = predGoals - avgGoals;
-                  return `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`;
+                  return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
                 })()}
               </div>
               <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
@@ -324,9 +326,11 @@ export function TeamComparison({
               <div className="col-span-1 sm:col-span-2 text-center sm:text-left text-xs sm:text-sm">
                 {(() => {
                   const avgGoals = parseFloat(getAverageGoalsFor(awayStats));
-                  const predGoals = Math.floor(Math.abs(parseFloat(predictions.away_goals)));
+                  const predGoals = Math.floor(
+                    Math.abs(parseFloat(predictions.away_goals)),
+                  );
                   const diff = predGoals - avgGoals;
-                  return `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`;
+                  return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
                 })()}
               </div>
             </div>

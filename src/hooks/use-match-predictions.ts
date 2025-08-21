@@ -4,7 +4,7 @@ export interface PredictionData {
   winner: {
     id: number;
     name: string;
-    comment: string;
+    comment: string | null;
   };
   win_or_draw: boolean;
   home_goals: string;

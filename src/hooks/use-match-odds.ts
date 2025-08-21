@@ -10,8 +10,9 @@ export interface OddsMarket {
 	values: OddsValue[];
 }
 
-export function useMatchOdds(matchId: number) {
+export function useMatchOdds(matchId: number | null) {
 	return useQuery({
+		enabled: matchId != null,
 		queryKey: ["odds", { matchId }],
 		queryFn: async function (): Promise<OddsMarket[]> {
 			const response = await fetch(

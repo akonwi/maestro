@@ -62,9 +62,11 @@ export function MatchPredictions({ matchId }: MatchPredictionsProps) {
               <div className="font-semibold text-primary">
                 {predictions.winner.name}
               </div>
-              <div className="text-xs text-base-content/60 mt-1">
-                {predictions.winner.comment}
-              </div>
+              {predictions.winner.comment && (
+                <div className="text-xs text-base-content/60 mt-1">
+                  {predictions.winner.comment}
+                </div>
+              )}
             </div>
 
             {/* Score Prediction */}

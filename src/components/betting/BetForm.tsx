@@ -1,7 +1,6 @@
 import { useState } from "preact/hooks";
 import { useCreateBet, type CreateBetData } from "../../hooks/useBetService";
 import {
-  useMatchOdds,
   type OddsMarket,
   type OddsValue,
 } from "../../hooks/use-match-odds";
@@ -11,12 +10,18 @@ import { MatchPredictions } from "./MatchPredictions";
 
 interface BetFormProps {
   matchId: number;
+  odds?: OddsMarket[];
+  oddsLoading: boolean;
+  oddsError: Error | null;
   onBetCreated: () => void;
   onCancel: () => void;
 }
 
 export default function BetForm({
   matchId,
+  odds,
+  oddsLoading,
+  oddsError,
   onBetCreated,
   onCancel,
 }: BetFormProps) {
@@ -32,11 +37,6 @@ export default function BetForm({
 
   const { isReadOnly } = useAuth();
   const createBet = useCreateBet();
-  const {
-    data: odds,
-    isLoading: oddsLoading,
-    error: oddsError,
-  } = useMatchOdds(matchId);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({

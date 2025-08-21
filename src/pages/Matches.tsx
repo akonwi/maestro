@@ -5,6 +5,7 @@ import BetList from "../components/betting/BetList";
 import { TeamComparison } from "../components/TeamComparison";
 import { useLeagues } from "../hooks/use-leagues";
 import { useAuth } from "../contexts/AuthContext";
+import { useMatchOdds } from "../hooks/use-match-odds";
 
 interface Match {
   id: number;
@@ -86,6 +87,9 @@ export function Matches() {
     null,
   );
   const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null);
+
+  // Fetch odds for selected match (only when bet form is open)
+  const oddsQuery = useMatchOdds(selectedMatchForBet);
   const [activeTab, setActiveTab] = useState<"played" | "pending">("pending");
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
@@ -488,6 +492,9 @@ export function Matches() {
       {showBetForm && selectedMatchForBet && (
         <BetForm
           matchId={selectedMatchForBet}
+          odds={oddsQuery.data}
+          oddsLoading={oddsQuery.isLoading}
+          oddsError={oddsQuery.error}
           onBetCreated={handleBetCreated}
           onCancel={handleCancelBet}
         />
