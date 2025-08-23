@@ -21,7 +21,6 @@ interface Match {
 }
 
 interface Team {
-  league_id: number;
   id: number;
   name: string;
   code: string | null;
