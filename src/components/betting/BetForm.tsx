@@ -1,9 +1,6 @@
 import { useState } from "preact/hooks";
-import { useCreateBet, type CreateBetData } from "../../hooks/useBetService";
-import {
-  type OddsMarket,
-  type OddsValue,
-} from "../../hooks/use-match-odds";
+import { useCreateBet, type CreateBetData } from "../../hooks/use-bets";
+import { type OddsMarket, type OddsValue } from "../../hooks/use-match-odds";
 import { populateBetFromOdds } from "../../utils/betting";
 import { useAuth } from "../../contexts/AuthContext";
 import { MatchPredictions } from "./MatchPredictions";

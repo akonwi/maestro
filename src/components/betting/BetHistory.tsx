@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import { useBetOverview } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
-import { useDeleteBet, useUpdateBet } from "../../hooks/useBetService";
+import { useDeleteBet, useUpdateBet } from "../../hooks/use-bets";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function BetHistory({

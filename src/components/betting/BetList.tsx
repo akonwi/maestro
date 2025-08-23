@@ -3,7 +3,7 @@ import {
   useDeleteBet,
   useUpdateBet,
   type Bet,
-} from "../../hooks/useBetService";
+} from "../../hooks/use-bets";
 import { useAuth } from "../../contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 

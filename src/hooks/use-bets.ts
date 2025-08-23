@@ -40,31 +40,6 @@ export interface UpdateBetData {
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export function useBetService() {
-	const { headers, isReadOnly } = useAuth();
-	const baseUrl = import.meta.env.VITE_API_BASE_URL;
-
-	const getBettingStats = async (): Promise<BettingStats> => {
-		const response = await fetch(`${baseUrl}/bets/stats`, {
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch betting stats: ${response.status}`);
-		}
-
-		return response.json();
-	};
-
-	return {
-		getBettingStats,
-		isReadOnly,
-	};
-}
-
 export function useBets(matchId?: number) {
 	return useQuery<{ bets: Bet[] }>({
 		queryKey: ["bets", { matchId }],
