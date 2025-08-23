@@ -115,7 +115,7 @@ export function TeamComparison({
   };
 
   const formatRecord = (stats: TeamStats) => {
-    return `${stats.wins}-${stats.losses}-${stats.draws}`;
+    return `${stats.wins}-${stats.draws}-${stats.losses}`;
   };
 
   const formatGoalRatio = (stats: TeamStats) => {
@@ -321,7 +321,7 @@ export function TeamComparison({
           <h4 className="text-lg font-semibold mb-4">Team Statistics</h4>
 
           <StatRow
-            label="W-L-D Record"
+            label="W-D-L Record"
             homeValue={formatRecord(homeStats)}
             awayValue={formatRecord(awayStats)}
           />
