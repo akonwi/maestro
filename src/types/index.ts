@@ -6,7 +6,6 @@ export interface League {
 export interface Team {
 	id: string;
 	name: string;
-	leagueId: string;
 	createdAt: Date;
 }
 
@@ -19,6 +18,8 @@ export interface Match {
 	away_goals: number;
 	league_id: number;
 	status: "NS" | "FT" | string;
+	timestamp: number;
+	winner_id: number | null;
 }
 
 export interface TeamStatistics {
