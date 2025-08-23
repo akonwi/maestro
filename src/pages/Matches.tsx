@@ -1,4 +1,5 @@
 import { useState, useEffect } from "preact/hooks";
+import { Suspense } from "preact/compat";
 import { formatMatchDate, isEmpty, partition } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
@@ -442,14 +443,16 @@ export function Matches() {
       <Hide when={comparisonMatch == null}>
         {/*defer evaluation because a null comparisonMatch will cause type errors*/}
         {() => (
-          <TeamComparison
-            homeTeamId={comparisonMatch!.homeTeamId}
-            awayTeamId={comparisonMatch!.awayTeamId}
-            matchId={comparisonMatch!.matchId}
-            onClose={() => {
-              setComparisonMatch(null);
-            }}
-          />
+          <Suspense fallback={<div>Loading...</div>}>
+            <TeamComparison
+              homeTeamId={comparisonMatch!.homeTeamId}
+              awayTeamId={comparisonMatch!.awayTeamId}
+              matchId={comparisonMatch!.matchId}
+              onClose={() => {
+                setComparisonMatch(null);
+              }}
+            />
+          </Suspense>
         )}
       </Hide>
     </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "preact/hooks";
+import { useSuspenseQueries } from "@tanstack/react-query";
+import { Hide } from "./hide";
 
 interface TeamComparisonProps {
   homeTeamId: number;
@@ -43,86 +44,48 @@ export function TeamComparison({
   matchId,
   onClose,
 }: TeamComparisonProps) {
-  const [data, setData] = useState<ComparisonData | null>(null);
-  const [predictions, setPredictions] = useState<PredictionData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [predictionsLoading, setPredictionsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [predictionsError, setPredictionsError] = useState<string | null>(null);
+  const [comparisonQuery, predictionQuery] = useSuspenseQueries({
+    queries: [
+      {
+        queryKey: ["comparison", { homeTeamId, awayTeamId }],
+        queryFn: async function (): Promise<ComparisonData> {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/compare?home=${homeTeamId}&away=${awayTeamId}`,
+          );
 
-  useEffect(() => {
-    const fetchComparisonData = async () => {
-      setLoading(true);
-      setError(null);
+          if (!response.ok) {
+            setError(`HTTP error! status: ${response.status}`);
+          }
 
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/compare?home=${homeTeamId}&away=${awayTeamId}`,
-        );
-
-        if (!response.ok) {
-          setError(`HTTP error! status: ${response.status}`);
-        }
-
-        const comparisonData = await response.json();
-        setData(comparisonData);
-
-        // Fetch predictions if matchId is provided
-        setPredictionsLoading(true);
-        setPredictionsError(null);
-
-        try {
-          const predResponse = await fetch(
+          return response.json();
+        },
+      },
+      {
+        queryKey: ["predictions", matchId],
+        queryFn: async function (): Promise<PredictionData> {
+          const response = await fetch(
             `${import.meta.env.VITE_API_BASE_URL}/predictions/${matchId}`,
           );
 
-          if (predResponse.ok) {
-            const predictionData = await predResponse.json();
-            setPredictions(predictionData);
+          if (!response.ok) {
+            setPredictionsError(`HTTP error! status: ${response.status}`);
           }
-        } catch (predErr) {
-          console.error("Error fetching predictions:", predErr);
-          setPredictionsError("Failed to load predictions");
-        } finally {
-          setPredictionsLoading(false);
-        }
-      } catch (err) {
-        console.error("Error fetching comparison data:", err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch comparison data",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchComparisonData();
-  }, [homeTeamId, awayTeamId, matchId]);
+          return response.json();
+        },
+      },
+    ],
+  });
 
-  if (loading) {
-    return (
-      <div className="modal modal-open">
-        <div className="modal-box">
-          <div className="flex justify-center">
-            <span className="loading loading-spinner loading-lg"></span>
-          </div>
-        </div>
-        <div className="modal-backdrop" onClick={onClose}></div>
-      </div>
-    );
-  }
+  const error = comparisonQuery.error || predictionQuery.error;
 
-  if (error || !data) {
+  if (error) {
     return (
       <div className="modal modal-open">
         <div className="modal-box">
           <div className="text-center">
             <h3 className="text-lg font-bold mb-4">Error</h3>
-            <p className="text-error mb-4">
-              {error || "Failed to load comparison data"}
-            </p>
+            <p className="text-error mb-4">{error}</p>
             <button className="btn btn-primary" onClick={onClose}>
               Close
             </button>
@@ -133,7 +96,8 @@ export function TeamComparison({
     );
   }
 
-  const { home: homeStats, away: awayStats } = data;
+  const { home: homeStats, away: awayStats } = comparisonQuery.data;
+  const predictions = predictionQuery.data;
 
   const getFormBadgeClass = (rating: string) => {
     switch (rating.toLowerCase()) {
@@ -249,33 +213,31 @@ export function TeamComparison({
         </div>
 
         {/* Prediction Advice */}
-        {predictions?.advice && (
-          <div className="alert alert-info mb-6">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-              />
-            </svg>
-            <div>
-              <div className="font-bold">Match Prediction</div>
-              <div className="text-sm">{predictions.advice}</div>
-            </div>
+        <div className="alert alert-info mb-6">
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+          </svg>
+          <div>
+            <div className="font-bold">Match Prediction</div>
+            <div className="text-sm">{predictionQuery?.data?.advice}</div>
           </div>
-        )}
+        </div>
 
-        {predictionsError && (
+        <Hide when={predictionQuery.error == null}>
           <div className="alert alert-warning mb-6">
-            <span>Predictions unavailable: {predictionsError}</span>
+            <span>Predictions unavailable: {predictionQuery.error}</span>
           </div>
-        )}
+        </Hide>
 
         {/* Team Names - Mobile Responsive */}
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
@@ -297,45 +259,43 @@ export function TeamComparison({
         </div>
 
         {/* Predicted Goals */}
-        {predictions && (
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold mb-4">Match Predictions</h4>
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold mb-4">Match Predictions</h4>
 
-            <StatRow
-              label="Predicted Goals"
-              homeValue={predictions.home_goals}
-              awayValue={predictions.away_goals}
-              homeClass="text-info"
-              awayClass="text-info"
-            />
+          <StatRow
+            label="Predicted Goals"
+            homeValue={predictions.home_goals}
+            awayValue={predictions.away_goals}
+            homeClass="text-info"
+            awayClass="text-info"
+          />
 
-            <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
-              <div className="col-span-1 sm:col-span-2 text-center sm:text-right text-xs sm:text-sm">
-                {(() => {
-                  const avgGoals = parseFloat(getAverageGoalsFor(homeStats));
-                  const predGoals = Math.floor(
-                    Math.abs(parseFloat(predictions.home_goals)),
-                  );
-                  const diff = predGoals - avgGoals;
-                  return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
-                })()}
-              </div>
-              <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
-                vs Average
-              </div>
-              <div className="col-span-1 sm:col-span-2 text-center sm:text-left text-xs sm:text-sm">
-                {(() => {
-                  const avgGoals = parseFloat(getAverageGoalsFor(awayStats));
-                  const predGoals = Math.floor(
-                    Math.abs(parseFloat(predictions.away_goals)),
-                  );
-                  const diff = predGoals - avgGoals;
-                  return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
-                })()}
-              </div>
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
+            <div className="col-span-1 sm:col-span-2 text-center sm:text-right text-xs sm:text-sm">
+              {(() => {
+                const avgGoals = parseFloat(getAverageGoalsFor(homeStats));
+                const predGoals = Math.floor(
+                  Math.abs(parseFloat(predictions.home_goals)),
+                );
+                const diff = predGoals - avgGoals;
+                return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
+              })()}
+            </div>
+            <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
+              vs Average
+            </div>
+            <div className="col-span-1 sm:col-span-2 text-center sm:text-left text-xs sm:text-sm">
+              {(() => {
+                const avgGoals = parseFloat(getAverageGoalsFor(awayStats));
+                const predGoals = Math.floor(
+                  Math.abs(parseFloat(predictions.away_goals)),
+                );
+                const diff = predGoals - avgGoals;
+                return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
+              })()}
             </div>
           </div>
-        )}
+        </div>
 
         {/* Team Statistics */}
         <div>
