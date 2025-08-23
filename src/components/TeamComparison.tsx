@@ -130,10 +130,29 @@ export function TeamComparison({
     return stats.goals_for - stats.goals_against;
   };
 
+  const formatGoalDifference = (stats: TeamStats) => {
+    const difference = getGoalDifference(stats);
+    return difference > 0 ? `+${difference}` : `${difference}`;
+  };
+
   const formatCleanSheetPercentage = (stats: TeamStats) => {
     const gamesPlayed = getGamesPlayed(stats);
     return gamesPlayed > 0
       ? `${Math.round((stats.cleansheets / gamesPlayed) * 100)}%`
+      : "0%";
+  };
+
+  const formatOneConcededPercentage = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    return gamesPlayed > 0
+      ? `${Math.round((stats.one_conceded / gamesPlayed) * 100)}%`
+      : "0%";
+  };
+
+  const formatTwoConcededPercentage = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    return gamesPlayed > 0
+      ? `${Math.round((stats.two_plus_conceded / gamesPlayed) * 100)}%`
       : "0%";
   };
 
@@ -302,55 +321,9 @@ export function TeamComparison({
           <h4 className="text-lg font-semibold mb-4">Team Statistics</h4>
 
           <StatRow
-            label="Games Played"
-            homeValue={getGamesPlayed(homeStats)}
-            awayValue={getGamesPlayed(awayStats)}
-          />
-
-          <StatRow
             label="W-L-D Record"
             homeValue={formatRecord(homeStats)}
             awayValue={formatRecord(awayStats)}
-          />
-
-          <StatRow
-            label="Goals (For:Against)"
-            homeValue={formatGoalRatio(homeStats)}
-            awayValue={formatGoalRatio(awayStats)}
-          />
-
-          <StatRow
-            label="Goal Difference"
-            homeValue={
-              getGoalDifference(homeStats) > 0
-                ? `+${getGoalDifference(homeStats)}`
-                : getGoalDifference(homeStats)
-            }
-            awayValue={
-              getGoalDifference(awayStats) > 0
-                ? `+${getGoalDifference(awayStats)}`
-                : getGoalDifference(awayStats)
-            }
-            homeClass={
-              getGoalDifference(homeStats) > 0
-                ? "text-success"
-                : getGoalDifference(homeStats) < 0
-                  ? "text-error"
-                  : ""
-            }
-            awayClass={
-              getGoalDifference(awayStats) > 0
-                ? "text-success"
-                : getGoalDifference(awayStats) < 0
-                  ? "text-error"
-                  : ""
-            }
-          />
-
-          <StatRow
-            label="Clean Sheets"
-            homeValue={`${homeStats.cleansheets} (${formatCleanSheetPercentage(homeStats)})`}
-            awayValue={`${awayStats.cleansheets} (${formatCleanSheetPercentage(awayStats)})`}
           />
 
           <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
@@ -374,6 +347,26 @@ export function TeamComparison({
           </div>
 
           <StatRow
+            label="GF:GA (Diff)"
+            homeValue={`${formatGoalRatio(homeStats)} (${formatGoalDifference(homeStats)})`}
+            awayValue={`${formatGoalRatio(awayStats)} (${formatGoalDifference(awayStats)})`}
+            homeClass={
+              getGoalDifference(homeStats) > 0
+                ? "text-success"
+                : getGoalDifference(homeStats) < 0
+                  ? "text-error"
+                  : ""
+            }
+            awayClass={
+              getGoalDifference(awayStats) > 0
+                ? "text-success"
+                : getGoalDifference(awayStats) < 0
+                  ? "text-error"
+                  : ""
+            }
+          />
+
+          <StatRow
             label="Avg Goals For"
             homeValue={getAverageGoalsFor(homeStats)}
             awayValue={getAverageGoalsFor(awayStats)}
@@ -385,6 +378,24 @@ export function TeamComparison({
             awayValue={getAverageGoalsAgainst(awayStats)}
           />
         </div>
+
+        <StatRow
+          label="Clean Sheets"
+          homeValue={`${homeStats.cleansheets} (${formatCleanSheetPercentage(homeStats)})`}
+          awayValue={`${awayStats.cleansheets} (${formatCleanSheetPercentage(awayStats)})`}
+        />
+
+        <StatRow
+          label="+1 Conceded"
+          homeValue={`${homeStats.one_conceded} (${formatOneConcededPercentage(homeStats)})`}
+          awayValue={`${awayStats.one_conceded} (${formatOneConcededPercentage(awayStats)})`}
+        />
+
+        <StatRow
+          label="+2 Conceded"
+          homeValue={`${homeStats.two_plus_conceded} (${formatTwoConcededPercentage(homeStats)})`}
+          awayValue={`${awayStats.two_plus_conceded} (${formatTwoConcededPercentage(awayStats)})`}
+        />
 
         {/* Close Button */}
         <div className="mt-6 text-center">
