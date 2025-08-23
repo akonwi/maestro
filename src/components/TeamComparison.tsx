@@ -54,7 +54,7 @@ export function TeamComparison({
           );
 
           if (!response.ok) {
-            setError(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
 
           return response.json();
@@ -68,7 +68,7 @@ export function TeamComparison({
           );
 
           if (!response.ok) {
-            setPredictionsError(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
 
           return response.json();
