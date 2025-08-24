@@ -1,4 +1,5 @@
 import { useState } from "preact/hooks";
+import { Suspense } from "preact/compat";
 import { useCreateBet, type CreateBetData } from "../../hooks/use-bets";
 import { type OddsMarket, type OddsValue } from "../../hooks/use-match-odds";
 import { populateBetFromOdds } from "../../utils/betting";
@@ -154,7 +155,9 @@ export default function BetForm({
         )}
 
         {/* Match Predictions Section */}
-        <MatchPredictions matchId={matchId} />
+        <Suspense fallback={<div>Loading...</div>}>
+          <MatchPredictions matchId={matchId} />
+        </Suspense>
 
         {/* Odds Selection Section */}
         {!showManualForm && (

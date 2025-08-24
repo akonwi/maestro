@@ -1,5 +1,6 @@
-import { useSuspenseQueries } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Hide } from "./hide";
+import { useMatchAnalysis } from "../hooks/use-match-analysis";
 
 interface TeamComparisonProps {
   homeTeamId: number;
@@ -31,58 +32,29 @@ interface ComparisonData {
   away: TeamStats;
 }
 
-interface PredictionData {
-  winner: {
-    id: number;
-    name: string;
-    comment: string;
-  };
-  win_or_draw: boolean;
-  home_goals: string;
-  away_goals: string;
-  advice: string;
-}
-
 export function TeamComparison({
   homeTeamId,
   awayTeamId,
   matchId,
   onClose,
 }: TeamComparisonProps) {
-  const [comparisonQuery, predictionQuery] = useSuspenseQueries({
-    queries: [
-      {
-        queryKey: ["comparison", { homeTeamId, awayTeamId }],
-        queryFn: async function (): Promise<ComparisonData> {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/compare?home=${homeTeamId}&away=${awayTeamId}`,
-          );
+  const analysisQuery = useMatchAnalysis(matchId);
+  const comparisonQuery = useSuspenseQuery({
+    queryKey: ["comparison", { homeTeamId, awayTeamId }],
+    queryFn: async function (): Promise<ComparisonData> {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/compare?home=${homeTeamId}&away=${awayTeamId}`,
+      );
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-          return response.json();
-        },
-      },
-      {
-        queryKey: ["predictions", matchId],
-        queryFn: async function (): Promise<PredictionData> {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/predictions/${matchId}`,
-          );
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          return response.json();
-        },
-      },
-    ],
+      return response.json();
+    },
   });
 
-  const error = comparisonQuery.error || predictionQuery.error;
+  const error = comparisonQuery.error || analysisQuery.error;
 
   if (error) {
     return (
@@ -102,7 +74,7 @@ export function TeamComparison({
   }
 
   const { home: homeStats, away: awayStats } = comparisonQuery.data;
-  const predictions = predictionQuery.data;
+  const predictions = analysisQuery.data.prediction;
 
   const getFormBadgeClass = (rating: string) => {
     switch (rating.toLowerCase()) {
@@ -232,13 +204,15 @@ export function TeamComparison({
           </svg>
           <div>
             <div className="font-bold">Match Prediction</div>
-            <div className="text-sm">{predictionQuery?.data?.advice}</div>
+            <div className="text-sm">
+              {analysisQuery.data.prediction.advice}
+            </div>
           </div>
         </div>
 
-        <Hide when={predictionQuery.error == null}>
+        <Hide when={analysisQuery.error == null}>
           <div className="alert alert-warning mb-6">
-            <span>Predictions unavailable: {predictionQuery.error}</span>
+            <span>Predictions unavailable: {analysisQuery.error}</span>
           </div>
         </Hide>
 
