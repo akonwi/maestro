@@ -1,4 +1,4 @@
-import { useMatchAnalysis } from "../../hooks/use-match-analysis";
+import { AnalysisData, useMatchAnalysis } from "../../hooks/use-match-analysis";
 import { Hide } from "../hide";
 
 interface MatchPredictionsProps {
@@ -7,7 +7,7 @@ interface MatchPredictionsProps {
 
 export function MatchPredictions({ matchId }: MatchPredictionsProps) {
   const { data, error } = useMatchAnalysis(matchId);
-  const { prediction: predictions } = data;
+  const { analysis, prediction: predictions } = data;
 
   return (
     <div className="mb-6">
@@ -51,20 +51,52 @@ export function MatchPredictions({ matchId }: MatchPredictionsProps) {
                 <div className="font-semibold font-mono text-lg">
                   {predictions.home_goals} - {predictions.away_goals}
                 </div>
+                <div className="font-semibold font-mono text-lg">
+                  <GoalsRecommendation
+                    confidence={analysis.home_confidence}
+                    goals={analysis.recommendations.home_goals}
+                  />{" "}
+                  -{" "}
+                  <GoalsRecommendation
+                    confidence={analysis.away_confidence}
+                    goals={analysis.recommendations.away_goals}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Advice - Full width below */}
-            {predictions.advice && (
-              <div className="mt-4 pt-4 border-t border-base-300">
-                <div className="text-sm text-base-content/80 text-center italic">
-                  "{predictions.advice}"
-                </div>
-              </div>
-            )}
+            {/* Analysis */}
+            <div className="mt-4 pt-4 border-t border-base-300"></div>
           </Hide>
         </div>
       </div>
     </div>
   );
+}
+
+function GoalsRecommendation(props: {
+  confidence: AnalysisData["analysis"]["home_confidence"];
+  goals: number | null;
+}) {
+  const { goals, confidence } = props;
+
+  const formatted = (() => {
+    if (goals === null) {
+      return "??";
+    }
+
+    switch (confidence.label) {
+      case "Low":
+        return -goals;
+      case "Medium":
+        // conservative
+        return "+" + goals;
+      case "High":
+        return "+" + (goals + 1);
+    }
+
+    return goals;
+  })();
+
+  return <span className="text-primary">{formatted}</span>;
 }

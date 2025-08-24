@@ -27,7 +27,7 @@ export interface AnalysisData {
 			xg_advantage: number;
 			quality_gap: number;
 			def_vuln: number;
-			label: string;
+			label: "Low" | "Mediutm" | "High" | string;
 		};
 		away_confidence: {
 			score: number;
