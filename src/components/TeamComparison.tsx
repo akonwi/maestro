@@ -352,14 +352,14 @@ export function TeamComparison({
 
           <StatRow
             label="Avg Goals For"
-            homeValue={homeStats.xgf}
-            awayValue={awayStats.xgf}
+            homeValue={homeStats.xgf.toFixed(2)}
+            awayValue={awayStats.xgf.toFixed(2)}
           />
 
           <StatRow
             label="Avg Goals Against"
-            homeValue={homeStats.xga}
-            awayValue={awayStats.xga}
+            homeValue={homeStats.xga.toFixed(2)}
+            awayValue={awayStats.xga.toFixed(2)}
           />
         </div>
 
