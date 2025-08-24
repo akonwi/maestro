@@ -37,7 +37,7 @@ export interface BetOverviewResponse {
 
 export function useBetOverview() {
 	return useQuery({
-		queryKey: ["bets"],
+		queryKey: ["bets", "overview"],
 		queryFn: async function (): Promise<BetOverviewResponse> {
 			const response = await fetch(
 				`${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
