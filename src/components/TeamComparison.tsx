@@ -11,14 +11,19 @@ interface TeamComparisonProps {
 interface TeamStats {
   id: number;
   name: string;
+  num_games: number;
   wins: number;
   draws: number;
   losses: number;
   goals_for: number;
   goals_against: number;
+  goals_diff: number;
+  xgf: number;
+  xga: number;
   cleansheets: number;
   one_conceded: number;
   two_plus_conceded: number;
+  win_rate: number;
 }
 
 interface ComparisonData {
@@ -119,20 +124,13 @@ export function TeamComparison({
   };
 
   const formatGoalRatio = (stats: TeamStats) => {
-    return `${stats.goals_for}:${stats.goals_against}`;
+    const diff =
+      stats.goals_diff > 0 ? `+${stats.goals_diff}` : `${stats.goals_diff}`;
+    return `${stats.goals_for}:${stats.goals_against} (${diff})`;
   };
 
   const getGamesPlayed = (stats: TeamStats) => {
     return stats.wins + stats.losses + stats.draws;
-  };
-
-  const getGoalDifference = (stats: TeamStats) => {
-    return stats.goals_for - stats.goals_against;
-  };
-
-  const formatGoalDifference = (stats: TeamStats) => {
-    const difference = getGoalDifference(stats);
-    return difference > 0 ? `+${difference}` : `${difference}`;
   };
 
   const formatCleanSheetPercentage = (stats: TeamStats) => {
@@ -154,20 +152,6 @@ export function TeamComparison({
     return gamesPlayed > 0
       ? `${Math.round((stats.two_plus_conceded / gamesPlayed) * 100)}%`
       : "0%";
-  };
-
-  const getAverageGoalsFor = (stats: TeamStats) => {
-    const gamesPlayed = getGamesPlayed(stats);
-    return gamesPlayed > 0
-      ? (stats.goals_for / gamesPlayed).toFixed(2)
-      : "0.00";
-  };
-
-  const getAverageGoalsAgainst = (stats: TeamStats) => {
-    const gamesPlayed = getGamesPlayed(stats);
-    return gamesPlayed > 0
-      ? (stats.goals_against / gamesPlayed).toFixed(2)
-      : "0.00";
   };
 
   const getFormRating = (stats: TeamStats) => {
@@ -292,7 +276,7 @@ export function TeamComparison({
           <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
             <div className="col-span-1 sm:col-span-2 text-center sm:text-right text-xs sm:text-sm">
               {(() => {
-                const avgGoals = parseFloat(getAverageGoalsFor(homeStats));
+                const avgGoals = homeStats.xgf;
                 const predGoals = Math.floor(
                   Math.abs(parseFloat(predictions.home_goals)),
                 );
@@ -305,7 +289,7 @@ export function TeamComparison({
             </div>
             <div className="col-span-1 sm:col-span-2 text-center sm:text-left text-xs sm:text-sm">
               {(() => {
-                const avgGoals = parseFloat(getAverageGoalsFor(awayStats));
+                const avgGoals = awayStats.xgf;
                 const predGoals = Math.floor(
                   Math.abs(parseFloat(predictions.away_goals)),
                 );
@@ -348,19 +332,19 @@ export function TeamComparison({
 
           <StatRow
             label="GF:GA (Diff)"
-            homeValue={`${formatGoalRatio(homeStats)} (${formatGoalDifference(homeStats)})`}
-            awayValue={`${formatGoalRatio(awayStats)} (${formatGoalDifference(awayStats)})`}
+            homeValue={formatGoalRatio(homeStats)}
+            awayValue={formatGoalRatio(awayStats)}
             homeClass={
-              getGoalDifference(homeStats) > 0
+              homeStats.goals_diff > 0
                 ? "text-success"
-                : getGoalDifference(homeStats) < 0
+                : homeStats.goals_diff < 0
                   ? "text-error"
                   : ""
             }
             awayClass={
-              getGoalDifference(awayStats) > 0
+              awayStats.goals_diff > 0
                 ? "text-success"
-                : getGoalDifference(awayStats) < 0
+                : awayStats.goals_diff < 0
                   ? "text-error"
                   : ""
             }
@@ -368,14 +352,14 @@ export function TeamComparison({
 
           <StatRow
             label="Avg Goals For"
-            homeValue={getAverageGoalsFor(homeStats)}
-            awayValue={getAverageGoalsFor(awayStats)}
+            homeValue={homeStats.xgf}
+            awayValue={awayStats.xgf}
           />
 
           <StatRow
             label="Avg Goals Against"
-            homeValue={getAverageGoalsAgainst(homeStats)}
-            awayValue={getAverageGoalsAgainst(awayStats)}
+            homeValue={homeStats.xga}
+            awayValue={awayStats.xga}
           />
         </div>
 
