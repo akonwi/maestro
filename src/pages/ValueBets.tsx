@@ -24,7 +24,10 @@ export function ValueBets() {
 
       {error && (
         <div className="alert alert-error">
-          <span>Failed to load value bets: {error instanceof Error ? error.message : 'Unknown error'}</span>
+          <span>
+            Failed to load value bets:{" "}
+            {error instanceof Error ? error.message : "Unknown error"}
+          </span>
         </div>
       )}
 
@@ -61,18 +64,19 @@ export function ValueBets() {
                           {formatMatchup(bet.fixture)}
                         </h3>
                         <p className="text-base-content/60 text-sm">
-                          {bet.fixture.league_name} • {formatMatchDate(bet.fixture.date)}
+                          {bet.fixture.league_name} •{" "}
+                          {formatMatchDate(bet.fixture.date)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <img 
-                          src={bet.fixture.home.logo} 
+                        <img
+                          src={bet.fixture.home.logo}
                           alt={bet.fixture.home.name}
                           className="w-6 h-6"
                         />
                         <span className="text-sm">vs</span>
-                        <img 
-                          src={bet.fixture.away.logo} 
+                        <img
+                          src={bet.fixture.away.logo}
                           alt={bet.fixture.away.name}
                           className="w-6 h-6"
                         />
@@ -82,8 +86,13 @@ export function ValueBets() {
                     {/* Betting Markets */}
                     <div className="space-y-3">
                       {bet.stats.map((market) => (
-                        <div key={market.id} className="bg-base-200 p-3 rounded-lg">
-                          <h4 className="font-medium text-sm mb-2">{market.name}</h4>
+                        <div
+                          key={market.id}
+                          className="bg-base-200 p-3 rounded-lg"
+                        >
+                          <h4 className="font-medium text-sm mb-2">
+                            {market.name}
+                          </h4>
                           <div className="flex flex-wrap gap-2">
                             {market.values.map((value, valueIndex) => (
                               <div
