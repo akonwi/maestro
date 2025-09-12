@@ -34,16 +34,14 @@ const router = createBrowserRouter([
           );
         },
         children: [
-          { index: true, Component: BettingPerformance },
+          { index: true, Component: ValueBets },
           // {
           //   path: "/maestro/team/:teamId",
           //   Component: TeamDetail,
           // },
           { path: "/maestro/matches", Component: Matches },
-          // { path: "/maestro/match/:matchId", Component: MatchDetail },
           { path: "/maestro/leagues", Component: Leagues },
           { path: "/maestro/betting", Component: BettingPerformance },
-          { path: "/maestro/value-bets", Component: ValueBets },
           { path: "/maestro/settings", Component: Settings },
         ],
       },
