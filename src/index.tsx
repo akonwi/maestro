@@ -11,6 +11,7 @@ import { Matches } from "./pages/Matches";
 import { Leagues } from "./pages/Leagues";
 import { BettingPerformance } from "./pages/BettingPerformance";
 import { Settings } from "./pages/Settings";
+import { ValueBets } from "./pages/ValueBets";
 import { NotFound } from "./pages/_404";
 import "./style.css";
 
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
           // { path: "/maestro/match/:matchId", Component: MatchDetail },
           { path: "/maestro/leagues", Component: Leagues },
           { path: "/maestro/betting", Component: BettingPerformance },
+          { path: "/maestro/value-bets", Component: ValueBets },
           { path: "/maestro/settings", Component: Settings },
         ],
       },
