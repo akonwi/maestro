@@ -14,29 +14,30 @@ interface PredictionData {
 
 export interface AnalysisData {
 	prediction: PredictionData;
-	analysis: {
-		match_id: number;
-		recommendations: {
-			away_goals: number | null;
-			total_goals: number | null;
-			both_teams_to_score: boolean | null;
-			home_goals: number | null;
-		};
-		home_confidence: {
-			score: number;
-			xg_advantage: number;
-			quality_gap: number;
-			def_vuln: number;
-			label: "Low" | "Mediutm" | "High" | string;
-		};
-		away_confidence: {
-			score: number;
-			xg_advantage: number;
-			quality_gap: number;
-			def_vuln: number;
-			label: string;
-		};
-	};
+	comparison: ComparisonData;
+}
+
+interface TeamStats {
+	id: number;
+	name: string;
+	num_games: number;
+	wins: number;
+	draws: number;
+	losses: number;
+	goals_for: number;
+	goals_against: number;
+	goals_diff: number;
+	xgf: number;
+	xga: number;
+	cleansheets: number;
+	one_conceded: number;
+	two_plus_conceded: number;
+	win_rate: number;
+}
+
+interface ComparisonData {
+	home: TeamStats;
+	away: TeamStats;
 }
 
 export function useMatchAnalysis(matchId: number) {

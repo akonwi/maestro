@@ -1,4 +1,3 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
 import { Hide } from "./hide";
 import { useMatchAnalysis } from "../hooks/use-match-analysis";
 
@@ -39,30 +38,14 @@ export function TeamComparison({
   onClose,
 }: TeamComparisonProps) {
   const analysisQuery = useMatchAnalysis(matchId);
-  const comparisonQuery = useSuspenseQuery({
-    queryKey: ["comparison", { homeTeamId, awayTeamId }],
-    queryFn: async function (): Promise<ComparisonData> {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/compare?home=${homeTeamId}&away=${awayTeamId}`,
-      );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return response.json();
-    },
-  });
-
-  const error = comparisonQuery.error || analysisQuery.error;
-
-  if (error) {
+  if (analysisQuery.isError) {
     return (
       <div className="modal modal-open">
         <div className="modal-box">
           <div className="text-center">
             <h3 className="text-lg font-bold mb-4">Error</h3>
-            <p className="text-error mb-4">{error}</p>
+            <p className="text-error mb-4">{analysisQuery.error}</p>
             <button className="btn btn-primary" onClick={onClose}>
               Close
             </button>
@@ -73,7 +56,7 @@ export function TeamComparison({
     );
   }
 
-  const { home: homeStats, away: awayStats } = comparisonQuery.data;
+  const { home: homeStats, away: awayStats } = analysisQuery.data.comparison;
   const predictions = analysisQuery.data.prediction;
 
   const getFormBadgeClass = (rating: string) => {

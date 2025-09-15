@@ -1,9 +1,17 @@
+import { useState } from "preact/hooks";
+import { Suspense } from "preact/compat";
 import { formatMatchDate } from "../utils/helpers";
 import { useJuice } from "../hooks/use-juice";
 import { Hide } from "../components/hide";
+import { TeamComparison } from "../components/TeamComparison";
 
 export function ValueBets() {
   const { data: valueBets, isLoading, error } = useJuice();
+  const [comparisonMatch, setComparisonMatch] = useState<{
+    homeTeamId: number;
+    awayTeamId: number;
+    matchId: number;
+  } | null>(null);
 
   const formatOdds = (odd: number) => {
     if (odd > 0) {
@@ -57,12 +65,22 @@ export function ValueBets() {
               >
                 <div className="card-body">
                   <div className="flex flex-col gap-4">
-                    {/* Match Header */}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-lg font-semibold">
-                          {formatMatchup(bet.fixture)}
-                        </h3>
+                     {/* Match Header */}
+                     <div className="flex justify-between items-start">
+                       <div>
+                         <h3 
+                           className="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
+                           onClick={(e) => {
+                             e.preventDefault();
+                             setComparisonMatch({
+                               homeTeamId: bet.fixture.home.id,
+                               awayTeamId: bet.fixture.away.id,
+                               matchId: bet.fixture.id,
+                             });
+                           }}
+                         >
+                           {formatMatchup(bet.fixture)}
+                         </h3>
                         <p className="text-base-content/60 text-sm">
                           {bet.fixture.league_name} •{" "}
                           {formatMatchDate(bet.fixture.date)}
@@ -111,6 +129,22 @@ export function ValueBets() {
               </div>
             ))}
           </div>
+        )}
+      </Hide>
+
+      <Hide when={comparisonMatch == null}>
+        {/*defer evaluation because a null comparisonMatch will cause type errors*/}
+        {() => (
+          <Suspense fallback={<div>Loading...</div>}>
+            <TeamComparison
+              homeTeamId={comparisonMatch!.homeTeamId}
+              awayTeamId={comparisonMatch!.awayTeamId}
+              matchId={comparisonMatch!.matchId}
+              onClose={() => {
+                setComparisonMatch(null);
+              }}
+            />
+          </Suspense>
         )}
       </Hide>
     </div>
