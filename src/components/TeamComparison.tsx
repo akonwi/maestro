@@ -1,4 +1,3 @@
-import { Hide } from "./hide";
 import { useMatchAnalysis } from "../hooks/use-match-analysis";
 
 interface TeamComparisonProps {
@@ -26,17 +25,7 @@ interface TeamStats {
   win_rate: number;
 }
 
-interface ComparisonData {
-  home: TeamStats;
-  away: TeamStats;
-}
-
-export function TeamComparison({
-  homeTeamId,
-  awayTeamId,
-  matchId,
-  onClose,
-}: TeamComparisonProps) {
+export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
   const analysisQuery = useMatchAnalysis(matchId);
 
   if (analysisQuery.isError) {
@@ -57,7 +46,6 @@ export function TeamComparison({
   }
 
   const { home: homeStats, away: awayStats } = analysisQuery.data.comparison;
-  const predictions = analysisQuery.data.prediction;
 
   const getFormBadgeClass = (rating: string) => {
     switch (rating.toLowerCase()) {
@@ -170,35 +158,6 @@ export function TeamComparison({
           </button>
         </div>
 
-        {/* Prediction Advice */}
-        <div className="alert alert-info mb-6">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            />
-          </svg>
-          <div>
-            <div className="font-bold">Match Prediction</div>
-            <div className="text-sm">
-              {analysisQuery.data.prediction.advice}
-            </div>
-          </div>
-        </div>
-
-        <Hide when={analysisQuery.error == null}>
-          <div className="alert alert-warning mb-6">
-            <span>Predictions unavailable: {analysisQuery.error}</span>
-          </div>
-        </Hide>
-
         {/* Team Names - Mobile Responsive */}
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
           <div className="col-span-1 sm:col-span-2 text-center">
@@ -215,45 +174,6 @@ export function TeamComparison({
               {awayStats.name}
             </h3>
             <div className="text-xs sm:text-sm text-base-content/60">Away</div>
-          </div>
-        </div>
-
-        {/* Predicted Goals */}
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold mb-4">Match Predictions</h4>
-
-          <StatRow
-            label="Predicted Goals"
-            homeValue={predictions.home_goals}
-            awayValue={predictions.away_goals}
-            homeClass="text-info"
-            awayClass="text-info"
-          />
-
-          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
-            <div className="col-span-1 sm:col-span-2 text-center sm:text-right text-xs sm:text-sm">
-              {(() => {
-                const avgGoals = homeStats.xgf;
-                const predGoals = Math.floor(
-                  Math.abs(parseFloat(predictions.home_goals)),
-                );
-                const diff = predGoals - avgGoals;
-                return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
-              })()}
-            </div>
-            <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
-              vs Average
-            </div>
-            <div className="col-span-1 sm:col-span-2 text-center sm:text-left text-xs sm:text-sm">
-              {(() => {
-                const avgGoals = awayStats.xgf;
-                const predGoals = Math.floor(
-                  Math.abs(parseFloat(predictions.away_goals)),
-                );
-                const diff = predGoals - avgGoals;
-                return `${diff > 0 ? "+" : ""}${diff.toFixed(2)}`;
-              })()}
-            </div>
           </div>
         </div>
 
