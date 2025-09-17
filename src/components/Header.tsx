@@ -59,14 +59,6 @@ export function Header() {
             </li>
             <li>
               <Link
-                to="/maestro/value-bets"
-                className={url === "/value-bets" ? "active" : ""}
-              >
-                Value Bets
-              </Link>
-            </li>
-            <li>
-              <Link
                 to="/maestro/settings"
                 className={url === "/settings" ? "active" : ""}
               >
@@ -100,14 +92,6 @@ export function Header() {
               className={url === "/betting" ? "active" : ""}
             >
               Betting
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/maestro/value-bets"
-              className={url === "/value-bets" ? "active" : ""}
-            >
-              Value Bets
             </Link>
           </li>
           <li>
