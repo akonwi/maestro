@@ -1,9 +1,6 @@
 import { useState } from "preact/hooks";
-import { Suspense } from "preact/compat";
 import { useCreateBet, type CreateBetData } from "../../hooks/use-bets";
-import { populateBetFromOdds } from "../../utils/betting";
 import { useAuth } from "../../contexts/AuthContext";
-import { MatchPredictions } from "./MatchPredictions";
 
 interface BetFormProps {
   matchId: number;

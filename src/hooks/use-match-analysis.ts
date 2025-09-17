@@ -1,19 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 
-interface PredictionData {
-	winner: {
-		id: number;
-		name: string;
-		comment: string | null;
-	};
-	win_or_draw: boolean;
-	home_goals: string;
-	away_goals: string;
-	advice: string;
-}
-
 export interface AnalysisData {
-	prediction: PredictionData;
 	comparison: ComparisonData;
 }
 
