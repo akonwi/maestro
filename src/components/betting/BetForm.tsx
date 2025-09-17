@@ -19,26 +19,11 @@ export default function BetForm({
   onCancel,
   initialData,
 }: BetFormProps) {
-  const [formData, setFormData] = useState({
-    description: initialData?.description || "",
-    line: initialData?.line || 0,
-    odds: initialData?.odds || 100,
-    amount: 0,
-  });
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting] = useState(false);
-  const [showManualForm, setShowManualForm] = useState(!!initialData);
 
   const { isReadOnly } = useAuth();
   const createBet = useCreateBet();
-
-  const handleInputChange = (field: string, value: string | number) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: field === "description" ? value : Number(value),
-    }));
-    setErrors([]);
-  };
 
   const validateBet = (betData: CreateBetData): string[] => {
     const errors: string[] = [];
@@ -57,12 +42,13 @@ export default function BetForm({
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
 
+    const formData = new FormData(e.target as HTMLFormElement);
     const betData: CreateBetData = {
       match_id: matchId,
-      name: formData.description,
-      line: formData.line,
-      odds: formData.odds,
-      amount: formData.amount,
+      name: formData.get("description")!.toString(),
+      line: new Number(formData.get("line")!.toString()) as number,
+      odds: new Number(formData.get("odds")!.toString()) as number,
+      amount: new Number(formData.get("amount")!.toString()) as number,
     };
 
     const validationErrors = validateBet(betData);
@@ -137,152 +123,94 @@ export default function BetForm({
           </div>
         )}
 
-        {/* Odds Selection Section */}
-        {!showManualForm && !initialData && (
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-semibold text-md">
-                Select from Available Odds
-              </h4>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => setShowManualForm(true)}
-              >
-                Manual Entry
-              </button>
-            </div>
+        {initialData && (
+          <div className="mb-4">
+            <h4 className="font-semibold text-md">Place Your Bet</h4>
+            <p className="text-sm text-base-content/60">
+              {initialData.description} at {initialData.odds > 0 ? "+" : ""}
+              {initialData.odds}
+            </p>
           </div>
         )}
 
-        {/* Manual Form Section */}
-        {(showManualForm || initialData) && (
-          <>
-            {showManualForm && !initialData && (
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-semibold text-md">Bet Details</h4>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline"
-                  onClick={() => setShowManualForm(false)}
-                >
-                  Back to Odds
-                </button>
-              </div>
-            )}
+        <form onSubmit={handleSubmit}>
+          <div className="form-control w-full mb-4">
+            <label className="label">
+              <span className="label-text">Description</span>
+            </label>
+            <input
+              type="text"
+              name="description"
+              placeholder="e.g., Chelsea to win, Over 2.5 goals"
+              className="input input-bordered w-full"
+              defaultValue={initialData?.description}
+              required
+            />
+          </div>
 
-            {initialData && (
-              <div className="mb-4">
-                <h4 className="font-semibold text-md">Place Your Bet</h4>
-                <p className="text-sm text-base-content/60">
-                  {initialData.description} at {initialData.odds > 0 ? "+" : ""}
-                  {initialData.odds}
-                </p>
-              </div>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Line</span>
+              </label>
+              <input
+                name="line"
+                type="number"
+                step="0.5"
+                placeholder="-1.5, 2.5, 0"
+                className="input input-bordered"
+                defaultValue={initialData?.line}
+              />
+            </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-control w-full mb-4">
-                <label className="label">
-                  <span className="label-text">Description</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Chelsea to win, Over 2.5 goals"
-                  className="input input-bordered w-full"
-                  value={formData.description}
-                  onInput={(e) =>
-                    handleInputChange(
-                      "description",
-                      (e.target as HTMLInputElement).value,
-                    )
-                  }
-                  required
-                />
-              </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Odds</span>
+              </label>
+              <input
+                name="odds"
+                type="number"
+                step="1"
+                placeholder="-150, +200"
+                className="input input-bordered"
+                defaultValue={initialData?.odds}
+                required
+              />
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Line</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    placeholder="-1.5, 2.5, 0"
-                    className="input input-bordered"
-                    value={formData.line}
-                    onInput={(e) =>
-                      handleInputChange(
-                        "line",
-                        (e.target as HTMLInputElement).value,
-                      )
-                    }
-                  />
-                </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Amount ($)</span>
+              </label>
+              <input
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="100.00"
+                className="input input-bordered"
+                required
+              />
+            </div>
+          </div>
 
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Odds</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    placeholder="-150, +200"
-                    className="input input-bordered"
-                    value={formData.odds}
-                    onInput={(e) =>
-                      handleInputChange(
-                        "odds",
-                        (e.target as HTMLInputElement).value,
-                      )
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Amount ($)</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    placeholder="100.00"
-                    className="input input-bordered"
-                    value={formData.amount}
-                    onInput={(e) =>
-                      handleInputChange(
-                        "amount",
-                        (e.target as HTMLInputElement).value,
-                      )
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="modal-action">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={onCancel}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Creating..." : "Create Bet"}
-                </button>
-              </div>
-            </form>
-          </>
-        )}
+          <div className="modal-action">
+            <button
+              className="btn btn-ghost"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Creating..." : "Create Bet"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

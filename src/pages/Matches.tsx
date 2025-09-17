@@ -173,7 +173,7 @@ export function Matches() {
                               disabled={isReadOnly}
                               onClick={() => handleRecordBet(match.id)}
                             >
-                              Record Bet
+                              
                             </button>
                             <button
                               className="btn btn-sm btn-ghost"
@@ -231,7 +231,7 @@ export function Matches() {
                                       d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                                     />
                                   </svg>
-                                  Record Bet
+                                  
                                 </a>
                               </li>
                               <li>
@@ -321,7 +321,7 @@ export function Matches() {
                               disabled={isReadOnly}
                               onClick={() => handleRecordBet(match.id)}
                             >
-                              Record Bet
+                              
                             </button>
                             <button
                               className="btn btn-sm btn-ghost"
@@ -379,7 +379,7 @@ export function Matches() {
                                       d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                                     />
                                   </svg>
-                                  Record Bet
+                                  
                                 </a>
                               </li>
                               <li>
