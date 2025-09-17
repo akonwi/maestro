@@ -151,16 +151,19 @@ export function ValueBets() {
                             {market.values.map((value, valueIndex) => (
                               <div
                                 key={`${market.id}-${valueIndex}`}
-                                className={`badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
-                                onClick={() => {
-                                  if (!isReadOnly) {
-                                    handleRecordBet(
-                                      bet.fixture.id,
-                                      `${market.name} - ${value.name}`,
-                                      value.odd,
-                                    );
-                                  }
-                                }}
+                                aria-disabled={isReadOnly}
+                                className="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+                                onClick={
+                                  isReadOnly
+                                    ? undefined
+                                    : () => {
+                                        handleRecordBet(
+                                          bet.fixture.id,
+                                          `${market.name} - ${value.name}`,
+                                          value.odd,
+                                        );
+                                      }
+                                }
                               >
                                 {value.name}: {formatOdds(value.odd)}
                               </div>
