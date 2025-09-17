@@ -1,37 +1,36 @@
 import { useState } from "preact/hooks";
 import { Suspense } from "preact/compat";
 import { useCreateBet, type CreateBetData } from "../../hooks/use-bets";
-import { type OddsMarket, type OddsValue } from "../../hooks/use-match-odds";
 import { populateBetFromOdds } from "../../utils/betting";
 import { useAuth } from "../../contexts/AuthContext";
 import { MatchPredictions } from "./MatchPredictions";
 
 interface BetFormProps {
   matchId: number;
-  odds?: OddsMarket[];
-  oddsLoading: boolean;
-  oddsError: Error | null;
   onBetCreated: () => void;
   onCancel: () => void;
+  initialData?: {
+    description: string;
+    odds: number;
+    line?: number;
+  };
 }
 
 export default function BetForm({
   matchId,
-  odds,
-  oddsLoading,
-  oddsError,
   onBetCreated,
   onCancel,
+  initialData,
 }: BetFormProps) {
   const [formData, setFormData] = useState({
-    description: "",
-    line: 0,
-    odds: 100,
+    description: initialData?.description || "",
+    line: initialData?.line || 0,
+    odds: initialData?.odds || 100,
     amount: 0,
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting] = useState(false);
-  const [showManualForm, setShowManualForm] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(!!initialData);
 
   const { isReadOnly } = useAuth();
   const createBet = useCreateBet();
@@ -41,13 +40,6 @@ export default function BetForm({
       ...prev,
       [field]: field === "description" ? value : Number(value),
     }));
-    setErrors([]);
-  };
-
-  const handleOddsSelection = (market: OddsMarket, value: OddsValue) => {
-    const populatedData = populateBetFromOdds(market, value, formData.amount);
-    setFormData(populatedData);
-    setShowManualForm(true); // Show the form after selection
     setErrors([]);
   };
 
@@ -148,19 +140,8 @@ export default function BetForm({
           </div>
         )}
 
-        {oddsError && (
-          <div className="alert alert-warning mb-4">
-            <span>Could not load betting odds: {oddsError}</span>
-          </div>
-        )}
-
-        {/* Match Predictions Section */}
-        <Suspense fallback={<div>Loading...</div>}>
-          <MatchPredictions matchId={matchId} />
-        </Suspense>
-
         {/* Odds Selection Section */}
-        {!showManualForm && (
+        {!showManualForm && !initialData && (
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-semibold text-md">
@@ -174,67 +155,13 @@ export default function BetForm({
                 Manual Entry
               </button>
             </div>
-
-            {oddsLoading ? (
-              <div className="text-center py-8">
-                <span className="loading loading-spinner loading-md"></span>
-                <p className="text-sm text-base-content/60 mt-2">
-                  Loading odds...
-                </p>
-              </div>
-            ) : odds?.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-base-content/60">
-                  No odds available for this match
-                </p>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary mt-2"
-                  onClick={() => setShowManualForm(true)}
-                >
-                  Enter Manually
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {odds?.map((market, marketIndex) => (
-                  <div
-                    key={marketIndex}
-                    className="collapse collapse-arrow bg-base-200"
-                  >
-                    <input type="checkbox" />
-                    <div className="collapse-title text-sm font-medium">
-                      {market.name}
-                    </div>
-                    <div className="collapse-content">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                        {market.values.map((value, valueIndex) => (
-                          <button
-                            key={valueIndex}
-                            type="button"
-                            className="btn btn-sm btn-outline hover:btn-primary text-left justify-between"
-                            onClick={() => handleOddsSelection(market, value)}
-                          >
-                            <span className="truncate">{value.name}</span>
-                            <span className="font-mono text-xs">
-                              {value.odd > 0 ? "+" : ""}
-                              {value.odd}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
         {/* Manual Form Section */}
-        {!oddsLoading && (showManualForm || odds?.length === 0) && (
+        {(showManualForm || initialData) && (
           <>
-            {showManualForm && odds?.length! > 0 && (
+            {showManualForm && !initialData && (
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-semibold text-md">Bet Details</h4>
                 <button
@@ -244,6 +171,16 @@ export default function BetForm({
                 >
                   Back to Odds
                 </button>
+              </div>
+            )}
+
+            {initialData && (
+              <div className="mb-4">
+                <h4 className="font-semibold text-md">Place Your Bet</h4>
+                <p className="text-sm text-base-content/60">
+                  {initialData.description} at {initialData.odds > 0 ? "+" : ""}
+                  {initialData.odds}
+                </p>
               </div>
             )}
 

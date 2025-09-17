@@ -4,14 +4,50 @@ import { formatMatchDate } from "../utils/helpers";
 import { useJuice } from "../hooks/use-juice";
 import { Hide } from "../components/hide";
 import { TeamComparison } from "../components/TeamComparison";
+import BetForm from "../components/betting/BetForm";
+import { useAuth } from "../contexts/AuthContext";
 
 export function ValueBets() {
   const { data: valueBets, isLoading, error } = useJuice();
+  const { isReadOnly } = useAuth();
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
     awayTeamId: number;
     matchId: number;
   } | null>(null);
+
+  // Bet form state
+  const [showBetForm, setShowBetForm] = useState(false);
+  const [selectedMatchForBet, setSelectedMatchForBet] = useState<number | null>(
+    null,
+  );
+  const [prefilledBet, setPrefilledBet] = useState<{
+    description: string;
+    odds: number;
+    line?: number;
+  } | null>(null);
+
+  const handleRecordBet = (
+    matchId: number,
+    description: string,
+    odds: number,
+  ) => {
+    setSelectedMatchForBet(matchId);
+    setPrefilledBet({ description, odds });
+    setShowBetForm(true);
+  };
+
+  const handleBetCreated = () => {
+    setShowBetForm(false);
+    setSelectedMatchForBet(null);
+    setPrefilledBet(null);
+  };
+
+  const handleCancelBet = () => {
+    setShowBetForm(false);
+    setSelectedMatchForBet(null);
+    setPrefilledBet(null);
+  };
 
   const formatOdds = (odd: number) => {
     if (odd > 0) {
@@ -65,22 +101,22 @@ export function ValueBets() {
               >
                 <div className="card-body">
                   <div className="flex flex-col gap-4">
-                     {/* Match Header */}
-                     <div className="flex justify-between items-start">
-                       <div>
-                         <h3 
-                           className="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
-                           onClick={(e) => {
-                             e.preventDefault();
-                             setComparisonMatch({
-                               homeTeamId: bet.fixture.home.id,
-                               awayTeamId: bet.fixture.away.id,
-                               matchId: bet.fixture.id,
-                             });
-                           }}
-                         >
-                           {formatMatchup(bet.fixture)}
-                         </h3>
+                    {/* Match Header */}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3
+                          className="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setComparisonMatch({
+                              homeTeamId: bet.fixture.home.id,
+                              awayTeamId: bet.fixture.away.id,
+                              matchId: bet.fixture.id,
+                            });
+                          }}
+                        >
+                          {formatMatchup(bet.fixture)}
+                        </h3>
                         <p className="text-base-content/60 text-sm">
                           {bet.fixture.league_name} •{" "}
                           {formatMatchDate(bet.fixture.date)}
@@ -115,7 +151,16 @@ export function ValueBets() {
                             {market.values.map((value, valueIndex) => (
                               <div
                                 key={`${market.id}-${valueIndex}`}
-                                className="badge badge-lg badge-primary"
+                                className={`badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                                onClick={() => {
+                                  if (!isReadOnly) {
+                                    handleRecordBet(
+                                      bet.fixture.id,
+                                      `${market.name} - ${value.name}`,
+                                      value.odd,
+                                    );
+                                  }
+                                }}
                               >
                                 {value.name}: {formatOdds(value.odd)}
                               </div>
@@ -130,6 +175,15 @@ export function ValueBets() {
             ))}
           </div>
         )}
+      </Hide>
+
+      <Hide when={!showBetForm && selectedMatchForBet == null}>
+        <BetForm
+          matchId={selectedMatchForBet!}
+          onBetCreated={handleBetCreated}
+          onCancel={handleCancelBet}
+          initialData={prefilledBet || undefined}
+        />
       </Hide>
 
       <Hide when={comparisonMatch == null}>
