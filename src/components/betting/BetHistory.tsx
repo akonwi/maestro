@@ -200,7 +200,7 @@ export default function BetHistory({
                                     onClick={() =>
                                       updateBet.mutate({
                                         id: bet.id,
-                                        result: "loss",
+                                        result: "lose",
                                       })
                                     }
                                   >

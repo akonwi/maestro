@@ -8,7 +8,7 @@ export interface Bet {
 	line: number;
 	odds: number;
 	amount: number;
-	result: "pending" | "win" | "loss" | "push";
+	result: "pending" | "win" | "lose" | "push";
 }
 
 export interface BettingStats {
@@ -35,7 +35,7 @@ export interface UpdateBetData {
 	line?: number;
 	odds?: number;
 	amount?: number;
-	result?: "win" | "loss" | "push";
+	result?: Bet["result"];
 }
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;

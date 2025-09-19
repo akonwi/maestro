@@ -53,7 +53,7 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
     switch (result) {
       case "win":
         return <span className="badge badge-success">Win</span>;
-      case "loss":
+      case "lose":
         return <span className="badge badge-error">Loss</span>;
       case "push":
         return <span className="badge badge-warning">Push</span>;
@@ -118,7 +118,7 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
                         {formatCurrency(calculateProfit(bet.amount, bet.odds))})
                       </span>
                     )}
-                    {bet.result === "loss" && (
+                    {bet.result === "lose" && (
                       <span className="text-error">
                         Loss: -{formatCurrency(bet.amount)}
                       </span>
@@ -156,7 +156,7 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
                       <li>
                         <a
                           onClick={() =>
-                            updateBet.mutate({ id: bet.id, result: "loss" })
+                            updateBet.mutate({ id: bet.id, result: "lose" })
                           }
                         >
                           Loss
