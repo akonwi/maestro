@@ -8,13 +8,43 @@ import BetForm from "../components/betting/BetForm";
 import { useAuth } from "../contexts/AuthContext";
 
 export function ValueBets() {
-  const { data: valueBets, isLoading, error } = useJuice();
+  // Date navigation state
+  const [selectedDate, setSelectedDate] = useState<string>(
+    // Default to today's date in YYYY-MM-DD format
+    new Date().toISOString().split('T')[0] || ''
+  );
+
+  const { data: valueBets, isLoading, error } = useJuice(selectedDate);
   const { isReadOnly } = useAuth();
   const [comparisonMatch, setComparisonMatch] = useState<{
     homeTeamId: number;
     awayTeamId: number;
     matchId: number;
   } | null>(null);
+
+  // Date navigation functions
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const currentDate = new Date(selectedDate + 'T00:00:00');
+    const newDate = new Date(currentDate);
+    
+    if (direction === 'prev') {
+      newDate.setDate(currentDate.getDate() - 1);
+    } else {
+      newDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    setSelectedDate(newDate.toISOString().split('T')[0]!);
+  };
+
+  const formatDisplayDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00'); // Ensure consistent timezone
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   // Bet form state
   const [showBetForm, setShowBetForm] = useState(false);
@@ -64,6 +94,43 @@ export function ValueBets() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Value Bets</h1>
+        <div className="flex items-center gap-4">
+          {/* Date Display */}
+          <div className="text-lg font-medium text-base-content/80">
+            {formatDisplayDate(selectedDate)}
+          </div>
+          
+          {/* Navigation Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => navigateDate('prev')}
+              aria-label="Previous day"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => navigateDate('next')}
+              aria-label="Next day"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            
+            {/* Today Button */}
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0] || '')}
+            >
+              Today
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (

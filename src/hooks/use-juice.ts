@@ -29,13 +29,14 @@ export interface JuiceFixture {
 	}>;
 }
 
-export const useJuice = () => {
+export const useJuice = (date: string) => {
 	return useQuery({
-		queryKey: ["juice"],
+		queryKey: ["juice", date],
 		queryFn: async (): Promise<JuiceFixture[]> => {
-			const response = await fetch(
-				`${import.meta.env.VITE_API_BASE_URL}/juice`,
-			);
+			const url = date 
+				? `${import.meta.env.VITE_API_BASE_URL}/juice?date=${date}`
+				: `${import.meta.env.VITE_API_BASE_URL}/juice`;
+			const response = await fetch(url);
 			if (!response.ok) {
 				throw new Error("Failed to fetch value bets");
 			}
