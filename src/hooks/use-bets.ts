@@ -85,6 +85,7 @@ export function useCreateBet() {
 			queryClient.invalidateQueries({
 				queryKey: ["bets", { matchId: data.match_id }],
 			});
+			queryClient.invalidateQueries({ queryKey: ["bets", "overview"] });
 		},
 	});
 }
@@ -107,7 +108,7 @@ export function useUpdateBet() {
 		},
 		onSuccess: () => {
 			// todo: auto-normaliztion won't happen because server returns empty body
-			queryClient.invalidateQueries({ queryKey: ["bets"] });
+			queryClient.invalidateQueries({ queryKey: ["bets", "overview"] });
 		},
 	});
 }
