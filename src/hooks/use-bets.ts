@@ -108,7 +108,9 @@ export function useUpdateBet() {
 		},
 		onSuccess: () => {
 			// todo: auto-normaliztion won't happen because server returns empty body
-			queryClient.invalidateQueries({ queryKey: ["bets", "overview"] });
+			queryClient.invalidateQueries({
+				predicate: (query) => query.queryKey[0] == "bets",
+			});
 		},
 	});
 }
