@@ -23,6 +23,8 @@ interface TeamStats {
   one_conceded: number;
   two_plus_conceded: number;
   win_rate: number;
+  strike_rate: number;
+  one_plus_scored: number;
 }
 
 export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
@@ -95,6 +97,17 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
     return gamesPlayed > 0
       ? `${Math.round((stats.two_plus_conceded / gamesPlayed) * 100)}%`
       : "0%";
+  };
+
+  const formatStrikeRate = (stats: TeamStats) => {
+    return `${(stats.strike_rate * 100).toFixed(1)}%`;
+  };
+
+  const formatOnePlusScoredPercentage = (stats: TeamStats) => {
+    const gamesPlayed = getGamesPlayed(stats);
+    return gamesPlayed > 0
+      ? `${stats.one_plus_scored} (${Math.round((stats.one_plus_scored / gamesPlayed) * 100)}%)`
+      : `${stats.one_plus_scored}`;
   };
 
   const getFormRating = (stats: TeamStats) => {
@@ -237,6 +250,18 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
             label="Avg Goals Against"
             homeValue={homeStats.xga.toFixed(2)}
             awayValue={awayStats.xga.toFixed(2)}
+          />
+
+          <StatRow
+            label="Strike Rate"
+            homeValue={formatStrikeRate(homeStats)}
+            awayValue={formatStrikeRate(awayStats)}
+          />
+
+          <StatRow
+            label="1+ Goals Scored"
+            homeValue={formatOnePlusScoredPercentage(homeStats)}
+            awayValue={formatOnePlusScoredPercentage(awayStats)}
           />
         </div>
 
