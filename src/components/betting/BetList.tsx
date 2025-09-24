@@ -32,6 +32,19 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
     }
   };
 
+  const handleUpdateBetResult = (betId: number, result: "win" | "lose" | "push") => {
+    updateBet.mutate(
+      { id: betId, result },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["bets", { matchId }],
+          });
+        },
+      }
+    );
+  };
+
   // Bet calculation functions (American odds format)
   const calculatePayout = (amount: number, odds: number): number => {
     if (odds > 0) {
@@ -135,7 +148,7 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
               <div className="flex items-center gap-2">
                 {getResultBadge(bet.result)}
 
-                {bet.result == "pending" && !isReadOnly && (
+                {!bet.result && !isReadOnly && (
                   <div className="dropdown dropdown-end">
                     <label tabIndex={0} className="btn btn-sm btn-ghost">
                       Set Result
@@ -144,33 +157,39 @@ export default function BetList({ matchId, onEditBet }: BetListProps) {
                       tabIndex={0}
                       className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
                     >
-                      <li>
-                        <a
-                          onClick={() =>
-                            updateBet.mutate({ id: bet.id, result: "win" })
-                          }
-                        >
-                          Win
-                        </a>
-                      </li>
-                      <li>
-                        <a
-                          onClick={() =>
-                            updateBet.mutate({ id: bet.id, result: "lose" })
-                          }
-                        >
-                          Loss
-                        </a>
-                      </li>
-                      <li>
-                        <a
-                          onClick={() =>
-                            updateBet.mutate({ id: bet.id, result: "push" })
-                          }
-                        >
-                          Push
-                        </a>
-                      </li>
+                       <li>
+                         <a 
+                           onClick={() => handleUpdateBetResult(bet.id, "win")}
+                           className={updateBet.isPending ? "pointer-events-none opacity-50" : ""}
+                         >
+                           {updateBet.isPending ? (
+                             <span className="loading loading-spinner loading-xs mr-2"></span>
+                           ) : null}
+                           Win
+                         </a>
+                       </li>
+                       <li>
+                         <a 
+                           onClick={() => handleUpdateBetResult(bet.id, "lose")}
+                           className={updateBet.isPending ? "pointer-events-none opacity-50" : ""}
+                         >
+                           {updateBet.isPending ? (
+                             <span className="loading loading-spinner loading-xs mr-2"></span>
+                           ) : null}
+                           Loss
+                         </a>
+                       </li>
+                       <li>
+                         <a 
+                           onClick={() => handleUpdateBetResult(bet.id, "push")}
+                           className={updateBet.isPending ? "pointer-events-none opacity-50" : ""}
+                         >
+                           {updateBet.isPending ? (
+                             <span className="loading loading-spinner loading-xs mr-2"></span>
+                           ) : null}
+                           Push
+                         </a>
+                       </li>
                     </ul>
                   </div>
                 )}
