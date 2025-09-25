@@ -2,11 +2,12 @@ import { useState } from "preact/hooks";
 import { useCreateBet, type CreateBetData } from "../../hooks/use-bets";
 import { useAuth } from "../../contexts/AuthContext";
 
-interface BetFormProps {
+export interface BetFormProps {
   matchId: number;
   onBetCreated: () => void;
   onCancel: () => void;
   initialData?: {
+    type_id: number;
     description: string;
     odds: number;
     line?: number;
@@ -45,6 +46,7 @@ export default function BetForm({
     const formData = new FormData(e.target as HTMLFormElement);
     const betData: CreateBetData = {
       match_id: matchId,
+      type_id: initialData?.type_id ?? -1,
       name: formData.get("description")!.toString(),
       line: new Number(formData.get("line")!.toString()) as number,
       odds: new Number(formData.get("odds")!.toString()) as number,

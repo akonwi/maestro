@@ -24,6 +24,7 @@ export interface BettingStats {
 
 export interface CreateBetData {
 	match_id: number;
+	type_id: number;
 	name: string;
 	line: number;
 	odds: number;

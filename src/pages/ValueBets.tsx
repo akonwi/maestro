@@ -4,14 +4,14 @@ import { formatMatchDate } from "../utils/helpers";
 import { useJuice } from "../hooks/use-juice";
 import { Hide } from "../components/hide";
 import { TeamComparison } from "../components/TeamComparison";
-import BetForm from "../components/betting/BetForm";
+import BetForm, { BetFormProps } from "../components/betting/BetForm";
 import { useAuth } from "../contexts/AuthContext";
 
 export function ValueBets() {
   // Date navigation state
   const [selectedDate, setSelectedDate] = useState<string>(
     // Default to today's date in YYYY-MM-DD format
-    new Date().toISOString().split('T')[0] || ''
+    new Date().toISOString().split("T")[0] || "",
   );
 
   const { data: valueBets, isLoading, error } = useJuice(selectedDate);
@@ -23,26 +23,26 @@ export function ValueBets() {
   } | null>(null);
 
   // Date navigation functions
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const currentDate = new Date(selectedDate + 'T00:00:00');
+  const navigateDate = (direction: "prev" | "next") => {
+    const currentDate = new Date(selectedDate + "T00:00:00");
     const newDate = new Date(currentDate);
-    
-    if (direction === 'prev') {
+
+    if (direction === "prev") {
       newDate.setDate(currentDate.getDate() - 1);
     } else {
       newDate.setDate(currentDate.getDate() + 1);
     }
-    
-    setSelectedDate(newDate.toISOString().split('T')[0]!);
+
+    setSelectedDate(newDate.toISOString().split("T")[0]!);
   };
 
   const formatDisplayDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00'); // Ensure consistent timezone
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
+    const date = new Date(dateString + "T00:00:00"); // Ensure consistent timezone
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
@@ -51,19 +51,18 @@ export function ValueBets() {
   const [selectedMatchForBet, setSelectedMatchForBet] = useState<number | null>(
     null,
   );
-  const [prefilledBet, setPrefilledBet] = useState<{
-    description: string;
-    odds: number;
-    line?: number;
-  } | null>(null);
+  const [prefilledBet, setPrefilledBet] = useState<
+    BetFormProps["initialData"] | null
+  >(null);
 
   const handleRecordBet = (
     matchId: number,
+    type_id: number,
     description: string,
     odds: number,
   ) => {
     setSelectedMatchForBet(matchId);
-    setPrefilledBet({ description, odds });
+    setPrefilledBet({ description, odds, type_id });
     setShowBetForm(true);
   };
 
@@ -99,33 +98,55 @@ export function ValueBets() {
           <div className="text-lg font-medium text-base-content/80">
             {formatDisplayDate(selectedDate)}
           </div>
-          
+
           {/* Navigation Buttons */}
           <div className="flex items-center gap-2">
             <button
               className="btn btn-sm btn-outline"
-              onClick={() => navigateDate('prev')}
+              onClick={() => navigateDate("prev")}
               aria-label="Previous day"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
-            
+
             <button
               className="btn btn-sm btn-outline"
-              onClick={() => navigateDate('next')}
+              onClick={() => navigateDate("next")}
               aria-label="Next day"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
-            
+
             {/* Today Button */}
             <button
               className="btn btn-sm btn-primary"
-              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0] || '')}
+              onClick={() =>
+                setSelectedDate(new Date().toISOString().split("T")[0] || "")
+              }
             >
               Today
             </button>
@@ -206,18 +227,18 @@ export function ValueBets() {
 
                     {/* Betting Markets */}
                     <div className="space-y-3">
-                      {bet.stats.map((market) => (
+                      {bet.stats.map((betType) => (
                         <div
-                          key={market.id}
+                          key={betType.id}
                           className="bg-base-200 p-3 rounded-lg"
                         >
                           <h4 className="font-medium text-sm mb-2">
-                            {market.name}
+                            {betType.name}
                           </h4>
                           <div className="flex flex-wrap gap-2">
-                            {market.values.map((value, valueIndex) => (
+                            {betType.values.map((value, valueIndex) => (
                               <div
-                                key={`${market.id}-${valueIndex}`}
+                                key={`${betType.id}-${valueIndex}`}
                                 aria-disabled={isReadOnly}
                                 className="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
                                 onClick={
@@ -226,7 +247,8 @@ export function ValueBets() {
                                     : () => {
                                         handleRecordBet(
                                           bet.fixture.id,
-                                          `${market.name} - ${value.name}`,
+                                          betType.id,
+                                          `${betType.name} - ${value.name}`,
                                           value.odd,
                                         );
                                       }
