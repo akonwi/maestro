@@ -33,7 +33,7 @@ export const useJuice = (date: string) => {
 	return useQuery({
 		queryKey: ["juice", date],
 		queryFn: async (): Promise<JuiceFixture[]> => {
-			const url = date 
+			const url = date
 				? `${import.meta.env.VITE_API_BASE_URL}/juice?date=${date}`
 				: `${import.meta.env.VITE_API_BASE_URL}/juice`;
 			const response = await fetch(url);
@@ -42,5 +42,9 @@ export const useJuice = (date: string) => {
 			}
 			return response.json();
 		},
+		select: (data) =>
+			data.sort((a, b) =>
+				a.fixture.timestamp <= b.fixture.timestamp ? -1 : 1,
+			),
 	});
 };
