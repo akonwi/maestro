@@ -89,6 +89,15 @@ export function ValueBets() {
     return `${fixture.home.name} vs ${fixture.away.name}`;
   };
 
+  const formatFixtureTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false, // Force 24-hour format
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -205,10 +214,10 @@ export function ValueBets() {
                         >
                           {formatMatchup(bet.fixture)}
                         </h3>
-                        <p className="text-base-content/60 text-sm">
-                          {bet.fixture.league_name} •{" "}
-                          {formatMatchDate(bet.fixture.date)}
-                        </p>
+                         <p className="text-base-content/60 text-sm">
+                           {bet.fixture.league_name} •{" "}
+                           {formatFixtureTime(bet.fixture.date)}
+                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <img
