@@ -100,14 +100,12 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
   };
 
   const formatStrikeRate = (stats: TeamStats) => {
-    return `${(stats.strike_rate * 100).toFixed(1)}%`;
+    return stats.strike_rate.toFixed(1);
   };
 
   const formatOnePlusScoredPercentage = (stats: TeamStats) => {
     const gamesPlayed = getGamesPlayed(stats);
-    return gamesPlayed > 0
-      ? `${stats.one_plus_scored} (${Math.round(stats.one_plus_scored / gamesPlayed)})`
-      : `${stats.one_plus_scored}`;
+    return (stats.one_plus_scored / gamesPlayed).toFixed(1);
   };
 
   const getFormRating = (stats: TeamStats) => {
@@ -259,7 +257,7 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
           />
 
           <StatRow
-            label=">1 Goals Scored"
+            label="+1.5 Goals For"
             homeValue={formatOnePlusScoredPercentage(homeStats)}
             awayValue={formatOnePlusScoredPercentage(awayStats)}
           />
@@ -272,13 +270,13 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
         />
 
         <StatRow
-          label="+1 Conceded"
+          label="+0.5 Goals Against"
           homeValue={`${homeStats.one_conceded} (${formatOneConcededPercentage(homeStats)})`}
           awayValue={`${awayStats.one_conceded} (${formatOneConcededPercentage(awayStats)})`}
         />
 
         <StatRow
-          label="+2 Conceded"
+          label="+1.5 Goals Against"
           homeValue={`${homeStats.two_plus_conceded} (${formatTwoConcededPercentage(homeStats)})`}
           awayValue={`${awayStats.two_plus_conceded} (${formatTwoConcededPercentage(awayStats)})`}
         />
