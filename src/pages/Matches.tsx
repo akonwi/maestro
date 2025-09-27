@@ -3,7 +3,7 @@ import { Suspense } from "preact/compat";
 import { formatMatchDate, isEmpty, partition } from "../utils/helpers";
 import BetForm from "../components/betting/BetForm";
 import BetList from "../components/betting/BetList";
-import { TeamComparison } from "../components/TeamComparison";
+import { Matchup } from "../components/matchup";
 import { useLeagues } from "../hooks/use-leagues";
 import { useAuth } from "../contexts/AuthContext";
 import { useMatches } from "../hooks/use-matches";
@@ -172,9 +172,7 @@ export function Matches() {
                               className={`btn btn-sm ${isReadOnly ? "btn-disabled" : "btn-primary"}`}
                               disabled={isReadOnly}
                               onClick={() => handleRecordBet(match.id)}
-                            >
-                              
-                            </button>
+                            ></button>
                             <button
                               className="btn btn-sm btn-ghost"
                               onClick={() => toggleMatchExpansion(match.id)}
@@ -231,7 +229,6 @@ export function Matches() {
                                       d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                                     />
                                   </svg>
-                                  
                                 </a>
                               </li>
                               <li>
@@ -320,9 +317,7 @@ export function Matches() {
                               className={`btn btn-sm ${isReadOnly ? "btn-disabled" : "btn-primary"}`}
                               disabled={isReadOnly}
                               onClick={() => handleRecordBet(match.id)}
-                            >
-                              
-                            </button>
+                            ></button>
                             <button
                               className="btn btn-sm btn-ghost"
                               onClick={() => toggleMatchExpansion(match.id)}
@@ -379,7 +374,6 @@ export function Matches() {
                                       d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                                     />
                                   </svg>
-                                  
                                 </a>
                               </li>
                               <li>
@@ -439,7 +433,7 @@ export function Matches() {
         {/*defer evaluation because a null comparisonMatch will cause type errors*/}
         {() => (
           <Suspense fallback={<div>Loading...</div>}>
-            <TeamComparison
+            <Matchup
               homeTeamId={comparisonMatch!.homeTeamId}
               awayTeamId={comparisonMatch!.awayTeamId}
               matchId={comparisonMatch!.matchId}

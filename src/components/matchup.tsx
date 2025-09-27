@@ -27,7 +27,7 @@ interface TeamStats {
   one_plus_scored: number;
 }
 
-export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
+export function Matchup({ matchId, onClose }: TeamComparisonProps) {
   const analysisQuery = useMatchAnalysis(matchId);
 
   if (analysisQuery.isError) {

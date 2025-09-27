@@ -3,7 +3,7 @@ import { Suspense } from "preact/compat";
 import { formatMatchDate } from "../utils/helpers";
 import { useJuice } from "../hooks/use-juice";
 import { Hide } from "../components/hide";
-import { TeamComparison } from "../components/TeamComparison";
+import { Matchup } from "../components/matchup";
 import BetForm, { BetFormProps } from "../components/betting/BetForm";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -92,8 +92,8 @@ export function ValueBets() {
   const formatFixtureTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: false, // Force 24-hour format
     });
   };
@@ -214,10 +214,10 @@ export function ValueBets() {
                         >
                           {formatMatchup(bet.fixture)}
                         </h3>
-                         <p className="text-base-content/60 text-sm">
-                           {bet.fixture.league_name} •{" "}
-                           {formatFixtureTime(bet.fixture.date)}
-                         </p>
+                        <p className="text-base-content/60 text-sm">
+                          {bet.fixture.league_name} •{" "}
+                          {formatFixtureTime(bet.fixture.date)}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <img
@@ -291,7 +291,7 @@ export function ValueBets() {
         {/*defer evaluation because a null comparisonMatch will cause type errors*/}
         {() => (
           <Suspense fallback={<div>Loading...</div>}>
-            <TeamComparison
+            <Matchup
               homeTeamId={comparisonMatch!.homeTeamId}
               awayTeamId={comparisonMatch!.awayTeamId}
               matchId={comparisonMatch!.matchId}
