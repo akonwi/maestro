@@ -12,6 +12,8 @@ interface TeamStats {
 	draws: number;
 	losses: number;
 	goals_for: number;
+	one_plus_scored: number;
+	strike_rate: number;
 	goals_against: number;
 	goals_diff: number;
 	xgf: number;

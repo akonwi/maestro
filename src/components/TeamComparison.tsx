@@ -106,7 +106,7 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
   const formatOnePlusScoredPercentage = (stats: TeamStats) => {
     const gamesPlayed = getGamesPlayed(stats);
     return gamesPlayed > 0
-      ? `${stats.one_plus_scored} (${Math.round((stats.one_plus_scored / gamesPlayed) * 100)}%)`
+      ? `${stats.one_plus_scored} (${Math.round(stats.one_plus_scored / gamesPlayed)})`
       : `${stats.one_plus_scored}`;
   };
 
@@ -259,7 +259,7 @@ export function TeamComparison({ matchId, onClose }: TeamComparisonProps) {
           />
 
           <StatRow
-            label="1+ Goals Scored"
+            label=">1 Goals Scored"
             homeValue={formatOnePlusScoredPercentage(homeStats)}
             awayValue={formatOnePlusScoredPercentage(awayStats)}
           />
