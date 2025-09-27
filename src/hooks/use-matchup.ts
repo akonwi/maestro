@@ -29,7 +29,7 @@ interface ComparisonData {
 	away: TeamStats;
 }
 
-export function useMatchAnalysis(matchId: number) {
+export function useMatchup(matchId: number) {
 	return useSuspenseQuery<AnalysisData>({
 		queryKey: ["analysis", { matchId }],
 		queryFn: async () => {

@@ -1,4 +1,4 @@
-import { useMatchAnalysis } from "../hooks/use-match-analysis";
+import { useMatchup } from "../hooks/use-matchup";
 
 interface TeamComparisonProps {
   homeTeamId: number;
@@ -28,7 +28,7 @@ interface TeamStats {
 }
 
 export function Matchup({ matchId, onClose }: TeamComparisonProps) {
-  const analysisQuery = useMatchAnalysis(matchId);
+  const analysisQuery = useMatchup(matchId);
 
   if (analysisQuery.isError) {
     return (
