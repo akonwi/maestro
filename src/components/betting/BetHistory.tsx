@@ -150,7 +150,9 @@ export default function BetHistory({
                       </span>
                     )}
                     {bet.result === "pending" && (
-                      <span className="text-gray-500">-</span>
+                      <span className="text-warning">
+                        +{formatCurrency(calculateProfit(bet.amount, bet.odds))}
+                      </span>
                     )}
                   </td>
                   <td>
