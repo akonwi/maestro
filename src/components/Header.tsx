@@ -51,7 +51,7 @@ export function Header() {
             </li>
             <li>
               <Link
-                to="/maestro/"
+                to="/maestro/betting"
                 className={url === "/betting" ? "active" : ""}
               >
                 Betting
