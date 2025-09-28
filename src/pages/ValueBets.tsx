@@ -292,8 +292,6 @@ export function ValueBets() {
         {() => (
           <Suspense fallback={<div>Loading...</div>}>
             <Matchup
-              homeTeamId={comparisonMatch!.homeTeamId}
-              awayTeamId={comparisonMatch!.awayTeamId}
               matchId={comparisonMatch!.matchId}
               onClose={() => {
                 setComparisonMatch(null);

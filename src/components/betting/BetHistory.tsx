@@ -1,8 +1,11 @@
 import { useState } from "preact/hooks";
+import { Suspense } from "preact/compat";
 import { useBetOverview } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
 import { useDeleteBet, useUpdateBet } from "../../hooks/use-bets";
 import { useAuth } from "../../contexts/AuthContext";
+import { Matchup } from "../matchup";
+import { Hide } from "../hide";
 
 export default function BetHistory({
   query,
@@ -12,6 +15,7 @@ export default function BetHistory({
   const [filter, setFilter] = useState<"all" | "win" | "lose" | "pending">(
     "all",
   );
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
 
   const { data, isLoading, error } = query;
   const { isReadOnly } = useAuth();
@@ -39,16 +43,6 @@ export default function BetHistory({
       style: "currency",
       currency: "USD",
     }).format(amount);
-  };
-
-  const getTeamNames = (matchId: number) => {
-    const match = matchesData.find((m) => m.id === matchId);
-    if (!match) return "Unknown Match";
-
-    const homeTeam = teamsData[match.home_team_id] || "Unknown";
-    const awayTeam = teamsData[match.away_team_id] || "Unknown";
-
-    return `${homeTeam} vs ${awayTeam}`;
   };
 
   const getResultBadge = (result: string) => {
@@ -110,7 +104,7 @@ export default function BetHistory({
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Teams</th>
+                <th>Match</th>
                 <th>Bet</th>
                 <th>Odds</th>
                 <th>Wager</th>
@@ -124,7 +118,12 @@ export default function BetHistory({
                 <tr key={bet.id}>
                   <td>{bet.id}</td>
                   <td>
-                    <div className="text-sm">{getTeamNames(bet.match_id)}</div>
+                    <button
+                      className="btn btn-link p-0"
+                      onClick={() => setSelectedMatchId(bet.match_id)}
+                    >
+                      {bet.match_id}
+                    </button>
                   </td>
                   <td>
                     <div className="text-sm">
@@ -243,6 +242,20 @@ export default function BetHistory({
           </table>
         </div>
       )}
+
+      <Hide when={selectedMatchId == null}>
+        {/*defer evaluation because a null selectedMatchup will cause type errors*/}
+        {() => (
+          <Suspense fallback={<div>Loading...</div>}>
+            <Matchup
+              matchId={selectedMatchId!}
+              onClose={() => {
+                setSelectedMatchId(null);
+              }}
+            />
+          </Suspense>
+        )}
+      </Hide>
     </div>
   );
 }

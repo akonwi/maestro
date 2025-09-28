@@ -1,8 +1,6 @@
 import { useMatchup } from "../hooks/use-matchup";
 
 interface TeamComparisonProps {
-  homeTeamId: number;
-  awayTeamId: number;
   matchId: number;
   onClose: () => void;
 }
