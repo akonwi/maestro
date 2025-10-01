@@ -13,7 +13,9 @@ export interface Match {
 	id: number;
 	date: string;
 	home_team_id: number;
+	home_team_name: string;
 	away_team_id: number;
+	away_team_name: string;
 	home_goals: number;
 	away_goals: number;
 	league_id: number;

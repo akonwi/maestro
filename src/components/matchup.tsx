@@ -1,4 +1,5 @@
 import { useMatchup } from "../hooks/use-matchup";
+import { useMatch } from "../hooks/use-matches";
 
 interface TeamComparisonProps {
   matchId: number;
@@ -25,6 +26,123 @@ interface TeamStats {
   one_plus_scored: number;
 }
 
+// Match Info Component
+function MatchInfo({ matchId }: { matchId: number }) {
+  const matchQuery = useMatch(matchId);
+
+  if (matchQuery.isLoading || !matchQuery.data) {
+    return <MatchInfoSkeleton />;
+  }
+
+  if (matchQuery.isError) {
+    return (
+      <div className="bg-base-200 rounded-lg p-4 mb-6">
+        <div className="text-center text-error">
+          Failed to load match information
+        </div>
+      </div>
+    );
+  }
+
+  const matchData = matchQuery.data;
+
+  const formatMatchDateTime = (date: string, timestamp: number) => {
+    const matchDate = new Date(timestamp * 1000);
+    return {
+      date: matchDate.toLocaleDateString(),
+      time: matchDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  };
+
+  const getMatchStatus = (
+    status: string,
+    homeGoals: number,
+    awayGoals: number,
+  ) => {
+    switch (status) {
+      case "FT":
+        return { text: "Full Time", badge: "badge-neutral" };
+      case "NS":
+        return { text: "Not Started", badge: "badge-ghost" };
+      default:
+        return { text: status, badge: "badge-warning" };
+    }
+  };
+
+  return (
+    <>
+      <div className="text-sm text-base-content/60 mb-6">
+        {formatMatchDateTime(matchData.date, matchData.timestamp).date} •{" "}
+        {formatMatchDateTime(matchData.date, matchData.timestamp).time}
+      </div>
+
+      <div className="bg-base-200 rounded-lg p-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="text-center flex-1">
+            <div className="font-bold text-lg">{matchData.home_team_name}</div>
+            <div className="text-2xl font-bold mt-1">
+              {matchData.home_goals}
+            </div>
+          </div>
+          <div className="text-center px-4">
+            <div className="text-lg font-bold">VS</div>
+            <div className="mt-2">
+              <span
+                className={`badge ${getMatchStatus(matchData.status, matchData.home_goals, matchData.away_goals).badge}`}
+              >
+                {
+                  getMatchStatus(
+                    matchData.status,
+                    matchData.home_goals,
+                    matchData.away_goals,
+                  ).text
+                }
+              </span>
+            </div>
+          </div>
+          <div className="text-center flex-1">
+            <div className="font-bold text-lg">{matchData.away_team_name}</div>
+            <div className="text-2xl font-bold mt-1">
+              {matchData.away_goals}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Match Info Skeleton
+function MatchInfoSkeleton() {
+  return (
+    <>
+      <div className="animate-pulse bg-base-300 h-4 w-48 rounded mb-6"></div>
+
+      <div className="bg-base-200 rounded-lg p-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="text-center flex-1">
+            <div className="animate-pulse bg-base-300 h-6 w-24 rounded mx-auto mb-2"></div>
+            <div className="animate-pulse bg-base-300 h-8 w-8 rounded mx-auto"></div>
+          </div>
+          <div className="text-center px-4">
+            <div className="text-lg font-bold">VS</div>
+            <div className="mt-2">
+              <div className="animate-pulse bg-base-300 h-6 w-20 rounded"></div>
+            </div>
+          </div>
+          <div className="text-center flex-1">
+            <div className="animate-pulse bg-base-300 h-6 w-24 rounded mx-auto mb-2"></div>
+            <div className="animate-pulse bg-base-300 h-8 w-8 rounded mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function Matchup({ matchId, onClose }: TeamComparisonProps) {
   const analysisQuery = useMatchup(matchId);
 
@@ -38,6 +156,19 @@ export function Matchup({ matchId, onClose }: TeamComparisonProps) {
             <button className="btn btn-primary" onClick={onClose}>
               Close
             </button>
+          </div>
+        </div>
+        <div className="modal-backdrop" onClick={onClose}></div>
+      </div>
+    );
+  }
+
+  if (analysisQuery.isLoading) {
+    return (
+      <div className="modal modal-open">
+        <div className="modal-box">
+          <div className="flex justify-center p-8">
+            <div className="loading loading-spinner loading-lg"></div>
           </div>
         </div>
         <div className="modal-backdrop" onClick={onClose}></div>
@@ -161,11 +292,16 @@ export function Matchup({ matchId, onClose }: TeamComparisonProps) {
       <div className="modal-box max-w-2xl w-11/12 max-h-screen overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Team Comparison</h2>
+          <div>
+            <h2 className="text-2xl font-bold">Match Details</h2>
+          </div>
           <button className="btn btn-sm btn-ghost" onClick={onClose}>
             ×
           </button>
         </div>
+
+        {/* Match Info */}
+        <MatchInfo matchId={matchId} />
 
         {/* Team Names - Mobile Responsive */}
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
