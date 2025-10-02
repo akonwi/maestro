@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Match } from "../types";
 
 export interface Bet {
 	id: number;
@@ -9,13 +8,6 @@ export interface Bet {
 	line: number;
 	odds: number;
 	result: "win" | "lose" | "pending";
-}
-
-export interface Team {
-	id: number;
-	name: string;
-	code: string | null;
-	league_id: number;
 }
 
 export interface BetOverview {
@@ -31,8 +23,6 @@ export interface BetOverview {
 
 export interface BetOverviewResponse {
 	overview: BetOverview;
-	teams: Record<string, Team>;
-	matches: Match[];
 }
 
 export function useBetOverview() {

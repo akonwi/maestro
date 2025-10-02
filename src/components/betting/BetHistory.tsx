@@ -23,8 +23,6 @@ export default function BetHistory({
   const updateBet = useUpdateBet();
 
   const betsData = data?.overview?.bets || [];
-  const teamsData = data?.teams || {};
-  const matchesData = data?.matches || [];
 
   const filteredBets = betsData.filter((bet) => {
     if (filter === "all") return true;
