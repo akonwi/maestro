@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Match, Team } from "../types";
+import { Match } from "../types";
 
 interface LeagueMatchData {
-	teams: Map<number, Team>;
 	matches: Match[];
 }
 
@@ -18,12 +17,7 @@ export function useMatches(leagueId: number | null) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const data = await response.json();
-
-			return {
-				matches: data.matches,
-				teams: new Map(data.teams.map((t: Team) => [t.id, t])),
-			};
+			return await response.json();
 		},
 	});
 }

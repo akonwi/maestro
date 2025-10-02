@@ -22,7 +22,6 @@ export function Matches() {
   const { isReadOnly } = useAuth();
 
   const matches = matchData?.matches ?? [];
-  const teams = matchData?.teams ?? new Map();
 
   useEffect(() => {
     // once leagues are loaded, select the first one
@@ -62,14 +61,6 @@ export function Matches() {
 
   const toggleMatchExpansion = (matchId: number) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
-  };
-
-  const getTeamName = (id: number) => teams.get(id)?.name ?? "Unknown";
-
-  const formatMatchResult = (match: Match) => {
-    const homeTeam = getTeamName(match.home_team_id);
-    const awayTeam = getTeamName(match.away_team_id);
-    return `${homeTeam} ${match.home_goals} - ${match.away_goals} ${awayTeam}`;
   };
 
   const { left: completed, right: future } = partition(matches, (m) =>
@@ -155,7 +146,9 @@ export function Matches() {
                       <div className="flex justify-between items-center">
                         <div className="cursor-pointer flex-1">
                           <h3 className="text-lg font-semibold hover:text-primary transition-colors">
-                            {formatMatchResult(match)}
+                            {((match: Match) => {
+                              return `${match.home_team_name} ${match.home_goals} - ${match.away_goals} ${match.away_team_name}`;
+                            })(match)}
                           </h3>
                           <p className="text-base-content/60 text-sm">
                             {formatMatchDate(match.date)}
@@ -303,8 +296,7 @@ export function Matches() {
                           }}
                         >
                           <h3 className="text-lg font-semibold hover:text-primary transition-colors">
-                            {getTeamName(match.home_team_id)} vs{" "}
-                            {getTeamName(match.away_team_id)}
+                            {match.home_team_name} vs {match.away_team_name}
                           </h3>
                           <p className="text-base-content/60 text-sm">
                             {formatMatchDate(match.date)}
