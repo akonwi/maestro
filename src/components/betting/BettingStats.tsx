@@ -5,8 +5,7 @@ export default function BettingStatsComponent({
 }: {
   query: ReturnType<typeof useBetOverview>;
 }) {
-  const { data, isLoading, error } = query;
-  const stats = data?.overview;
+  const { data: stats, isLoading, error } = query;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {

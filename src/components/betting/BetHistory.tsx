@@ -22,7 +22,7 @@ export default function BetHistory({
   const deleteBet = useDeleteBet();
   const updateBet = useUpdateBet();
 
-  const betsData = data?.overview?.bets || [];
+  const betsData = data?.bets || [];
 
   const filteredBets = betsData.filter((bet) => {
     if (filter === "all") return true;

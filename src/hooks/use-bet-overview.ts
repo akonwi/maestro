@@ -21,14 +21,10 @@ export interface BetOverview {
 	roi: number;
 }
 
-export interface BetOverviewResponse {
-	overview: BetOverview;
-}
-
 export function useBetOverview() {
 	return useQuery({
 		queryKey: ["bets", "overview"],
-		queryFn: async function (): Promise<BetOverviewResponse> {
+		queryFn: async function (): Promise<BetOverview> {
 			const response = await fetch(
 				`${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
 			);
