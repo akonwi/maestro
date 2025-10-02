@@ -1,6 +1,7 @@
 export interface League {
 	id: string;
 	name: string;
+	season: number;
 }
 
 export interface Team {
@@ -16,7 +17,7 @@ export interface Match {
 	away: Team;
 	home_goals: number;
 	away_goals: number;
-	league_id: number;
+	league: League;
 	status: "NS" | "FT" | string;
 	timestamp: number;
 	winner_id: number | null;
