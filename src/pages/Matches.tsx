@@ -147,7 +147,7 @@ export function Matches() {
                         <div className="cursor-pointer flex-1">
                           <h3 className="text-lg font-semibold hover:text-primary transition-colors">
                             {((match: Match) => {
-                              return `${match.home_team_name} ${match.home_goals} - ${match.away_goals} ${match.away_team_name}`;
+                              return `${match.home.name} ${match.home_goals} - ${match.away_goals} ${match.away.name}`;
                             })(match)}
                           </h3>
                           <p className="text-base-content/60 text-sm">
@@ -289,14 +289,14 @@ export function Matches() {
                           onClick={(e) => {
                             e.preventDefault();
                             setComparisonMatch({
-                              homeTeamId: match.home_team_id,
-                              awayTeamId: match.away_team_id,
+                              homeTeamId: match.home.id,
+                              awayTeamId: match.away.id,
                               matchId: match.id,
                             });
                           }}
                         >
                           <h3 className="text-lg font-semibold hover:text-primary transition-colors">
-                            {match.home_team_name} vs {match.away_team_name}
+                            {match.home.name} vs {match.away.name}
                           </h3>
                           <p className="text-base-content/60 text-sm">
                             {formatMatchDate(match.date)}

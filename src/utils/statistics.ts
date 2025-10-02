@@ -5,7 +5,7 @@ export function calculateTeamStatistics(
 	matches: Match[],
 ): TeamStatistics {
 	const teamMatches = matches.filter(
-		(match) => match.home_team_id === teamId || match.away_team_id === teamId,
+		(match) => match.home.id === teamId || match.away.id === teamId,
 	);
 
 	if (teamMatches.length === 0) {
@@ -38,7 +38,7 @@ export function calculateTeamStatistics(
 			return;
 		}
 
-		const isHome = match.home_team_id === teamId;
+		const isHome = match.home.id === teamId;
 		const teamScore = isHome ? match.home_goals : match.away_goals;
 		const opponentScore = isHome ? match.away_goals : match.home_goals;
 

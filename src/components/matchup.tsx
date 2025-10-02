@@ -104,7 +104,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
             </div>
           </div>
           <div className="text-center flex-1">
-            <div className="font-bold text-lg">{matchData.away_team_name}</div>
+            <div className="font-bold text-lg">{matchData.away.name}</div>
             <div className="text-2xl font-bold mt-1">
               {matchData.away_goals}
             </div>
