@@ -81,11 +81,8 @@ function MatchInfo({ matchId }: { matchId: number }) {
 
       <div className="bg-base-200 rounded-lg p-4 mb-6">
         <div className="flex justify-between items-center">
-          <div className="text-center flex-1">
-            <div className="font-bold text-lg">{matchData.home_team_name}</div>
-            <div className="text-2xl font-bold mt-1">
-              {matchData.home_goals}
-            </div>
+          <div className="text-center flex-1 text-2xl font-bold">
+            {matchData.home_goals}
           </div>
           <div className="text-center px-4">
             <div className="text-lg font-bold">VS</div>
@@ -103,11 +100,8 @@ function MatchInfo({ matchId }: { matchId: number }) {
               </span>
             </div>
           </div>
-          <div className="text-center flex-1">
-            <div className="font-bold text-lg">{matchData.away.name}</div>
-            <div className="text-2xl font-bold mt-1">
-              {matchData.away_goals}
-            </div>
+          <div className="text-center flex-1 text-2xl font-bold">
+            {matchData.away_goals}
           </div>
         </div>
       </div>
