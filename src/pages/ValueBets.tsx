@@ -193,7 +193,7 @@ export function ValueBets() {
           <div className="space-y-4">
             {valueBets.map((bet, index) => (
               <div
-                key={`${bet.fixture.id}-${index}`}
+                key={bet.fixture.id}
                 className="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow"
               >
                 <div className="card-body">
