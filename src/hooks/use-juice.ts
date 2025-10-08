@@ -43,8 +43,13 @@ export const useJuice = (date: string) => {
 			return response.json();
 		},
 		select: (data) =>
-			data.sort((a, b) =>
-				a.fixture.timestamp <= b.fixture.timestamp ? -1 : 1,
-			),
+			data.sort((a, b) => {
+				// First sort by timestamp
+				if (a.fixture.timestamp !== b.fixture.timestamp) {
+					return a.fixture.timestamp - b.fixture.timestamp;
+				}
+				// If timestamps are equal, sort by fixture ID for stability
+				return a.fixture.id - b.fixture.id;
+			}),
 	});
 };
