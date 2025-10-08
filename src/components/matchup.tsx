@@ -156,8 +156,9 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
     type_id: number,
     description: string,
     odds: number,
+    line?: number,
   ) => {
-    setPrefilledBet({ description, odds, type_id });
+    setPrefilledBet({ description, odds, type_id, line });
     setShowBetForm(true);
   };
 
@@ -292,14 +293,24 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
   const getBetHighlightForStat = (statLabel: string) => {
     if (!valueBets) return { home: [], away: [] };
 
-    const homeHighlights: Array<{text: string, typeId: number, description: string, odds: number}> = [];
-    const awayHighlights: Array<{text: string, typeId: number, description: string, odds: number}> = [];
+    const homeHighlights: Array<{text: string, typeId: number, description: string, odds: number, line?: number}> = [];
+    const awayHighlights: Array<{text: string, typeId: number, description: string, odds: number, line?: number}> = [];
 
     // Bet type IDs
     const HOME_TOTAL_GOALS = 16;
     const HOME_CLEANSHEET = 27;
     const AWAY_TOTAL_GOALS = 17;
     const AWAY_CLEANSHEET = 28;
+
+    // Extract line value from bet name (e.g., "Over 2.5" -> 2.5, "Under 2.5" -> -2.5)
+    const extractLine = (name: string): number | undefined => {
+      const match = name.match(/(\d+\.?\d*)/);
+      if (!match || !match[1]) return undefined;
+      
+      const value = parseFloat(match[1]);
+      // Make negative for "Under" bets
+      return name.toLowerCase().includes("under") ? -value : value;
+    };
 
     // Map betting markets to stat labels
     valueBets.stats.forEach((betType) => {
@@ -316,6 +327,7 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
 
         const betText = `${formattedValue}: ${formatOdds(value.odd)}`;
         const description = `${betType.name} - ${value.name}`;
+        const line = extractLine(value.name);
 
         // Home Total Goals mapping
         if (
@@ -326,7 +338,8 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
             text: betText,
             typeId: betType.id,
             description: description,
-            odds: value.odd
+            odds: value.odd,
+            line: line
           });
         }
 
@@ -339,7 +352,8 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
             text: betText,
             typeId: betType.id,
             description: description,
-            odds: value.odd
+            odds: value.odd,
+            line: line
           });
         }
 
@@ -352,7 +366,8 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
             text: betText,
             typeId: betType.id,
             description: description,
-            odds: value.odd
+            odds: value.odd,
+            line: line
           });
         }
 
@@ -365,7 +380,8 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
             text: betText,
             typeId: betType.id,
             description: description,
-            odds: value.odd
+            odds: value.odd,
+            line: line
           });
         }
       });
@@ -406,7 +422,8 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
                     onClick={isReadOnly ? undefined : () => handleRecordBet(
                       highlight.typeId,
                       highlight.description,
-                      highlight.odds
+                      highlight.odds,
+                      highlight.line
                     )}
                   >
                     {highlight.text}
@@ -438,7 +455,8 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
                     onClick={isReadOnly ? undefined : () => handleRecordBet(
                       highlight.typeId,
                       highlight.description,
-                      highlight.odds
+                      highlight.odds,
+                      highlight.line
                     )}
                   >
                     {highlight.text}
