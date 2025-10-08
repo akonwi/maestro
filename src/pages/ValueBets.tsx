@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import { Suspense } from "preact/compat";
 import { formatMatchDate } from "../utils/helpers";
-import { useJuice } from "../hooks/use-juice";
+import { useJuice, JuiceFixture } from "../hooks/use-juice";
 import { Hide } from "../components/hide";
 import { Matchup } from "../components/matchup";
 import BetForm, { BetFormProps } from "../components/betting/BetForm";
@@ -20,6 +20,7 @@ export function ValueBets() {
     homeTeamId: number;
     awayTeamId: number;
     matchId: number;
+    valueBets?: JuiceFixture;
   } | null>(null);
 
   // Date navigation functions
@@ -209,6 +210,7 @@ export function ValueBets() {
                               homeTeamId: bet.fixture.home.id,
                               awayTeamId: bet.fixture.away.id,
                               matchId: bet.fixture.id,
+                              valueBets: bet,
                             });
                           }}
                         >
@@ -293,6 +295,7 @@ export function ValueBets() {
           <Suspense fallback={<div>Loading...</div>}>
             <Matchup
               matchId={comparisonMatch!.matchId}
+              valueBets={comparisonMatch!.valueBets}
               onClose={() => {
                 setComparisonMatch(null);
               }}

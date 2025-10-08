@@ -1,9 +1,16 @@
 import { useMatchup } from "../hooks/use-matchup";
 import { useMatch } from "../hooks/use-matches";
+import { JuiceFixture } from "../hooks/use-juice";
+import { useState } from "preact/hooks";
+import { Suspense } from "preact/compat";
+import { Hide } from "./hide";
+import BetForm, { BetFormProps } from "./betting/BetForm";
+import { useAuth } from "../contexts/AuthContext";
 
 interface TeamComparisonProps {
   matchId: number;
   onClose: () => void;
+  valueBets?: JuiceFixture;
 }
 
 interface TeamStats {
@@ -137,8 +144,32 @@ function MatchInfoSkeleton() {
   );
 }
 
-export function Matchup({ matchId, onClose }: TeamComparisonProps) {
+export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
   const analysisQuery = useMatchup(matchId);
+  const { isReadOnly } = useAuth();
+  
+  // Bet form state
+  const [showBetForm, setShowBetForm] = useState(false);
+  const [prefilledBet, setPrefilledBet] = useState<BetFormProps["initialData"] | null>(null);
+
+  const handleRecordBet = (
+    type_id: number,
+    description: string,
+    odds: number,
+  ) => {
+    setPrefilledBet({ description, odds, type_id });
+    setShowBetForm(true);
+  };
+
+  const handleBetCreated = () => {
+    setShowBetForm(false);
+    setPrefilledBet(null);
+  };
+
+  const handleCancelBet = () => {
+    setShowBetForm(false);
+    setPrefilledBet(null);
+  };
 
   if (analysisQuery.isError) {
     return (
@@ -251,6 +282,101 @@ export function Matchup({ matchId, onClose }: TeamComparisonProps) {
     return "poor"; // <35% (Relegation zone performance)
   };
 
+  const formatOdds = (odd: number) => {
+    if (odd > 0) {
+      return `+${odd}`;
+    }
+    return odd.toString();
+  };
+
+  const getBetHighlightForStat = (statLabel: string) => {
+    if (!valueBets) return { home: [], away: [] };
+
+    const homeHighlights: Array<{text: string, typeId: number, description: string, odds: number}> = [];
+    const awayHighlights: Array<{text: string, typeId: number, description: string, odds: number}> = [];
+
+    // Bet type IDs
+    const HOME_TOTAL_GOALS = 16;
+    const HOME_CLEANSHEET = 27;
+    const AWAY_TOTAL_GOALS = 17;
+    const AWAY_CLEANSHEET = 28;
+
+    // Map betting markets to stat labels
+    valueBets.stats.forEach((betType) => {
+      betType.values.forEach((value) => {
+        let formattedValue = value.name;
+        
+        // Format Over/Under to +/- signs
+        if (formattedValue.toLowerCase().includes("over")) {
+          formattedValue = formattedValue.replace(/over\s*/i, "+");
+        }
+        if (formattedValue.toLowerCase().includes("under")) {
+          formattedValue = formattedValue.replace(/under\s*/i, "-");
+        }
+
+        const betText = `${formattedValue}: ${formatOdds(value.odd)}`;
+        const description = `${betType.name} - ${value.name}`;
+
+        // Home Total Goals mapping
+        if (
+          betType.id === HOME_TOTAL_GOALS &&
+          statLabel === "Avg Goals For"
+        ) {
+          homeHighlights.push({
+            text: betText,
+            typeId: betType.id,
+            description: description,
+            odds: value.odd
+          });
+        }
+
+        // Away Total Goals mapping
+        if (
+          betType.id === AWAY_TOTAL_GOALS &&
+          statLabel === "Avg Goals For"
+        ) {
+          awayHighlights.push({
+            text: betText,
+            typeId: betType.id,
+            description: description,
+            odds: value.odd
+          });
+        }
+
+        // Home Clean Sheet mapping
+        if (
+          betType.id === HOME_CLEANSHEET &&
+          statLabel === "Clean Sheets"
+        ) {
+          homeHighlights.push({
+            text: betText,
+            typeId: betType.id,
+            description: description,
+            odds: value.odd
+          });
+        }
+
+        // Away Clean Sheet mapping
+        if (
+          betType.id === AWAY_CLEANSHEET &&
+          statLabel === "Clean Sheets"
+        ) {
+          awayHighlights.push({
+            text: betText,
+            typeId: betType.id,
+            description: description,
+            odds: value.odd
+          });
+        }
+      });
+    });
+
+    return {
+      home: homeHighlights,
+      away: awayHighlights
+    };
+  };
+
   const StatRow = ({
     label,
     homeValue,
@@ -263,23 +389,68 @@ export function Matchup({ matchId, onClose }: TeamComparisonProps) {
     awayValue: string | number;
     homeClass?: string;
     awayClass?: string;
-  }) => (
-    <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
-      <div
-        className={`col-span-1 sm:col-span-2 text-center sm:text-right text-sm sm:text-base ${homeClass}`}
-      >
-        {homeValue}
+  }) => {
+    const betHighlights = getBetHighlightForStat(label);
+
+    return (
+      <div className="py-2 border-b border-base-200">
+        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 items-center">
+          {/* Home side with bet highlights on the left */}
+          <div className="col-span-1 sm:col-span-2 flex items-center justify-end gap-2">
+            {betHighlights.home.length > 0 && (
+              <div className="flex flex-wrap gap-1 justify-end">
+                {betHighlights.home.map((highlight, index) => (
+                  <span 
+                    key={index} 
+                    className="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
+                    onClick={isReadOnly ? undefined : () => handleRecordBet(
+                      highlight.typeId,
+                      highlight.description,
+                      highlight.odds
+                    )}
+                  >
+                    {highlight.text}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className={`text-center sm:text-right text-sm sm:text-base ${homeClass}`}>
+              {homeValue}
+            </div>
+          </div>
+          
+          {/* Center label */}
+          <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
+            {label}
+          </div>
+          
+          {/* Away side with bet highlights on the right */}
+          <div className="col-span-1 sm:col-span-2 flex items-center justify-start gap-2">
+            <div className={`text-center sm:text-left text-sm sm:text-base ${awayClass}`}>
+              {awayValue}
+            </div>
+            {betHighlights.away.length > 0 && (
+              <div className="flex flex-wrap gap-1 justify-start">
+                {betHighlights.away.map((highlight, index) => (
+                  <span 
+                    key={index} 
+                    className="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
+                    onClick={isReadOnly ? undefined : () => handleRecordBet(
+                      highlight.typeId,
+                      highlight.description,
+                      highlight.odds
+                    )}
+                  >
+                    {highlight.text}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
-        {label}
-      </div>
-      <div
-        className={`col-span-1 sm:col-span-2 text-center sm:text-left text-sm sm:text-base ${awayClass}`}
-      >
-        {awayValue}
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="modal modal-open z-50">
@@ -417,6 +588,16 @@ export function Matchup({ matchId, onClose }: TeamComparisonProps) {
         </div>
       </div>
       <div className="modal-backdrop" onClick={onClose}></div>
+
+      {/* Bet Form */}
+      <Hide when={!showBetForm}>
+        <BetForm
+          matchId={matchId}
+          onBetCreated={handleBetCreated}
+          onCancel={handleCancelBet}
+          initialData={prefilledBet || undefined}
+        />
+      </Hide>
     </div>
   );
 }
