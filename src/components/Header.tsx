@@ -37,11 +37,6 @@ export function Header() {
             className="menu menu-sm dropdown-content mt-3 z-[1] p-2 bg-base-100 border border-base-300 rounded-box w-52"
           >
             <li>
-              <Link to="/maestro/teams" className={url === "/" ? "active" : ""}>
-                Teams
-              </Link>
-            </li>
-            <li>
               <Link
                 to="/maestro/matches"
                 className={url === "/matches" ? "active" : ""}

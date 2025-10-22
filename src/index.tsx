@@ -35,10 +35,6 @@ const router = createBrowserRouter([
         },
         children: [
           { index: true, Component: ValueBets },
-          // {
-          //   path: "/maestro/team/:teamId",
-          //   Component: TeamDetail,
-          // },
           { path: "/maestro/matches", Component: Matches },
           { path: "/maestro/leagues", Component: Leagues },
           { path: "/maestro/betting", Component: BettingPerformance },
