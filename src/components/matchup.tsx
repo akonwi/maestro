@@ -297,6 +297,7 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
     const awayHighlights: Array<{text: string, typeId: number, description: string, odds: number, line?: number}> = [];
 
     // Bet type IDs
+    const MATCH_OUTCOME = 1;
     const HOME_TOTAL_GOALS = 16;
     const HOME_CLEANSHEET = 27;
     const AWAY_TOTAL_GOALS = 17;
@@ -328,6 +329,30 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
         const betText = `${formattedValue}: ${formatOdds(value.odd)}`;
         const description = `${betType.name} - ${value.name}`;
         const line = extractLine(value.name);
+
+        // Match Outcome mapping
+        if (
+          betType.id === MATCH_OUTCOME &&
+          statLabel === "W-D-L Record"
+        ) {
+          if (value.name === "Home") {
+            homeHighlights.push({
+              text: betText,
+              typeId: betType.id,
+              description: description,
+              odds: value.odd,
+              line: line
+            });
+          } else if (value.name === "Away") {
+            awayHighlights.push({
+              text: betText,
+              typeId: betType.id,
+              description: description,
+              odds: value.odd,
+              line: line
+            });
+          }
+        }
 
         // Home Total Goals mapping
         if (
