@@ -176,50 +176,46 @@ export default function BetHistory({
                             tabIndex={0}
                             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
                           >
-                            {/* Set Result options - only for pending bets */}
-                            {bet.result === "pending" && (
-                              <>
-                                <li className="menu-title">
-                                  <span>Set Result</span>
-                                </li>
-                                <li>
-                                  <a
-                                    onClick={() =>
-                                      updateBet.mutate({
-                                        id: bet.id,
-                                        result: "win",
-                                      })
-                                    }
-                                  >
-                                    Win
-                                  </a>
-                                </li>
-                                <li>
-                                  <a
-                                    onClick={() =>
-                                      updateBet.mutate({
-                                        id: bet.id,
-                                        result: "lose",
-                                      })
-                                    }
-                                  >
-                                    Loss
-                                  </a>
-                                </li>
-                                <li>
-                                  <a
-                                    onClick={() =>
-                                      updateBet.mutate({
-                                        id: bet.id,
-                                        result: "push",
-                                      })
-                                    }
-                                  >
-                                    Push
-                                  </a>
-                                </li>
-                              </>
-                            )}
+                            {/* Set Result options */}
+                            <li className="menu-title">
+                              <span>Set Result</span>
+                            </li>
+                            <li>
+                              <a
+                                onClick={() =>
+                                  updateBet.mutate({
+                                    id: bet.id,
+                                    result: "win",
+                                  })
+                                }
+                              >
+                                Win
+                              </a>
+                            </li>
+                            <li>
+                              <a
+                                onClick={() =>
+                                  updateBet.mutate({
+                                    id: bet.id,
+                                    result: "lose",
+                                  })
+                                }
+                              >
+                                Loss
+                              </a>
+                            </li>
+                            <li>
+                              <a
+                                onClick={() =>
+                                  updateBet.mutate({
+                                    id: bet.id,
+                                    result: "push",
+                                  })
+                                }
+                              >
+                                Push
+                              </a>
+                            </li>
                             {/* Always available actions */}
                             <li>
                               <a
