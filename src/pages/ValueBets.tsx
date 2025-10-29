@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { Suspense } from "preact/compat";
 import { formatMatchDate } from "../utils/helpers";
 import { useJuice, JuiceFixture } from "../hooks/use-juice";
@@ -8,6 +8,32 @@ import BetForm, { BetFormProps } from "../components/betting/BetForm";
 import { useAuth } from "../contexts/AuthContext";
 
 export function ValueBets() {
+  // View mode state with localStorage persistence
+  const [viewMode, setViewMode] = useState<"list" | "table">(() => {
+    const saved = localStorage.getItem("valueBetsViewMode");
+    return (saved === "table") ? "table" : "list";
+  });
+
+  // Table sorting state with localStorage persistence
+  const [sortByOdds, setSortByOdds] = useState<"asc" | "desc" | null>(() => {
+    const saved = localStorage.getItem("valueBetsSortByOdds");
+    return (saved === "asc" || saved === "desc") ? saved : null;
+  });
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    localStorage.setItem("valueBetsViewMode", viewMode);
+  }, [viewMode]);
+
+  // Persist sort setting to localStorage
+  useEffect(() => {
+    if (sortByOdds === null) {
+      localStorage.removeItem("valueBetsSortByOdds");
+    } else {
+      localStorage.setItem("valueBetsSortByOdds", sortByOdds);
+    }
+  }, [sortByOdds]);
+
   // Date navigation state
   const [selectedDate, setSelectedDate] = useState<string>(
     // Default to today's date in YYYY-MM-DD format
@@ -99,11 +125,65 @@ export function ValueBets() {
     });
   };
 
+  // Table sorting functions
+  const handleOddsSort = () => {
+    setSortByOdds(current => {
+      if (current === null) return "desc";
+      if (current === "desc") return "asc";
+      return null;
+    });
+  };
+
+  // Prepare table data with sorting
+  const getSortedTableData = () => {
+    if (!valueBets) return [];
+
+    const flattened = valueBets.flatMap((bet) =>
+      bet.stats.flatMap((betType) =>
+        betType.values.map((value, valueIndex) => ({
+          bet,
+          betType,
+          value,
+          valueIndex,
+          key: `${bet.fixture.id}-${betType.id}-${valueIndex}`,
+        }))
+      )
+    );
+
+    if (sortByOdds === null) return flattened;
+
+    return flattened.sort((a, b) => {
+      const aOdds = a.value.odd;
+      const bOdds = b.value.odd;
+      if (sortByOdds === "asc") {
+        return aOdds - bOdds;
+      } else {
+        return bOdds - aOdds;
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Value Bets</h1>
         <div className="flex items-center gap-4">
+          {/* View Toggle */}
+          <div className="tabs tabs-boxed">
+            <button
+              className={`tab ${viewMode === "list" ? "tab-active" : ""}`}
+              onClick={() => setViewMode("list")}
+            >
+              List
+            </button>
+            <button
+              className={`tab ${viewMode === "table" ? "tab-active" : ""}`}
+              onClick={() => setViewMode("table")}
+            >
+              Table
+            </button>
+          </div>
+
           {/* Date Display */}
           <div className="text-lg font-medium text-base-content/80">
             {formatDisplayDate(selectedDate)}
@@ -190,7 +270,7 @@ export function ValueBets() {
               Check back later for new opportunities
             </div>
           </div>
-        ) : (
+        ) : viewMode === "list" ? (
           <div className="space-y-4">
             {valueBets.map((bet, index) => (
               <div
@@ -276,6 +356,75 @@ export function ValueBets() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th
+                    className="cursor-pointer hover:bg-base-200 select-none"
+                    onClick={handleOddsSort}
+                  >
+                    <div className="flex items-center gap-1">
+                      Odds
+                      {sortByOdds && (
+                        <svg
+                          className={`w-4 h-4 transition-transform ${
+                            sortByOdds === "desc" ? "rotate-0" : "rotate-180"
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 15l7-7 7 7"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th>Bet Name</th>
+                  <th>Match</th>
+                  <th>League</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getSortedTableData().map(({ bet, betType, value, key }) => (
+                  <tr
+                    key={key}
+                    className="cursor-pointer hover:bg-base-200 transition-colors"
+                    onClick={() => {
+                      setComparisonMatch({
+                        homeTeamId: bet.fixture.home.id,
+                        awayTeamId: bet.fixture.away.id,
+                        matchId: bet.fixture.id,
+                        valueBets: bet,
+                      });
+                    }}
+                  >
+                    <td className="font-medium">
+                      <span className="badge badge-primary">
+                        {formatOdds(value.odd)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="text-sm">
+                        <div className="font-medium">{betType.name}</div>
+                        <div className="text-base-content/60">{value.name}</div>
+                      </div>
+                    </td>
+                    <td>{formatMatchup(bet.fixture)}</td>
+                    <td>{bet.fixture.league.name}</td>
+                    <td>{formatFixtureTime(bet.fixture.date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Hide>
