@@ -217,7 +217,7 @@ export function ValueBets() {
                           {formatMatchup(bet.fixture)}
                         </h3>
                         <p className="text-base-content/60 text-sm">
-                          {bet.fixture.league_name} •{" "}
+                          {bet.fixture.league.name} •{" "}
                           {formatFixtureTime(bet.fixture.date)}
                         </p>
                       </div>

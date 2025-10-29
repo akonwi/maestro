@@ -34,7 +34,7 @@ interface TeamStats {
 }
 
 // Match Info Component
-function MatchInfo({ matchId }: { matchId: number }) {
+function MatchInfo({ matchId, leagueName }: { matchId: number; leagueName?: string }) {
   const matchQuery = useMatch(matchId);
 
   if (matchQuery.isLoading || !matchQuery.data) {
@@ -82,6 +82,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   return (
     <>
       <div className="text-sm text-base-content/60 mb-6">
+        {leagueName && `${leagueName} • `}
         {formatMatchDateTime(matchData.date, matchData.timestamp).date} •{" "}
         {formatMatchDateTime(matchData.date, matchData.timestamp).time}
       </div>
@@ -509,7 +510,7 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
         </div>
 
         {/* Match Info */}
-        <MatchInfo matchId={matchId} />
+        <MatchInfo matchId={matchId} leagueName={valueBets?.fixture.league.name} />
 
         {/* Team Names - Mobile Responsive */}
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">

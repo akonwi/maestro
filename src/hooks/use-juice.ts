@@ -5,6 +5,11 @@ export interface JuiceFixture {
 		id: number;
 		date: string;
 		timestamp: number;
+		league: {
+			id: number;
+			name: string;
+			season: number;
+		};
 		league_id: number;
 		league_name: string;
 		season: number;
