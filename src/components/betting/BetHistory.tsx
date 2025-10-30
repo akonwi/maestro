@@ -1,23 +1,18 @@
 import { useState } from "preact/hooks";
 import { Suspense } from "preact/compat";
-import { useBetOverview } from "../../hooks/use-bet-overview";
 import { calculateProfit } from "../../services/betService";
-import { useDeleteBet, useUpdateBet } from "../../hooks/use-bets";
+import { useBets, useDeleteBet, useUpdateBet } from "../../hooks/use-bets";
 import { useAuth } from "../../contexts/AuthContext";
 import { Matchup } from "../matchup";
 import { Hide } from "../hide";
 
-export default function BetHistory({
-  query,
-}: {
-  query: ReturnType<typeof useBetOverview>;
-}) {
+export default function BetHistory() {
   const [filter, setFilter] = useState<"all" | "win" | "lose" | "pending">(
     "all",
   );
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
 
-  const { data, isLoading, error } = query;
+  const { data, isLoading, error } = useBets();
   const { isReadOnly } = useAuth();
   const deleteBet = useDeleteBet();
   const updateBet = useUpdateBet();

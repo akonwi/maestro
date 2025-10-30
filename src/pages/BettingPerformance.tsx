@@ -18,7 +18,7 @@ export function BettingPerformance() {
 
         <section>
           <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-          <BetHistory query={query} />
+          <BetHistory />
         </section>
       </div>
     </div>

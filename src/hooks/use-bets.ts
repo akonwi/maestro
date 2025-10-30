@@ -46,9 +46,9 @@ export function useBets(matchId?: number) {
 		queryKey: ["bets", { matchId }],
 		queryFn: async () => {
 			const queryParams =
-				matchId != null
+				typeof matchId === "number"
 					? new URLSearchParams({ match_id: matchId.toString() }).toString()
-					: undefined;
+					: "";
 			const response = await fetch(`${baseUrl}/bets?${queryParams}`, {
 				method: "GET",
 				headers: {
