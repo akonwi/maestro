@@ -8,10 +8,13 @@ import BetForm, { BetFormProps } from "../components/betting/BetForm";
 import { useAuth } from "../contexts/AuthContext";
 
 export function ValueBets() {
-  // View mode state with localStorage persistence
+  // Responsive view mode based on viewport size
   const [viewMode, setViewMode] = useState<"list" | "table">(() => {
-    const saved = localStorage.getItem("valueBetsViewMode");
-    return (saved === "table") ? "table" : "list";
+    // Default to list for mobile-first approach
+    if (typeof window !== "undefined") {
+      return window.innerWidth >= 1024 ? "table" : "list"; // lg breakpoint
+    }
+    return "list";
   });
 
   // Table sorting state with localStorage persistence
@@ -20,10 +23,21 @@ export function ValueBets() {
     return (saved === "asc" || saved === "desc") ? saved : null;
   });
 
-  // Persist view mode to localStorage
+  // Update view mode based on viewport size
   useEffect(() => {
-    localStorage.setItem("valueBetsViewMode", viewMode);
-  }, [viewMode]);
+    const updateViewMode = () => {
+      setViewMode(window.innerWidth >= 1024 ? "table" : "list");
+    };
+
+    // Set initial value
+    updateViewMode();
+
+    // Listen for resize events
+    window.addEventListener("resize", updateViewMode);
+
+    // Cleanup
+    return () => window.removeEventListener("resize", updateViewMode);
+  }, []);
 
   // Persist sort setting to localStorage
   useEffect(() => {
@@ -168,22 +182,6 @@ export function ValueBets() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Value Bets</h1>
         <div className="flex items-center gap-4">
-          {/* View Toggle */}
-          <div className="tabs tabs-boxed">
-            <button
-              className={`tab ${viewMode === "list" ? "tab-active" : ""}`}
-              onClick={() => setViewMode("list")}
-            >
-              List
-            </button>
-            <button
-              className={`tab ${viewMode === "table" ? "tab-active" : ""}`}
-              onClick={() => setViewMode("table")}
-            >
-              Table
-            </button>
-          </div>
-
           {/* Date Display */}
           <div className="text-lg font-medium text-base-content/80">
             {formatDisplayDate(selectedDate)}
