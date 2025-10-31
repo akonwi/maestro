@@ -41,15 +41,23 @@ export interface UpdateBetData {
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export function useBets(matchId?: number) {
-	return useQuery<{ bets: Bet[] }>({
-		queryKey: ["bets", { matchId }],
+export function useBets(matchId?: number, after?: number) {
+	return useQuery<{
+		bets: Bet[];
+		cursor?: number | null;
+		has_next?: boolean | null;
+	}>({
+		queryKey: ["bets", { matchId, after }],
 		queryFn: async () => {
-			const queryParams =
-				typeof matchId === "number"
-					? new URLSearchParams({ match_id: matchId.toString() }).toString()
-					: "";
-			const response = await fetch(`${baseUrl}/bets?${queryParams}`, {
+			const params = new URLSearchParams();
+			if (typeof matchId === "number") {
+				params.append("match_id", matchId.toString());
+			}
+			if (typeof after === "number") {
+				params.append("after", after.toString());
+			}
+			const queryString = params.size > 0 ? params.toString() : "";
+			const response = await fetch(`${baseUrl}/bets?${queryString}`, {
 				method: "GET",
 				headers: {
 					"Content-Type": "application/json",

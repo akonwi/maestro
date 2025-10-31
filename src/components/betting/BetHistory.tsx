@@ -6,13 +6,29 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Matchup } from "../matchup";
 import { Hide } from "../hide";
 
+function useStacked<T>() {
+  const [stack, update] = useState<T[]>([]);
+  return {
+    current: stack[0],
+    clear: () => update([]),
+    push: (item: T) => update([item, ...stack]),
+    pop: () => update(([_, ...rest]) => rest),
+  };
+}
+
 export default function BetHistory() {
   const [filter, setFilter] = useState<"all" | "win" | "lose" | "pending">(
     "all",
   );
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
+  const {
+    current: cursor,
+    clear: clearCursor,
+    push: next,
+    pop: goBack,
+  } = useStacked<number>();
 
-  const { data, isLoading, error } = useBets();
+  const { data, isLoading, error } = useBets(undefined, cursor);
   const { isReadOnly } = useAuth();
   const deleteBet = useDeleteBet();
   const updateBet = useUpdateBet();
@@ -92,146 +108,185 @@ export default function BetHistory() {
           No bets found for the selected filter.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table table-zebra w-full">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Match</th>
-                <th>Bet</th>
-                <th>Odds</th>
-                <th>Wager</th>
-                <th>Result</th>
-                <th>P&L</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBets.reverse().map((bet) => (
-                <tr key={bet.id}>
-                  <td>{bet.id}</td>
-                  <td>
-                    <button
-                      className="btn btn-link p-0"
-                      onClick={() => setSelectedMatchId(bet.match_id)}
-                    >
-                      {bet.match_id}
-                    </button>
-                  </td>
-                  <td>
-                    <div className="text-sm">
-                      {bet.name}
-                      {bet.line !== 0 && (
-                        <div className="text-xs text-gray-500">
-                          Line: {bet.line}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td>{bet.odds > 0 ? `+${bet.odds}` : bet.odds}</td>
-                  <td>{formatCurrency(bet.amount)}</td>
-                  <td>{getResultBadge(bet.result)}</td>
-                  <td>
-                    {bet.result === "win" && (
-                      <span className="text-success">
-                        +{formatCurrency(calculateProfit(bet.amount, bet.odds))}
-                      </span>
-                    )}
-                    {bet.result === "lose" && (
-                      <span className="text-error">
-                        -{formatCurrency(bet.amount)}
-                      </span>
-                    )}
-                    {bet.result === "pending" && (
-                      <span className="text-warning">
-                        +{formatCurrency(calculateProfit(bet.amount, bet.odds))}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="flex justify-center">
-                      {!isReadOnly ? (
-                        <div className="dropdown dropdown-end">
-                          <label tabIndex={0} className="btn btn-xs btn-ghost">
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z"
-                              />
-                            </svg>
-                          </label>
-                          <ul
-                            tabIndex={0}
-                            className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
-                          >
-                            {/* Set Result options */}
-                            <li className="menu-title">
-                              <span>Set Result</span>
-                            </li>
-                            <li>
-                              <a
-                                onClick={() =>
-                                  updateBet.mutate({
-                                    id: bet.id,
-                                    result: "win",
-                                  })
-                                }
-                              >
-                                Win
-                              </a>
-                            </li>
-                            <li>
-                              <a
-                                onClick={() =>
-                                  updateBet.mutate({
-                                    id: bet.id,
-                                    result: "lose",
-                                  })
-                                }
-                              >
-                                Loss
-                              </a>
-                            </li>
-                            <li>
-                              <a
-                                onClick={() =>
-                                  updateBet.mutate({
-                                    id: bet.id,
-                                    result: "push",
-                                  })
-                                }
-                              >
-                                Push
-                              </a>
-                            </li>
-                            {/* Always available actions */}
-                            <li>
-                              <a
-                                onClick={() => handleDelete(bet.id)}
-                                className="text-error"
-                              >
-                                Delete
-                              </a>
-                            </li>
-                          </ul>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </div>
-                  </td>
+        <>
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Match</th>
+                  <th>Bet</th>
+                  <th>Odds</th>
+                  <th>Wager</th>
+                  <th>Result</th>
+                  <th>P&L</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredBets.map((bet) => (
+                  <tr key={bet.id}>
+                    <td>{bet.id}</td>
+                    <td>
+                      <button
+                        className="btn btn-link p-0"
+                        onClick={() => setSelectedMatchId(bet.match_id)}
+                      >
+                        {bet.match_id}
+                      </button>
+                    </td>
+                    <td>
+                      <div className="text-sm">
+                        {bet.name}
+                        {bet.line !== 0 && (
+                          <div className="text-xs text-gray-500">
+                            Line: {bet.line}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>{bet.odds > 0 ? `+${bet.odds}` : bet.odds}</td>
+                    <td>{formatCurrency(bet.amount)}</td>
+                    <td>{getResultBadge(bet.result)}</td>
+                    <td>
+                      {bet.result === "win" && (
+                        <span className="text-success">
+                          +
+                          {formatCurrency(
+                            calculateProfit(bet.amount, bet.odds),
+                          )}
+                        </span>
+                      )}
+                      {bet.result === "lose" && (
+                        <span className="text-error">
+                          -{formatCurrency(bet.amount)}
+                        </span>
+                      )}
+                      {bet.result === "pending" && (
+                        <span className="text-warning">
+                          +
+                          {formatCurrency(
+                            calculateProfit(bet.amount, bet.odds),
+                          )}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex justify-center">
+                        {!isReadOnly ? (
+                          <div className="dropdown dropdown-end">
+                            <label
+                              tabIndex={0}
+                              className="btn btn-xs btn-ghost"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z"
+                                />
+                              </svg>
+                            </label>
+                            <ul
+                              tabIndex={0}
+                              className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
+                            >
+                              {/* Set Result options */}
+                              <li className="menu-title">
+                                <span>Set Result</span>
+                              </li>
+                              <li>
+                                <a
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "win",
+                                    })
+                                  }
+                                >
+                                  Win
+                                </a>
+                              </li>
+                              <li>
+                                <a
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "lose",
+                                    })
+                                  }
+                                >
+                                  Loss
+                                </a>
+                              </li>
+                              <li>
+                                <a
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "push",
+                                    })
+                                  }
+                                >
+                                  Push
+                                </a>
+                              </li>
+                              {/* Always available actions */}
+                              <li>
+                                <a
+                                  onClick={() => handleDelete(bet.id)}
+                                  className="text-error"
+                                >
+                                  Delete
+                                </a>
+                              </li>
+                            </ul>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex justify-end mt-4">
+            <div className="flex items-center gap-2">
+              <Hide when={cursor === undefined}>
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={clearCursor}
+                >
+                  Reset
+                </button>
+              </Hide>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={goBack}
+                disabled={typeof cursor === "undefined"}
+              >
+                Prev
+              </button>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => next(data?.cursor!)}
+                disabled={data?.has_next !== true}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       <Hide when={selectedMatchId == null}>
