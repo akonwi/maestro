@@ -31,6 +31,7 @@ interface TeamStats {
   win_rate: number;
   strike_rate: number;
   one_plus_scored: number;
+  position: number;
 }
 
 // Match Info Component
@@ -516,7 +517,7 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
           <div className="col-span-1 sm:col-span-2 text-center">
             <h3 className="text-lg sm:text-xl font-bold break-words">
-              {homeStats.name}
+              {homeStats.name}{homeStats.position > 0 ? ` (#${homeStats.position})` : ''}
             </h3>
             <div className="text-xs sm:text-sm text-base-content/60">Home</div>
           </div>
@@ -525,7 +526,7 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
           </div>
           <div className="col-span-1 sm:col-span-2 text-center">
             <h3 className="text-lg sm:text-xl font-bold break-words">
-              {awayStats.name}
+              {awayStats.name}{awayStats.position > 0 ? ` (#${awayStats.position})` : ''}
             </h3>
             <div className="text-xs sm:text-sm text-base-content/60">Away</div>
           </div>
