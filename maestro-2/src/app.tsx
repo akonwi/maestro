@@ -1,17 +1,19 @@
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense } from "solid-js";
-import Nav from "~/components/Nav";
 import "./app.css";
+import { Header } from "./components/header";
 
 export default function App() {
   return (
     <Router
-      root={props => (
-        <>
-          <Nav />
-          <Suspense>{props.children}</Suspense>
-        </>
+      root={(props) => (
+        <div class="min-h-screen bg-base-200">
+          <Header />
+          <main class="container mx-auto px-4 py-8">
+            <Suspense>{props.children}</Suspense>
+          </main>
+        </div>
       )}
     >
       <FileRoutes />
