@@ -11,7 +11,11 @@ import {
   Switch,
 } from "solid-js";
 import BetForm, { BetFormProps } from "~/components/bet-form";
-import { Matchup, MatchInfoSkeleton } from "~/components/matchup";
+import {
+  Matchup,
+  MatchInfoSkeleton,
+  MatchupSkeleton,
+} from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
 import { JuiceFixture, useJuice } from "~/hooks/data/use-juice";
 
@@ -436,7 +440,7 @@ function Page() {
       </Show>
 
       <Show when={comparisonMatch() != null}>
-        <Suspense fallback={<MatchInfoSkeleton />}>
+        <Suspense fallback={<MatchupSkeleton />}>
           <Matchup
             matchId={comparisonMatch()!.matchId}
             valueBets={comparisonMatch()?.valueBets}

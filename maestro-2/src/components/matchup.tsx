@@ -208,6 +208,14 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
   );
 }
 
+export function MatchupSkeleton() {
+  return (
+    <div>
+      <div class="animate-pulse bg-base-300 h-20 w-48 rounded mb-6"></div>
+    </div>
+  );
+}
+
 const getFormBadgeClass = (rating: string) => {
   switch (rating.toLowerCase()) {
     case "excellent":
