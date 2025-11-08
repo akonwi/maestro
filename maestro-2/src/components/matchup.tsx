@@ -1,7 +1,14 @@
-import { createSignal, For, Match, Switch, Show, createMemo } from "solid-js";
+import {
+  createSignal,
+  For,
+  Match,
+  Switch,
+  Show,
+  createMemo,
+  Suspense,
+} from "solid-js";
 import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
-import { useAuth } from "~/contexts/auth";
 import { JuiceFixture } from "~/hooks/data/use-juice";
 import { BetFormProps } from "./bet-form";
 
@@ -32,98 +39,8 @@ interface TeamStats {
   position: number;
 }
 
-// Match Info Component
-function MatchInfo({
-  matchId,
-  leagueName,
-}: {
-  matchId: number;
-  leagueName?: string;
-}) {
-  const matchQuery = useMatch(matchId);
-
-  if (matchQuery.isLoading || !matchQuery.data) {
-    return <MatchupSkeleton />;
-  }
-
-  if (matchQuery.isError) {
-    return (
-      <div class="bg-base-200 rounded-lg p-4 mb-6">
-        <div class="text-center text-error">
-          Failed to load match information
-        </div>
-      </div>
-    );
-  }
-
-  const matchData = matchQuery.data;
-
-  const formatMatchDateTime = (date: string, timestamp: number) => {
-    const matchDate = new Date(timestamp * 1000);
-    return {
-      date: matchDate.toLocaleDateString(),
-      time: matchDate.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-  };
-
-  const getMatchStatus = (
-    status: string,
-    homeGoals: number,
-    awayGoals: number,
-  ) => {
-    switch (status) {
-      case "FT":
-        return { text: "Full Time", badge: "badge-neutral" };
-      case "NS":
-        return { text: "Not Started", badge: "badge-ghost" };
-      default:
-        return { text: status, badge: "badge-warning" };
-    }
-  };
-
-  return (
-    <>
-      <div class="text-sm text-base-content/60 mb-6">
-        {leagueName && `${leagueName} • `}
-        {formatMatchDateTime(matchData.date, matchData.timestamp).date} •{" "}
-        {formatMatchDateTime(matchData.date, matchData.timestamp).time}
-      </div>
-
-      <div class="bg-base-200 rounded-lg p-4 mb-6">
-        <div class="flex justify-between items-center">
-          <div class="text-center flex-1 text-2xl font-bold">
-            {matchData.home_goals}
-          </div>
-          <div class="text-center px-4">
-            <div class="text-lg font-bold">VS</div>
-            <div class="mt-2">
-              <span
-                class={`badge ${getMatchStatus(matchData.status, matchData.home_goals, matchData.away_goals).badge}`}
-              >
-                {
-                  getMatchStatus(
-                    matchData.status,
-                    matchData.home_goals,
-                    matchData.away_goals,
-                  ).text
-                }
-              </span>
-            </div>
-          </div>
-          <div class="text-center flex-1 text-2xl font-bold">
-            {matchData.away_goals}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // Match Info Skeleton
-export function MatchupSkeleton() {
+export function MatchInfoSkeleton() {
   return (
     <div>
       <div class="animate-pulse bg-base-300 h-4 w-48 rounded mb-6"></div>
@@ -147,6 +64,72 @@ export function MatchupSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Match Info Component
+function MatchInfo({ matchId }: { matchId: number }) {
+  const matchQuery = useMatch(matchId);
+
+  if (matchQuery.isError) {
+    return (
+      <div class="bg-base-200 rounded-lg p-4 mb-6">
+        <div class="text-center text-error">
+          Failed to load match information
+        </div>
+      </div>
+    );
+  }
+
+  const formattedDateTime = createMemo(() => {
+    const timestamp = matchQuery.data?.timestamp ?? Date.now();
+    const matchDate = new Date(timestamp * 1000);
+    return {
+      date: matchDate.toLocaleDateString(),
+      time: matchDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  });
+
+  const formattedStatus = createMemo(() => {
+    switch (matchQuery?.data?.status) {
+      case "FT":
+        return { text: "Full Time", color: "badge-neutral" };
+      case "NS":
+        return { text: "Not Started", color: "badge-ghost" };
+      default:
+        return { text: matchQuery.data?.status, color: "badge-warning" };
+    }
+  });
+
+  return (
+    <>
+      <div class="text-sm text-base-content/60 mb-6">
+        {matchQuery.data?.league.name} • {""}
+        {formattedDateTime().date} • {formattedDateTime().time}
+      </div>
+
+      <div class="bg-base-200 rounded-lg p-4 mb-6">
+        <div class="flex justify-between items-center">
+          <div class="text-center flex-1 text-2xl font-bold">
+            {matchQuery.data?.home_goals}
+          </div>
+          <div class="text-center px-4">
+            <div class="text-lg font-bold">VS</div>
+            <div class="mt-2">
+              <span class={`badge ${formattedStatus().color}`}>
+                {formattedStatus().text}
+              </span>
+            </div>
+          </div>
+          <div class="text-center flex-1 text-2xl font-bold">
+            {matchQuery.data?.away_goals}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -205,10 +188,9 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
             </div>
 
             {/* Match Info */}
-            <MatchInfo
-              matchId={matchId}
-              leagueName={valueBets?.fixture.league.name}
-            />
+            <Suspense fallback={<MatchInfoSkeleton />}>
+              <MatchInfo matchId={matchId} />
+            </Suspense>
 
             <Comparison {...analysisQuery.data!} juiceData={valueBets} />
 
@@ -574,6 +556,7 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture }) {
 
         <StatRow
           label="GF:GA (Diff)"
+          juiceData={props.juiceData}
           homeValue={formatGoalRatio(homeStats)}
           awayValue={formatGoalRatio(awayStats)}
           homeClass={
@@ -594,24 +577,28 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture }) {
 
         <StatRow
           label="Avg Goals For"
+          juiceData={props.juiceData}
           homeValue={homeStats.xgf.toFixed(2)}
           awayValue={awayStats.xgf.toFixed(2)}
         />
 
         <StatRow
           label="Avg Goals Against"
+          juiceData={props.juiceData}
           homeValue={homeStats.xga.toFixed(2)}
           awayValue={awayStats.xga.toFixed(2)}
         />
 
         <StatRow
           label="Strike Rate"
+          juiceData={props.juiceData}
           homeValue={formatStrikeRate(homeStats)}
           awayValue={formatStrikeRate(awayStats)}
         />
 
         <StatRow
           label="+1.5 Goals For"
+          juiceData={props.juiceData}
           homeValue={formatOnePlusScoredPercentage(homeStats)}
           awayValue={formatOnePlusScoredPercentage(awayStats)}
         />
@@ -619,18 +606,21 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture }) {
 
       <StatRow
         label="Clean Sheets"
+        juiceData={props.juiceData}
         homeValue={`${homeStats.cleansheets} (${formatCleanSheetPercentage(homeStats)})`}
         awayValue={`${awayStats.cleansheets} (${formatCleanSheetPercentage(awayStats)})`}
       />
 
       <StatRow
         label="+0.5 Goals Against"
+        juiceData={props.juiceData}
         homeValue={`${homeStats.one_conceded} (${formatOneConcededPercentage(homeStats)})`}
         awayValue={`${awayStats.one_conceded} (${formatOneConcededPercentage(awayStats)})`}
       />
 
       <StatRow
         label="+1.5 Goals Against"
+        juiceData={props.juiceData}
         homeValue={`${homeStats.two_plus_conceded} (${formatTwoConcededPercentage(homeStats)})`}
         awayValue={`${awayStats.two_plus_conceded} (${formatTwoConcededPercentage(awayStats)})`}
       />
