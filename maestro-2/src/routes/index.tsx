@@ -46,6 +46,16 @@ function Page() {
     new Date().toISOString().split("T")[0] || "",
   );
 
+  const formattedDate = createMemo(() => {
+    const date = new Date(selectedDate() + "T00:00:00"); // Ensure consistent timezone
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  });
+
   const juiceQuery = useJuice(selectedDate);
   const { isReadOnly } = useAuth();
   const [comparisonMatch, setComparisonMatch] = createSignal<{
@@ -67,16 +77,6 @@ function Page() {
     }
 
     setSelectedDate(newDate.toISOString().split("T")[0]!);
-  };
-
-  const formatDisplayDate = (dateString: string) => {
-    const date = new Date(dateString + "T00:00:00"); // Ensure consistent timezone
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
   };
 
   // Bet form state
@@ -177,7 +177,7 @@ function Page() {
         <div class="flex items-center gap-4">
           {/* Date Display */}
           <div class="text-lg font-medium text-base-content/80">
-            {formatDisplayDate(selectedDate())}
+            {formattedDate()}
           </div>
 
           {/* Navigation Buttons */}
