@@ -11,6 +11,7 @@ import {
   Switch,
 } from "solid-js";
 import BetForm, { BetFormProps } from "~/components/bet-form";
+import { Matchup, MatchupSkeleton } from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
 import { JuiceFixture, useJuice } from "~/hooks/data/use-juice";
 
@@ -279,8 +280,7 @@ function Page() {
                         <div>
                           <h3
                             class="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
-                            onClick={(e) => {
-                              e.preventDefault();
+                            onClick={() => {
                               setComparisonMatch({
                                 homeTeamId: bet.fixture.home.id,
                                 awayTeamId: bet.fixture.away.id,
@@ -435,17 +435,17 @@ function Page() {
         />
       </Show>
 
-      {/*<Show when={comparisonMatch() != null}>
-        <Suspense fallback={<div>Loading...</div>}>
+      <Show when={comparisonMatch() != null}>
+        <Suspense fallback={<MatchupSkeleton />}>
           <Matchup
-            matchId={comparisonMatch()?.matchId}
+            matchId={comparisonMatch()!.matchId}
             valueBets={comparisonMatch()?.valueBets}
             onClose={() => {
               setComparisonMatch(null);
             }}
           />
         </Suspense>
-      </Show>*/}
+      </Show>
     </div>
   );
 }
