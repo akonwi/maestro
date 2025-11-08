@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/solid-query";
+import { Accessor } from "solid-js";
 
 export interface JuiceFixture {
 	fixture: {
@@ -34,12 +35,12 @@ export interface JuiceFixture {
 	}>;
 }
 
-export function useJuice(date: string) {
+export function useJuice(date: Accessor<string>) {
 	return useQuery(() => ({
-		queryKey: ["juice", date],
+		queryKey: ["juice", date()],
 		queryFn: async (): Promise<JuiceFixture[]> => {
 			const url = date
-				? `${import.meta.env.VITE_API_BASE_URL}/juice?date=${date}`
+				? `${import.meta.env.VITE_API_BASE_URL}/juice?date=${date()}`
 				: `${import.meta.env.VITE_API_BASE_URL}/juice`;
 			const response = await fetch(url);
 			if (!response.ok) {

@@ -46,7 +46,7 @@ function Home() {
     new Date().toISOString().split("T")[0] || "",
   );
 
-  const juiceQuery = useJuice(selectedDate());
+  const juiceQuery = useJuice(selectedDate);
   const { isReadOnly } = useAuth();
   const [comparisonMatch, setComparisonMatch] = createSignal<{
     homeTeamId: number;
@@ -57,7 +57,7 @@ function Home() {
 
   // Date navigation functions
   const navigateDate = (direction: "prev" | "next") => {
-    const currentDate = new Date(selectedDate + "T00:00:00");
+    const currentDate = new Date(selectedDate() + "T00:00:00");
     const newDate = new Date(currentDate);
 
     if (direction === "prev") {
@@ -248,9 +248,11 @@ function Home() {
         </Match>
 
         <Match when={juiceQuery.isLoading}>
-          <div class="text-center py-12">
-            <span class="loading loading-spinner loading-lg"></span>
-            <div class="mt-4 text-base-content/60">Loading value bets...</div>
+          <div class="flex w-52 flex-col gap-4">
+            <div class="skeleton h-32 w-full"></div>
+            <div class="skeleton h-4 w-28"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-full"></div>
           </div>
         </Match>
 
