@@ -1,25 +1,451 @@
-import { RouteSectionProps } from "@solidjs/router";
+import { clientOnly } from "@solidjs/start";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Match,
+  onCleanup,
+  Show,
+  Suspense,
+  Switch,
+} from "solid-js";
+import BetForm, { BetFormProps } from "~/components/bet-form";
+import { useAuth } from "~/contexts/auth";
+import { JuiceFixture, useJuice } from "~/hooks/data/use-juice";
 
-export default function Home(props: RouteSectionProps) {
+function Home() {
+  // Responsive view mode based on viewport size
+  const [viewMode, setViewMode] = createSignal<"list" | "table">("list");
+  const updateViewMode = () => {
+    setViewMode(window?.innerWidth >= 1024 ? "table" : "list");
+  };
+  // Update view mode based on viewport size
+  window.addEventListener("resize", updateViewMode);
+  onCleanup(() => window?.removeEventListener("resize", updateViewMode));
+
+  // Table sorting state with localStorage persistence
+  const savedSort = localStorage.getItem("valueBetsSortByOdds");
+  const [sortByOdds, setSortByOdds] = createSignal<"asc" | "desc" | null>(
+    savedSort === "asc" || savedSort === "desc" ? savedSort : null,
+  );
+
+  // Persist sort setting to localStorage
+  createEffect(() => {
+    let sort = sortByOdds();
+    if (sort === null) {
+      localStorage.removeItem("valueBetsSortByOdds");
+    } else {
+      localStorage.setItem("valueBetsSortByOdds", sort);
+    }
+  });
+
+  // Date navigation state
+  const [selectedDate, setSelectedDate] = createSignal<string>(
+    // Default to today's date in YYYY-MM-DD format
+    new Date().toISOString().split("T")[0] || "",
+  );
+
+  const juiceQuery = useJuice(selectedDate());
+  const { isReadOnly } = useAuth();
+  const [comparisonMatch, setComparisonMatch] = createSignal<{
+    homeTeamId: number;
+    awayTeamId: number;
+    matchId: number;
+    valueBets?: JuiceFixture;
+  } | null>(null);
+
+  // Date navigation functions
+  const navigateDate = (direction: "prev" | "next") => {
+    const currentDate = new Date(selectedDate + "T00:00:00");
+    const newDate = new Date(currentDate);
+
+    if (direction === "prev") {
+      newDate.setDate(currentDate.getDate() - 1);
+    } else {
+      newDate.setDate(currentDate.getDate() + 1);
+    }
+
+    setSelectedDate(newDate.toISOString().split("T")[0]!);
+  };
+
+  const formatDisplayDate = (dateString: string) => {
+    const date = new Date(dateString + "T00:00:00"); // Ensure consistent timezone
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Bet form state
+  const [showBetForm, setShowBetForm] = createSignal(false);
+  const [selectedMatchForBet, setSelectedMatchForBet] = createSignal<
+    number | null
+  >(null);
+  const [prefilledBet, setPrefilledBet] = createSignal<
+    BetFormProps["initialData"] | null
+  >(null);
+
+  const handleRecordBet = (
+    matchId: number,
+    type_id: number,
+    description: string,
+    odds: number,
+  ) => {
+    setSelectedMatchForBet(matchId);
+    setPrefilledBet({ description, odds, type_id });
+    setShowBetForm(true);
+  };
+
+  const handleBetCreated = () => {
+    setShowBetForm(false);
+    setSelectedMatchForBet(null);
+    setPrefilledBet(null);
+  };
+
+  const handleCancelBet = () => {
+    setShowBetForm(false);
+    setSelectedMatchForBet(null);
+    setPrefilledBet(null);
+  };
+
+  const formatOdds = (odd: number) => {
+    if (odd > 0) {
+      return `+${odd}`;
+    }
+    return odd.toString();
+  };
+
+  const formatMatchup = (fixture: any) => {
+    return `${fixture.home.name} vs ${fixture.away.name}`;
+  };
+
+  const formatFixtureTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false, // Force 24-hour format
+    });
+  };
+
+  // Table sorting functions
+  const handleOddsSort = () => {
+    setSortByOdds((current) => {
+      if (current === null) return "desc";
+      if (current === "desc") return "asc";
+      return null;
+    });
+  };
+
+  // Prepare table data with sorting
+  const juice = createMemo(() => {
+    if (juiceQuery.data == undefined || juiceQuery.data.length === 0) return [];
+
+    const valueBets = juiceQuery.data;
+    const flattened = valueBets.flatMap((bet) =>
+      bet.stats.flatMap((betType) =>
+        betType.values.map((value, valueIndex) => ({
+          bet,
+          betType,
+          value,
+          valueIndex,
+          key: `${bet.fixture.id}-${betType.id}-${valueIndex}`,
+        })),
+      ),
+    );
+
+    if (sortByOdds() === null) return flattened;
+
+    return flattened.sort((a, b) => {
+      const aOdds = a.value.odd;
+      const bOdds = b.value.odd;
+      if (sortByOdds() === "asc") {
+        return aOdds - bOdds;
+      } else {
+        return bOdds - aOdds;
+      }
+    });
+  });
+
   return (
-    <main class="container mx-auto px-4 py-8">{props.children}</main>
-    // <main class="text-center mx-auto text-gray-700 p-4">
-    //   <h1 class="max-6-xs text-6xl text-sky-700 font-thin uppercase my-16">Hello world!</h1>
-    //   <Counter />
-    //   <p class="mt-8">
-    //     Visit{" "}
-    //     <a href="https://solidjs.com" target="_blank" class="text-sky-600 hover:underline">
-    //       solidjs.com
-    //     </a>{" "}
-    //     to learn how to build Solid apps.
-    //   </p>
-    //   <p class="my-4">
-    //     <span>Home</span>
-    //     {" - "}
-    //     <A href="/about" class="text-sky-600 hover:underline">
-    //       About Page
-    //     </A>{" "}
-    //   </p>
-    // </main>
+    <div class="space-y-6">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold">Value Bets</h1>
+        <div class="flex items-center gap-4">
+          {/* Date Display */}
+          <div class="text-lg font-medium text-base-content/80">
+            {formatDisplayDate(selectedDate())}
+          </div>
+
+          {/* Navigation Buttons */}
+          <div class="flex items-center gap-2">
+            <button
+              class="btn btn-sm btn-outline"
+              onClick={() => navigateDate("prev")}
+              aria-label="Previous day"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+
+            <button
+              class="btn btn-sm btn-outline"
+              onClick={() => navigateDate("next")}
+              aria-label="Next day"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+
+            {/* Today Button */}
+            <button
+              class="btn btn-sm btn-primary"
+              onClick={() =>
+                setSelectedDate(new Date().toISOString().split("T")[0] || "")
+              }
+            >
+              Today
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Switch>
+        <Match when={juiceQuery.error}>
+          <div class="alert alert-error">
+            <span>
+              Failed to load value bets:{" "}
+              {juiceQuery.error instanceof Error
+                ? juiceQuery.error.message
+                : "Unknown error"}
+            </span>
+          </div>
+        </Match>
+
+        <Match when={juiceQuery.isLoading}>
+          <div class="text-center py-12">
+            <span class="loading loading-spinner loading-lg"></span>
+            <div class="mt-4 text-base-content/60">Loading value bets...</div>
+          </div>
+        </Match>
+
+        <Match when={(juiceQuery.data || []).length === 0}>
+          <div class="text-center py-12">
+            <div class="text-base-content/60 text-lg">
+              No value bets available right now
+            </div>
+            <div class="text-base-content/40 text-sm mt-2">
+              Check back later for new opportunities
+            </div>
+          </div>
+        </Match>
+
+        <Match when={viewMode() === "list"}>
+          <div class="space-y-4">
+            <For each={juiceQuery.data}>
+              {(bet) => (
+                <div class="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow">
+                  <div class="card-body">
+                    <div class="flex flex-col gap-4">
+                      {/* Match Header */}
+                      <div class="flex justify-between items-start">
+                        <div>
+                          <h3
+                            class="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setComparisonMatch({
+                                homeTeamId: bet.fixture.home.id,
+                                awayTeamId: bet.fixture.away.id,
+                                matchId: bet.fixture.id,
+                                valueBets: bet,
+                              });
+                            }}
+                          >
+                            {formatMatchup(bet.fixture)}
+                          </h3>
+                          <p class="text-base-content/60 text-sm">
+                            {bet.fixture.league.name} •{" "}
+                            {formatFixtureTime(bet.fixture.date)}
+                          </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <img
+                            src={bet.fixture.home.logo}
+                            alt={bet.fixture.home.name}
+                            class="w-6 h-6"
+                          />
+                          <span class="text-sm">vs</span>
+                          <img
+                            src={bet.fixture.away.logo}
+                            alt={bet.fixture.away.name}
+                            class="w-6 h-6"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Betting Markets */}
+                      <div class="space-y-3">
+                        <For each={bet.stats}>
+                          {(betType) => (
+                            <div class="bg-base-200 p-3 rounded-lg">
+                              <h4 class="font-medium text-sm mb-2">
+                                {betType.name}
+                              </h4>
+                              <div class="flex flex-wrap gap-2">
+                                {betType.values.map((value, valueIndex) => (
+                                  <div
+                                    aria-disabled={isReadOnly}
+                                    class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+                                    onClick={
+                                      isReadOnly
+                                        ? undefined
+                                        : () => {
+                                            handleRecordBet(
+                                              bet.fixture.id,
+                                              betType.id,
+                                              `${betType.name} - ${value.name}`,
+                                              value.odd,
+                                            );
+                                          }
+                                    }
+                                  >
+                                    {value.name}: {formatOdds(value.odd)}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
+        </Match>
+
+        <Match when>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th
+                    class="cursor-pointer hover:bg-base-200 select-none"
+                    onClick={handleOddsSort}
+                  >
+                    <div class="flex items-center gap-1">
+                      Odds
+                      <Show when={sortByOdds() != null}>
+                        <svg
+                          class={`w-4 h-4 transition-transform ${
+                            sortByOdds() === "desc" ? "rotate-180" : "rotate-0"
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={2}
+                            d="M5 15l7-7 7 7"
+                          />
+                        </svg>
+                      </Show>
+                    </div>
+                  </th>
+                  <th>Bet Name</th>
+                  <th>Match</th>
+                  <th>League</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={juice()}>
+                  {({ bet, betType, value, key }) => (
+                    <tr
+                      class="cursor-pointer hover:bg-base-200 transition-colors"
+                      onClick={() => {
+                        setComparisonMatch({
+                          homeTeamId: bet.fixture.home.id,
+                          awayTeamId: bet.fixture.away.id,
+                          matchId: bet.fixture.id,
+                          valueBets: bet,
+                        });
+                      }}
+                    >
+                      <td class="font-medium">
+                        <span class="badge badge-primary">
+                          {formatOdds(value.odd)}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="text-sm">
+                          <div class="font-medium">{betType.name}</div>
+                          <div class="text-base-content/60">{value.name}</div>
+                        </div>
+                      </td>
+                      <td>{formatMatchup(bet.fixture)}</td>
+                      <td>{bet.fixture.league.name}</td>
+                      <td>{formatFixtureTime(bet.fixture.date)}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
+        </Match>
+      </Switch>
+
+      <Show when={showBetForm() && selectedMatchForBet() != null}>
+        <BetForm
+          matchId={selectedMatchForBet()!}
+          onBetCreated={handleBetCreated}
+          onCancel={handleCancelBet}
+          initialData={prefilledBet() || undefined}
+        />
+      </Show>
+
+      {/*<Show when={comparisonMatch() != null}>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Matchup
+            matchId={comparisonMatch()?.matchId}
+            valueBets={comparisonMatch()?.valueBets}
+            onClose={() => {
+              setComparisonMatch(null);
+            }}
+          />
+        </Suspense>
+      </Show>*/}
+    </div>
   );
 }
+
+export default clientOnly(async () => ({ default: Home }), { lazy: true });
