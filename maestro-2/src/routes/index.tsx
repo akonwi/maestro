@@ -14,15 +14,15 @@ import BetForm, { BetFormProps } from "~/components/bet-form";
 import { useAuth } from "~/contexts/auth";
 import { JuiceFixture, useJuice } from "~/hooks/data/use-juice";
 
-function Home() {
+function Page() {
   // Responsive view mode based on viewport size
   const [viewMode, setViewMode] = createSignal<"list" | "table">("list");
-  const updateViewMode = () => {
+  const onResize = () => {
     setViewMode(window?.innerWidth >= 1024 ? "table" : "list");
   };
   // Update view mode based on viewport size
-  window.addEventListener("resize", updateViewMode);
-  onCleanup(() => window?.removeEventListener("resize", updateViewMode));
+  window.addEventListener("resize", onResize);
+  onCleanup(() => window?.removeEventListener("resize", onResize));
 
   // Table sorting state with localStorage persistence
   const savedSort = localStorage.getItem("valueBetsSortByOdds");
@@ -450,4 +450,4 @@ function Home() {
   );
 }
 
-export default clientOnly(async () => ({ default: Home }), { lazy: true });
+export default clientOnly(async () => ({ default: Page }), { lazy: true });
