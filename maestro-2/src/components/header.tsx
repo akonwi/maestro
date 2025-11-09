@@ -34,11 +34,11 @@ export function Header() {
             tabIndex={0}
             class="menu menu-sm dropdown-content mt-3 z-1 p-2 bg-base-100 border border-base-300 rounded-box w-52"
           >
-            <li>
+            {/*<li>
               <A href="/maestro/matches" activeClass="active">
                 Matches
               </A>
-            </li>
+            </li>*/}
             <li>
               <A href="/maestro/betting" activeClass="active">
                 Betting
@@ -57,16 +57,16 @@ export function Header() {
       </div>
       <div class="navbar-end hidden lg:flex">
         <ul class="menu menu-horizontal px-1">
-          <li>
+          {/*<li>
             <A href="/maestro/teams" activeClass="active">
               Teams
             </A>
-          </li>
-          <li>
+          </li>*/}
+          {/*<li>
             <A href="/maestro/matches" activeClass="active">
               Matches
             </A>
-          </li>
+          </li>*/}
           <li>
             <A href="/maestro/betting" activeClass="active">
               Betting
