@@ -1,10 +1,12 @@
 import "./app.css";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
+import { clientOnly } from "@solidjs/start";
 import { Suspense } from "solid-js";
 import { Header } from "./components/header";
-import { AuthProvider } from "./contexts/auth.provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+
+const AuthProvider = clientOnly(() => import("./contexts/auth.provider"));
 
 const queryClient = new QueryClient();
 

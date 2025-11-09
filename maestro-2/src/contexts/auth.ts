@@ -1,12 +1,13 @@
-import { createContext, useContext } from "solid-js";
+import { Accessor, createContext, useContext } from "solid-js";
 
-export const INITIAL_VALUE = {
-	token: null,
-	isReadOnly: true,
-	headers: {},
+type IAuthContext = {
+	token: Accessor<string>;
+	isReadOnly: Accessor<boolean>;
+	headers: Accessor<Record<string, string>>;
+	setToken: (token: string) => void;
 };
 
-export const AuthContext = createContext(INITIAL_VALUE);
+export const AuthContext = createContext<IAuthContext>();
 
 export function useAuth() {
 	const context = useContext(AuthContext);

@@ -1,10 +1,28 @@
-import { ParentProps } from "solid-js";
-import { AuthContext, INITIAL_VALUE } from "./auth";
-import { createStore } from "solid-js/store";
+import { createEffect, createSignal, ParentProps } from "solid-js";
+import { AuthContext } from "./auth";
 
-export function AuthProvider(props: ParentProps) {
-  const [value, setValue] = createStore(INITIAL_VALUE);
+const TOKEN_KEY = "maestro_api_token";
+
+// default export for clientOnly usage
+export default function AuthProvider(props: ParentProps) {
+  const [token, setToken] = createSignal(localStorage.getItem(TOKEN_KEY) ?? "");
+
+  createEffect(() => {
+    localStorage.setItem(TOKEN_KEY, token());
+  });
+
   return (
-    <AuthContext.Provider value={value}>{props.children}</AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        token,
+        setToken,
+        isReadOnly: () => token() === "",
+        headers: () => ({
+          Authorization: `Bearer ${token()}`,
+        }),
+      }}
+    >
+      {props.children}
+    </AuthContext.Provider>
   );
 }

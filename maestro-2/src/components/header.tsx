@@ -45,7 +45,7 @@ export function Header() {
               </A>
             </li>
             <li>
-              <A href="/maestro/settings" activeClass="active">
+              <A href="/settings" activeClass="active">
                 Settings
               </A>
             </li>
@@ -73,7 +73,7 @@ export function Header() {
             </A>
           </li>
           <li>
-            <A href="/maestro/settings" activeClass="active">
+            <A href="/settings" activeClass="active">
               Settings
             </A>
           </li>

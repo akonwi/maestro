@@ -11,11 +11,7 @@ import {
   Switch,
 } from "solid-js";
 import BetForm, { BetFormProps } from "~/components/bet-form";
-import {
-  Matchup,
-  MatchInfoSkeleton,
-  MatchupSkeleton,
-} from "~/components/matchup";
+import { Matchup, MatchupSkeleton } from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
 import { JuiceFixture, useJuice } from "~/hooks/data/use-juice";
 

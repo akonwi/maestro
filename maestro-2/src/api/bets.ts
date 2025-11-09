@@ -73,13 +73,13 @@ export function useCreateBet() {
 	const { isReadOnly, headers } = useAuth();
 	return useMutation<Bet, unknown, CreateBetData>(() => ({
 		mutationFn: async (betData: CreateBetData) => {
-			if (isReadOnly) {
+			if (isReadOnly()) {
 				return null;
 			}
 
 			const response = await fetch(`${baseUrl}/bets`, {
 				method: "POST",
-				headers,
+				headers: headers(),
 				body: JSON.stringify(betData),
 			});
 
@@ -104,12 +104,12 @@ export function useUpdateBet() {
 	const { headers, isReadOnly } = useAuth();
 	return useMutation(() => ({
 		mutationFn: async (input: { id: number; result: Bet["result"] }) => {
-			if (isReadOnly) return;
+			if (isReadOnly()) return;
 
 			const { id, ...body } = input;
 			const response = await fetch(`${baseUrl}/bets/${id}`, {
 				method: "PATCH",
-				headers,
+				headers: headers(),
 				body: JSON.stringify(body),
 			});
 
@@ -130,11 +130,11 @@ export function useDeleteBet() {
 	const { headers, isReadOnly } = useAuth();
 	return useMutation(() => ({
 		mutationFn: async (id: number) => {
-			if (isReadOnly) return;
+			if (isReadOnly()) return;
 
 			const response = await fetch(`${baseUrl}/bets/${id}`, {
 				method: "DELETE",
-				headers,
+				headers: headers(),
 			});
 
 			if (!response.ok) {
