@@ -58,7 +58,7 @@ function Page() {
   });
 
   const juiceQuery = useJuice(selectedDate);
-  const { isReadOnly } = useAuth();
+  const auth = useAuth();
   const [comparisonMatch, setComparisonMatch] = createSignal<{
     homeTeamId: number;
     awayTeamId: number;
@@ -320,26 +320,28 @@ function Page() {
                                 {betType.name}
                               </h4>
                               <div class="flex flex-wrap gap-2">
-                                {betType.values.map((value, valueIndex) => (
-                                  <div
-                                    aria-disabled={isReadOnly}
-                                    class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
-                                    onClick={
-                                      isReadOnly
-                                        ? undefined
-                                        : () => {
-                                            handleRecordBet(
-                                              bet.fixture.id,
-                                              betType.id,
-                                              `${betType.name} - ${value.name}`,
-                                              value.odd,
-                                            );
-                                          }
-                                    }
-                                  >
-                                    {value.name}: {formatOdds(value.odd)}
-                                  </div>
-                                ))}
+                                <For each={betType.values}>
+                                  {(value) => (
+                                    <button
+                                      aria-disabled={auth.isReadOnly()}
+                                      class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+                                      onClick={
+                                        auth.isReadOnly()
+                                          ? undefined
+                                          : () => {
+                                              handleRecordBet(
+                                                bet.fixture.id,
+                                                betType.id,
+                                                `${betType.name} - ${value.name}`,
+                                                value.odd,
+                                              );
+                                            }
+                                      }
+                                    >
+                                      {value.name}: {formatOdds(value.odd)}
+                                    </button>
+                                  )}
+                                </For>
                               </div>
                             </div>
                           )}

@@ -25,7 +25,7 @@ export default function BetForm({
   const [isSubmitting] = createSignal(false);
   const [formData, setFormData] = createStore({ ...initialData });
 
-  const { isReadOnly } = useAuth();
+  const auth = useAuth();
   const createBet = useCreateBet();
 
   const validateBet = (betData: CreateBetData): string[] => {
@@ -64,7 +64,7 @@ export default function BetForm({
     createBet.mutate(betData, { onSuccess: onBetCreated });
   };
 
-  if (isReadOnly) {
+  if (auth.isReadOnly()) {
     return (
       <div class="modal modal-open" onClick={onCancel}>
         <div class="modal-box" onClick={(e) => e.stopPropagation()}>
