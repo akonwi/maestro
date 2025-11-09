@@ -23,7 +23,7 @@ export default function BetForm({
 }: BetFormProps) {
   const [errors, setErrors] = createSignal<string[]>([]);
   const [isSubmitting] = createSignal(false);
-  const [formData, setFormData] = createStore({ ...initialData });
+  const [formData, setFormData] = createStore({ ...initialData, amount: 5 });
 
   const auth = useAuth();
   const createBet = useCreateBet();
@@ -31,12 +31,8 @@ export default function BetForm({
   const validateBet = (betData: CreateBetData): string[] => {
     const errors: string[] = [];
 
-    if (!betData.match_id) errors.push("Match is required");
     if (!betData.name.trim()) errors.push("Description is required");
     if (betData.odds === 0) errors.push("Odds cannot be zero");
-    if (betData.odds > -100 && betData.odds < 100 && betData.odds !== 0) {
-      errors.push("Odds must be +100 or greater, or -100 or less");
-    }
     if (betData.amount <= 0) errors.push("Amount must be positive");
 
     return errors;
@@ -45,14 +41,13 @@ export default function BetForm({
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
 
-    const formData = new FormData(e.target as HTMLFormElement);
     const betData: CreateBetData = {
       match_id: matchId,
-      type_id: initialData?.type_id ?? -1,
-      name: formData.get("description")!.toString(),
-      line: new Number(formData.get("line")!.toString()) as number,
-      odds: new Number(formData.get("odds")!.toString()) as number,
-      amount: new Number(formData.get("amount")!.toString()) as number,
+      type_id: formData.type_id ?? -1,
+      name: formData.description!.toString(),
+      line: formData.line ?? 0,
+      odds: formData.odds!,
+      amount: formData.amount!,
     };
 
     const validationErrors = validateBet(betData);
@@ -138,6 +133,7 @@ export default function BetForm({
               placeholder="e.g., Chelsea to win, Over 2.5 goals"
               class="input input-bordered w-full"
               value={formData.description}
+              onChange={(e) => setFormData({ description: e.target.value })}
               required
             />
           </div>
@@ -154,6 +150,9 @@ export default function BetForm({
                 placeholder="-1.5, 2.5, 0"
                 class="input input-bordered"
                 value={formData.line}
+                onChange={(e) =>
+                  setFormData({ line: new Number(e.target.value).valueOf() })
+                }
               />
             </div>
 
@@ -168,6 +167,9 @@ export default function BetForm({
                 placeholder="-150, +200"
                 class="input input-bordered"
                 value={formData.odds}
+                onChange={(e) =>
+                  setFormData({ odds: new Number(e.target.value).valueOf() })
+                }
                 required
               />
             </div>
@@ -183,6 +185,10 @@ export default function BetForm({
                 min="0.01"
                 placeholder="100.00"
                 class="input input-bordered"
+                value={formData.amount}
+                onChange={(e) =>
+                  setFormData({ amount: new Number(e.target.value).valueOf() })
+                }
                 required
               />
             </div>

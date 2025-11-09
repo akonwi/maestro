@@ -18,7 +18,7 @@ export default function AuthProvider(props: ParentProps) {
         setToken,
         isReadOnly: () => token() === "",
         headers: () => ({
-          Authorization: `Bearer ${token()}`,
+          "X-Api-Token": token(),
         }),
       }}
     >

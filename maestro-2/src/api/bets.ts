@@ -70,16 +70,16 @@ export function useBets(matchId?: number, after?: number) {
 
 export function useCreateBet() {
 	const queryClient = useQueryClient();
-	const { isReadOnly, headers } = useAuth();
+	const auth = useAuth();
 	return useMutation<Bet, unknown, CreateBetData>(() => ({
 		mutationFn: async (betData: CreateBetData) => {
-			if (isReadOnly()) {
+			if (auth.isReadOnly()) {
 				return null;
 			}
 
 			const response = await fetch(`${baseUrl}/bets`, {
 				method: "POST",
-				headers: headers(),
+				headers: auth.headers(),
 				body: JSON.stringify(betData),
 			});
 
