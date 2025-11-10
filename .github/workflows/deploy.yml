@@ -10,17 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2 // [!code ++]
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.16
 
-      - run: bun install // [!code ++]
+      - run: bun install
 
       - name: build
         env:
           BASE_PATH: "/${{ github.event.repository.name }}"
         run: |
-          bun run build // [!code ++]
+          bun run build
 
       - name: Upload Artifacts
         uses: actions/upload-pages-artifact@v3
