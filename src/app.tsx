@@ -13,6 +13,7 @@ const queryClient = new QueryClient();
 export default function App() {
   return (
     <Router
+      base={import.meta.env.VITE_BASE_PATH}
       root={(props) => (
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
