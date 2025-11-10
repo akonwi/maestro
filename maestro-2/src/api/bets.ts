@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/solid-query";
+import { Accessor } from "solid-js";
 import { useAuth } from "~/contexts/auth";
 
 export interface Bet {
@@ -41,20 +42,23 @@ export interface UpdateBetData {
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export function useBets(matchId?: number, after?: number) {
+export function useBets(
+	matchId: Accessor<number | null>,
+	after: Accessor<number | null>,
+) {
 	return useQuery<{
 		bets: Bet[];
 		cursor?: number | null;
 		has_next?: boolean | null;
 	}>(() => ({
-		queryKey: ["bets", { matchId, after }],
+		queryKey: ["bets", { matchId: matchId(), after: after() }],
 		queryFn: async () => {
 			const params = new URLSearchParams();
-			if (typeof matchId === "number") {
-				params.append("match_id", matchId.toString());
+			if (typeof matchId() === "number") {
+				params.append("match_id", matchId()!.toString());
 			}
-			if (typeof after === "number") {
-				params.append("after", after.toString());
+			if (typeof after() === "number") {
+				params.append("after", after()!.toString());
 			}
 			const queryString = params.size > 0 ? params.toString() : "";
 			const response = await fetch(`${baseUrl}/bets?${queryString}`, {
@@ -144,6 +148,34 @@ export function useDeleteBet() {
 		onSuccess: () => {
 			// todo: auto-normaliztion won't happen because server returns empty body
 			queryClient.invalidateQueries({ queryKey: ["bets"] });
+		},
+	}));
+}
+
+export type BetOverview = {
+	bets: Bet[];
+	num_pending: number;
+	total_wagered: number;
+	win_rate: number;
+	gross_payout: number;
+	net_profit: number;
+	gross_loss: number;
+	roi: number;
+};
+
+export function useBetOverview() {
+	return useQuery(() => ({
+		queryKey: ["bets", "overview"],
+		queryFn: async function (): Promise<BetOverview> {
+			const response = await fetch(
+				`${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
+			);
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			return response.json();
 		},
 	}));
 }
