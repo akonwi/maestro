@@ -26,7 +26,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # this should match the `pages` option in adapter-static options
-          path: "./dist"
+          path: "./output/public"
 
   deploy:
     needs: build_site
