@@ -20,13 +20,12 @@ jobs:
         env:
           VITE_BASE_PATH: "/${{ github.event.repository.name }}"
         run: |
-          bun run build && rsync -a .output/public/ .output/public/${{ github.event.repository.name }}
+          bun run build && rsync -a .output/public/ .output/public/${{ github.event.repository.name }}/
 
       - name: Upload Artifacts
         uses: actions/upload-pages-artifact@v3
         with:
-          # this should match the `pages` option in adapter-static options
-          path: ".output/public/${{ github.event.repository.name }}"
+          path: ".output/public/${{ github.event.repository.name }}/"
 
   deploy:
     needs: build_site
