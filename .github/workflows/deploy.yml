@@ -19,7 +19,7 @@ jobs:
       - name: build
         env:
           BASE_PATH: /maestro/
-        run: bun run build
+        run: bun run build && cp .output/public/index.html .output/public/404.html
         # && rsync -a .output/public/ .output/public/${{ github.event.repository.name }}/
 
       - name: Upload Artifacts
