@@ -1,15 +1,32 @@
-# `create-preact`
+# SolidStart
 
-<h2 align="center">
-  <img height="256" width="256" src="./src/assets/preact.svg">
-</h2>
+Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
 
-<h3 align="center">Get started using Preact and Vite!</h3>
+## Creating a project
 
-## Getting Started
+```bash
+# create a new project in the current directory
+npm init solid@latest
 
--   `npm run dev` - Starts a dev server at http://localhost:5173/
+# create a new project in my-app
+npm init solid@latest my-app
+```
 
--   `npm run build` - Builds for production, emitting to `dist/`
+## Developing
 
--   `npm run preview` - Starts a server at http://localhost:4173/ to test production build locally
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```bash
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+Solid apps are built with _presets_, which optimise your project for deployment to different environments.
+
+By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
+
+## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
