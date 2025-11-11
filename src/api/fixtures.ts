@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 
 export type League = {
-	id: string;
+	id: number;
 	name: string;
 	season: number;
 };

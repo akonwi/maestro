@@ -5,6 +5,8 @@ import { clientOnly } from "@solidjs/start";
 import { Suspense } from "solid-js";
 import { Header } from "~/components/header";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { Portal } from "solid-js/web";
+import { Toast } from "@kobalte/core/toast";
 
 const AuthProvider = clientOnly(() => import("~/contexts/auth.provider"));
 
@@ -23,6 +25,11 @@ export default function App() {
                 <Suspense>{props.children}</Suspense>
               </main>
             </div>
+            <Portal>
+              <Toast.Region>
+                <Toast.List class="toast" />
+              </Toast.Region>
+            </Portal>
           </AuthProvider>
         </QueryClientProvider>
       )}

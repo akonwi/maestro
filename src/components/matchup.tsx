@@ -11,6 +11,9 @@ import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
 import { JuiceFixture } from "~/hooks/data/use-juice";
 import { BetFormProps } from "./bet-form";
+import { EyeOffIcon } from "./icons/eye-off";
+import { useHideLeague } from "~/api/leagues";
+import { Toast, toaster } from "@kobalte/core/toast";
 
 interface TeamComparisonProps {
   matchId: number;
@@ -70,6 +73,8 @@ export function MatchInfoSkeleton() {
 // Match Info Component
 function MatchInfo({ matchId }: { matchId: number }) {
   const matchQuery = useMatch(matchId);
+  const league = () => matchQuery.data?.league;
+  const hideLeague = useHideLeague();
 
   if (matchQuery.isError) {
     return (
@@ -104,11 +109,43 @@ function MatchInfo({ matchId }: { matchId: number }) {
     }
   });
 
+  const onLeagueHidden = () => {
+    const id = toaster.show((props) => (
+      <Toast
+        toastId={props.toastId}
+        class="alert bordered border-base-300 w-full flex justify-between"
+      >
+        <Toast.Title>{league()?.name} will be hidden in the future</Toast.Title>
+        <Toast.CloseButton
+          class="btn btn-sm"
+          onClick={() => toaster.dismiss(id)}
+        >
+          ×
+        </Toast.CloseButton>
+      </Toast>
+    ));
+  };
+
   return (
     <>
-      <div class="text-sm text-base-content/60 mb-6">
-        {matchQuery.data?.league.name} • {""}
-        {formattedDateTime().date} • {formattedDateTime().time}
+      <div class="flex justify-between items-center mb-6">
+        <div class="text-sm text-base-content/60">
+          {league()?.name} • {""}
+          {formattedDateTime().date} • {formattedDateTime().time}
+        </div>
+
+        <Show when={league()}>
+          <div class="tooltip" data-tip="Hide League">
+            <button
+              class="btn btn-sm btn-ghost"
+              onClick={() =>
+                hideLeague.mutate(league()!.id, { onSuccess: onLeagueHidden })
+              }
+            >
+              <EyeOffIcon />
+            </button>
+          </div>
+        </Show>
       </div>
 
       <div class="bg-base-200 rounded-lg p-4 mb-6">
