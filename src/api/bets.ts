@@ -119,12 +119,11 @@ export function useUpdateBet() {
 
 			return response.json();
 		},
-		onSuccess: () => {
-			// todo: auto-normaliztion won't happen because server returns empty body
-			queryClient.invalidateQueries({
-				queryKey: ["bets", "overview"],
-				predicate: (query) => query.queryKey[0] == "bets",
-			});
+		onSettled: (data, error, input) => {
+			if (error == null)
+				queryClient.invalidateQueries({
+					queryKey: ["bets"],
+				});
 		},
 	}));
 }

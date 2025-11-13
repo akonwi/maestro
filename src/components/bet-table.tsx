@@ -1,4 +1,5 @@
 import { createSignal, For, Match, Show, Suspense, Switch } from "solid-js";
+import { ContextMenu } from "@kobalte/core/context-menu";
 import { useBets, useDeleteBet, useUpdateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
 import { Matchup } from "./matchup";
@@ -132,142 +133,132 @@ export function BetTable() {
                       <th>Wager</th>
                       <th>Result</th>
                       <th>P&L</th>
-                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     <For each={filteredBets()}>
                       {(bet) => (
-                        <tr>
-                          <td>{bet.id}</td>
-                          <td>
-                            <button
-                              class="btn btn-link p-0"
-                              onClick={() => setSelectedMatchId(bet.match_id)}
-                            >
-                              {bet.match_id}
-                            </button>
-                          </td>
-                          <td>
-                            <div class="text-sm">
-                              {bet.name}
-                              {bet.line !== 0 && (
-                                <div class="text-xs text-gray-500">
-                                  Line: {bet.line}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td>{bet.odds > 0 ? `+${bet.odds}` : bet.odds}</td>
-                          <td>{formatCurrency(bet.amount)}</td>
-                          <td>{getResultBadge(bet.result)}</td>
-                          <td>
-                            {bet.result === "win" && (
-                              <span class="text-success">
-                                +
-                                {formatCurrency(
-                                  calculateProfit(bet.amount, bet.odds),
-                                )}
-                              </span>
-                            )}
-                            {bet.result === "lose" && (
-                              <span class="text-error">
-                                -{formatCurrency(bet.amount)}
-                              </span>
-                            )}
-                            {bet.result === "pending" && (
-                              <span class="text-warning">
-                                +
-                                {formatCurrency(
-                                  calculateProfit(bet.amount, bet.odds),
-                                )}
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <div class="flex justify-center">
-                              <Show
-                                when={!auth.isReadOnly()}
-                                fallback={<span class="text-gray-400">-</span>}
+                        <ContextMenu>
+                          <ContextMenu.Trigger as="tr">
+                            <td>{bet.id}</td>
+                            <td>
+                              <button
+                                class="btn btn-link p-0"
+                                onClick={() => setSelectedMatchId(bet.match_id)}
                               >
-                                <div class="dropdown dropdown-end">
-                                  <label
-                                    tabIndex={0}
-                                    class="btn btn-xs btn-ghost"
+                                {bet.match_id}
+                              </button>
+                            </td>
+                            <td>
+                              <div class="text-sm">
+                                {bet.name}
+                                {bet.line !== 0 && (
+                                  <div class="text-xs text-gray-500">
+                                    Line: {bet.line}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td>{bet.odds > 0 ? `+${bet.odds}` : bet.odds}</td>
+                            <td>{formatCurrency(bet.amount)}</td>
+                            <td>{getResultBadge(bet.result)}</td>
+                            <td>
+                              {bet.result === "win" && (
+                                <span class="text-success">
+                                  +
+                                  {formatCurrency(
+                                    calculateProfit(bet.amount, bet.odds),
+                                  )}
+                                </span>
+                              )}
+                              {bet.result === "lose" && (
+                                <span class="text-error">
+                                  -{formatCurrency(bet.amount)}
+                                </span>
+                              )}
+                              {bet.result === "pending" && (
+                                <span class="text-warning">
+                                  +
+                                  {formatCurrency(
+                                    calculateProfit(bet.amount, bet.odds),
+                                  )}
+                                </span>
+                              )}
+                            </td>
+                          </ContextMenu.Trigger>
+                          <ContextMenu.Portal>
+                            <Show when={!auth.isReadOnly()}>
+                              <ContextMenu.Content class="dropdown-content menu shadow bg-base-100 rounded-box w-32">
+                                <ContextMenu.Group>
+                                  <ContextMenu.GroupLabel
+                                    as="li"
+                                    class="menu-title"
                                   >
-                                    <svg
-                                      class="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width={2}
-                                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z"
-                                      />
-                                    </svg>
-                                  </label>
-                                  <ul
-                                    tabIndex={0}
-                                    class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32"
+                                    Set Result
+                                  </ContextMenu.GroupLabel>
+
+                                  <ContextMenu.Item
+                                    as="li"
+                                    class="hover:cursor-default"
+                                    onClick={() =>
+                                      updateBet.mutate({
+                                        id: bet.id,
+                                        result: "win",
+                                      })
+                                    }
                                   >
-                                    {/* Set Result options */}
-                                    <li class="menu-title">
-                                      <span>Set Result</span>
-                                    </li>
-                                    <li>
-                                      <a
-                                        onClick={() =>
-                                          updateBet.mutate({
-                                            id: bet.id,
-                                            result: "win",
-                                          })
-                                        }
-                                      >
-                                        Win
-                                      </a>
-                                    </li>
-                                    <li>
-                                      <a
-                                        onClick={() =>
-                                          updateBet.mutate({
-                                            id: bet.id,
-                                            result: "lose",
-                                          })
-                                        }
-                                      >
-                                        Loss
-                                      </a>
-                                    </li>
-                                    <li>
-                                      <a
-                                        onClick={() =>
-                                          updateBet.mutate({
-                                            id: bet.id,
-                                            result: "push",
-                                          })
-                                        }
-                                      >
-                                        Push
-                                      </a>
-                                    </li>
-                                    {/* Always available actions */}
-                                    <li>
-                                      <a
-                                        onClick={() => handleDelete(bet.id)}
-                                        class="text-error"
-                                      >
-                                        Delete
-                                      </a>
-                                    </li>
-                                  </ul>
-                                </div>
-                              </Show>
-                            </div>
-                          </td>
-                        </tr>
+                                    <ContextMenu.ItemLabel>
+                                      Win
+                                    </ContextMenu.ItemLabel>
+                                  </ContextMenu.Item>
+
+                                  <ContextMenu.Item
+                                    as="li"
+                                    class="hover:cursor-default"
+                                    onClick={() =>
+                                      updateBet.mutate({
+                                        id: bet.id,
+                                        result: "lose",
+                                      })
+                                    }
+                                  >
+                                    <ContextMenu.ItemLabel>
+                                      Lose
+                                    </ContextMenu.ItemLabel>
+                                  </ContextMenu.Item>
+
+                                  <ContextMenu.Item
+                                    as="li"
+                                    class="hover:cursor-default"
+                                    onClick={() =>
+                                      updateBet.mutate({
+                                        id: bet.id,
+                                        result: "push",
+                                      })
+                                    }
+                                  >
+                                    <ContextMenu.ItemLabel>
+                                      Push
+                                    </ContextMenu.ItemLabel>
+                                  </ContextMenu.Item>
+                                </ContextMenu.Group>
+                                <ContextMenu.Separator
+                                  as="div"
+                                  class="divider m-0"
+                                />
+                                <ContextMenu.Item
+                                  as="li"
+                                  class="hover:cursor-default"
+                                  onClick={() => handleDelete(bet.id)}
+                                >
+                                  <ContextMenu.ItemLabel class="text-error">
+                                    Delete
+                                  </ContextMenu.ItemLabel>
+                                </ContextMenu.Item>
+                              </ContextMenu.Content>
+                            </Show>
+                          </ContextMenu.Portal>
+                        </ContextMenu>
                       )}
                     </For>
                   </tbody>
