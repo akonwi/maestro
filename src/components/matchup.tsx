@@ -6,6 +6,7 @@ import {
   Show,
   createMemo,
   Suspense,
+  Accessor,
 } from "solid-js";
 import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
@@ -15,6 +16,7 @@ import { EyeOffIcon } from "./icons/eye-off";
 import { useHideLeague } from "~/api/leagues";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { useAuth } from "~/contexts/auth";
+import { A } from "@solidjs/router";
 
 interface TeamComparisonProps {
   matchId: number;
@@ -231,7 +233,11 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
               <MatchInfo matchId={matchId} />
             </Suspense>
 
-            <Comparison {...analysisQuery.data!} juiceData={valueBets} />
+            <Comparison
+              {...analysisQuery.data!}
+              juiceData={valueBets}
+              matchId={matchId}
+            />
 
             {/* Close Button */}
             <div class="mt-6 text-center">
@@ -544,17 +550,30 @@ const StatRow = ({
   );
 };
 
-function Comparison(props: AnalysisData & { juiceData?: JuiceFixture }) {
+function Comparison(
+  props: AnalysisData & { juiceData?: JuiceFixture; matchId: number },
+) {
   const { home: homeStats, away: awayStats } = props.comparison;
+
+  // Get match data to extract league and season info
+  const matchQuery = useMatch(props.matchId);
+  const match = () => matchQuery.data;
+
+  const teamHref = (teamId: number) => {
+    const f = match();
+    return `/teams/${teamId}?league=${f?.league.id}&season=${f?.league.season}`;
+  };
 
   return (
     <>
       {/* Team Names - Mobile Responsive */}
       <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
         <div class="col-span-1 sm:col-span-2 text-center">
-          <h3 class="text-lg sm:text-xl font-bold wrap-break-word">
-            {homeStats.name}
-            {homeStats.position > 0 ? ` (#${homeStats.position})` : ""}
+          <h3 class="text-lg sm:text-xl font-bold wrap-break-word cursor-pointer hover:text-primary transition-colors">
+            <A href={teamHref(props.comparison.home.id)}>
+              {homeStats.name}
+              {homeStats.position > 0 ? ` (#${homeStats.position})` : ""}
+            </A>
           </h3>
           <div class="text-xs sm:text-sm text-base-content/60">Home</div>
         </div>
@@ -562,9 +581,11 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture }) {
           <div class="text-xl sm:text-2xl font-bold">VS</div>
         </div>
         <div class="col-span-1 sm:col-span-2 text-center">
-          <h3 class="text-lg sm:text-xl font-bold wrap-break-word">
-            {awayStats.name}
-            {awayStats.position > 0 ? ` (#${awayStats.position})` : ""}
+          <h3 class="text-lg sm:text-xl font-bold wrap-break-word cursor-pointer hover:text-primary transition-colors">
+            <A href={teamHref(props.comparison.away.id)}>
+              {awayStats.name}
+              {awayStats.position > 0 ? ` (#${awayStats.position})` : ""}
+            </A>
           </h3>
           <div class="text-xs sm:text-sm text-base-content/60">Away</div>
         </div>
