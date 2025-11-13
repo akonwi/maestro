@@ -10,7 +10,7 @@ export function useHideLeague() {
 			}
 
 			const response = await fetch(
-				`${import.meta.baseURL}/leagues/${id}/hide`,
+				`${import.meta.env.VITE_API_BASE_URL}/leagues/${id}/hide`,
 				{
 					method: "POST",
 					headers: auth.headers(),
