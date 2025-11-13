@@ -559,7 +559,13 @@ function Comparison(
   const matchQuery = useMatch(props.matchId);
   const match = () => matchQuery.data;
 
+  const auth = useAuth();
   const teamHref = (teamId: number) => {
+    if (auth.isReadOnly()) {
+      // Return current URL with hash to make it a no-op but preserve search params
+      const currentUrl = new URL(location.href);
+      return `${currentUrl.pathname}${currentUrl.search}#`;
+    }
     const f = match();
     return `/teams/${teamId}?league=${f?.league.id}&season=${f?.league.season}`;
   };
