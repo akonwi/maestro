@@ -1,13 +1,13 @@
 import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
+import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
 
 export default function TeamStatsPage() {
-  const params = new URLSearchParams(location.search);
-  // Extract team ID from URL path /teams/[id]
-  const pathParts = location.pathname.split("/");
-  const teamId = Number(pathParts[pathParts.length - 1]);
-  const league = Number(params.get("league"));
-  const season = Number(params.get("season"));
+  const routeParams = useParams();
+  const [searchParams] = useSearchParams();
+  const teamId = Number(routeParams.id);
+  const league = Number(searchParams.league);
+  const season = Number(searchParams.season);
 
   const [selectedFormation, setSelectedFormation] = createSignal<string>("all");
 
@@ -430,32 +430,7 @@ export default function TeamStatsPage() {
             </div>
           </div>
 
-          {/* Streaks */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">Current Streaks</h3>
-              <div class="grid grid-cols-3 gap-4">
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-success">
-                    {biggest()?.streak.wins}
-                  </div>
-                  <div class="text-sm text-base-content/60">Win Streak</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-warning">
-                    {biggest()?.streak.draws}
-                  </div>
-                  <div class="text-sm text-base-content/60">Draw Streak</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-error">
-                    {biggest()?.streak.loses}
-                  </div>
-                  <div class="text-sm text-base-content/60">Loss Streak</div>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           {/* Penalties */}
           <div class="card bg-base-100 border border-base-300">

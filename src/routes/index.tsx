@@ -10,6 +10,7 @@ import {
   Suspense,
   Switch,
 } from "solid-js";
+import { useSearchParams } from "@solidjs/router";
 import BetForm, { BetFormProps } from "~/components/bet-form";
 import { Matchup, MatchupSkeleton } from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
@@ -41,11 +42,20 @@ function Page() {
     }
   });
 
-  // Date navigation state
-  const [selectedDate, setSelectedDate] = createSignal<string>(
-    // Default to today's date in YYYY-MM-DD format
-    new Date().toISOString().split("T")[0] || "",
-  );
+  // Date navigation state from URL search params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedDate = () => {
+    const dateParam = Array.isArray(searchParams.date) ? searchParams.date[0] : searchParams.date;
+    return dateParam || new Date().toISOString().split("T")[0] || "";
+  };
+
+  const setSelectedDate = (date: string) => {
+    if (date === new Date().toISOString().split("T")[0]) {
+      setSearchParams({ date: undefined }); // Remove date param if it's today
+    } else {
+      setSearchParams({ date });
+    }
+  };
 
   const formattedDate = createMemo(() => {
     const date = new Date(selectedDate() + "T00:00:00"); // Ensure consistent timezone
@@ -77,7 +87,8 @@ function Page() {
       newDate.setDate(currentDate.getDate() + 1);
     }
 
-    setSelectedDate(newDate.toISOString().split("T")[0]!);
+    const newDateStr = newDate.toISOString().split("T")[0]!;
+    setSelectedDate(newDateStr);
   };
 
   // Bet form state
@@ -226,9 +237,10 @@ function Page() {
             {/* Today Button */}
             <button
               class="btn btn-sm btn-primary"
-              onClick={() =>
-                setSelectedDate(new Date().toISOString().split("T")[0] || "")
-              }
+              onClick={() => {
+                const today = new Date().toISOString().split("T")[0] || "";
+                setSelectedDate(today);
+              }}
             >
               Today
             </button>
