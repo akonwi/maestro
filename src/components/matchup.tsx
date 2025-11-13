@@ -14,6 +14,7 @@ import { BetFormProps } from "./bet-form";
 import { EyeOffIcon } from "./icons/eye-off";
 import { useHideLeague } from "~/api/leagues";
 import { Toast, toaster } from "@kobalte/core/toast";
+import { useAuth } from "~/contexts/auth";
 
 interface TeamComparisonProps {
   matchId: number;
@@ -75,6 +76,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   const matchQuery = useMatch(matchId);
   const league = () => matchQuery.data?.league;
   const hideLeague = useHideLeague();
+  const auth = useAuth();
 
   if (matchQuery.isError) {
     return (
@@ -134,7 +136,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
           {formattedDateTime().date} • {formattedDateTime().time}
         </div>
 
-        <Show when={league()}>
+        <Show when={league() != undefined && !auth.isReadOnly()}>
           <div class="tooltip" data-tip="Hide League">
             <button
               class="btn btn-sm btn-ghost"
