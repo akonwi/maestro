@@ -14,7 +14,7 @@ import { useSearchParams } from "@solidjs/router";
 import BetForm, { BetFormProps } from "~/components/bet-form";
 import { Matchup, MatchupSkeleton } from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
-import { JuiceFixture, useJuice } from "~/hooks/data/use-juice";
+import { useJuice } from "~/hooks/data/use-juice";
 
 function Page() {
   // Responsive view mode based on viewport size
@@ -43,18 +43,34 @@ function Page() {
   });
 
   // Date navigation state from URL search params
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams<{
+    date?: string;
+    matchId?: string;
+  }>();
+
   const selectedDate = () => {
-    const dateParam = Array.isArray(searchParams.date) ? searchParams.date[0] : searchParams.date;
+    const dateParam = Array.isArray(searchParams.date)
+      ? searchParams.date[0]
+      : searchParams.date;
     return dateParam || new Date().toISOString().split("T")[0] || "";
   };
-
   const setSelectedDate = (date: string) => {
     if (date === new Date().toISOString().split("T")[0]) {
       setSearchParams({ date: undefined }); // Remove date param if it's today
     } else {
       setSearchParams({ date });
     }
+  };
+
+  const selectedMatchId = () =>
+    typeof searchParams.matchId === "string"
+      ? Number(searchParams.matchId).valueOf()
+      : null;
+  const juiceFixture = () => {
+    const matchId = selectedMatchId();
+    if (matchId != null)
+      return juiceQuery.data?.find((entry) => entry.fixture.id === matchId);
+    return undefined;
   };
 
   const formattedDate = createMemo(() => {
@@ -69,12 +85,6 @@ function Page() {
 
   const juiceQuery = useJuice(selectedDate);
   const auth = useAuth();
-  const [comparisonMatch, setComparisonMatch] = createSignal<{
-    homeTeamId: number;
-    awayTeamId: number;
-    matchId: number;
-    valueBets?: JuiceFixture;
-  } | null>(null);
 
   // Date navigation functions
   const navigateDate = (direction: "prev" | "next") => {
@@ -293,12 +303,7 @@ function Page() {
                           <h3
                             class="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
                             onClick={() => {
-                              setComparisonMatch({
-                                homeTeamId: bet.fixture.home.id,
-                                awayTeamId: bet.fixture.away.id,
-                                matchId: bet.fixture.id,
-                                valueBets: bet,
-                              });
+                              setSearchParams({ matchId: bet.fixture.id });
                             }}
                           >
                             {formatMatchup(bet.fixture)}
@@ -405,16 +410,11 @@ function Page() {
               </thead>
               <tbody>
                 <For each={juice()}>
-                  {({ bet, betType, value, key }) => (
+                  {({ bet, betType, value }) => (
                     <tr
                       class="cursor-pointer hover:bg-base-200 transition-colors"
                       onClick={() => {
-                        setComparisonMatch({
-                          homeTeamId: bet.fixture.home.id,
-                          awayTeamId: bet.fixture.away.id,
-                          matchId: bet.fixture.id,
-                          valueBets: bet,
-                        });
+                        setSearchParams({ matchId: bet.fixture.id });
                       }}
                     >
                       <td class="font-medium">
@@ -449,13 +449,13 @@ function Page() {
         />
       </Show>
 
-      <Show when={comparisonMatch() != null}>
+      <Show when={selectedMatchId() != null}>
         <Suspense fallback={<MatchupSkeleton />}>
           <Matchup
-            matchId={comparisonMatch()!.matchId}
-            valueBets={comparisonMatch()?.valueBets}
+            matchId={selectedMatchId()!}
+            valueBets={juiceFixture()}
             onClose={() => {
-              setComparisonMatch(null);
+              setSearchParams({ matchId: undefined });
             }}
           />
         </Suspense>
