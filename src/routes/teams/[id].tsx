@@ -1,6 +1,7 @@
-import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
+import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
+import GameMetrics from "~/components/game-metrics";
 
 export default function TeamStatsPage() {
   const routeParams = useParams();
@@ -8,8 +9,6 @@ export default function TeamStatsPage() {
   const teamId = Number(routeParams.id);
   const league = Number(searchParams.league);
   const season = Number(searchParams.season);
-
-  const [selectedFormation, setSelectedFormation] = createSignal<string>("all");
 
   const teamStatsQuery = useTeamStatistics(teamId, league, season);
 
@@ -22,13 +21,6 @@ export default function TeamStatsPage() {
   const cleanSheets = () => stats()?.clean_sheet;
   const failedToScore = () => stats()?.failed_to_score;
   const penalty = () => stats()?.penalty;
-  const lineups = () => stats()?.lineups;
-
-  const filteredLineups = createMemo(() => {
-    if (!lineups()) return [];
-    if (selectedFormation() === "all") return lineups()!;
-    return lineups()!.filter((l) => l.formation === selectedFormation());
-  });
 
   const formatPercentage = (value: string | null | undefined) => {
     if (!value) return "0%";
@@ -324,41 +316,6 @@ export default function TeamStatsPage() {
             </div>
           </div>
 
-          {/* Formations */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Formations Used</h3>
-                <select
-                  class="select select-bordered select-sm"
-                  value={selectedFormation()}
-                  onchange={(e) => setSelectedFormation(e.target.value)}
-                >
-                  <option value="all">All Formations</option>
-                  <For each={lineups()}>
-                    {(lineup) => (
-                      <option value={lineup.formation}>
-                        {lineup.formation}
-                      </option>
-                    )}
-                  </For>
-                </select>
-              </div>
-              <div class="space-y-2">
-                <For each={filteredLineups()}>
-                  {(lineup) => (
-                    <div class="flex justify-between items-center p-3 bg-base-200 rounded">
-                      <span class="font-medium">{lineup.formation}</span>
-                      <span class="badge badge-primary">
-                        {lineup.played} games
-                      </span>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
-          </div>
-
           {/* Biggest Results */}
           <div class="card bg-base-100 border border-base-300">
             <div class="card-body">
@@ -430,7 +387,15 @@ export default function TeamStatsPage() {
             </div>
           </div>
 
-
+          {/* Game Metrics */}
+          <Suspense fallback={<GameMetrics.Loading />}>
+            <GameMetrics
+              teamId={teamId}
+              leagueId={league}
+              season={season}
+              gamesPlayed={() => fixtures()?.played.total || 1}
+            />
+          </Suspense>
 
           {/* Penalties */}
           <div class="card bg-base-100 border border-base-300">

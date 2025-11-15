@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
+import { useAuth } from "~/contexts/auth";
 
 export type League = {
 	id: number;
@@ -64,9 +65,9 @@ export function useMatch(id: number) {
 }
 
 export type UseFixturesOptions = {
-	leagueId: Accessor<number>;
-	season: Accessor<number>;
-	teamId?: Accessor<number | null>;
+	leagueId: number;
+	season: number;
+	teamId?: number;
 };
 
 interface ApiFootballFixture {
@@ -106,27 +107,26 @@ interface ApiFootballResponse {
 }
 
 // query directly from API-Football
-export function useFixtures(options: UseFixturesOptions) {
+export function useFixtures(options: Accessor<UseFixturesOptions>) {
+	const auth = useAuth();
+
 	return useQuery(() => ({
-		queryKey: [
-			"fixtures",
-			{
-				leagueId: options.leagueId(),
-				season: options.season(),
-				teamId: options.teamId?.(),
-			},
-		],
+		queryKey: ["fixtures", options()],
 		queryFn: async function (): Promise<ApiFootballResponse> {
+			const leagueId = options().leagueId;
+			const season = options().season;
+			const teamId = options().teamId;
 			const params = new URLSearchParams({
-				league: options.leagueId().toString(),
-				season: options.season().toString(),
+				league: leagueId.toString(),
+				season: season.toString(),
 			});
 
-			if (options.teamId?.()) {
-				params.append("team", options.teamId()!.toString());
+			if (teamId) {
+				params.append("team", teamId.toString());
 			}
 			const response = await fetch(
 				`https://v3.football.api-sports.io/fixtures?${params}`,
+				{ headers: { "X-RapidAPI-Key": auth.token() } },
 			);
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
