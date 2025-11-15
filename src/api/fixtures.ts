@@ -62,3 +62,76 @@ export function useMatch(id: number) {
 		},
 	}));
 }
+
+export type UseFixturesOptions = {
+	leagueId: Accessor<number>;
+	season: Accessor<number>;
+	teamId?: Accessor<number | null>;
+};
+
+interface ApiFootballFixture {
+	fixture: {
+		id: number;
+		date: string;
+		timestamp: number;
+		status: {
+			short: string;
+		};
+	};
+	league: {
+		id: number;
+		name: string;
+		season: number;
+	};
+	teams: {
+		home: {
+			id: number;
+			name: string;
+			logo: string;
+		};
+		away: {
+			id: number;
+			name: string;
+			logo: string;
+		};
+	};
+	goals: {
+		home: number;
+		away: number;
+	};
+}
+
+interface ApiFootballResponse {
+	response: ApiFootballFixture[];
+}
+
+// query directly from API-Football
+export function useFixtures(options: UseFixturesOptions) {
+	return useQuery(() => ({
+		queryKey: [
+			"fixtures",
+			{
+				leagueId: options.leagueId(),
+				season: options.season(),
+				teamId: options.teamId?.(),
+			},
+		],
+		queryFn: async function (): Promise<ApiFootballResponse> {
+			const params = new URLSearchParams({
+				league: options.leagueId().toString(),
+				season: options.season().toString(),
+			});
+
+			if (options.teamId?.()) {
+				params.append("team", options.teamId()!.toString());
+			}
+			const response = await fetch(
+				`https://v3.football.api-sports.io/fixtures?${params}`,
+			);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			return await response.json();
+		},
+	}));
+}
