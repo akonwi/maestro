@@ -6,7 +6,7 @@ import {
   Show,
   createMemo,
   Suspense,
-  Accessor,
+  useContext,
 } from "solid-js";
 import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
@@ -17,6 +17,7 @@ import { useHideLeague } from "~/api/leagues";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { useAuth } from "~/contexts/auth";
 import { A } from "@solidjs/router";
+import { BetFormContext } from "./bet-form.context";
 
 interface TeamComparisonProps {
   matchId: number;
@@ -355,6 +356,7 @@ const AWAY_TOTAL_GOALS = 17;
 const AWAY_CLEANSHEET = 28;
 
 const StatRow = ({
+  matchId,
   label,
   homeValue,
   awayValue,
@@ -362,6 +364,7 @@ const StatRow = ({
   awayClass = "",
   juiceData: juiceData,
 }: {
+  matchId: number;
   label: string;
   homeValue: string | number;
   awayValue: string | number;
@@ -369,6 +372,8 @@ const StatRow = ({
   awayClass?: string;
   juiceData?: JuiceFixture;
 }) => {
+  const auth = useAuth();
+  const [_, betForm] = useContext(BetFormContext);
   type Highlight = {
     text: string;
     typeId: number;
@@ -484,18 +489,16 @@ const StatRow = ({
               {(highlight) => (
                 <span
                   class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
-                  onClick={
-                    undefined
-                    // auth.isReadOnly
-                    // ? undefined
-                    // : () =>
-                    //     handleRecordBet(
-                    //       highlight.typeId,
-                    //       highlight.description,
-                    //       highlight.odds,
-                    //       highlight.line,
-                    //     )
-                  }
+                  onClick={() => {
+                    if (auth.isReadOnly()) return;
+
+                    betForm.show(matchId, {
+                      type_id: highlight.typeId,
+                      description: highlight.description,
+                      odds: highlight.odds,
+                      line: highlight.line,
+                    });
+                  }}
                 >
                   {highlight.text}
                 </span>
@@ -526,18 +529,16 @@ const StatRow = ({
               {(highlight) => (
                 <span
                   class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
-                  onClick={
-                    undefined
-                    // auth.isReadOnly
-                    //   ? undefined
-                    //   : () =>
-                    //       handleRecordBet(
-                    //         highlight.typeId,
-                    //         highlight.description,
-                    //         highlight.odds,
-                    //         highlight.line,
-                    //       )
-                  }
+                  onClick={() => {
+                    if (auth.isReadOnly()) return;
+
+                    betForm.show(matchId, {
+                      type_id: highlight.typeId,
+                      description: highlight.description,
+                      odds: highlight.odds,
+                      line: highlight.line,
+                    });
+                  }}
                 >
                   {highlight.text}
                 </span>
@@ -606,6 +607,7 @@ function Comparison(
           juiceData={props.juiceData}
           homeValue={formatRecord(homeStats)}
           awayValue={formatRecord(awayStats)}
+          matchId={props.matchId}
         />
 
         <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
@@ -647,9 +649,11 @@ function Comparison(
                 ? "text-error"
                 : ""
           }
+          matchId={props.matchId}
         />
 
         <StatRow
+          matchId={props.matchId}
           label="Avg Goals For"
           juiceData={props.juiceData}
           homeValue={homeStats.xgf.toFixed(2)}
@@ -657,6 +661,7 @@ function Comparison(
         />
 
         <StatRow
+          matchId={props.matchId}
           label="Avg Goals Against"
           juiceData={props.juiceData}
           homeValue={homeStats.xga.toFixed(2)}
@@ -664,6 +669,7 @@ function Comparison(
         />
 
         <StatRow
+          matchId={props.matchId}
           label="Strike Rate"
           juiceData={props.juiceData}
           homeValue={formatStrikeRate(homeStats)}
@@ -671,6 +677,7 @@ function Comparison(
         />
 
         <StatRow
+          matchId={props.matchId}
           label="+1.5 Goals For"
           juiceData={props.juiceData}
           homeValue={formatOnePlusScoredPercentage(homeStats)}
@@ -679,6 +686,7 @@ function Comparison(
       </div>
 
       <StatRow
+        matchId={props.matchId}
         label="Clean Sheets"
         juiceData={props.juiceData}
         homeValue={`${homeStats.cleansheets} (${formatCleanSheetPercentage(homeStats)})`}
@@ -686,6 +694,7 @@ function Comparison(
       />
 
       <StatRow
+        matchId={props.matchId}
         label="+0.5 Goals Against"
         juiceData={props.juiceData}
         homeValue={`${homeStats.one_conceded} (${formatOneConcededPercentage(homeStats)})`}
@@ -693,22 +702,12 @@ function Comparison(
       />
 
       <StatRow
+        matchId={props.matchId}
         label="+1.5 Goals Against"
         juiceData={props.juiceData}
         homeValue={`${homeStats.two_plus_conceded} (${formatTwoConcededPercentage(homeStats)})`}
         awayValue={`${awayStats.two_plus_conceded} (${formatTwoConcededPercentage(awayStats)})`}
       />
-
-      {/* Bet Form */}
-      <Show when={false}>
-        {null}
-        {/*<BetForm
-          matchId={matchId}
-          onBetCreated={handleBetCreated}
-          onCancel={handleCancelBet}
-          initialData={prefilledBet || undefined}
-        />*/}
-      </Show>
     </>
   );
 }

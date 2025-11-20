@@ -1,12 +1,14 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, useContext } from "solid-js";
+import { Toast, toaster } from "@kobalte/core/toast";
 import { createStore } from "solid-js/store";
 import { CreateBetData, useCreateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
+import { BetFormContext } from "./bet-form.context";
 
 export interface BetFormProps {
   matchId: number;
-  onBetCreated: () => void;
-  onCancel: () => void;
+  onBetCreated?: () => void;
+  onCancel?: () => void;
   initialData?: {
     type_id: number;
     description: string;
@@ -15,12 +17,10 @@ export interface BetFormProps {
   };
 }
 
-export default function BetForm({
-  matchId,
-  onBetCreated,
-  onCancel,
-  initialData,
-}: BetFormProps) {
+export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
+  const [_, context] = useContext(BetFormContext);
+  const close = callbacks.onCancel ?? context.close;
+  const onFinish = callbacks?.onBetCreated ?? close;
   const [errors, setErrors] = createSignal<string[]>([]);
   const [isSubmitting] = createSignal(false);
   const [formData, setFormData] = createStore({ ...initialData, amount: 5 });
@@ -56,16 +56,43 @@ export default function BetForm({
       return;
     }
 
-    createBet.mutate(betData, { onSuccess: onBetCreated });
+    const formatOdds = (odd: number) => {
+      if (odd > 0) {
+        return `+${odd}`;
+      }
+      return odd.toString();
+    };
+    createBet.mutate(betData, {
+      onSuccess: () => {
+        const id = toaster.show((props) => (
+          <Toast
+            toastId={props.toastId}
+            class="alert bordered border-base-300 w-full flex justify-between"
+          >
+            <Toast.Title>
+              Saved {formData.description} - {formatOdds(formData.odds ?? 0)}{" "}
+              for {formData.amount}
+            </Toast.Title>
+            <Toast.CloseButton
+              class="btn btn-sm"
+              onClick={() => toaster.dismiss(id)}
+            >
+              ×
+            </Toast.CloseButton>
+          </Toast>
+        ));
+        onFinish();
+      },
+    });
   };
 
   if (auth.isReadOnly()) {
     return (
-      <div class="modal modal-open" onClick={onCancel}>
+      <div class="modal modal-open" onClick={close}>
         <div class="modal-box" onClick={(e) => e.stopPropagation()}>
           <div class="flex justify-between items-center mb-4">
             <h3 class="font-bold text-lg">API Token Required</h3>
-            <button class="btn btn-sm btn-circle btn-ghost" onClick={onCancel}>
+            <button class="btn btn-sm btn-circle btn-ghost" onClick={close}>
               ✕
             </button>
           </div>
@@ -78,7 +105,7 @@ export default function BetForm({
               bets.
             </p>
             <div class="space-x-2">
-              <button class="btn btn-ghost" onClick={onCancel}>
+              <button class="btn btn-ghost" onClick={close}>
                 Cancel
               </button>
               <a href="/maestro/settings" class="btn btn-primary">
@@ -92,14 +119,14 @@ export default function BetForm({
   }
 
   return (
-    <div class="modal modal-open" onClick={onCancel}>
+    <div class="modal modal-open" onClick={close}>
       <div
         class="modal-box w-11/12 max-w-5xl max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div class="flex justify-between items-center mb-4">
           <h3 class="font-bold text-lg">Record New Bet</h3>
-          <button class="btn btn-sm btn-circle btn-ghost" onClick={onCancel}>
+          <button class="btn btn-sm btn-circle btn-ghost" onClick={close}>
             ✕
           </button>
         </div>
@@ -196,8 +223,9 @@ export default function BetForm({
 
           <div class="modal-action">
             <button
+              type="reset"
               class="btn btn-ghost"
-              onClick={onCancel}
+              onClick={close}
               disabled={isSubmitting()}
             >
               Cancel

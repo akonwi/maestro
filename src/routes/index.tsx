@@ -9,12 +9,13 @@ import {
   Show,
   Suspense,
   Switch,
+  useContext,
 } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
-import BetForm, { BetFormProps } from "~/components/bet-form";
 import { Matchup, MatchupSkeleton } from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
+import { BetFormContext } from "~/components/bet-form.context";
 
 function Page() {
   // Responsive view mode based on viewport size
@@ -101,37 +102,7 @@ function Page() {
     setSelectedDate(newDateStr);
   };
 
-  // Bet form state
-  const [showBetForm, setShowBetForm] = createSignal(false);
-  const [selectedMatchForBet, setSelectedMatchForBet] = createSignal<
-    number | null
-  >(null);
-  const [prefilledBet, setPrefilledBet] = createSignal<
-    BetFormProps["initialData"] | null
-  >(null);
-
-  const handleRecordBet = (
-    matchId: number,
-    type_id: number,
-    description: string,
-    odds: number,
-  ) => {
-    setSelectedMatchForBet(matchId);
-    setPrefilledBet({ description, odds, type_id });
-    setShowBetForm(true);
-  };
-
-  const handleBetCreated = () => {
-    setShowBetForm(false);
-    setSelectedMatchForBet(null);
-    setPrefilledBet(null);
-  };
-
-  const handleCancelBet = () => {
-    setShowBetForm(false);
-    setSelectedMatchForBet(null);
-    setPrefilledBet(null);
-  };
+  const [_, betForm] = useContext(BetFormContext);
 
   const formatOdds = (odd: number) => {
     if (odd > 0) {
@@ -342,17 +313,12 @@ function Page() {
                                     <button
                                       aria-disabled={auth.isReadOnly()}
                                       class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
-                                      onClick={
-                                        auth.isReadOnly()
-                                          ? undefined
-                                          : () => {
-                                              handleRecordBet(
-                                                bet.fixture.id,
-                                                betType.id,
-                                                `${betType.name} - ${value.name}`,
-                                                value.odd,
-                                              );
-                                            }
+                                      onClick={() =>
+                                        betForm.show(bet.fixture.id, {
+                                          type_id: betType.id,
+                                          odds: value.odd,
+                                          description: betType.name,
+                                        })
                                       }
                                     >
                                       {value.name}: {formatOdds(value.odd)}
@@ -439,15 +405,6 @@ function Page() {
           </div>
         </Match>
       </Switch>
-
-      <Show when={showBetForm() && selectedMatchForBet() != null}>
-        <BetForm
-          matchId={selectedMatchForBet()!}
-          onBetCreated={handleBetCreated}
-          onCancel={handleCancelBet}
-          initialData={prefilledBet() || undefined}
-        />
-      </Show>
 
       <Show when={selectedMatchId() != null}>
         <Suspense fallback={<MatchupSkeleton />}>

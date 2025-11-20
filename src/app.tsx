@@ -7,6 +7,7 @@ import { Header } from "~/components/header";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { Portal } from "solid-js/web";
 import { Toast } from "@kobalte/core/toast";
+import { BetFormProvider } from "./components/bet-form.provider";
 
 const AuthProvider = clientOnly(() => import("~/contexts/auth.provider"));
 
@@ -19,12 +20,14 @@ export default function App() {
       root={(props) => (
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <div class="min-h-screen bg-base-200">
-              <Header />
-              <main class="container mx-auto px-4 py-8">
-                <Suspense>{props.children}</Suspense>
-              </main>
-            </div>
+            <BetFormProvider>
+              <div class="min-h-screen bg-base-200">
+                <Header />
+                <main class="container mx-auto px-4 py-8">
+                  <Suspense>{props.children}</Suspense>
+                </main>
+              </div>
+            </BetFormProvider>
             <Portal>
               <Toast.Region>
                 <Toast.List class="toast" />
