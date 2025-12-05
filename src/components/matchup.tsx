@@ -12,7 +12,7 @@ import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
 import { JuiceFixture } from "~/hooks/data/use-juice";
 import { BetFormProps } from "./bet-form";
-import { useHideLeague, useFollowLeague } from "~/api/leagues";
+import { useTrackLeague } from "~/api/leagues";
 import { DotsVerticalIcon } from "./icons/dots-vertical";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { useAuth } from "~/contexts/auth";
@@ -78,8 +78,7 @@ export function MatchInfoSkeleton() {
 function MatchInfo({ matchId }: { matchId: number }) {
   const matchQuery = useMatch(matchId);
   const league = () => matchQuery.data?.league;
-  const hideLeague = useHideLeague();
-  const followLeague = useFollowLeague();
+  const trackLeague = useTrackLeague();
   const auth = useAuth();
 
   if (matchQuery.isError) {
@@ -138,7 +137,9 @@ function MatchInfo({ matchId }: { matchId: number }) {
         toastId={props.toastId}
         class="alert bordered border-base-300 w-full flex justify-between"
       >
-        <Toast.Title>{league()?.name} will be followed in the future</Toast.Title>
+        <Toast.Title>
+          {league()?.name} will be followed in the future
+        </Toast.Title>
         <Toast.CloseButton
           class="btn btn-sm"
           onClick={() => toaster.dismiss(id)}
@@ -169,9 +170,9 @@ function MatchInfo({ matchId }: { matchId: number }) {
               <li>
                 <a
                   onClick={() =>
-                    followLeague.mutate(
+                    trackLeague.mutate(
                       { id: league()!.id, name: league()!.name },
-                      { onSuccess: onLeagueFollowed }
+                      { onSuccess: onLeagueFollowed },
                     )
                   }
                 >
@@ -181,7 +182,12 @@ function MatchInfo({ matchId }: { matchId: number }) {
               <li>
                 <a
                   onClick={() =>
-                    hideLeague.mutate(league()!.id, { onSuccess: onLeagueHidden })
+                    trackLeague.mutate(
+                      { id: league()!.id, name: league()!.name, hidden: true },
+                      {
+                        onSuccess: onLeagueHidden,
+                      },
+                    )
                   }
                 >
                   Hide League

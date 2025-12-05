@@ -4,6 +4,7 @@ import { useAuth } from "~/contexts/auth";
 export interface League {
 	id: number;
 	name: string;
+	hidden: boolean;
 }
 
 export function useLeagues() {
@@ -29,35 +30,14 @@ export function useLeagues() {
 	}));
 }
 
-export function useHideLeague() {
+export function useTrackLeague() {
 	const auth = useAuth();
 	return useMutation(() => ({
-		mutationFn: async function (id: number) {
-			if (auth.isReadOnly()) {
-				return null;
-			}
-
-			const response = await fetch(
-				`${import.meta.env.VITE_API_BASE_URL}/leagues/${id}/hide`,
-				{
-					method: "POST",
-					headers: auth.headers(),
-				},
-			);
-
-			if (!response.ok) {
-				throw new Error("Failed to hide league");
-			}
-
-			return response.json();
-		},
-	}));
-}
-
-export function useFollowLeague() {
-	const auth = useAuth();
-	return useMutation(() => ({
-		mutationFn: async function (league: { id: number; name: string }) {
+		mutationFn: async function (input: {
+			id: number;
+			name: string;
+			hidden?: boolean;
+		}) {
 			if (auth.isReadOnly()) {
 				return null;
 			}
@@ -66,16 +46,13 @@ export function useFollowLeague() {
 				`${import.meta.env.VITE_API_BASE_URL}/leagues`,
 				{
 					method: "POST",
-					headers: {
-						...auth.headers(),
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({ id: league.id, name: league.name }),
+					headers: auth.headers(),
+					body: JSON.stringify({ ...input, hidden: input.hidden ?? false }),
 				},
 			);
 
 			if (!response.ok) {
-				throw new Error("Failed to follow league");
+				throw new Error("Failed to track league");
 			}
 
 			return response.json();
