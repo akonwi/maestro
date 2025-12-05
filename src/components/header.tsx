@@ -40,8 +40,18 @@ export function Header() {
               </A>
             </li>*/}
             <li>
+              <A href="/leagues" activeClass="active">
+                Leagues
+              </A>
+            </li>
+            <li>
               <A href="/betting" activeClass="active">
                 Betting
+              </A>
+            </li>
+            <li>
+              <A href="/leagues" activeClass="active">
+                Leagues
               </A>
             </li>
             <li>
@@ -70,6 +80,11 @@ export function Header() {
           <li>
             <A href="/betting" activeClass="active">
               Betting
+            </A>
+          </li>
+          <li>
+            <A href="/leagues" activeClass="active">
+              Leagues
             </A>
           </li>
           <li>

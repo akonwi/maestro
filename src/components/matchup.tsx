@@ -12,8 +12,8 @@ import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
 import { JuiceFixture } from "~/hooks/data/use-juice";
 import { BetFormProps } from "./bet-form";
-import { EyeOffIcon } from "./icons/eye-off";
-import { useHideLeague } from "~/api/leagues";
+import { useHideLeague, useFollowLeague } from "~/api/leagues";
+import { DotsVerticalIcon } from "./icons/dots-vertical";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { useAuth } from "~/contexts/auth";
 import { A } from "@solidjs/router";
@@ -79,6 +79,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   const matchQuery = useMatch(matchId);
   const league = () => matchQuery.data?.league;
   const hideLeague = useHideLeague();
+  const followLeague = useFollowLeague();
   const auth = useAuth();
 
   if (matchQuery.isError) {
@@ -131,6 +132,23 @@ function MatchInfo({ matchId }: { matchId: number }) {
     ));
   };
 
+  const onLeagueFollowed = () => {
+    const id = toaster.show((props) => (
+      <Toast
+        toastId={props.toastId}
+        class="alert bordered border-base-300 w-full flex justify-between"
+      >
+        <Toast.Title>{league()?.name} will be followed in the future</Toast.Title>
+        <Toast.CloseButton
+          class="btn btn-sm"
+          onClick={() => toaster.dismiss(id)}
+        >
+          ×
+        </Toast.CloseButton>
+      </Toast>
+    ));
+  };
+
   return (
     <>
       <div class="flex justify-between items-center mb-6">
@@ -140,15 +158,36 @@ function MatchInfo({ matchId }: { matchId: number }) {
         </div>
 
         <Show when={league() != undefined && !auth.isReadOnly()}>
-          <div class="tooltip" data-tip="Hide League">
-            <button
-              class="btn btn-sm btn-ghost"
-              onClick={() =>
-                hideLeague.mutate(league()!.id, { onSuccess: onLeagueHidden })
-              }
+          <div class="dropdown dropdown-end">
+            <div tabIndex={0} role="button" class="btn btn-sm btn-ghost">
+              <DotsVerticalIcon />
+            </div>
+            <ul
+              tabIndex={0}
+              class="dropdown-content z-1 menu p-2 shadow bg-base-100 rounded-box w-52"
             >
-              <EyeOffIcon />
-            </button>
+              <li>
+                <a
+                  onClick={() =>
+                    followLeague.mutate(
+                      { id: league()!.id, name: league()!.name },
+                      { onSuccess: onLeagueFollowed }
+                    )
+                  }
+                >
+                  Follow League
+                </a>
+              </li>
+              <li>
+                <a
+                  onClick={() =>
+                    hideLeague.mutate(league()!.id, { onSuccess: onLeagueHidden })
+                  }
+                >
+                  Hide League
+                </a>
+              </li>
+            </ul>
           </div>
         </Show>
       </div>
