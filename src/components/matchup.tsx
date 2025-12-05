@@ -12,7 +12,7 @@ import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useMatch } from "~/api/fixtures";
 import { JuiceFixture } from "~/hooks/data/use-juice";
 import { BetFormProps } from "./bet-form";
-import { useTrackLeague } from "~/api/leagues";
+import { useTrackLeague, useLeagues, useToggleLeague } from "~/api/leagues";
 import { DotsVerticalIcon } from "./icons/dots-vertical";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { useAuth } from "~/contexts/auth";
@@ -79,7 +79,19 @@ function MatchInfo({ matchId }: { matchId: number }) {
   const matchQuery = useMatch(matchId);
   const league = () => matchQuery.data?.league;
   const trackLeague = useTrackLeague();
+  const toggleLeague = useToggleLeague();
+  const leaguesQuery = useLeagues();
   const auth = useAuth();
+
+  const leagueStatus = (): "hidden" | "followed" | null => {
+    const currentLeague = league();
+    if (!currentLeague) return null;
+
+    const knownLeague = () =>
+      leaguesQuery.data?.find((l) => l.id === currentLeague.id);
+    if (knownLeague() == undefined) return null;
+    return knownLeague()?.hidden ? "hidden" : "followed";
+  };
 
   if (matchQuery.isError) {
     return (
@@ -158,7 +170,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
           {formattedDateTime().date} • {formattedDateTime().time}
         </div>
 
-        <Show when={league() != undefined && !auth.isReadOnly()}>
+        <Show when={!auth.isReadOnly()}>
           <div class="dropdown dropdown-end">
             <div tabIndex={0} role="button" class="btn btn-sm btn-ghost">
               <DotsVerticalIcon />
@@ -167,32 +179,80 @@ function MatchInfo({ matchId }: { matchId: number }) {
               tabIndex={0}
               class="dropdown-content z-1 menu p-2 shadow bg-base-100 rounded-box w-52"
             >
-              <li>
-                <a
-                  onClick={() =>
-                    trackLeague.mutate(
-                      { id: league()!.id, name: league()!.name },
-                      { onSuccess: onLeagueFollowed },
-                    )
-                  }
-                >
-                  Follow League
-                </a>
-              </li>
-              <li>
-                <a
-                  onClick={() =>
-                    trackLeague.mutate(
-                      { id: league()!.id, name: league()!.name, hidden: true },
-                      {
-                        onSuccess: onLeagueHidden,
-                      },
-                    )
-                  }
-                >
-                  Hide League
-                </a>
-              </li>
+              <Switch>
+                <Match when={leagueStatus() == null}>
+                  <li>
+                    <a
+                      onClick={() =>
+                        trackLeague.mutate(
+                          { id: league()!.id, name: league()!.name },
+                          { onSuccess: onLeagueFollowed },
+                        )
+                      }
+                    >
+                      Follow League
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      onClick={() =>
+                        trackLeague.mutate(
+                          {
+                            id: league()!.id,
+                            name: league()!.name,
+                            hidden: true,
+                          },
+                          {
+                            onSettled: onLeagueHidden,
+                          },
+                        )
+                      }
+                    >
+                      Hide League
+                    </a>
+                  </li>
+                </Match>
+
+                <Match when={leagueStatus() === "followed"}>
+                  <li>
+                    <a
+                      onClick={() =>
+                        toggleLeague.mutate(
+                          {
+                            id: league()!.id,
+                            hidden: true,
+                          },
+                          {
+                            onSettled: onLeagueHidden,
+                          },
+                        )
+                      }
+                    >
+                      {leagueStatus() === "followed" ? "Hide" : "Follow"} League
+                    </a>
+                  </li>
+                </Match>
+
+                <Match when={leagueStatus() === "hidden"}>
+                  <li>
+                    <a
+                      onClick={() =>
+                        toggleLeague.mutate(
+                          {
+                            id: league()!.id,
+                            hidden: false,
+                          },
+                          {
+                            onSuccess: onLeagueFollowed,
+                          },
+                        )
+                      }
+                    >
+                      {leagueStatus() === "followed" ? "Hide" : "Follow"} League
+                    </a>
+                  </li>
+                </Match>
+              </Switch>
             </ul>
           </div>
         </Show>

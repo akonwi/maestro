@@ -57,5 +57,40 @@ export function useTrackLeague() {
 
 			return response.json();
 		},
+		onSettled: (_data, _errors, _variables, _result, context) => {
+			context.client.invalidateQueries({ queryKey: ["leagues"] });
+		},
+	}));
+}
+
+export function useToggleLeague() {
+	const auth = useAuth();
+	return useMutation(() => ({
+		mutationFn: async function (input: {
+			id: number;
+			hidden: boolean;
+		}) {
+			if (auth.isReadOnly()) {
+				return null;
+			}
+
+			const response = await fetch(
+				`${import.meta.env.VITE_API_BASE_URL}/leagues`,
+				{
+					method: "PUT",
+					headers: auth.headers(),
+					body: JSON.stringify(input),
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error("Failed to update league");
+			}
+
+			return response.json();
+		},
+		onSettled: (_data, _errors, _variables, _result, context) => {
+			context.client.invalidateQueries({ queryKey: ["leagues"] });
+		},
 	}));
 }
