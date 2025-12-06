@@ -9,7 +9,7 @@ import {
   useContext,
 } from "solid-js";
 import { AnalysisData, useMatchup } from "~/api/analysis";
-import { useMatch } from "~/api/fixtures";
+import { useFixture } from "~/api/fixtures";
 import { JuiceFixture } from "~/hooks/data/use-juice";
 import { BetFormProps } from "./bet-form";
 import { useTrackLeague, useLeagues, useToggleLeague } from "~/api/leagues";
@@ -76,7 +76,7 @@ export function MatchInfoSkeleton() {
 
 // Match Info Component
 function MatchInfo({ matchId }: { matchId: number }) {
-  const matchQuery = useMatch(matchId);
+  const matchQuery = useFixture(matchId);
   const league = () => matchQuery.data?.league;
   const trackLeague = useTrackLeague();
   const toggleLeague = useToggleLeague();
@@ -662,7 +662,7 @@ function Comparison(
   const { home: homeStats, away: awayStats } = props.comparison;
 
   // Get match data to extract league and season info
-  const matchQuery = useMatch(props.matchId);
+  const matchQuery = useFixture(props.matchId);
   const match = () => matchQuery.data;
 
   const auth = useAuth();

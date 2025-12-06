@@ -37,7 +37,7 @@ export function useMatches(leagueId: Accessor<number | null>) {
 		queryKey: ["matches", { leagueId: leagueId() }],
 		queryFn: async function (): Promise<LeagueMatchData> {
 			const response = await fetch(
-				`${import.meta.env.VITE_API_BASE_URL}/leagues/${leagueId}/matches`,
+				`${import.meta.env.VITE_API_BASE_URL}/leagues/${leagueId}/fixtures`,
 			);
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
@@ -48,12 +48,12 @@ export function useMatches(leagueId: Accessor<number | null>) {
 	}));
 }
 
-export function useMatch(id: number) {
+export function useFixture(id: number) {
 	return useQuery(() => ({
 		queryKey: ["matches", { id }],
 		queryFn: async function (): Promise<Match> {
 			const response = await fetch(
-				`${import.meta.env.VITE_API_BASE_URL}/matches/${id}`,
+				`${import.meta.env.VITE_API_BASE_URL}/fixtures/${id}`,
 			);
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
