@@ -11,9 +11,6 @@ export interface JuiceFixture {
 			name: string;
 			season: number;
 		};
-		league_id: number;
-		league_name: string;
-		season: number;
 		home: {
 			id: number;
 			name: string;
