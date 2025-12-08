@@ -1,6 +1,7 @@
 import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
+import { useLeagues } from "~/api/leagues";
 import GameMetrics from "~/components/game-metrics";
 
 export default function TeamStatsPage() {
@@ -11,6 +12,7 @@ export default function TeamStatsPage() {
   const season = Number(searchParams.season);
 
   const teamStatsQuery = useTeamStatistics(teamId, league, season);
+  const leaguesQuery = useLeagues();
 
   const stats = () => teamStatsQuery.data?.response;
   const team = () => stats()?.team;
@@ -21,6 +23,11 @@ export default function TeamStatsPage() {
   const cleanSheets = () => stats()?.clean_sheet;
   const failedToScore = () => stats()?.failed_to_score;
   const penalty = () => stats()?.penalty;
+
+  const isTeamInFollowedLeague = () => {
+    if (!league || !leaguesQuery.data) return false;
+    return leaguesQuery.data.some(l => l.id === league && !l.hidden);
+  };
 
   const formatPercentage = (value: string | null | undefined) => {
     if (!value) return "0%";
@@ -388,14 +395,16 @@ export default function TeamStatsPage() {
           </div>
 
           {/* Game Metrics */}
-          <Suspense fallback={<GameMetrics.Loading />}>
-            <GameMetrics
-              teamId={teamId}
-              leagueId={league}
-              season={season}
-              gamesPlayed={() => fixtures()?.played.total || 1}
-            />
-          </Suspense>
+          <Show when={isTeamInFollowedLeague()}>
+            <Suspense fallback={<GameMetrics.Loading />}>
+              <GameMetrics
+                teamId={teamId}
+                leagueId={league}
+                season={season}
+                gamesPlayed={() => fixtures()?.played.total || 1}
+              />
+            </Suspense>
+          </Show>
 
           {/* Penalties */}
           <div class="card bg-base-100 border border-base-300">

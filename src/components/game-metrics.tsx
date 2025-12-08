@@ -10,251 +10,359 @@ interface GameMetricsProps {
 }
 
 export default function GameMetrics(props: GameMetricsProps) {
-  const metricsQuery = useTeamMetrics(() => ({
-    teamId: props.teamId,
-    season: props.season,
-    leagueId: props.leagueId,
-  }));
+  const metricsQuery = useTeamMetrics(props);
 
   return (
     <div class="card bg-base-100 border border-base-300">
       <div class="card-body">
         <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
         <Show when={metricsQuery.data}>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Offensive Metrics */}
-            <div>
-              <h4 class="font-medium mb-3 text-success">Offensive Metrics</h4>
-              <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Total Shots</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.shots.total}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.shots.total || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
-                    </div>
+          <div>
+            {/* Mobile Layout: 2 columns */}
+            <div class="grid grid-cols-2 gap-4 md:hidden">
+              <div>
+                <h4 class="font-medium mb-4 text-primary">Offensive</h4>
+                <div class="space-y-4">
+                <div>
+                  <div class="text-sm text-base-content/70">Total Shots</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.for.shots.total || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.total}</div>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Shots on Goal</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.shots.onGoal}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.shots.onGoal || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
-                    </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Shots on Goal</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.for.shots.onGoal || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.onGoal}</div>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Shots Missed</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.shots.missed}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.shots.missed || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
-                    </div>
+                <div class="flex-1 min-w-[150px]">
+                  <div class="text-sm text-base-content/70">Shots Missed</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.for.shots.missed || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.missed}</div>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Blocked Shots</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.shots.blocked}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.shots.blocked || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
-                    </div>
+                <div class="flex-1 min-w-[150px]">
+                  <div class="text-sm text-base-content/70">Blocked Shots</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.for.shots.blocked || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.blocked}</div>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Shots Inside Box</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.shots.insideBox}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.shots.insideBox || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
-                    </div>
+                <div class="flex-1 min-w-[150px]">
+                   <div class="text-sm text-base-content/70">Shots Inside Box</div>
+                   <div class="text-2xl font-medium">
+                     {(
+                       (metricsQuery.data?.for.shots.insideBox || 0) /
+                       (props.gamesPlayed() || 1)
+                     ).toFixed(1)}
+                   </div>
+                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.insideBox}</div>
+                 </div>
+                 <div class="flex-1 min-w-[150px]">
+                   <div class="text-sm text-base-content/70">Shots Outside Box</div>
+                   <div class="text-2xl font-medium">
+                     {(
+                       (metricsQuery.data?.for.shots.outsideBox || 0) /
+                       (props.gamesPlayed() || 1)
+                     ).toFixed(1)}
+                   </div>
+                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.outsideBox}</div>
+                 </div>
+                 <div class="flex-1 min-w-[150px]">
+                   <div class="text-sm text-base-content/70">Expected Goals (xG)</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.for.xg || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(2)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.for.xg.toFixed(2)}</div>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Expected Goals (xG)</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.xg.toFixed(2)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.xg || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(2)}{" "}
-                      per game)
-                    </div>
+                <div class="flex-1 min-w-[150px]">
+                  <div class="text-sm text-base-content/70">Corner Kicks</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.for.corners || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.for.corners}</div>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Corner Kicks</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.for.corners}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
-                      {(
-                        (metricsQuery.data?.for.corners || 0) /
-                        (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
-                    </div>
+              </div>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-4">Defensive</h4>
+                <div class="space-y-4">
+                  <div>
+                    <div class="text-sm text-base-content/70">Total Shots</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.shots.total || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
                   </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.total}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Shots on Goal</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.shots.onGoal || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.onGoal}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Shots Missed</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.shots.missed || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.missed}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Blocked Shots</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.shots.blocked || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.blocked}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Shots Inside Box</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.shots.insideBox || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.insideBox}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Shots Outside Box</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.shots.outsideBox || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.outsideBox}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Expected Goals (xGA)</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.xg || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(2)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.xg.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div class="text-sm text-base-content/70">Corner Kicks</div>
+                  <div class="text-2xl font-medium">
+                    {(
+                      (metricsQuery.data?.against.corners || 0) /
+                      (props.gamesPlayed() || 1)
+                    ).toFixed(1)}
+                  </div>
+                  <div class="text-xs text-base-content/60">{metricsQuery.data?.against.corners}</div>
                 </div>
               </div>
             </div>
+            </div>
 
-            {/* Defensive Metrics */}
-            <div>
-              <h4 class="font-medium mb-3 text-error">Defensive Metrics</h4>
-              <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Total Shots Against</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.shots.total}
+            {/* Desktop Layout: Stacked rows */}
+            <div class="hidden md:space-y-6 md:block">
+              <div>
+                <h4 class="font-medium mb-4 text-primary">Offensive</h4>
+                <div class="flex gap-4 flex-wrap">
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Total Shots</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.shots.total || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
                     </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.total}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots on Goal</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.shots.onGoal || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.onGoal}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots Missed</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.shots.missed || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.missed}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Blocked Shots</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.shots.blocked || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.blocked}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots Inside Box</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.shots.insideBox || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.insideBox}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots Outside Box</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.shots.outsideBox || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.outsideBox}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Expected Goals (xG)</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.xg || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(2)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.xg.toFixed(2)}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Corner Kicks</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.for.corners || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
+                    </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.corners}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="font-medium mb-4">Defensive</h4>
+                <div class="flex gap-4 flex-wrap">
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Total Shots Against</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.total || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
+                      ).toFixed(1)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.total}</div>
                   </div>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Shots on Goal Against</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.shots.onGoal}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots on Goal</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.onGoal || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
+                      ).toFixed(1)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.onGoal}</div>
                   </div>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Shots Missed Against</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.shots.missed}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots Missed</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.missed || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
+                      ).toFixed(1)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.missed}</div>
                   </div>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Blocked Shots Against</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.shots.blocked}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Blocked Shots</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.blocked || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
+                      ).toFixed(1)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.blocked}</div>
                   </div>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Shots Inside Box Against</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.shots.insideBox}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots Inside Box</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.insideBox || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
+                      ).toFixed(1)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.insideBox}</div>
                   </div>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Expected Goals Against (xGA)</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.xg.toFixed(2)}
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Shots Outside Box</div>
+                    <div class="text-2xl font-medium">
+                      {(
+                        (metricsQuery.data?.against.shots.outsideBox || 0) /
+                        (props.gamesPlayed() || 1)
+                      ).toFixed(1)}
                     </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.outsideBox}</div>
+                  </div>
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Expected Goals (xGA)</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.xg || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(2)}{" "}
-                      per game)
+                      ).toFixed(2)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.xg.toFixed(2)}</div>
                   </div>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm">Corner Kicks Against</span>
-                  <div class="text-right">
-                    <div class="font-medium">
-                      {metricsQuery.data?.against.corners}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      (
+                  <div class="flex-1 min-w-[150px]">
+                    <div class="text-sm text-base-content/70">Corner Kicks</div>
+                    <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.corners || 0) /
                         (props.gamesPlayed() || 1)
-                      ).toFixed(1)}{" "}
-                      per game)
+                      ).toFixed(1)}
                     </div>
+                    <div class="text-xs text-base-content/60">{metricsQuery.data?.against.corners}</div>
                   </div>
                 </div>
               </div>
