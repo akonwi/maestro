@@ -2,6 +2,7 @@ import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
+import { useFixtures } from "~/api/fixtures";
 import { GameMetrics } from "~/components/game-metrics";
 
 export default function TeamStatsPage() {
@@ -13,6 +14,11 @@ export default function TeamStatsPage() {
 
   const teamStatsQuery = useTeamStatistics(teamId, league, season);
   const leaguesQuery = useLeagues();
+  const fixturesQuery = useFixtures(() => ({
+    leagueId: league,
+    season: season,
+    teamId: teamId,
+  }));
 
   const stats = () => teamStatsQuery.data?.response;
   const team = () => stats()?.team;
@@ -35,19 +41,30 @@ export default function TeamStatsPage() {
   };
 
   const getFormResults = (form: string) => {
+    const fixtures = fixturesQuery.data?.response || [];
+    const recentMatches = fixtures.slice(0, 5).reverse();
+    
     return form
       .split("")
-      .slice(0, 10)
-      .map((result, index) => ({
-        result,
-        index,
-        class:
-          result === "W"
-            ? "badge-success"
-            : result === "D"
-              ? "badge-warning"
-              : "badge-error",
-      }));
+      .slice(0, 5)
+      .map((result, index) => {
+        const match = recentMatches[index];
+        const matchInfo = match
+          ? `${match.teams.home.name} (${match.goals.home}) - ${match.teams.away.name} (${match.goals.away}) - ${new Date(match.fixture.date).toLocaleDateString()}`
+          : "";
+
+        return {
+          result,
+          index,
+          matchInfo,
+          class:
+            result === "W"
+              ? "badge-success"
+              : result === "D"
+                ? "badge-warning"
+                : "badge-error",
+        };
+      });
   };
 
   const getWinRate = () => {
@@ -122,8 +139,8 @@ export default function TeamStatsPage() {
                 <For each={getFormResults(stats()?.form || "")}>
                   {(item) => (
                     <div
-                      class={`badge badge-lg ${item.class}`}
-                      title={`Game ${item.index + 1}`}
+                      class={`badge badge-lg ${item.class} tooltip`}
+                      data-tip={item.matchInfo || `Game ${item.index + 1}`}
                     >
                       {item.result}
                     </div>
