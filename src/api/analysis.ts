@@ -74,7 +74,7 @@ export type TeamMetrics = Record<
 		xg: number;
 		corners: number;
 	}
->;
+> & { num_fixtures: number };
 
 export function useTeamMetrics(props: UseTeamMetrics) {
 	const auth = useAuth();
@@ -106,6 +106,7 @@ export function useTeamMetrics(props: UseTeamMetrics) {
 
 			const body = await response.json();
 			return {
+				num_fixtures: body.num_fixtures,
 				for: {
 					shots: {
 						total: body.team.shots.total,
@@ -115,8 +116,8 @@ export function useTeamMetrics(props: UseTeamMetrics) {
 						insideBox: body.team.shots.in_box,
 						outsideBox: body.team.shots.total - body.team.shots.in_box,
 					},
-					xg: 0, // Not provided by new endpoint
-					corners: 0, // Not provided by new endpoint
+					xg: body.team.xg,
+					corners: body.team.corners,
 				},
 				against: {
 					shots: {
@@ -127,8 +128,8 @@ export function useTeamMetrics(props: UseTeamMetrics) {
 						insideBox: body.against.shots.in_box,
 						outsideBox: body.against.shots.total - body.against.shots.in_box,
 					},
-					xg: 0, // Not provided by new endpoint
-					corners: 0, // Not provided by new endpoint
+					xg: body.against.xg,
+					corners: body.against.corners,
 				},
 			};
 		},

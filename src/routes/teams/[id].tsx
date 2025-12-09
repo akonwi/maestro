@@ -26,7 +26,7 @@ export default function TeamStatsPage() {
 
   const isTeamInFollowedLeague = () => {
     if (!league || !leaguesQuery.data) return false;
-    return leaguesQuery.data.some(l => l.id === league && !l.hidden);
+    return leaguesQuery.data.some((l) => l.id === league && !l.hidden);
   };
 
   const formatPercentage = (value: string | null | undefined) => {
@@ -397,12 +397,7 @@ export default function TeamStatsPage() {
           {/* Game Metrics */}
           <Show when={isTeamInFollowedLeague()}>
             <Suspense fallback={<GameMetrics.Loading />}>
-              <GameMetrics
-                teamId={teamId}
-                leagueId={league}
-                season={season}
-                gamesPlayed={() => fixtures()?.played.total || 1}
-              />
+              <GameMetrics teamId={teamId} leagueId={league} season={season} />
             </Suspense>
           </Show>
 

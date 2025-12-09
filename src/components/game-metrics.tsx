@@ -6,7 +6,6 @@ interface GameMetricsProps {
   teamId: number;
   leagueId: number;
   season: number;
-  gamesPlayed: () => number;
 }
 
 export default function GameMetrics(props: GameMetricsProps) {
@@ -24,12 +23,12 @@ export default function GameMetrics(props: GameMetricsProps) {
                 <h4 class="font-medium mb-4 text-primary">Offensive</h4>
                 <div class="space-y-4">
                 <div>
-                  <div class="text-sm text-base-content/70">Total Shots</div>
-                  <div class="text-2xl font-medium">
-                    {(
-                      (metricsQuery.data?.for.shots.total || 0) /
-                      (props.gamesPlayed() || 1)
-                    ).toFixed(1)}
+                 <div class="text-sm text-base-content/70">Total Shots</div>
+                 <div class="text-2xl font-medium">
+                   {(
+                     (metricsQuery.data?.for.shots.total || 0) /
+                     (metricsQuery.data?.num_fixtures || 1)
+                   ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.total}</div>
                 </div>
@@ -38,7 +37,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.for.shots.onGoal || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.onGoal}</div>
@@ -48,7 +47,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.for.shots.missed || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.missed}</div>
@@ -58,7 +57,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.for.shots.blocked || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.blocked}</div>
@@ -68,7 +67,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                    <div class="text-2xl font-medium">
                      {(
                        (metricsQuery.data?.for.shots.insideBox || 0) /
-                       (props.gamesPlayed() || 1)
+                       (metricsQuery.data?.num_fixtures || 1)
                      ).toFixed(1)}
                    </div>
                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.insideBox}</div>
@@ -78,7 +77,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                    <div class="text-2xl font-medium">
                      {(
                        (metricsQuery.data?.for.shots.outsideBox || 0) /
-                       (props.gamesPlayed() || 1)
+                       (metricsQuery.data?.num_fixtures || 1)
                      ).toFixed(1)}
                    </div>
                    <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.outsideBox}</div>
@@ -88,17 +87,17 @@ export default function GameMetrics(props: GameMetricsProps) {
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.for.xg || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(2)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.xg.toFixed(2)}</div>
-                </div>
-                <div class="flex-1 min-w-[150px]">
+                 </div>
+                 <div class="flex-1 min-w-[150px]">
                   <div class="text-sm text-base-content/70">Corner Kicks</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.for.corners || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.for.corners}</div>
@@ -114,77 +113,77 @@ export default function GameMetrics(props: GameMetricsProps) {
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.shots.total || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.total}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Shots on Goal</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.shots.onGoal || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.onGoal}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Shots Missed</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.shots.missed || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.missed}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Blocked Shots</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.shots.blocked || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.blocked}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Shots Inside Box</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.shots.insideBox || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.insideBox}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Shots Outside Box</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.shots.outsideBox || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.outsideBox}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Expected Goals (xGA)</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.xg || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(2)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.xg.toFixed(2)}</div>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <div class="text-sm text-base-content/70">Corner Kicks</div>
                   <div class="text-2xl font-medium">
                     {(
                       (metricsQuery.data?.against.corners || 0) /
-                      (props.gamesPlayed() || 1)
+                      (metricsQuery.data?.num_fixtures || 1)
                     ).toFixed(1)}
                   </div>
                   <div class="text-xs text-base-content/60">{metricsQuery.data?.against.corners}</div>
@@ -203,7 +202,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.shots.total || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.total}</div>
@@ -213,7 +212,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.shots.onGoal || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.onGoal}</div>
@@ -223,7 +222,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.shots.missed || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.missed}</div>
@@ -233,7 +232,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.shots.blocked || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.blocked}</div>
@@ -243,7 +242,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.shots.insideBox || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.insideBox}</div>
@@ -253,7 +252,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.shots.outsideBox || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.shots.outsideBox}</div>
@@ -263,7 +262,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.xg || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(2)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.xg.toFixed(2)}</div>
@@ -273,7 +272,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.for.corners || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.for.corners}</div>
@@ -289,7 +288,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.total || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.total}</div>
@@ -299,7 +298,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.onGoal || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.onGoal}</div>
@@ -309,7 +308,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.missed || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.missed}</div>
@@ -319,7 +318,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.blocked || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.blocked}</div>
@@ -329,7 +328,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.insideBox || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.insideBox}</div>
@@ -339,7 +338,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.shots.outsideBox || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.shots.outsideBox}</div>
@@ -349,7 +348,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.xg || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(2)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.xg.toFixed(2)}</div>
@@ -359,7 +358,7 @@ export default function GameMetrics(props: GameMetricsProps) {
                     <div class="text-2xl font-medium">
                       {(
                         (metricsQuery.data?.against.corners || 0) /
-                        (props.gamesPlayed() || 1)
+                        (metricsQuery.data?.num_fixtures || 1)
                       ).toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">{metricsQuery.data?.against.corners}</div>
