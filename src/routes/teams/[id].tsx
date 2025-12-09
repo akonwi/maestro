@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
-import GameMetrics from "~/components/game-metrics";
+import { GameMetrics } from "~/components/game-metrics";
 
 export default function TeamStatsPage() {
   const routeParams = useParams();
@@ -132,6 +132,13 @@ export default function TeamStatsPage() {
               </div>
             </div>
           </div>
+
+          {/* Game Metrics */}
+          <Show when={isTeamInFollowedLeague()}>
+            <Suspense fallback={<GameMetrics.Loading />}>
+              <GameMetrics teamId={teamId} leagueId={league} season={season} />
+            </Suspense>
+          </Show>
 
           {/* Match Statistics */}
           <div class="card bg-base-100 border border-base-300">
@@ -393,13 +400,6 @@ export default function TeamStatsPage() {
               </div>
             </div>
           </div>
-
-          {/* Game Metrics */}
-          <Show when={isTeamInFollowedLeague()}>
-            <Suspense fallback={<GameMetrics.Loading />}>
-              <GameMetrics teamId={teamId} leagueId={league} season={season} />
-            </Suspense>
-          </Show>
 
           {/* Penalties */}
           <div class="card bg-base-100 border border-base-300">
