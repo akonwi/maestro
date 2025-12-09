@@ -60,19 +60,26 @@ export type TeamMetricsCacheKey = {
 	season: number;
 };
 
+type ShotMetrics = {
+	total: number;
+	onGoal: number;
+	missed: number;
+	blocked: number;
+	insideBox: number;
+	outsideBox: number;
+};
+
+type StatCategory = {
+	shots: ShotMetrics;
+	xg: number;
+	corners: number;
+};
+
 export type TeamMetrics = Record<
 	"for" | "against",
 	{
-		shots: {
-			total: number;
-			onGoal: number;
-			missed: number;
-			blocked: number;
-			insideBox: number;
-			outsideBox: number;
-		};
-		xg: number;
-		corners: number;
+		total: StatCategory;
+		perGame: StatCategory;
 	}
 > & { num_fixtures: number };
 
@@ -105,32 +112,44 @@ export function useTeamMetrics(props: UseTeamMetrics) {
 			}
 
 			const body = await response.json();
+			const numFixtures = body.num_fixtures || 1;
+
+			const buildStats = (team: any) => {
+				const totalShots = team.shots.total;
+				const shotStats = {
+					total: totalShots,
+					onGoal: team.shots.on_target,
+					missed: team.shots.off_target,
+					blocked: team.shots.blocked,
+					insideBox: team.shots.in_box,
+					outsideBox: totalShots - team.shots.in_box,
+				};
+
+				return {
+					total: {
+						shots: shotStats,
+						xg: team.xg,
+						corners: team.corners,
+					},
+					perGame: {
+						shots: {
+							total: totalShots / numFixtures,
+							onGoal: team.shots.on_target / numFixtures,
+							missed: team.shots.off_target / numFixtures,
+							blocked: team.shots.blocked / numFixtures,
+							insideBox: team.shots.in_box / numFixtures,
+							outsideBox: (totalShots - team.shots.in_box) / numFixtures,
+						},
+						xg: team.xg / numFixtures,
+						corners: team.corners / numFixtures,
+					},
+				};
+			};
+
 			return {
-				num_fixtures: body.num_fixtures,
-				for: {
-					shots: {
-						total: body.team.shots.total,
-						onGoal: body.team.shots.on_target,
-						missed: body.team.shots.off_target,
-						blocked: body.team.shots.blocked,
-						insideBox: body.team.shots.in_box,
-						outsideBox: body.team.shots.total - body.team.shots.in_box,
-					},
-					xg: body.team.xg,
-					corners: body.team.corners,
-				},
-				against: {
-					shots: {
-						total: body.against.shots.total,
-						onGoal: body.against.shots.on_target,
-						missed: body.against.shots.off_target,
-						blocked: body.against.shots.blocked,
-						insideBox: body.against.shots.in_box,
-						outsideBox: body.against.shots.total - body.against.shots.in_box,
-					},
-					xg: body.against.xg,
-					corners: body.against.corners,
-				},
+				num_fixtures: numFixtures,
+				for: buildStats(body.team),
+				against: buildStats(body.against),
 			};
 		},
 	}));
