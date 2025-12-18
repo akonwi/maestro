@@ -40,10 +40,16 @@ export default function TeamStatsPage() {
     return value;
   };
 
+  // `form` is the API-Football string of results
   const getFormResults = (form: string) => {
     const fixtures = fixturesQuery.data?.response || [];
-    const recentMatches = fixtures.slice(0, 5).reverse();
-    
+    const completed = fixtures.filter((f) => f.fixture.status.short === "FT");
+    const sorted = [...completed].sort(
+      (a, b) =>
+        new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime(),
+    );
+    const recentMatches = sorted.slice(-5);
+
     return form
       .split("")
       .slice(0, 5)
