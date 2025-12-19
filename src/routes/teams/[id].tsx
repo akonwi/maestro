@@ -1,5 +1,6 @@
 import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
+import { useQuery } from "@tanstack/solid-query";
 import { useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
 import { useFixtures } from "~/api/fixtures";
@@ -20,6 +21,23 @@ export default function TeamStatsPage() {
     teamId: teamId,
   }));
 
+  const isTeamInFollowedLeague = () => {
+    if (!league || !leaguesQuery.data) return false;
+    return leaguesQuery.data.some((l) => l.id === league && !l.hidden);
+  };
+
+  const backendFixturesQuery = useQuery(() => ({
+    queryKey: ["team-fixtures", teamId, league, season],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/teams/${teamId}/fixtures?season=${season}&league_id=${league}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch fixtures");
+      return res.json();
+    },
+    enabled: isTeamInFollowedLeague(),
+  }));
+
   const stats = () => teamStatsQuery.data?.response;
   const team = () => stats()?.team;
   const leagueInfo = () => stats()?.league;
@@ -30,34 +48,31 @@ export default function TeamStatsPage() {
   const failedToScore = () => stats()?.failed_to_score;
   const penalty = () => stats()?.penalty;
 
-  const isTeamInFollowedLeague = () => {
-    if (!league || !leaguesQuery.data) return false;
-    return leaguesQuery.data.some((l) => l.id === league && !l.hidden);
-  };
-
   const formatPercentage = (value: string | null | undefined) => {
     if (!value) return "0%";
     return value;
   };
 
-  // `form` is the API-Football string of results
-  const getFormResults = (form: string) => {
-    const fixtures = fixturesQuery.data?.response || [];
-    const completed = fixtures.filter((f) => f.fixture.status.short === "FT");
-    const sorted = [...completed].sort(
-      (a, b) =>
-        new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime(),
-    );
-    const recentMatches = sorted.slice(-5);
+  const getFormResults = () => {
+    if (isTeamInFollowedLeague() && backendFixturesQuery.data) {
+      const fixtures = backendFixturesQuery.data || [];
+      const completed = fixtures.filter((f) => f.finished);
+      const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
+      const recentMatches = sorted.slice(-5);
 
-    return form
-      .split("")
-      .slice(0, 5)
-      .map((result, index) => {
-        const match = recentMatches[index];
-        const matchInfo = match
-          ? `${match.teams.home.name} (${match.goals.home}) - ${match.teams.away.name} (${match.goals.away}) - ${new Date(match.fixture.date).toLocaleDateString()}`
-          : "";
+      return recentMatches.map((match, index) => {
+        const isHome = match.home.id === teamId;
+        const goalsFor = isHome ? match.home_goals : match.away_goals;
+        const goalsAgainst = isHome ? match.away_goals : match.home_goals;
+
+        let result = "D";
+        if (match.winner_id === teamId) {
+          result = "W";
+        } else if (match.winner_id !== null && match.winner_id !== teamId) {
+          result = "L";
+        }
+
+        const matchInfo = `${isHome ? match.home.name : match.away.name} (${goalsFor}) - ${isHome ? match.away.name : match.home.name} (${goalsAgainst}) - ${new Date(match.timestamp * 1000).toLocaleDateString()}`;
 
         return {
           result,
@@ -71,6 +86,39 @@ export default function TeamStatsPage() {
                 : "badge-error",
         };
       });
+    } else {
+      const form = stats()?.form || "";
+      const fixtures = fixturesQuery.data?.response || [];
+      const completed = fixtures.filter((f) => f.fixture.status.short === "FT");
+      const sorted = [...completed].sort(
+        (a, b) =>
+          new Date(a.fixture.date).getTime() -
+          new Date(b.fixture.date).getTime(),
+      );
+      const recentMatches = sorted.slice(-5);
+
+      return form
+        .split("")
+        .slice(0, 5)
+        .map((result, index) => {
+          const match = recentMatches[index];
+          const matchInfo = match
+            ? `${match.teams.home.name} (${match.goals.home}) - ${match.teams.away.name} (${match.goals.away}) - ${new Date(match.fixture.date).toLocaleDateString()}`
+            : "";
+
+          return {
+            result,
+            index,
+            matchInfo,
+            class:
+              result === "W"
+                ? "badge-success"
+                : result === "D"
+                  ? "badge-warning"
+                  : "badge-error",
+          };
+        });
+    }
   };
 
   const getWinRate = () => {
@@ -142,7 +190,7 @@ export default function TeamStatsPage() {
             <div class="card-body">
               <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
               <div class="flex gap-2">
-                <For each={getFormResults(stats()?.form || "")}>
+                <For each={getFormResults()}>
                   {(item) => (
                     <div
                       class={`badge badge-lg ${item.class} tooltip`}
