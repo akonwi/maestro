@@ -27,6 +27,25 @@ export type Match = {
 	winner_id: number | null;
 };
 
+export type Fixture = {
+	home_goals: number;
+	id: number;
+	timestamp: number;
+	finished: boolean;
+	winner_id: number;
+	season: number;
+	league_id: number;
+	away: {
+		name: string;
+		id: number;
+	};
+	away_goals: number;
+	home: {
+		id: number;
+		name: string;
+	};
+};
+
 interface LeagueMatchData {
 	matches: Match[];
 }
@@ -67,7 +86,7 @@ export function useFixture(id: number) {
 export type UseFixturesOptions = {
 	leagueId: number;
 	season: number;
-	teamId?: number;
+	teamId: number;
 };
 
 interface ApiFootballFixture {
@@ -102,35 +121,25 @@ interface ApiFootballFixture {
 	};
 }
 
-interface ApiFootballResponse {
-	response: ApiFootballFixture[];
-}
-
-// query directly from API-Football
 export function useFixtures(options: Accessor<UseFixturesOptions>) {
 	const auth = useAuth();
 
 	return useQuery(() => ({
 		queryKey: ["fixtures", options()],
-		queryFn: async function (): Promise<ApiFootballResponse> {
+		queryFn: async function (): Promise<Fixture[]> {
 			const leagueId = options().leagueId;
 			const season = options().season;
 			const teamId = options().teamId;
 			const params = new URLSearchParams({
-				league: leagueId.toString(),
+				league_id: leagueId.toString(),
 				season: season.toString(),
 			});
 
-			if (teamId) {
-				params.append("team", teamId.toString());
-			}
 			const response = await fetch(
-				`https://v3.football.api-sports.io/fixtures?${params}`,
-				{ headers: { "X-RapidAPI-Key": auth.token() } },
+				`${
+					import.meta.env.VITE_API_BASE_URL
+				}/teams/${teamId}/fixtures?${params.toString()}`,
 			);
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
 			return await response.json();
 		},
 	}));
