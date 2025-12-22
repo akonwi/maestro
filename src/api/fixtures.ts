@@ -32,7 +32,7 @@ export type Fixture = {
 	id: number;
 	timestamp: number;
 	finished: boolean;
-	winner_id: number;
+	winner_id: number | null;
 	season: number;
 	league_id: number;
 	away: {

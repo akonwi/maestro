@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
-import { useFixtures } from "~/api/fixtures";
+import { Fixture, useFixtures } from "~/api/fixtures";
 import { GameMetrics } from "~/components/game-metrics";
 
 export default function TeamStatsPage() {
@@ -40,37 +40,28 @@ export default function TeamStatsPage() {
     return value;
   };
 
-  const getFormResults = () => {
+  const recentFormFixtures = () => {
     const completed = fixturesQuery.data?.filter((f) => f.finished) ?? [];
     const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
-    const recentMatches = sorted.slice(-5);
+    return sorted.slice(-5);
+  };
 
-    return recentMatches.map((match, index) => {
-      const isHome = match.home.id === teamId;
-      const goalsFor = isHome ? match.home_goals : match.away_goals;
-      const goalsAgainst = isHome ? match.away_goals : match.home_goals;
+  const formatSummary = (fixture: Fixture) => {
+    const isHome = fixture.home.id === teamId;
+    const opponent = isHome ? fixture.away.name : fixture.home.name;
 
-      let result = "D";
-      if (match.winner_id === teamId) {
-        result = "W";
-      } else if (match.winner_id !== null && match.winner_id !== teamId) {
-        result = "L";
-      }
+    return `${isHome ? "vs" : "at"} ${opponent} (${fixture.home_goals} - ${fixture.away_goals})`;
+  };
 
-      const matchInfo = `${isHome ? match.home.name : match.away.name} (${goalsFor}) - ${isHome ? match.away.name : match.home.name} (${goalsAgainst}) - ${new Date(match.timestamp * 1000).toLocaleDateString()}`;
-
-      return {
-        result,
-        index,
-        matchInfo,
-        class:
-          result === "W"
-            ? "badge-success"
-            : result === "D"
-              ? "badge-warning"
-              : "badge-error",
-      };
-    });
+  const formatOutcome = (fixture: Fixture) => {
+    switch (fixture.winner_id) {
+      case teamId:
+        return "W";
+      case null:
+        return "D";
+      default:
+        return "L";
+    }
   };
 
   const getWinRate = () => {
@@ -142,13 +133,20 @@ export default function TeamStatsPage() {
             <div class="card-body">
               <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
               <div class="flex gap-2">
-                <For each={getFormResults()}>
-                  {(item) => (
+                <For each={recentFormFixtures()}>
+                  {(fixture) => (
                     <div
-                      class={`badge badge-lg ${item.class} tooltip`}
-                      data-tip={item.matchInfo || `Game ${item.index + 1}`}
+                      classList={{
+                        "badge-warning": fixture.winner_id === null,
+                        "badge-success": fixture.winner_id === teamId,
+                        "badge-error":
+                          typeof fixture.winner_id === "number" &&
+                          fixture.winner_id !== teamId,
+                      }}
+                      class="badge badge-lg tooltip"
+                      data-tip={formatSummary(fixture)}
                     >
-                      {item.result}
+                      {formatOutcome(fixture)}
                     </div>
                   )}
                 </For>
