@@ -84,11 +84,10 @@ function MatchInfo({ matchId }: { matchId: number }) {
   const auth = useAuth();
 
   const leagueStatus = (): "hidden" | "followed" | null => {
-    const currentLeague = league();
-    if (!currentLeague) return null;
+    if (league() == null) return null;
 
     const knownLeague = () =>
-      leaguesQuery.data?.find((l) => l.id === currentLeague.id);
+      leaguesQuery.data?.find((l) => l.id === league()?.id);
     if (knownLeague() == undefined) return null;
     return knownLeague()?.hidden ? "hidden" : "followed";
   };
@@ -116,14 +115,10 @@ function MatchInfo({ matchId }: { matchId: number }) {
   });
 
   const formattedStatus = createMemo(() => {
-    switch (matchQuery?.data?.status) {
-      case "FT":
-        return { text: "Full Time", color: "badge-neutral" };
-      case "NS":
-        return { text: "Not Started", color: "badge-ghost" };
-      default:
-        return { text: matchQuery.data?.status, color: "badge-warning" };
+    if (matchQuery?.data?.finished) {
+      return { text: "Full Time", color: "badge-neutral" };
     }
+    return { text: "Not played", color: "badge-ghost" };
   });
 
   const onLeagueHidden = () => {
@@ -673,7 +668,7 @@ function Comparison(
       return `${currentUrl.pathname}${currentUrl.search}#`;
     }
     const f = match();
-    return `/teams/${teamId}?league=${f?.league.id}&season=${f?.league.season}`;
+    return `/teams/${teamId}?league=${f?.league.id}&season=${f?.season}`;
   };
 
   return (
