@@ -103,8 +103,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   }
 
   const formattedDateTime = createMemo(() => {
-    const timestamp = matchQuery.data?.timestamp ?? Date.now();
-    const matchDate = new Date(timestamp * 1000);
+    const matchDate = new Date(matchQuery.data?.timestamp ?? Date.now());
     return {
       date: matchDate.toLocaleDateString(),
       time: matchDate.toLocaleTimeString([], {
