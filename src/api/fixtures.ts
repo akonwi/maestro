@@ -5,13 +5,11 @@ import { useAuth } from "~/contexts/auth";
 export type League = {
 	id: number;
 	name: string;
-	season: number;
 };
 
 export type Team = {
 	id: number;
 	name: string;
-	logo: string | null;
 };
 
 export type Fixture = {
