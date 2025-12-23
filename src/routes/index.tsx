@@ -115,8 +115,8 @@ function Page() {
     return `${fixture.home.name} vs ${fixture.away.name}`;
   };
 
-  const formatFixtureTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatFixtureTime = (timestamp: number) => {
+    const date = new Date(timestamp);
     return date.toLocaleTimeString(undefined, {
       hour: "2-digit",
       minute: "2-digit",
@@ -281,18 +281,18 @@ function Page() {
                           </h3>
                           <p class="text-base-content/60 text-sm">
                             {bet.fixture.league.name} •{" "}
-                            {formatFixtureTime(bet.fixture.date)}
+                            {formatFixtureTime(bet.fixture.timestamp)}
                           </p>
                         </div>
                         <div class="flex items-center gap-2">
                           <img
-                            src={bet.fixture.home.logo}
+                            src={`https://media.api-sports.io/football/teams/${bet.fixture.home.id}.png`}
                             alt={bet.fixture.home.name}
                             class="w-6 h-6"
                           />
                           <span class="text-sm">vs</span>
                           <img
-                            src={bet.fixture.away.logo}
+                            src={`https://media.api-sports.io/football/teams/${bet.fixture.away.id}.png`}
                             alt={bet.fixture.away.name}
                             class="w-6 h-6"
                           />
@@ -396,7 +396,7 @@ function Page() {
                       </td>
                       <td>{formatMatchup(bet.fixture)}</td>
                       <td>{bet.fixture.league.name}</td>
-                      <td>{formatFixtureTime(bet.fixture.date)}</td>
+                      <td>{formatFixtureTime(bet.fixture.timestamp)}</td>
                     </tr>
                   )}
                 </For>

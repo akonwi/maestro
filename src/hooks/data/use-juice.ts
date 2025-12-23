@@ -4,22 +4,18 @@ import { Accessor } from "solid-js";
 export interface JuiceFixture {
 	fixture: {
 		id: number;
-		date: string;
 		timestamp: number;
 		league: {
 			id: number;
 			name: string;
-			season: number;
 		};
 		home: {
 			id: number;
 			name: string;
-			logo: string;
 		};
 		away: {
 			id: number;
 			name: string;
-			logo: string;
 		};
 	};
 	stats: Array<{
