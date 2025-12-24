@@ -1,5 +1,4 @@
 import {
-  createSignal,
   For,
   Match,
   Switch,
@@ -11,7 +10,6 @@ import {
 import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useFixture } from "~/api/fixtures";
 import { JuiceFixture } from "~/hooks/data/use-juice";
-import { BetFormProps } from "./bet-form";
 import { useTrackLeague, useLeagues, useToggleLeague } from "~/api/leagues";
 import { DotsVerticalIcon } from "./icons/dots-vertical";
 import { Toast, toaster } from "@kobalte/core/toast";
@@ -276,32 +274,6 @@ function MatchInfo({ matchId }: { matchId: number }) {
 
 export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
   const analysisQuery = useMatchup(matchId);
-
-  // Bet form state
-  const [showBetForm, setShowBetForm] = createSignal(false);
-  const [prefilledBet, setPrefilledBet] = createSignal<
-    BetFormProps["initialData"] | null
-  >(null);
-
-  const handleRecordBet = (
-    type_id: number,
-    description: string,
-    odds: number,
-    line?: number,
-  ) => {
-    setPrefilledBet({ description, odds, type_id, line });
-    setShowBetForm(true);
-  };
-
-  const handleBetCreated = () => {
-    setShowBetForm(false);
-    setPrefilledBet(null);
-  };
-
-  const handleCancelBet = () => {
-    setShowBetForm(false);
-    setPrefilledBet(null);
-  };
 
   return (
     <div class="modal modal-open z-50">
