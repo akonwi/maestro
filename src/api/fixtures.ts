@@ -1,11 +1,7 @@
 import { useQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { useAuth } from "~/contexts/auth";
-
-export type League = {
-	id: number;
-	name: string;
-};
+import { League } from "./leagues";
 
 export type Team = {
 	id: number;
@@ -19,7 +15,7 @@ export type Fixture = {
 	finished: boolean;
 	winner_id: number | null;
 	season: number;
-	league: League;
+	league: Omit<League, "hidden">;
 	away: {
 		name: string;
 		id: number;
