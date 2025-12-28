@@ -2,8 +2,10 @@ import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
-import { Fixture, useFixtures } from "~/api/fixtures";
+import { Fixture } from "~/api/fixtures";
 import { GameMetrics } from "~/components/game-metrics";
+import { useQuery } from "@tanstack/solid-query";
+import { TeamPerformance } from "~/api/teams";
 
 export default function TeamStatsPage() {
   const routeParams = useParams();
@@ -12,36 +14,41 @@ export default function TeamStatsPage() {
   const league = Number(searchParams.league);
   const season = Number(searchParams.season);
 
+  const performanceQuery = useQuery<TeamPerformance>(() => ({
+    queryKey: ["teams", { id: teamId, league, season }, "performance"],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        league_id: league.toString(),
+        season: season.toString(),
+      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/teams/${teamId}/performance?${params}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team performance: ${response.status}`);
+      }
+
+      return response.json();
+    },
+  }));
+
   const teamStatsQuery = useTeamStatistics(teamId, league, season);
   const leaguesQuery = useLeagues();
-  const fixturesQuery = useFixtures(() => ({
-    leagueId: league,
-    season: season,
-    teamId: teamId,
-  }));
 
   const isTeamInFollowedLeague = () => {
     if (!league || !leaguesQuery.data) return false;
     return leaguesQuery.data.some((l) => l.id === league && !l.hidden);
   };
 
+  const perf = () => performanceQuery.data;
   const stats = () => teamStatsQuery.data?.response;
   const team = () => stats()?.team;
   const leagueInfo = () => stats()?.league;
-  const fixtures = () => stats()?.fixtures;
-  const goals = () => stats()?.goals;
-  const biggest = () => stats()?.biggest;
-  const cleanSheets = () => stats()?.clean_sheet;
-  const failedToScore = () => stats()?.failed_to_score;
-  const penalty = () => stats()?.penalty;
-
-  const formatPercentage = (value: string | null | undefined) => {
-    if (!value) return "0%";
-    return value;
-  };
 
   const recentFormFixtures = () => {
-    const completed = fixturesQuery.data?.filter((f) => f.finished) ?? [];
+    const all = perf()?.fixtures.all ?? [];
+    const completed = all.filter((f) => f.finished);
     const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
     return sorted.slice(-5);
   };
@@ -65,9 +72,9 @@ export default function TeamStatsPage() {
   };
 
   const getWinRate = () => {
-    if (!fixtures()) return "0";
-    const total = fixtures()!.played.total;
-    const wins = fixtures()!.wins.total;
+    if (!perf()?.fixtures.played.total) return "0";
+    const total = perf()!.fixtures.played.total;
+    const wins = perf()!.fixtures.wins.total;
     return total > 0 ? ((wins / total) * 100).toFixed(1) : "0";
   };
 
@@ -88,18 +95,18 @@ export default function TeamStatsPage() {
       <h1 class="text-3xl font-bold">Team Statistics</h1>
 
       <Switch>
-        <Match when={teamStatsQuery.error}>
+        <Match when={performanceQuery.error}>
           <div class="alert alert-error">
             <span>
-              Failed to load team statistics:{" "}
-              {teamStatsQuery.error instanceof Error
-                ? teamStatsQuery.error.message
+              Failed to load team performance:{" "}
+              {performanceQuery.error instanceof Error
+                ? performanceQuery.error.message
                 : "Unknown error"}
             </span>
           </div>
         </Match>
 
-        <Match when={teamStatsQuery.isLoading}>
+        <Match when={performanceQuery.isLoading}>
           <div class="flex w-52 flex-col gap-4">
             <div class="skeleton h-32 w-full"></div>
             <div class="skeleton h-4 w-28"></div>
@@ -108,7 +115,7 @@ export default function TeamStatsPage() {
           </div>
         </Match>
 
-        <Match when={teamStatsQuery.data}>
+        <Match when={perf()}>
           {/* Team Header */}
           <div class="card bg-base-100 border border-base-300">
             <div class="card-body">
@@ -168,25 +175,25 @@ export default function TeamStatsPage() {
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="text-center">
                   <div class="text-2xl font-bold">
-                    {fixtures()?.played.total}
+                    {perf()?.fixtures.played.total}
                   </div>
                   <div class="text-sm text-base-content/60">Matches Played</div>
                 </div>
                 <div class="text-center">
                   <div class="text-2xl font-bold text-success">
-                    {fixtures()?.wins.total}
+                    {perf()?.fixtures.wins.total}
                   </div>
                   <div class="text-sm text-base-content/60">Wins</div>
                 </div>
                 <div class="text-center">
                   <div class="text-2xl font-bold text-warning">
-                    {fixtures()?.draws.total}
+                    {perf()?.fixtures.draws.total}
                   </div>
                   <div class="text-sm text-base-content/60">Draws</div>
                 </div>
                 <div class="text-center">
                   <div class="text-2xl font-bold text-error">
-                    {fixtures()?.loses.total}
+                    {perf()?.fixtures.losses.total}
                   </div>
                   <div class="text-sm text-base-content/60">Losses</div>
                 </div>
@@ -194,23 +201,25 @@ export default function TeamStatsPage() {
 
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                 <div class="text-center">
-                  <div class="text-xl font-bold">
-                    {goals()?.for.total.total}
-                  </div>
+                  <div class="text-xl font-bold">{perf()?.goals.for.total}</div>
                   <div class="text-sm text-base-content/60">Goals For</div>
                 </div>
                 <div class="text-center">
                   <div class="text-xl font-bold">
-                    {goals()?.against.total.total}
+                    {perf()?.goals.against.total}
                   </div>
                   <div class="text-sm text-base-content/60">Goals Against</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-xl font-bold">{cleanSheets()?.total}</div>
+                  <div class="text-xl font-bold">
+                    {perf()?.cleansheets.total}
+                  </div>
                   <div class="text-sm text-base-content/60">Clean Sheets</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-xl font-bold">{failedToScore()?.total}</div>
+                  <div class="text-xl font-bold">
+                    {perf()?.failed_to_score.total}
+                  </div>
                   <div class="text-sm text-base-content/60">
                     Failed to Score
                   </div>
@@ -238,219 +247,70 @@ export default function TeamStatsPage() {
                   <tbody>
                     <tr>
                       <td>Played</td>
-                      <td class="text-center">{fixtures()?.played.home}</td>
-                      <td class="text-center">{fixtures()?.played.away}</td>
+                      <td class="text-center">
+                        {perf()?.fixtures.played.home}
+                      </td>
+                      <td class="text-center">
+                        {perf()?.fixtures.played.away}
+                      </td>
                       <td class="text-center font-bold">
-                        {fixtures()?.played.total}
+                        {perf()?.fixtures.played.total}
                       </td>
                     </tr>
                     <tr>
                       <td>Wins</td>
                       <td class="text-center text-success">
-                        {fixtures()?.wins.home}
+                        {perf()?.fixtures.wins.home}
                       </td>
                       <td class="text-center text-success">
-                        {fixtures()?.wins.away}
+                        {perf()?.fixtures.wins.away}
                       </td>
                       <td class="text-center font-bold text-success">
-                        {fixtures()?.wins.total}
+                        {perf()?.fixtures.wins.total}
                       </td>
                     </tr>
                     <tr>
                       <td>Draws</td>
                       <td class="text-center text-warning">
-                        {fixtures()?.draws.home}
+                        {perf()?.fixtures.draws.home}
                       </td>
                       <td class="text-center text-warning">
-                        {fixtures()?.draws.away}
+                        {perf()?.fixtures.draws.away}
                       </td>
                       <td class="text-center font-bold text-warning">
-                        {fixtures()?.draws.total}
+                        {perf()?.fixtures.draws.total}
                       </td>
                     </tr>
                     <tr>
                       <td>Losses</td>
                       <td class="text-center text-error">
-                        {fixtures()?.loses.home}
+                        {perf()?.fixtures.losses.home}
                       </td>
                       <td class="text-center text-error">
-                        {fixtures()?.loses.away}
+                        {perf()?.fixtures.losses.away}
                       </td>
                       <td class="text-center font-bold text-error">
-                        {fixtures()?.loses.total}
+                        {perf()?.fixtures.losses.total}
                       </td>
                     </tr>
                     <tr>
                       <td>Goals For</td>
-                      <td class="text-center">{goals()?.for.total.home}</td>
-                      <td class="text-center">{goals()?.for.total.away}</td>
+                      <td class="text-center">{perf()?.goals.for.home}</td>
+                      <td class="text-center">{perf()?.goals.for.away}</td>
                       <td class="text-center font-bold">
-                        {goals()?.for.total.total}
+                        {perf()?.goals.for.total}
                       </td>
                     </tr>
                     <tr>
                       <td>Goals Against</td>
-                      <td class="text-center">{goals()?.against.total.home}</td>
-                      <td class="text-center">{goals()?.against.total.away}</td>
+                      <td class="text-center">{perf()?.goals.against.home}</td>
+                      <td class="text-center">{perf()?.goals.against.away}</td>
                       <td class="text-center font-bold">
-                        {goals()?.against.total.total}
+                        {perf()?.goals.against.total}
                       </td>
                     </tr>
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Goal Timing */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">Goal Timing</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 class="font-medium mb-3">Goals For</h4>
-                  <div class="space-y-2">
-                    <For each={Object.entries(goals()?.for.minute || {})}>
-                      {([timeRange, data]) => (
-                        <Show when={data.total !== null}>
-                          <div class="flex justify-between items-center">
-                            <span class="text-sm">{timeRange}</span>
-                            <div class="flex items-center gap-2">
-                              <span class="font-medium">{data.total}</span>
-                              <span class="text-xs text-base-content/60 badge badge-ghost">
-                                {formatPercentage(data.percentage)}
-                              </span>
-                            </div>
-                          </div>
-                        </Show>
-                      )}
-                    </For>
-                  </div>
-                </div>
-                <div>
-                  <h4 class="font-medium mb-3">Goals Against</h4>
-                  <div class="space-y-2">
-                    <For each={Object.entries(goals()?.against.minute || {})}>
-                      {([timeRange, data]) => (
-                        <Show when={data.total !== null}>
-                          <div class="flex justify-between items-center">
-                            <span class="text-sm">{timeRange}</span>
-                            <div class="flex items-center gap-2">
-                              <span class="font-medium">{data.total}</span>
-                              <span class="text-xs text-base-content/60 badge badge-ghost">
-                                {formatPercentage(data.percentage)}
-                              </span>
-                            </div>
-                          </div>
-                        </Show>
-                      )}
-                    </For>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Biggest Results */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">Biggest Results</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 class="font-medium mb-3 text-success">Biggest Wins</h4>
-                  <div class="space-y-2">
-                    <div class="flex justify-between">
-                      <span>Home:</span>
-                      <span class="font-medium">{biggest()?.wins.home}</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span>Away:</span>
-                      <span class="font-medium">{biggest()?.wins.away}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h4 class="font-medium mb-3 text-error">Biggest Losses</h4>
-                  <div class="space-y-2">
-                    <div class="flex justify-between">
-                      <span>Home:</span>
-                      <span class="font-medium">{biggest()?.loses.home}</span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span>Away:</span>
-                      <span class="font-medium">{biggest()?.loses.away}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div>
-                  <h4 class="font-medium mb-3">Goal Scoring Records</h4>
-                  <div class="space-y-2">
-                    <div class="flex justify-between">
-                      <span>Most Goals For (Home):</span>
-                      <span class="font-medium">
-                        {biggest()?.goals.for.home}
-                      </span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span>Most Goals For (Away):</span>
-                      <span class="font-medium">
-                        {biggest()?.goals.for.away}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h4 class="font-medium mb-3">Goal Conceding Records</h4>
-                  <div class="space-y-2">
-                    <div class="flex justify-between">
-                      <span>Most Goals Against (Home):</span>
-                      <span class="font-medium">
-                        {biggest()?.goals.against.home}
-                      </span>
-                    </div>
-                    <div class="flex justify-between">
-                      <span>Most Goals Against (Away):</span>
-                      <span class="font-medium">
-                        {biggest()?.goals.against.away}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Penalties */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">Penalty Record</h3>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="text-center">
-                  <div class="text-2xl font-bold">{penalty()?.total}</div>
-                  <div class="text-sm text-base-content/60">
-                    Total Penalties
-                  </div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-success">
-                    {penalty()?.scored.total}
-                  </div>
-                  <div class="text-sm text-base-content/60">Scored</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-error">
-                    {penalty()?.missed.total}
-                  </div>
-                  <div class="text-sm text-base-content/60">Missed</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold">
-                    {formatPercentage(penalty()?.scored.percentage)}
-                  </div>
-                  <div class="text-sm text-base-content/60">Success Rate</div>
-                </div>
               </div>
             </div>
           </div>
