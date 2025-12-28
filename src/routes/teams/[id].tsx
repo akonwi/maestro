@@ -1,11 +1,10 @@
 import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
-import { useTeamStatistics } from "~/api/team-statistics";
+import { getPerformance, useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
 import { Fixture, Team } from "~/api/fixtures";
 import { GameMetrics } from "~/components/game-metrics";
 import { useQuery } from "@tanstack/solid-query";
-import { TeamPerformance } from "~/api/teams";
 
 function logoUrl(model: "teams" | "leagues", id: number) {
   return `https://media.api-sports.io/football/${model}/${id}.png`;
@@ -32,24 +31,9 @@ export default function TeamStatsPage() {
       return response.json();
     },
   }));
-  const performanceQuery = useQuery<TeamPerformance>(() => ({
-    queryKey: ["teams", { id: teamId, league, season }, "performance"],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        league_id: league.toString(),
-        season: season.toString(),
-      });
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/teams/${teamId}/performance?${params}`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch team performance: ${response.status}`);
-      }
-
-      return response.json();
-    },
-  }));
+  const performanceQuery = useQuery(
+    getPerformance(() => ({ id: teamId, league, season })),
+  );
 
   const teamStatsQuery = useTeamStatistics(teamId, league, season);
   const leaguesQuery = useLeagues();
