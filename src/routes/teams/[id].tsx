@@ -46,7 +46,6 @@ export default function TeamStatsPage() {
   const perf = () => performanceQuery.data;
   const stats = () => teamStatsQuery.data?.response;
   const team = () => teamQuery.data;
-  const leagueInfo = () => stats()?.league;
 
   const recentFormFixtures = () => {
     const all = perf()?.fixtures.all ?? [];
@@ -130,7 +129,7 @@ export default function TeamStatsPage() {
                 <div class="flex-1">
                   <h2 class="text-2xl font-bold">{team()?.name}</h2>
                   <div class="text-base-content/60">
-                    {leagueInfo()?.name} • {leagueInfo()?.season}
+                    {perf()?.league?.name} • {season}
                   </div>
                 </div>
                 <div class="text-center">

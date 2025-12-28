@@ -48,6 +48,12 @@ export function useTeamStatistics(
 }
 
 export type TeamPerformance = {
+	league: {
+		id: number;
+		name: string;
+		hidden: boolean;
+		following: boolean;
+	};
 	fixtures: {
 		all: Fixture[];
 		played: {
