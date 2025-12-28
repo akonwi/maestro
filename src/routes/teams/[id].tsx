@@ -1,6 +1,6 @@
 import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
-import { getPerformance, useTeamStatistics } from "~/api/team-statistics";
+import { getPerformance } from "~/api/teams";
 import { useLeagues } from "~/api/leagues";
 import { Fixture, Team } from "~/api/fixtures";
 import { GameMetrics } from "~/components/game-metrics";
@@ -35,7 +35,6 @@ export default function TeamStatsPage() {
     getPerformance(() => ({ id: teamId, league, season })),
   );
 
-  const teamStatsQuery = useTeamStatistics(teamId, league, season);
   const leaguesQuery = useLeagues();
 
   const isTeamInFollowedLeague = () => {
@@ -44,7 +43,6 @@ export default function TeamStatsPage() {
   };
 
   const perf = () => performanceQuery.data;
-  const stats = () => teamStatsQuery.data?.response;
   const team = () => teamQuery.data;
 
   const recentFormFixtures = () => {

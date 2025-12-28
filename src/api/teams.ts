@@ -1,51 +1,5 @@
-import { useQuery } from "@tanstack/solid-query";
 import { Fixture } from "./fixtures";
 import { Accessor } from "solid-js";
-
-export type TeamStatisticsResponse = {
-	response: {
-		league: {
-			id: number;
-			name: string;
-			country: string;
-			logo: string;
-			flag: string;
-			season: number;
-		};
-	};
-};
-
-export function useTeamStatistics(
-	teamId: number,
-	league: number,
-	season: number,
-) {
-	return useQuery<TeamStatisticsResponse>(() => ({
-		queryKey: ["team-statistics", { teamId, league, season }],
-		queryFn: async () => {
-			const token = localStorage.getItem("maestro_api_token");
-			if (!token) {
-				throw new Error("No API token found");
-			}
-
-			const response = await fetch(
-				`https://v3.football.api-sports.io/teams/statistics?league=${league}&season=${season}&team=${teamId}`,
-				{
-					headers: {
-						"x-rapidapi-key": token,
-					},
-				},
-			);
-
-			if (!response.ok) {
-				throw new Error(`Failed to fetch team statistics: ${response.status}`);
-			}
-
-			return response.json();
-		},
-		enabled: !!teamId && !!league && !!season,
-	}));
-}
 
 export type TeamPerformance = {
 	league: {
