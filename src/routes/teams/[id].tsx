@@ -2,10 +2,14 @@ import { For, Match, Show, Switch, Suspense } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useTeamStatistics } from "~/api/team-statistics";
 import { useLeagues } from "~/api/leagues";
-import { Fixture } from "~/api/fixtures";
+import { Fixture, Team } from "~/api/fixtures";
 import { GameMetrics } from "~/components/game-metrics";
 import { useQuery } from "@tanstack/solid-query";
 import { TeamPerformance } from "~/api/teams";
+
+function logoUrl(model: "teams" | "leagues", id: number) {
+  return `https://media.api-sports.io/football/${model}/${id}.png`;
+}
 
 export default function TeamStatsPage() {
   const routeParams = useParams();
@@ -14,6 +18,20 @@ export default function TeamStatsPage() {
   const league = Number(searchParams.league);
   const season = Number(searchParams.season);
 
+  const teamQuery = useQuery<Team>(() => ({
+    queryKey: ["teams", teamId],
+    queryFn: async () => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/teams/${teamId}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team: ${await response.text()}`);
+      }
+
+      return response.json();
+    },
+  }));
   const performanceQuery = useQuery<TeamPerformance>(() => ({
     queryKey: ["teams", { id: teamId, league, season }, "performance"],
     queryFn: async () => {
@@ -43,7 +61,7 @@ export default function TeamStatsPage() {
 
   const perf = () => performanceQuery.data;
   const stats = () => teamStatsQuery.data?.response;
-  const team = () => stats()?.team;
+  const team = () => teamQuery.data;
   const leagueInfo = () => stats()?.league;
 
   const recentFormFixtures = () => {
@@ -120,7 +138,11 @@ export default function TeamStatsPage() {
           <div class="card bg-base-100 border border-base-300">
             <div class="card-body">
               <div class="flex items-center gap-4">
-                <img src={team()?.logo} alt={team()?.name} class="w-16 h-16" />
+                <img
+                  src={logoUrl("teams", teamId)}
+                  alt={team()?.name}
+                  class="w-16 h-16"
+                />
                 <div class="flex-1">
                   <h2 class="text-2xl font-bold">{team()?.name}</h2>
                   <div class="text-base-content/60">
