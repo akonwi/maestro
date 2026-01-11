@@ -15,8 +15,10 @@ jobs:
           bun-version: 1.2.16
 
       - run: bun install
+        working-directory: web
 
       - name: build
+        working-directory: web
         env:
           BASE_PATH: /maestro
         run: bun run build && cp .output/public/index.html .output/public/404.html
@@ -25,7 +27,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .output/public
+          path: web/.output/public
 
   deploy:
     needs: build_site
