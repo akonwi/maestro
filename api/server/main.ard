@@ -3,6 +3,7 @@ use ard/decode
 use ard/io
 use ard/http
 use ard/json
+use ard/maybe
 
 use maestro/analysis
 use maestro/bets
@@ -243,15 +244,46 @@ fn main() {
                 http::Response{status: 400, body: "Invalid match id", headers: headers}
               },
               false => {
+                let fixture = try fixtures::get(conn, fixture_id) -> internal_error
                 let analysis = try predictions::get_comparison(fixture_id) -> err {
                   internal_error("Error getting analysis: {err}")
                 }
 
-                struct Res {
-                  comparison: predictions::Comparison,
+                let form_comparison = match leagues::is_following(conn, fixture.league_id) {
+                  true => {
+                    let home_form = try predictions::get_form(conn, fixture.home.id, fixture.timestamp) -> err {
+                      internal_error("Error getting home form: {err}")
+                    }
+                    let away_form = try predictions::get_form(conn, fixture.away.id, fixture.timestamp) -> err {
+                      internal_error("Error getting away form: {err}")
+                    }
+                    maybe::some(predictions::Comparison{
+                      home: home_form,
+                      away: away_form,
+                    })
+                  },
+                  false => maybe::none(),
                 }
 
-                match json::encode(Res{ comparison: analysis }) {
+                mut data = [
+                  "home": fixture.home.to_dyn(),
+                  "away": fixture.away.to_dyn(),
+                  "comparison": Dynamic::object([
+                    "home": analysis.home.to_dyn(),
+                    "away": analysis.away.to_dyn(),
+                  ]),
+                ]
+
+                // add 'form' key if we have form data
+                match form_comparison {
+                  comp => data.set("form", Dynamic::object([
+                    "home": comp.home.to_dyn(),
+                    "away": comp.away.to_dyn(),
+                  ])),
+                  _ => ()
+                }
+
+                match json::encode(Dynamic::object(data)) {
                   ok(body) => http::Response{status:200, body:body, headers:res_headers},
                   err => internal_error(err)
                 }

@@ -4,8 +4,10 @@ import {
   Switch,
   Show,
   createMemo,
+  createSignal,
   Suspense,
   useContext,
+  type Accessor,
 } from "solid-js";
 import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useFixture } from "~/api/fixtures";
@@ -17,31 +19,12 @@ import { useAuth } from "~/contexts/auth";
 import { A } from "@solidjs/router";
 import { BetFormContext } from "./bet-form.context";
 
+import type { TeamStats } from "~/api/analysis";
+
 interface TeamComparisonProps {
   matchId: number;
   onClose: () => void;
   valueBets?: JuiceFixture;
-}
-
-interface TeamStats {
-  id: number;
-  name: string;
-  num_games: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goals_for: number;
-  goals_against: number;
-  goals_diff: number;
-  xgf: number;
-  xga: number;
-  cleansheets: number;
-  one_conceded: number;
-  two_plus_conceded: number;
-  win_rate: number;
-  strike_rate: number;
-  one_plus_scored: number;
-  position: number;
 }
 
 // Match Info Skeleton
@@ -85,7 +68,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
     if (league() == null) return null;
 
     const knownLeague = () =>
-      leaguesQuery.data?.find(l => l.id === league()?.id);
+      leaguesQuery.data?.find((l) => l.id === league()?.id);
     if (knownLeague() == undefined) return null;
     return knownLeague()?.hidden ? "hidden" : "followed";
   };
@@ -119,7 +102,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   });
 
   const onLeagueHidden = () => {
-    const id = toaster.show(props => (
+    const id = toaster.show((props) => (
       <Toast
         toastId={props.toastId}
         class="alert bordered border-base-300 w-full flex justify-between"
@@ -136,7 +119,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   };
 
   const onLeagueFollowed = () => {
-    const id = toaster.show(props => (
+    const id = toaster.show((props) => (
       <Toast
         toastId={props.toastId}
         class="alert bordered border-base-300 w-full flex justify-between"
@@ -433,12 +416,12 @@ const StatRow = ({
   awayValue,
   homeClass = "",
   awayClass = "",
-  juiceData: juiceData,
+  juiceData,
 }: {
   matchId: number;
-  label: string;
-  homeValue: string | number;
-  awayValue: string | number;
+  label: Accessor<string>;
+  homeValue: Accessor<string | number>;
+  awayValue: Accessor<string | number>;
   homeClass?: string;
   awayClass?: string;
   juiceData?: JuiceFixture;
@@ -457,8 +440,8 @@ const StatRow = ({
   const awayHighlights: Array<Highlight> = [];
 
   // Map betting markets to stat labels
-  juiceData?.stats.forEach(betType => {
-    betType.values.forEach(value => {
+  juiceData?.stats.forEach((betType) => {
+    betType.values.forEach((value) => {
       let formattedValue = value.name;
 
       // Format Over/Under to +/- signs
@@ -557,7 +540,7 @@ const StatRow = ({
         <div class="col-span-1 sm:col-span-2 flex items-center justify-end gap-2">
           <div class="flex flex-wrap gap-1 justify-end">
             <For each={homeHighlights}>
-              {highlight => (
+              {(highlight) => (
                 <span
                   class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
                   onClick={() => {
@@ -579,13 +562,13 @@ const StatRow = ({
           <div
             class={`text-center sm:text-right text-sm sm:text-base ${homeClass}`}
           >
-            {homeValue}
+            {homeValue()}
           </div>
         </div>
 
         {/* Center label */}
         <div class="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
-          {label}
+          {label()}
         </div>
 
         {/* Away side with bet highlights on the right */}
@@ -593,11 +576,11 @@ const StatRow = ({
           <div
             class={`text-center sm:text-left text-sm sm:text-base ${awayClass}`}
           >
-            {awayValue}
+            {awayValue()}
           </div>
           <div class="flex flex-wrap gap-1 justify-start">
             <For each={awayHighlights}>
-              {highlight => (
+              {(highlight) => (
                 <span
                   class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
                   onClick={() => {
@@ -625,7 +608,65 @@ const StatRow = ({
 function Comparison(
   props: AnalysisData & { juiceData?: JuiceFixture; matchId: number },
 ) {
-  const { home: homeStats, away: awayStats } = props.comparison;
+  const [activeTab, setActiveTab] = createSignal<"season" | "form">("season");
+
+  // Determine which dataset to display based on active tab
+  const homeStats = createMemo(() =>
+    activeTab() === "season" ? props.comparison.home : props.form!.home,
+  );
+
+  const awayStats = createMemo(() =>
+    activeTab() === "season" ? props.comparison.away : props.form!.away,
+  );
+
+  // Create reactive formatted values
+  const homeRecord = createMemo(() => formatRecord(homeStats()));
+  const awayRecord = createMemo(() => formatRecord(awayStats()));
+  const homeGoalRatio = createMemo(() => formatGoalRatio(homeStats()));
+  const awayGoalRatio = createMemo(() => formatGoalRatio(awayStats()));
+  const homeXgf = createMemo(() => homeStats().xgf.toFixed(2));
+  const awayXgf = createMemo(() => awayStats().xgf.toFixed(2));
+  const homeXga = createMemo(() => homeStats().xga.toFixed(2));
+  const awayXga = createMemo(() => awayStats().xga.toFixed(2));
+  const homeStrikeRate = createMemo(() => formatStrikeRate(homeStats()));
+  const awayStrikeRate = createMemo(() => formatStrikeRate(awayStats()));
+  const homeOnePlusScored = createMemo(() =>
+    formatOnePlusScoredPercentage(homeStats()),
+  );
+  const awayOnePlusScored = createMemo(() =>
+    formatOnePlusScoredPercentage(awayStats()),
+  );
+  const homeCleanSheets = createMemo(
+    () =>
+      `${homeStats().cleansheets} (${formatCleanSheetPercentage(homeStats())})`,
+  );
+  const awayCleanSheets = createMemo(
+    () =>
+      `${awayStats().cleansheets} (${formatCleanSheetPercentage(awayStats())})`,
+  );
+  const homeOneConceded = createMemo(
+    () =>
+      `${homeStats().one_conceded} (${formatOneConcededPercentage(homeStats())})`,
+  );
+  const awayOneConceded = createMemo(
+    () =>
+      `${awayStats().one_conceded} (${formatOneConcededPercentage(awayStats())})`,
+  );
+  const homeTwoConceded = createMemo(
+    () =>
+      `${homeStats().two_plus_conceded} (${formatTwoConcededPercentage(homeStats())})`,
+  );
+  const awayTwoConceded = createMemo(
+    () =>
+      `${awayStats().two_plus_conceded} (${formatTwoConcededPercentage(awayStats())})`,
+  );
+
+  // Only show tabs if form data exists AND teams have played >= 5 games
+  const showTabs = () =>
+    props.form?.home &&
+    props.form?.away &&
+    props.form.home.num_games >= 5 &&
+    props.form.away.num_games >= 5;
 
   // Get match data to extract league and season info
   const matchQuery = useFixture(props.matchId);
@@ -648,21 +689,23 @@ function Comparison(
       <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
         <div class="col-span-1 sm:col-span-2 text-center">
           <h3 class="text-lg sm:text-xl font-bold wrap-break-word cursor-pointer hover:text-primary transition-colors">
-            <A href={teamHref(props.comparison.home.id)}>
-              {homeStats.name}
-              {homeStats.position > 0 ? ` (#${homeStats.position})` : ""}
+            <A href={teamHref(props.home.id)}>
+              {props.home.name}
+              {homeStats().position > 0 ? ` (#${homeStats().position})` : ""}
             </A>
           </h3>
           <div class="text-xs sm:text-sm text-base-content/60">Home</div>
         </div>
+
         <div class="col-span-1 sm:col-span-3 text-center flex items-center justify-center">
           <div class="text-xl sm:text-2xl font-bold">VS</div>
         </div>
+
         <div class="col-span-1 sm:col-span-2 text-center">
           <h3 class="text-lg sm:text-xl font-bold wrap-break-word cursor-pointer hover:text-primary transition-colors">
-            <A href={teamHref(props.comparison.away.id)}>
-              {awayStats.name}
-              {awayStats.position > 0 ? ` (#${awayStats.position})` : ""}
+            <A href={teamHref(props.away.id)}>
+              {props.away.name}
+              {awayStats().position > 0 ? ` (#${awayStats().position})` : ""}
             </A>
           </h3>
           <div class="text-xs sm:text-sm text-base-content/60">Away</div>
@@ -671,22 +714,42 @@ function Comparison(
 
       {/* Team Statistics */}
       <div>
-        <h4 class="text-lg font-semibold mb-4">Team Statistics</h4>
+        <div class="flex justify-between items-center mb-4">
+          <h4 class="text-lg font-semibold">Team Statistics</h4>
+
+          {/* Show tabs only if form data exists for both teams with >= 5 games */}
+          <Show when={showTabs()}>
+            <div class="tabs tabs-boxed tabs-sm">
+              <button
+                class={`tab ${activeTab() === "season" ? "tab-active" : ""}`}
+                onClick={() => setActiveTab("season")}
+              >
+                Season
+              </button>
+              <button
+                class={`tab ${activeTab() === "form" ? "tab-active" : ""}`}
+                onClick={() => setActiveTab("form")}
+              >
+                Last 5
+              </button>
+            </div>
+          </Show>
+        </div>
 
         <StatRow
-          label="W-D-L Record"
+          label={() => "W-D-L Record"}
           juiceData={props.juiceData}
-          homeValue={formatRecord(homeStats)}
-          awayValue={formatRecord(awayStats)}
+          homeValue={homeRecord}
+          awayValue={awayRecord}
           matchId={props.matchId}
         />
 
         <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 py-2 border-b border-base-200">
           <div class="col-span-1 sm:col-span-2 text-center sm:text-right">
             <span
-              class={`badge badge-sm sm:badge-md ${getFormBadgeClass(getFormRating(homeStats))}`}
+              class={`badge badge-sm sm:badge-md ${getFormBadgeClass(getFormRating(homeStats()))}`}
             >
-              {getFormRating(homeStats)}
+              {getFormRating(homeStats())}
             </span>
           </div>
           <div class="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
@@ -694,29 +757,29 @@ function Comparison(
           </div>
           <div class="col-span-1 sm:col-span-2 text-center sm:text-left">
             <span
-              class={`badge badge-sm sm:badge-md ${getFormBadgeClass(getFormRating(awayStats))}`}
+              class={`badge badge-sm sm:badge-md ${getFormBadgeClass(getFormRating(awayStats()))}`}
             >
-              {getFormRating(awayStats)}
+              {getFormRating(awayStats())}
             </span>
           </div>
         </div>
 
         <StatRow
-          label="GF:GA (Diff)"
+          label={() => "GF:GA (Diff)"}
           juiceData={props.juiceData}
-          homeValue={formatGoalRatio(homeStats)}
-          awayValue={formatGoalRatio(awayStats)}
+          homeValue={homeGoalRatio}
+          awayValue={awayGoalRatio}
           homeClass={
-            homeStats.goals_diff > 0
+            homeStats().goals_diff > 0
               ? "text-success"
-              : homeStats.goals_diff < 0
+              : homeStats().goals_diff < 0
                 ? "text-error"
                 : ""
           }
           awayClass={
-            awayStats.goals_diff > 0
+            awayStats().goals_diff > 0
               ? "text-success"
-              : awayStats.goals_diff < 0
+              : awayStats().goals_diff < 0
                 ? "text-error"
                 : ""
           }
@@ -725,60 +788,60 @@ function Comparison(
 
         <StatRow
           matchId={props.matchId}
-          label="Avg Goals For"
+          label={() => activeTab() === "form" ? "xG" : "Avg Goals For"}
           juiceData={props.juiceData}
-          homeValue={homeStats.xgf.toFixed(2)}
-          awayValue={awayStats.xgf.toFixed(2)}
+          homeValue={homeXgf}
+          awayValue={awayXgf}
         />
 
         <StatRow
           matchId={props.matchId}
-          label="Avg Goals Against"
+          label={() => activeTab() === "form" ? "xGA" : "Avg Goals Against"}
           juiceData={props.juiceData}
-          homeValue={homeStats.xga.toFixed(2)}
-          awayValue={awayStats.xga.toFixed(2)}
+          homeValue={homeXga}
+          awayValue={awayXga}
         />
 
         <StatRow
           matchId={props.matchId}
-          label="Strike Rate"
+          label={() => "Strike Rate"}
           juiceData={props.juiceData}
-          homeValue={formatStrikeRate(homeStats)}
-          awayValue={formatStrikeRate(awayStats)}
+          homeValue={homeStrikeRate}
+          awayValue={awayStrikeRate}
         />
 
         <StatRow
           matchId={props.matchId}
-          label="+1.5 Goals For"
+          label={() => "+1.5 Goals For"}
           juiceData={props.juiceData}
-          homeValue={formatOnePlusScoredPercentage(homeStats)}
-          awayValue={formatOnePlusScoredPercentage(awayStats)}
+          homeValue={homeOnePlusScored}
+          awayValue={awayOnePlusScored}
+        />
+
+        <StatRow
+          matchId={props.matchId}
+          label={() => "Clean Sheets"}
+          juiceData={props.juiceData}
+          homeValue={homeCleanSheets}
+          awayValue={awayCleanSheets}
+        />
+
+        <StatRow
+          matchId={props.matchId}
+          label={() => "+0.5 Goals Against"}
+          juiceData={props.juiceData}
+          homeValue={homeOneConceded}
+          awayValue={awayOneConceded}
+        />
+
+        <StatRow
+          matchId={props.matchId}
+          label={() => "+1.5 Goals Against"}
+          juiceData={props.juiceData}
+          homeValue={homeTwoConceded}
+          awayValue={awayTwoConceded}
         />
       </div>
-
-      <StatRow
-        matchId={props.matchId}
-        label="Clean Sheets"
-        juiceData={props.juiceData}
-        homeValue={`${homeStats.cleansheets} (${formatCleanSheetPercentage(homeStats)})`}
-        awayValue={`${awayStats.cleansheets} (${formatCleanSheetPercentage(awayStats)})`}
-      />
-
-      <StatRow
-        matchId={props.matchId}
-        label="+0.5 Goals Against"
-        juiceData={props.juiceData}
-        homeValue={`${homeStats.one_conceded} (${formatOneConcededPercentage(homeStats)})`}
-        awayValue={`${awayStats.one_conceded} (${formatOneConcededPercentage(awayStats)})`}
-      />
-
-      <StatRow
-        matchId={props.matchId}
-        label="+1.5 Goals Against"
-        juiceData={props.juiceData}
-        homeValue={`${homeStats.two_plus_conceded} (${formatTwoConcededPercentage(homeStats)})`}
-        awayValue={`${awayStats.two_plus_conceded} (${formatTwoConcededPercentage(awayStats)})`}
-      />
     </>
   );
 }

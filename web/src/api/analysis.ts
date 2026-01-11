@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/solid-query";
 import { useAuth } from "~/contexts/auth";
 
-export type AnalysisData = {
-  comparison: ComparisonData;
+export type Team = {
+  id: number;
+  name: string;
 };
 
 export type TeamStats = {
-  id: number;
-  name: string;
   num_games: number;
   wins: number;
   draws: number;
@@ -29,6 +28,13 @@ export type TeamStats = {
 export type ComparisonData = {
   home: TeamStats;
   away: TeamStats;
+};
+
+export type AnalysisData = {
+  home: Team;
+  away: Team;
+  comparison: ComparisonData;
+  form?: ComparisonData; // Recent form data (last 5 games from local DB, nullable)
 };
 
 export function useMatchup(matchId: number) {
