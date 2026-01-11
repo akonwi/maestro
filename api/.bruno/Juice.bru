@@ -1,0 +1,20 @@
+meta {
+  name: Juice
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/juice?date=2025-11-01
+  body: none
+  auth: inherit
+}
+
+params:query {
+  date: 2025-11-01
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

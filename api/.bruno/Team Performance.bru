@@ -1,0 +1,24 @@
+meta {
+  name: Team Performance
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/teams/:id/performance?league_id=39
+  body: none
+  auth: inherit
+}
+
+params:query {
+  league_id: 39
+}
+
+params:path {
+  id: 33
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

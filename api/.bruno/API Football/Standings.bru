@@ -1,0 +1,17 @@
+meta {
+  name: Standings
+  type: http
+  seq: 8
+}
+
+get {
+  url: https://v3.football.api-sports.io/standings?league=365&season=2025&team=4160
+  body: none
+  auth: inherit
+}
+
+params:query {
+  league: 365
+  season: 2025
+  team: 4160
+}

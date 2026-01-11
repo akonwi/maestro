@@ -1,0 +1,17 @@
+use ard/env
+
+let CURRENT_SEASON = 2025
+
+// key for API-Football and will act as a password for writing data
+fn api_key() Str {
+  env::get("API_KEY").expect("API_KEY environment variable not set")
+}
+
+fn port() Int {
+  let env_port = env::get("PORT").expect("Missing PORT environment variable")
+  Int::from_str(env_port).expect("Unable to convert PORT environment variable into Int ")
+}
+
+fn is_sync_enabled() Bool {
+  env::get("ENABLE_SYNC").or("true") == "true"
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Find Fixtures
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/teams/:id/fixtures?league_id=39&season=2025
+  body: none
+  auth: inherit
+}
+
+params:query {
+  league_id: 39
+  season: 2025
+}
+
+params:path {
+  id: 33
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

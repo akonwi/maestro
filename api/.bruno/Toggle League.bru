@@ -1,0 +1,23 @@
+meta {
+  name: Toggle League
+  type: http
+  seq: 14
+}
+
+put {
+  url: {{baseUrl}}/leagues
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 239,
+    "hidden": true
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

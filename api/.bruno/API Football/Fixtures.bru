@@ -1,0 +1,21 @@
+meta {
+  name: Fixtures
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://v3.football.api-sports.io/fixtures?season=2025&league=40&team=54
+  body: none
+  auth: inherit
+}
+
+params:query {
+  season: 2025
+  league: 40
+  team: 54
+  ~date: 2025-12-07
+  ~status: NS
+  ~id: 1487910
+  ~timezone: America/New_York
+}

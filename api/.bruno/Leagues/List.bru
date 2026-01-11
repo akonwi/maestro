@@ -1,0 +1,23 @@
+meta {
+  name: List
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/leagues
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 253,
+    "name": "Major League Soccer"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

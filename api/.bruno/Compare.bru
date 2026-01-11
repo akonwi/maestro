@@ -1,0 +1,21 @@
+meta {
+  name: Compare
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/compare?away=18310&home=2242
+  body: none
+  auth: inherit
+}
+
+params:query {
+  away: 18310
+  home: 2242
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

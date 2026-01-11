@@ -1,0 +1,7 @@
+use ard/env
+use ard/sql
+
+fn connect() sql::Database {
+  let db_path = env::get("DB_PATH").or("./db.sqlite")
+  sql::open(db_path).expect("Failed connect to database at {db_path}")
+}

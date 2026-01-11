@@ -1,0 +1,20 @@
+meta {
+  name: Team
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/teams/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 33
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

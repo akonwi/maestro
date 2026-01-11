@@ -1,0 +1,20 @@
+meta {
+  name: Get odds
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/odds/:matchId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  matchId: 1326610
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

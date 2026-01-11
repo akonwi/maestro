@@ -1,0 +1,25 @@
+meta {
+  name: Metrics
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/teams/:id/metrics?season=2025&league_id=61
+  body: none
+  auth: inherit
+}
+
+params:query {
+  season: 2025
+  league_id: 61
+}
+
+params:path {
+  id: 91
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

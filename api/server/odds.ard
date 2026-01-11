@@ -1,0 +1,98 @@
+use ard/decode
+use ard/http
+use ard/io
+
+use maestro/config
+
+let OUTCOME = 1
+let HOME_TOTAL_GOALS = 16
+let HOME_CLEANSHEET = 27
+let AWAY_TOTAL_GOALS = 17
+let AWAY_CLEANSHEET = 28
+
+struct Line {
+  name: Str,
+  odd: Int,
+}
+
+struct Stat {
+  id: Int,
+  name: Str,
+  values: [Line]
+}
+
+let BET_365 = 8
+
+fn to_american(decimal_odd: Float) Int {
+  match decimal_odd < 2.0 {
+    true => (-100.0 / (decimal_odd - 1.0)).to_int(),
+    false => ((decimal_odd - 1.0) * 100.0).to_int()
+  }
+}
+
+fn int_to_string(data: Dynamic) Str![decode::Error] {
+  let val = try decode::run(data, decode::int)
+  Result::ok(val.to_str())
+}
+
+fn decode_line(data: Dynamic) Line![decode::Error] {
+  let name = try decode::run(data, decode::field("value", decode::one_of(decode::string, [int_to_string])))
+  let odd_str = try decode::run(data, decode::field("odd", decode::string))
+  let dec_odd = Float::from_str(odd_str).or(0.0)
+  let american_odd = to_american(dec_odd)
+
+  Result::ok(Line{
+    name: name,
+    odd: american_odd,
+  })
+}
+
+fn decode_bet(data: Dynamic) Stat![decode::Error] {
+  let id = try decode::run(data, decode::field("id", decode::int))
+  let name = try decode::run(data, decode::field("name", decode::string))
+  let values = try decode::run(data, decode::field("values", decode::list(decode_line)))
+
+  Result::ok(Stat{
+    id: id,
+    name: name,
+    values: values,
+  })
+}
+
+fn decode_odds_data(data: Dynamic) [Stat]![decode::Error] {
+  let count = try decode::run(data, decode::field("results", decode::int))
+  match count {
+    0 => Result::ok(List::new<Stat>()),
+    _ => {
+      // Extract response[0].bookmakers[0].bets[0].name
+      let bets = try decode::run(data,
+        decode::field("response",
+          decode::at(0, decode::field("bookmakers",
+              decode::at(0, decode::field("bets", decode::list(decode_bet)))
+            )
+          )
+        )
+      )
+
+      Result::ok(bets)
+    },
+  }
+}
+
+fn get(fixture_id: Int) [Stat]!Str {
+  let res = try http::send(http::Request{
+    method: http::Method::Get,
+    url: "https://v3.football.api-sports.io/odds?fixture={fixture_id}&bookmaker={8}",
+    headers: [
+      "x-rapidapi-key": config::api_key(),
+      "Accept": "application/json",
+    ],
+  })
+
+  let body = try decode::from_json(res.body) -> err { Result::err("Invalid JSON response: {err}") }
+  let stats = try decode_odds_data(body) -> errs {
+    io::print("Error decoding odds: {errs.at(0)}")
+    Result::ok(List::new<Stat>())
+  }
+  Result::ok(stats)
+}

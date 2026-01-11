@@ -3,7 +3,7 @@
 
 # Environment
 .env
-.env*.local
+environments
 
 # dependencies
 node_modules
@@ -14,3 +14,6 @@ Thumbs.db
 
 .codanna*
 .fastembed*
+
+*.sqlite
+*.sqbpro

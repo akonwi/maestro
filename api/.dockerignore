@@ -1,0 +1,11 @@
+# Git files
+.git
+.gitignore
+
+# Development files
+TODO.md
+.DS_Store
+
+# MCP directory (development tooling)
+.bruno
+.claude
