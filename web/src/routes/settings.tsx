@@ -36,7 +36,7 @@ export default function Settings() {
                   class="join-item"
                   value={auth.token()}
                   ref={input}
-                  onChange={(e) => auth.setToken(e.target.value)}
+                  onChange={e => auth.setToken(e.target.value)}
                 />
               </label>
               <button

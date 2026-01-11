@@ -9,7 +9,7 @@ function useStacked<T>() {
   return {
     current: () => stack()[0],
     clear: () => update([]),
-    push: (item: T) => update((prev) => [item, ...prev]),
+    push: (item: T) => update(prev => [item, ...prev]),
     pop: () => update(([_, ...rest]) => rest),
   };
 }
@@ -51,7 +51,7 @@ export function BetTable() {
   const betsData = () => query.data?.bets || [];
 
   const filteredBets = () =>
-    betsData().filter((bet) => {
+    betsData().filter(bet => {
       if (filter() === "all") return true;
       if (filter() === "pending") return bet.result === "pending";
       return bet.result === filter();
@@ -100,7 +100,7 @@ export function BetTable() {
 
             <div class="tabs tabs-boxed">
               <For each={["all", "pending", "win", "lose"] as const}>
-                {(filterOption) => (
+                {filterOption => (
                   <button
                     classList={{
                       tab: true,
@@ -137,7 +137,7 @@ export function BetTable() {
                   </thead>
                   <tbody>
                     <For each={filteredBets()}>
-                      {(bet) => (
+                      {bet => (
                         <ContextMenu>
                           <ContextMenu.Trigger as="tr">
                             <td>{bet.id}</td>

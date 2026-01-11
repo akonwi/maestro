@@ -70,7 +70,7 @@ function Page() {
   const juiceFixture = () => {
     const matchId = selectedMatchId();
     if (matchId != null)
-      return juiceQuery.data?.find((entry) => entry.fixture.id === matchId);
+      return juiceQuery.data?.find(entry => entry.fixture.id === matchId);
     return undefined;
   };
 
@@ -126,7 +126,7 @@ function Page() {
 
   // Table sorting functions
   const handleOddsSort = () => {
-    setSortByOdds((current) => {
+    setSortByOdds(current => {
       if (current === null) return "desc";
       if (current === "desc") return "asc";
       return null;
@@ -138,8 +138,8 @@ function Page() {
     if (juiceQuery.data == undefined || juiceQuery.data.length === 0) return [];
 
     const valueBets = juiceQuery.data;
-    const flattened = valueBets.flatMap((bet) =>
-      bet.stats.flatMap((betType) =>
+    const flattened = valueBets.flatMap(bet =>
+      bet.stats.flatMap(betType =>
         betType.values.map((value, valueIndex) => ({
           bet,
           betType,
@@ -264,7 +264,7 @@ function Page() {
         <Match when={viewMode() === "list"}>
           <div class="space-y-4">
             <For each={juiceQuery.data}>
-              {(bet) => (
+              {bet => (
                 <div class="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow">
                   <div class="card-body">
                     <div class="flex flex-col gap-4">
@@ -302,14 +302,14 @@ function Page() {
                       {/* Betting Markets */}
                       <div class="space-y-3">
                         <For each={bet.stats}>
-                          {(betType) => (
+                          {betType => (
                             <div class="bg-base-200 p-3 rounded-lg">
                               <h4 class="font-medium text-sm mb-2">
                                 {betType.name}
                               </h4>
                               <div class="flex flex-wrap gap-2">
                                 <For each={betType.values}>
-                                  {(value) => (
+                                  {value => (
                                     <button
                                       aria-disabled={auth.isReadOnly()}
                                       class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"

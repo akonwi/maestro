@@ -48,7 +48,7 @@ interface TeamStats {
 export function MatchInfoSkeleton() {
   return (
     <div>
-      <div class="animate-pulse bg-base-300 h-4 w-48 rounded mb-6"></div>
+      <div class="animate-pulse bg-base-300 h-4 w-48 rounded mb-6" />
 
       <div class="bg-base-200 rounded-lg p-4 mb-6">
         <div class="flex justify-between items-center">
@@ -85,7 +85,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
     if (league() == null) return null;
 
     const knownLeague = () =>
-      leaguesQuery.data?.find((l) => l.id === league()?.id);
+      leaguesQuery.data?.find(l => l.id === league()?.id);
     if (knownLeague() == undefined) return null;
     return knownLeague()?.hidden ? "hidden" : "followed";
   };
@@ -119,7 +119,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   });
 
   const onLeagueHidden = () => {
-    const id = toaster.show((props) => (
+    const id = toaster.show(props => (
       <Toast
         toastId={props.toastId}
         class="alert bordered border-base-300 w-full flex justify-between"
@@ -136,7 +136,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   };
 
   const onLeagueFollowed = () => {
-    const id = toaster.show((props) => (
+    const id = toaster.show(props => (
       <Toast
         toastId={props.toastId}
         class="alert bordered border-base-300 w-full flex justify-between"
@@ -457,8 +457,8 @@ const StatRow = ({
   const awayHighlights: Array<Highlight> = [];
 
   // Map betting markets to stat labels
-  juiceData?.stats.forEach((betType) => {
-    betType.values.forEach((value) => {
+  juiceData?.stats.forEach(betType => {
+    betType.values.forEach(value => {
       let formattedValue = value.name;
 
       // Format Over/Under to +/- signs
@@ -557,7 +557,7 @@ const StatRow = ({
         <div class="col-span-1 sm:col-span-2 flex items-center justify-end gap-2">
           <div class="flex flex-wrap gap-1 justify-end">
             <For each={homeHighlights}>
-              {(highlight) => (
+              {highlight => (
                 <span
                   class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
                   onClick={() => {
@@ -597,7 +597,7 @@ const StatRow = ({
           </div>
           <div class="flex flex-wrap gap-1 justify-start">
             <For each={awayHighlights}>
-              {(highlight) => (
+              {highlight => (
                 <span
                   class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
                   onClick={() => {

@@ -39,7 +39,7 @@ export default function TeamStatsPage() {
 
   const isTeamInFollowedLeague = () => {
     if (!league || !leaguesQuery.data) return false;
-    return leaguesQuery.data.some((l) => l.id === league && !l.hidden);
+    return leaguesQuery.data.some(l => l.id === league && !l.hidden);
   };
 
   const perf = () => performanceQuery.data;
@@ -47,7 +47,7 @@ export default function TeamStatsPage() {
 
   const recentFormFixtures = () => {
     const all = perf()?.fixtures.all ?? [];
-    const completed = all.filter((f) => f.finished);
+    const completed = all.filter(f => f.finished);
     const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
     return sorted.slice(-5);
   };
@@ -144,7 +144,7 @@ export default function TeamStatsPage() {
               <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
               <div class="flex gap-2">
                 <For each={recentFormFixtures()}>
-                  {(fixture) => (
+                  {fixture => (
                     <div
                       classList={{
                         "badge-warning": fixture.winner_id === null,

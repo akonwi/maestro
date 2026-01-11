@@ -43,7 +43,7 @@ export default function LeaguesPage() {
 
           <div class="space-y-2">
             <For each={leaguesQuery.data}>
-              {(league) => (
+              {league => (
                 <div class="py-2">
                   <div class="flex items-center justify-between">
                     <div
