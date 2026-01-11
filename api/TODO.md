@@ -1,5 +1,0 @@
-- [ ] To avoid rate limiting errors, persist API-Football responses
- - need to be able to configure, which requests are cache-able
- - `fapi::fetch(req: http::Request, cache: Bool?) http::Response`
-   - will return from cache if there's an entry for the request
-   - if `cache` is true, then save the request + response,
