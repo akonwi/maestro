@@ -689,10 +689,7 @@ function Comparison(
       <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 mb-6">
         <div class="col-span-1 sm:col-span-2 text-center">
           <h3 class="text-lg sm:text-xl font-bold wrap-break-word cursor-pointer hover:text-primary transition-colors">
-            <A href={teamHref(props.home.id)}>
-              {props.home.name}
-              {homeStats().position > 0 ? ` (#${homeStats().position})` : ""}
-            </A>
+            <A href={teamHref(props.home.id)}>{props.home.name}</A>
           </h3>
           <div class="text-xs sm:text-sm text-base-content/60">Home</div>
         </div>
@@ -703,10 +700,7 @@ function Comparison(
 
         <div class="col-span-1 sm:col-span-2 text-center">
           <h3 class="text-lg sm:text-xl font-bold wrap-break-word cursor-pointer hover:text-primary transition-colors">
-            <A href={teamHref(props.away.id)}>
-              {props.away.name}
-              {awayStats().position > 0 ? ` (#${awayStats().position})` : ""}
-            </A>
+            <A href={teamHref(props.away.id)}>{props.away.name}</A>
           </h3>
           <div class="text-xs sm:text-sm text-base-content/60">Away</div>
         </div>

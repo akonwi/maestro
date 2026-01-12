@@ -22,7 +22,6 @@ export type TeamStats = {
   one_conceded: number;
   two_plus_conceded: number;
   win_rate: number;
-  position: number;
 };
 
 export type ComparisonData = {
