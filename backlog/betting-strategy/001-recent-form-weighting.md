@@ -76,31 +76,17 @@ if weighted_xgf > 1.5 {
 }
 ```
 
-### 2. API Structure: Single Call Returns Both Datasets
+### 2. API Structure: Existing Implementation
 
-**File:** `api/server/analysis.ard` - Update `/analysis/:matchId` endpoint
+**File:** `api/server/main.ard` - `/analysis/:matchId` endpoint (lines 236-287)
+
+The endpoint already returns both season and recent form data:
 
 ```ard
-// Existing endpoint enhanced to return both season and recent5 data
-fn get_comparison(home_team_id: Int, away_team_id: Int, league_id: Int, season: Int) Comparison {
-  // Get season-long metrics (existing)
-  let home_season = get_metrics(home_team_id, league_id, season)
-  let away_season = get_metrics(away_team_id, league_id, season)
-
-  // Get recent form metrics (NEW)
-  let home_recent = get_recent_form_metrics(home_team_id, league_id, season, 5)
-  let away_recent = get_recent_form_metrics(away_team_id, league_id, season, 5)
-
-  Comparison {
-    home: [
-      "season": home_season,
-      "recent5": home_recent
-    ],
-    away: [
-      "season": away_season,
-      "recent5": away_recent
-    ]
-  }
+// Existing implementation structure
+struct Res {
+  comparison: predictions::Comparison,  // Season stats from external API
+  form: predictions::Comparison?,       // Recent 5 games from local DB (nullable)
 }
 ```
 
@@ -108,19 +94,25 @@ fn get_comparison(home_team_id: Int, away_team_id: Int, league_id: Int, season: 
 ```json
 {
   "comparison": {
-    "home": {
-      "season": { "wins": 12, "draws": 5, "losses": 3, "xgf": 1.8, "xga": 1.1, ... },
-      "recent5": { "wins": 4, "draws": 1, "losses": 0, "xgf": 2.3, "xga": 0.8, ... }
-    },
-    "away": {
-      "season": { "wins": 10, "draws": 6, "losses": 4, "xgf": 1.6, "xga": 1.3, ... },
-      "recent5": { "wins": 2, "draws": 1, "losses": 2, "xgf": 1.4, "xga": 1.6, ... }
-    }
+    "home": { "wins": 12, "draws": 5, "losses": 3, "xgf": 1.8, "xga": 1.1, ... },
+    "away": { "wins": 10, "draws": 6, "losses": 4, "xgf": 1.6, "xga": 1.3, ... }
+  },
+  "form": {
+    "home": { "wins": 4, "draws": 1, "losses": 0, "xgf": 2.3, "xga": 0.8, ... },
+    "away": { "wins": 2, "draws": 1, "losses": 2, "xgf": 1.4, "xga": 1.6, ... }
   }
 }
 ```
 
-**Special case:** If team has < 5 games played, `recent5` field is `null`.
+**Key Implementation Details:**
+- `comparison` - Season-long stats from external API (`predictions::get_comparison()`)
+- `form` - Last 5 games from local DB (`predictions::get_form()`)
+  - Uses actual xG data from `fixture_stats` table for xgf/xga calculations
+  - Falls back to 0.0 if xG data is missing for a fixture
+- `form` is `null` when league is not being followed locally
+- `predictions::get_form()` returns empty Snapshot (num_games: 0) when team has < 5 games
+
+**Special case:** If league is not followed, `form` field is `null`. If team has < 5 games, `form.home.num_games` or `form.away.num_games` will be < 5.
 
 ### 3. Frontend: Tabbed UI in Matchup Modal
 
@@ -132,29 +124,37 @@ Add tabs to switch between Season and Recent Form views:
 import { createSignal, Show } from 'solid-js';
 
 function Comparison(props: AnalysisData & { juiceData?: JuiceFixture; matchId: number }) {
-  const [activeTab, setActiveTab] = createSignal<'season' | 'recent5'>('season');
+  const [activeTab, setActiveTab] = createSignal<'season' | 'form'>('season');
 
-  // Determine which dataset to display
+  // Determine which dataset to display based on active tab
   const homeStats = () =>
     activeTab() === 'season'
-      ? props.comparison.home.season
-      : props.comparison.home.recent5;
+      ? props.comparison.home
+      : props.form?.home;
 
   const awayStats = () =>
     activeTab() === 'season'
-      ? props.comparison.away.season
-      : props.comparison.away.recent5;
+      ? props.comparison.away
+      : props.form?.away;
 
-  // Calculate trend for tab indicator
+  // Calculate trend for tab indicator (compare recent vs season win rate)
   const trendIndicator = () => {
-    if (!props.comparison.home.recent5) return '';
+    if (!props.form?.home) return '';
 
-    const homeRecent = props.comparison.home.recent5.wins / 5;
-    const homeSeason = props.comparison.home.season.wins /
-      (props.comparison.home.season.wins + props.comparison.home.season.draws + props.comparison.home.season.losses);
+    const homeRecentWinRate = props.form.home.win_rate;
+    const homeSeasonWinRate = props.comparison.home.win_rate;
 
-    return homeRecent > homeSeason ? '📈' : homeRecent < homeSeason ? '📉' : '➡️';
+    return homeRecentWinRate > homeSeasonWinRate ? '📈'
+      : homeRecentWinRate < homeSeasonWinRate ? '📉'
+      : '➡️';
   };
+
+  // Only show tabs if form data exists AND teams have played >= 5 games
+  const showTabs = () =>
+    props.form?.home &&
+    props.form?.away &&
+    props.form.home.num_games >= 5 &&
+    props.form.away.num_games >= 5;
 
   return (
     <>
@@ -162,8 +162,8 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture; matchId: n
       <div class="flex justify-between items-center mb-4">
         <h4 class="text-lg font-semibold">Team Statistics</h4>
 
-        {/* Show tabs only if recent5 data exists */}
-        <Show when={props.comparison.home.recent5}>
+        {/* Show tabs only if form data exists for both teams with >= 5 games */}
+        <Show when={showTabs()}>
           <div class="tabs tabs-boxed tabs-sm">
             <button
               class={`tab ${activeTab() === 'season' ? 'tab-active' : ''}`}
@@ -172,8 +172,8 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture; matchId: n
               Season
             </button>
             <button
-              class={`tab ${activeTab() === 'recent5' ? 'tab-active' : ''}`}
-              onClick={() => setActiveTab('recent5')}
+              class={`tab ${activeTab() === 'form' ? 'tab-active' : ''}`}
+              onClick={() => setActiveTab('form')}
             >
               Last 5 {trendIndicator()}
             </button>
@@ -204,8 +204,8 @@ function Comparison(props: AnalysisData & { juiceData?: JuiceFixture; matchId: n
 
 **Key UX Decisions:**
 - Tabs integrated with section header (compact placement)
-- "Last 5" tab hidden if team hasn't played 5 games
-- Trend indicator (📈/📉/➡️) shows if recent form is better/worse/same as season
+- "Last 5" tab hidden if `form` is null OR either team has < 5 games
+- Trend indicator (📈/📉/➡️) compares recent win_rate vs season win_rate
 - Same metrics shown in both tabs - just different data windows
 - Same Form Rating thresholds used for both (pure calculation per window)
 
