@@ -298,4 +298,3 @@ Profit if wins: +$38.63
 
 - [003: Confidence Scoring](./003-confidence-scoring.md) - Higher confidence increases Kelly stake
 - [004: Expected Value](./004-expected-value.md) - Provides true win probability
-- [006: Bet Form](../ux/006-bet-form-enhancements.md) - Displays suggested stake

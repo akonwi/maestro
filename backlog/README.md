@@ -27,7 +27,6 @@ High-impact improvements with minimal schema changes:
 - [003](./betting-strategy/003-confidence-scoring.md) - Confidence Scoring System
 - [004](./betting-strategy/004-expected-value.md) - Expected Value (EV) Calculations
 - [005](./betting-strategy/005-refined-thresholds.md) - Refined Goal Total Thresholds
-- [006](./ux/006-bet-form-enhancements.md) - Enhanced Bet Form with Payout Calculator
 
 ### Phase 2: Medium Effort (3-5 days each)
 Requires schema changes or moderate refactoring:
