@@ -2,11 +2,10 @@ use ard/async
 use ard/dates
 use ard/decode
 use ard/duration
-use ard/http
 use ard/io
 use ard/sql
 
-use maestro/config
+use maestro/fapi
 use maestro/leagues
 use maestro/teams
 
@@ -177,24 +176,6 @@ fn decode_is_finished(data: Dynamic) Bool![decode::Error] {
 
 fn print_errors(errors: [decode::Error]) {
   io::print(collapse_errors("", errors))
-}
-
-fn fetch(id: Int) Dynamic!Str {
-  let req = http::Request{
-    method: http::Method::Get,
-    url: "https://v3.football.api-sports.io/fixtures?id={id}",
-    headers: [
-      "x-rapidapi-key": config::api_key(),
-      "Accept": "application/json",
-    ],
-  }
-
-  let res = try http::send(req) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
-  let body = try decode::from_json(res.body) -> found { Result::err("Unable to parse response body as JSON (league={id}). Found {found}") }
-  let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-    Result::err(collapse_errors("Could not decode response[0] in data for fixture({id})", errs))
-  }
-  Result::ok(entry)
 }
 
 struct TeamStats {
@@ -400,28 +381,13 @@ fn save_teams(db: sql::Database, tx: sql::Transaction, teams: [teams::Team]) Voi
 
 fn import_season(db: sql::Database, league_id: Int, season: Int) Void!Str {
   // there are no fixtures saved, so fetch and save them
-  let req = http::Request{
-    method: http::Method::Get,
-    url: "https://v3.football.api-sports.io/fixtures?league={league_id}&season={season}",
-    headers: [
-      "x-rapidapi-key": config::api_key(),
-      "Accept": "application/json",
-    ],
-  }
-
-  let res = try http::send(req) -> err { Result::err("Error fetching fixtures (league={league_id}, season={season}): {err}") }
-  let body = try decode::from_json(res.body) -> found { Result::err("Unable to parse response body as JSON (league={league_id}, season={season}). Found {found}") }
-  let fixture_ids = try decode::run(body, decode::field("response", decode::list(decode::path(["fixture", "id"], decode::int)))) -> errs {
-    Result::err(collapse_errors("Unable to decode ids of fixtures (league={league_id}, season={season})", errs))
-  }
-
-  io::print("Found {fixture_ids.size()} fixtures")
-
+  let entries = try fapi::get_season_fixtures(league_id, season)
   // collecting records first so that this fetching loop doesn't block on the db
   mut fixture_stats: [FixtureStats] = []
 
-  for fixture_id in fixture_ids {
-    let entry = try fetch(fixture_id) -> err { Result::err("Error fetching fixture (id={fixture_id}): {err}") }
+  for fe in entries {
+    let id = try decode::run(fe, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err("Unable to parse fixture id: {errs.at(0)}") }
+    let entry = try fapi::get_fixture(id) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
 
     let fixture_n_stats = try decode_stats(entry) -> errs { Result::err(collapse_errors("Error decoding fixture data: ", errs)) }
 
@@ -550,7 +516,7 @@ fn sync_fixtures(db: sql::Database, league_id: Int, season: Int) Void!Str  {
 
   for row in pending_fixtures {
     let id = try decode_id(row) -> errs { Result::err(collapse_errors("Error decoding id in fixture row: ", errs)) }
-    let data = try fetch(id) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
+    let data = try fapi::get_fixture(id) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
     let f = try decode_stats(data) -> errs { Result::err(collapse_errors("Error decoding fixture data: ", errs)) }
 
     let tx = try db.begin() -> err { Result::err("Unable to begin transaction to save (fixture={id}): {err}") }
@@ -690,7 +656,7 @@ fn sync(db: sql::Database) {
     for league, i in all_leagues {
       let count = i + 1
       io::print("[{count}/{all_leagues.size()}] Getting current season for {league.name} (id: {league.id})")
-      match leagues::get_current_season(league.id) {
+      match fapi::get_league_current_season(league.id) {
         ok(season) => {
           io::print("[{count}/{all_leagues.size()}] Syncing {league.name} (id: {league.id}, season: {season})")
           sync_season(db: db, league_id: league.id, season: season)
@@ -769,50 +735,19 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
 // retrieves all fixtures happening today from API-Football
 fn find_today() [Fixture] {
   let today = dates::get_today()
-  let req = http::Request{
-    method: http::Method::Get,
-    url: "https://v3.football.api-sports.io/fixtures?status=NS&timezone=America/New_York&date={today}",
-    headers: [
-      "x-rapidapi-key": config::api_key(),
-      "Accept": "application/json",
-    ],
-  }
-
-  let res = try http::send(req) -> err {
+  let body = try fapi::get_today_fixtures(today) -> err {
     io::print("Error fetching today's fixtures: {err}")
     List::new<Fixture>()
   }
 
-  match decode::from_json(res.body) {
-    ok(body) => {
-      try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
-        io::print("Error decoding body.response: {errs.at(0)}")
-        List::new<Fixture>()
-      }
-    },
-    err => {
-      io::print("Invalid JSON returned for today's fixtures: {err}")
-      List::new<Fixture>()
-    }
+  try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
+    io::print("Error decoding body.response: {errs.at(0)}")
+    List::new<Fixture>()
   }
 }
 
 fn find_from_api(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
-  let req = http::Request{
-    method: http::Method::Get,
-    url: "https://v3.football.api-sports.io/fixtures?team={team_id}&league={league_id}&season={season}",
-    headers: [
-      "x-rapidapi-key": config::api_key(),
-      "Accept": "application/json",
-    ],
-  }
-
-  let res = try http::send(req) -> err {
-    Result::err("Error fetching team fixtures (team={team_id}, league={league_id}, season={season}): {err}")
-  }
-  let body = try decode::from_json(res.body) -> found {
-    Result::err("Unable to parse response body as JSON (team={team_id}, league={league_id}, season={season}). Found {found}")
-  }
+  let body = try fapi::get_team_fixtures(team_id, league_id, season)
   let fixtures = try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
     let msg = collapse_errors("Error decoding body.response while from fetched fixtures(team={team_id}, league={league_id}, season={season})", errs)
     Result::err(msg)
@@ -861,7 +796,7 @@ fn get(db: sql::Database, id: Int) Fixture!Str {
       }
     },
     _ => {
-      let data = try fetch(id)
+      let data = try fapi::get_fixture(id)
       let fixture = try Fixture::from_api_entry(data) -> errs {
         Result::err(collapse_errors("Failed to decode fixture ({id}) entry", errs))
       }

@@ -1,9 +1,8 @@
 use ard/decode
-use ard/http
 use ard/maybe
 use ard/sql
 
-use maestro/config
+use maestro/fapi
 
 fn collapse_errors(prefix: Str, errors: [decode::Error]) Str {
   mut msg = prefix
@@ -39,21 +38,7 @@ fn Team::from_api(data: Dynamic) Team!Str {
 }
 
 fn fetch(id: Int) Team?!Str {
-  let req = http::Request{
-    method: http::Method::Get,
-    url: "https://v3.football.api-sports.io/teams?id={id}",
-    headers: [
-      "x-rapidapi-key": config::api_key(),
-      "Accept": "application/json",
-    ],
-  }
-
-  let res = try http::send(req) -> err { Result::err("Error fetching team (id={id}): {err}") }
-  let body = try decode::from_json(res.body) -> found { Result::err("Unable to parse response body as JSON (team={id}). Found {found}") }
-  let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-    Result::err(collapse_errors("Could not decode response[0] in data for team({id})", errs))
-  }
-
+  let entry = try fapi::get_team(id)
   let team = try Team::from_api(entry)
   Result::ok(maybe::some(team))
 }

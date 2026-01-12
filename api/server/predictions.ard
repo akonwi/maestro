@@ -4,14 +4,13 @@ use ard/decode
 use ard/duration
 use ard/env
 use ard/fs
-use ard/http
 use ard/io
 use ard/json
 use ard/maybe
 use ard/sql
 
-use maestro/config
 use maestro/db as _db
+use maestro/fapi
 use maestro/fixtures
 use maestro/leagues
 use maestro/odds
@@ -74,14 +73,7 @@ struct Comparison {
 }
 
 fn get_comparison(fixture_id: Int) Comparison!Str {
-  let res = try http::send(http::Request{
-    method: http::Method::Get,
-    url: "https://v3.football.api-sports.io/predictions?fixture={fixture_id}",
-    headers: [
-      "x-rapidapi-key": config::api_key(),
-      "Accept": "application/json",
-    ],
-  })
+  let body = try fapi::get_predictions(fixture_id)
 
   fn decode_stats(data: Dynamic) Snapshot![decode::Error] {
     let id = try decode_id(data)
@@ -141,7 +133,6 @@ fn get_comparison(fixture_id: Int) Comparison!Str {
     })
   }
 
-  let body = try decode::from_json(res.body)
   let comparison = try decode::run(body, decode::field("response", decode::at(0, decode::field("teams", decode_comparison)))) -> errs {
     Result::err(errs.at(0).to_str())
   }
