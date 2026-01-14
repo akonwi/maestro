@@ -1,15 +1,20 @@
 import { Show } from "solid-js";
 import { useTeamMetrics } from "~/api/analysis";
-import { TeamMetrics } from "~/api/analysis";
 
 interface GameMetricsProps {
   teamId: number;
   leagueId: number;
   season: number;
+  limit?: number;
 }
 
 export function GameMetrics(props: GameMetricsProps) {
-  const metricsQuery = useTeamMetrics(props);
+  const metricsQuery = useTeamMetrics(() => ({
+    teamId: props.teamId,
+    leagueId: props.leagueId,
+    season: props.season,
+    limit: props.limit,
+  }));
 
   return (
     <div class="card bg-base-100 border border-base-300">
@@ -25,10 +30,10 @@ export function GameMetrics(props: GameMetricsProps) {
                   <div>
                     <div class="text-sm text-base-content/70">Total Shots</div>
                     <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.total.toFixed(1)}
+                      {metricsQuery.data?.for.perGame.shots.total.toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.total}
+                      {metricsQuery.data?.for.total.shots.total}
                     </div>
                   </div>
                   <div>
@@ -36,19 +41,19 @@ export function GameMetrics(props: GameMetricsProps) {
                       Shots on Goal
                     </div>
                     <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.onGoal.toFixed(1)}
+                      {metricsQuery.data?.for.perGame.shots.onGoal.toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.onGoal}
+                      {metricsQuery.data?.for.total.shots.onGoal}
                     </div>
                   </div>
                   <div class="flex-1 min-w-[150px]">
                     <div class="text-sm text-base-content/70">Shots Missed</div>
                     <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.missed.toFixed(1)}
+                      {metricsQuery.data?.for.perGame.shots.missed.toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.missed}
+                      {metricsQuery.data?.for.total.shots.missed}
                     </div>
                   </div>
                   <div class="flex-1 min-w-[150px]">
@@ -56,10 +61,10 @@ export function GameMetrics(props: GameMetricsProps) {
                       Blocked Shots
                     </div>
                     <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.blocked.toFixed(1)}
+                      {metricsQuery.data?.for.perGame.shots.blocked.toFixed(1)}
                     </div>
                     <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.blocked}
+                      {metricsQuery.data?.for.total.shots.blocked}
                     </div>
                   </div>
                   <div class="flex-1 min-w-[150px]">

@@ -57,12 +57,14 @@ export type UseTeamMetrics = {
   teamId: number;
   leagueId: number;
   season: number;
+  limit?: number;
 };
 
 export type TeamMetricsCacheKey = {
   teamId: number;
   leagueId: number;
   season: number;
+  limit?: number;
 };
 
 type ShotMetrics = {
@@ -88,25 +90,30 @@ export type TeamMetrics = Record<
   }
 > & { num_fixtures: number };
 
-export function useTeamMetrics(props: UseTeamMetrics) {
+export function useTeamMetrics(getProps: () => UseTeamMetrics) {
   const auth = useAuth();
 
-  return useQuery(() => ({
-    queryKey: [
-      "teams",
-      { id: props.teamId, leagueId: props.leagueId, season: props.season },
-      "metrics",
-    ],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        season: props.season.toString(),
-        league_id: props.leagueId.toString(),
-      });
+  return useQuery(() => {
+    const props = getProps();
+    return {
+      queryKey: [
+        "teams",
+        { id: props.teamId, leagueId: props.leagueId, season: props.season, limit: props.limit },
+        "metrics",
+      ],
+      queryFn: async () => {
+        const params = new URLSearchParams({
+          season: props.season.toString(),
+          league_id: props.leagueId.toString(),
+        });
+        if (props.limit) {
+          params.set("limit", props.limit.toString());
+        }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/teams/${
-          props.teamId
-        }/metrics?${params.toString()}`,
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/teams/${
+            props.teamId
+          }/metrics?${params.toString()}`,
         {
           headers: auth.headers(),
         },
@@ -157,5 +164,6 @@ export function useTeamMetrics(props: UseTeamMetrics) {
         against: buildStats(body.against),
       };
     },
-  }));
+  };
+  });
 }

@@ -608,7 +608,17 @@ const StatRow = ({
 function Comparison(
   props: AnalysisData & { juiceData?: JuiceFixture; matchId: number },
 ) {
-  const [activeTab, setActiveTab] = createSignal<"season" | "form">("season");
+  // Check if form data is available for both teams with >= 5 games
+  const hasFormData =
+    props.form?.home &&
+    props.form?.away &&
+    props.form.home.num_games >= 5 &&
+    props.form.away.num_games >= 5;
+
+  // Default to "form" tab when form data is available
+  const [activeTab, setActiveTab] = createSignal<"season" | "form">(
+    hasFormData ? "form" : "season",
+  );
 
   // Determine which dataset to display based on active tab
   const homeStats = createMemo(() =>
@@ -662,11 +672,7 @@ function Comparison(
   );
 
   // Only show tabs if form data exists AND teams have played >= 5 games
-  const showTabs = () =>
-    props.form?.home &&
-    props.form?.away &&
-    props.form.home.num_games >= 5 &&
-    props.form.away.num_games >= 5;
+  const showTabs = () => hasFormData;
 
   // Get match data to extract league and season info
   const matchQuery = useFixture(props.matchId);

@@ -50,13 +50,20 @@ struct Metrics {
   against: TeamMetrics,
 }
 
-fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int) Metrics!Str {
-  let fixture_stats = try db.query("SELECT f.*, fs.* FROM fixtures f
+fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
+  let base_query = "SELECT f.*, fs.* FROM fixtures f
     JOIN fixture_stats fs ON f.id = fs.fixture_id
     WHERE f.league_id = @league_id AND f.season = @season
     AND (f.home_id = @team_id OR f.away_id = @team_id)
-    AND f.finished = true"
-  ).all(["team_id": team_id, "season": season, "league_id": league_id])
+    AND f.finished = true
+    ORDER BY f.timestamp DESC"
+
+  let query = match limit {
+    n => "{base_query} LIMIT {n * 2}", // *2 because there are 2 rows per fixture
+    _ => base_query
+  }
+
+  let fixture_stats = try db.query(query).all(["team_id": team_id, "season": season, "league_id": league_id])
 
   mut team = TeamMetrics::new()
   mut opp = TeamMetrics::new()
