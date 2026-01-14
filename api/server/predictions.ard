@@ -283,6 +283,29 @@ fn get_form(db: sql::Database, team_id: Int, before: Int) Snapshot!Str {
   }
 }
 
+// Returns form-based comparison if league is followed and both teams have ≥5 games
+// falls back to normal comparison for unfollowed leagues
+fn get_form_comparison(db: sql::Database, fixture: fixtures::Fixture) Comparison!Str {
+  match leagues::is_following(db, fixture.league.id) {
+    false => {
+      let comp = try get_comparison(fixture.id)
+      match comp.home.num_games >= 5 and comp.away.num_games >= 5 {
+        true => Result::ok(comp),
+        false => Result::err("Insufficient games")
+      }
+    },
+    true => {
+      let home_form = try get_form(db, fixture.home.id, fixture.timestamp)
+      let away_form = try get_form(db, fixture.away.id, fixture.timestamp)
+
+      match home_form.num_games >= 5 and away_form.num_games >= 5 {
+        true => Result::ok(Comparison{ home: home_form, away: away_form }),
+        false => Result::err("Insufficient games")
+      }
+    }
+  }
+}
+
 struct FixturePicks {
   fixture: fixtures::Fixture,
   stats: [odds::Stat]
@@ -386,44 +409,42 @@ private fn find_juice() {
   mut entries: [FixturePicks] = []
   for fixture in fixtures::find_today() {
     if not ignored_leagues.has(fixture.league.id) {
-      match get_comparison(fixture.id) {
+      match get_form_comparison(db, fixture) {
         ok(comp) => {
-          if comp.home.num_games > 7 {
-            mut entry = FixturePicks{
-              fixture: fixture,
-              stats: [],
-            }
-            // find odds, if team over/under makes sense, save it
-            match odds::get(fixture.id) {
-              ok(all_odds) => {
-                for odd in all_odds {
-                  if odd.id == odds::OUTCOME  {
-                    pick_outcome(odd, comp, entry)
-                  }
-
-                  if odd.id == odds::HOME_TOTAL_GOALS  {
-                    pick_team_goal_lines(odd, comp.home, entry)
-                  }
-
-                  if odd.id == odds::AWAY_TOTAL_GOALS {
-                    pick_team_goal_lines(odd, comp.away, entry)
-                  }
-
-                  if odd.id == odds::HOME_CLEANSHEET {
-                    pick_cleansheet_lines(odd, comp.home, entry)
-                  }
-
-                  if odd.id == odds::AWAY_CLEANSHEET {
-                    pick_cleansheet_lines(odd, comp.away, entry)
-                  }
+          mut entry = FixturePicks{
+            fixture: fixture,
+            stats: [],
+          }
+          // find odds, if team over/under makes sense, save it
+          match odds::get(fixture.id) {
+            ok(all_odds) => {
+              for odd in all_odds {
+                if odd.id == odds::OUTCOME  {
+                  pick_outcome(odd, comp, entry)
                 }
-              },
-              err => io::print("Error getting odds for fixture {fixture.id}: {err}")
-            }
 
-            if entry.stats.size() > 0 {
-              entries.push(entry)
-            }
+                if odd.id == odds::HOME_TOTAL_GOALS  {
+                  pick_team_goal_lines(odd, comp.home, entry)
+                }
+
+                if odd.id == odds::AWAY_TOTAL_GOALS {
+                  pick_team_goal_lines(odd, comp.away, entry)
+                }
+
+                if odd.id == odds::HOME_CLEANSHEET {
+                  pick_cleansheet_lines(odd, comp.home, entry)
+                }
+
+                if odd.id == odds::AWAY_CLEANSHEET {
+                  pick_cleansheet_lines(odd, comp.away, entry)
+                }
+              }
+            },
+            err => io::print("Error getting odds for fixture {fixture.id}: {err}")
+          }
+
+          if entry.stats.size() > 0 {
+            entries.push(entry)
           }
         },
         err => io::print("Error getting matchup data for fixture {fixture.id}: {err}")

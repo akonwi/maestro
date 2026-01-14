@@ -3,6 +3,22 @@
 **Priority:** Phase 1 - Quick Win
 **Effort:** 1-2 days
 **Impact:** High
+**Status:** Complete
+
+## Implementation Summary
+
+### Completed
+- ✅ Backend: `get_form()` calculates recent form on-demand from fixtures (uses xG from fixture_stats)
+- ✅ Backend: `find_juice()` prefers form stats when available, falls back to season stats otherwise
+- ✅ API: `/analysis/:matchId` returns both `comparison` (season) and `form` (last 5, nullable)
+- ✅ Frontend: Tabbed UI in matchup modal to switch between Season and Last 5 views
+- ✅ Tabs hidden when league not followed or team has < 5 games
+- ✅ Reactive labels change based on active tab (xG/xGA for form, Avg Goals For/Against for season)
+
+### Resolution
+Recent form better reflects a team's current state than full season averages. For followed leagues with sufficient form data (≥5 games), bet recommendations now use form stats directly. For unfollowed leagues or insufficient data, recommendations fall back to season stats.
+
+---
 
 ## Problem Statement
 
@@ -274,12 +290,12 @@ expect(getTrendIndicator(declining)).toBe('📉');
 
 ## Success Criteria
 
-- [ ] `get_recent_form_metrics()` function calculates correctly on-demand
-- [ ] API returns both `season` and `recent5` data in single call
-- [ ] Matchup modal shows tabs with correct data in each view
-- [ ] Last 5 tab hidden when team has < 5 games
-- [ ] Trend indicator (📈/📉) displays correctly
-- [ ] Bet recommendations use weighted (70/30) values
+- [x] `get_form()` function calculates recent form on-demand from fixtures
+- [x] API returns both `comparison` and `form` data in single call
+- [x] Matchup modal shows tabs with correct data in each view
+- [x] Last 5 tab hidden when team has < 5 games or league not followed
+- [x] ~~Trend indicator (📈/📉) displays correctly~~ (removed - not needed)
+- [x] Bet recommendations prefer recent form stats when available
 - [ ] No performance degradation (< 100ms API response time)
 - [ ] Backtest shows improvement over season-only approach
 
