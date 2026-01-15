@@ -1,30 +1,25 @@
 import {
-  For,
   Match,
   Switch,
   Show,
   createMemo,
   createSignal,
   Suspense,
-  useContext,
   type Accessor,
 } from "solid-js";
 import { AnalysisData, useMatchup } from "~/api/analysis";
 import { useFixture } from "~/api/fixtures";
-import { JuiceFixture } from "~/hooks/data/use-juice";
 import { useTrackLeague, useLeagues, useToggleLeague } from "~/api/leagues";
 import { DotsVerticalIcon } from "./icons/dots-vertical";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { useAuth } from "~/contexts/auth";
 import { A } from "@solidjs/router";
-import { BetFormContext } from "./bet-form.context";
 
 import type { TeamStats } from "~/api/analysis";
 
 interface TeamComparisonProps {
   matchId: number;
   onClose: () => void;
-  valueBets?: JuiceFixture;
 }
 
 // Match Info Skeleton
@@ -255,7 +250,7 @@ function MatchInfo({ matchId }: { matchId: number }) {
   );
 }
 
-export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
+export function Matchup({ matchId, onClose }: TeamComparisonProps) {
   const analysisQuery = useMatchup(matchId);
 
   return (
@@ -290,7 +285,6 @@ export function Matchup({ matchId, onClose, valueBets }: TeamComparisonProps) {
 
             <Comparison
               {...analysisQuery.data!}
-              juiceData={valueBets}
               matchId={matchId}
             />
 
@@ -395,20 +389,6 @@ const getFormRating = (stats: TeamStats) => {
   return "poor"; // <35% (Relegation zone performance)
 };
 
-const formatOdds = (odd: number) => {
-  if (odd > 0) {
-    return `+${odd}`;
-  }
-  return odd.toString();
-};
-
-// Bet type IDs
-const MATCH_OUTCOME = 1;
-const HOME_TOTAL_GOALS = 16;
-const HOME_CLEANSHEET = 27;
-const AWAY_TOTAL_GOALS = 17;
-const AWAY_CLEANSHEET = 28;
-
 const StatRow = ({
   matchId,
   label,
@@ -416,7 +396,6 @@ const StatRow = ({
   awayValue,
   homeClass = "",
   awayClass = "",
-  juiceData,
 }: {
   matchId: number;
   label: Accessor<string>;
@@ -424,181 +403,24 @@ const StatRow = ({
   awayValue: Accessor<string | number>;
   homeClass?: string;
   awayClass?: string;
-  juiceData?: JuiceFixture;
 }) => {
-  const auth = useAuth();
-  const [_, betForm] = useContext(BetFormContext);
-  type Highlight = {
-    text: string;
-    typeId: number;
-    description: string;
-    odds: number;
-    line?: number;
-  };
-
-  const homeHighlights: Array<Highlight> = [];
-  const awayHighlights: Array<Highlight> = [];
-
-  // Map betting markets to stat labels
-  juiceData?.stats.forEach((betType) => {
-    betType.values.forEach((value) => {
-      let formattedValue = value.name;
-
-      // Format Over/Under to +/- signs
-      if (formattedValue.toLowerCase().includes("over")) {
-        formattedValue = formattedValue.replace(/over\s*/i, "+");
-      }
-      if (formattedValue.toLowerCase().includes("under")) {
-        formattedValue = formattedValue.replace(/under\s*/i, "-");
-      }
-
-      const betText = `${formattedValue}: ${formatOdds(value.odd)}`;
-      const description = `${betType.name} - ${value.name}`;
-      // Extract line value from bet name (e.g., "Over 2.5" -> 2.5, "Under 2.5" -> -2.5)
-      const line = ((): number | undefined => {
-        const match = value.name.match(/(\d+\.?\d*)/);
-        if (!match || !match[1]) return undefined;
-
-        const numValue = parseFloat(match[1]);
-        // Make negative for "Under" bets
-        return value.name.toLowerCase().includes("under")
-          ? -numValue
-          : numValue;
-      })();
-
-      // Match Outcome mapping
-      if (betType.id === MATCH_OUTCOME && label === "W-D-L Record") {
-        if (value.name === "Home") {
-          homeHighlights.push({
-            text: betText,
-            typeId: betType.id,
-            description: description,
-            odds: value.odd,
-            line: line,
-          });
-        } else if (value.name === "Away") {
-          awayHighlights.push({
-            text: betText,
-            typeId: betType.id,
-            description: description,
-            odds: value.odd,
-            line: line,
-          });
-        }
-      }
-
-      // Home Total Goals mapping
-      if (betType.id === HOME_TOTAL_GOALS && label === "Avg Goals For") {
-        homeHighlights.push({
-          text: betText,
-          typeId: betType.id,
-          description: description,
-          odds: value.odd,
-          line: line,
-        });
-      }
-
-      // Away Total Goals mapping
-      if (betType.id === AWAY_TOTAL_GOALS && label === "Avg Goals For") {
-        awayHighlights.push({
-          text: betText,
-          typeId: betType.id,
-          description: description,
-          odds: value.odd,
-          line: line,
-        });
-      }
-
-      // Home Clean Sheet mapping
-      if (betType.id === HOME_CLEANSHEET && label === "Clean Sheets") {
-        homeHighlights.push({
-          text: betText,
-          typeId: betType.id,
-          description: description,
-          odds: value.odd,
-          line: line,
-        });
-      }
-
-      // Away Clean Sheet mapping
-      if (betType.id === AWAY_CLEANSHEET && label === "Clean Sheets") {
-        awayHighlights.push({
-          text: betText,
-          typeId: betType.id,
-          description: description,
-          odds: value.odd,
-          line: line,
-        });
-      }
-    });
-  });
-
   return (
     <div class="py-2 border-b border-base-200">
       <div class="grid grid-cols-3 sm:grid-cols-7 gap-2 sm:gap-4 items-center">
-        {/* Home side with bet highlights on the left */}
-        <div class="col-span-1 sm:col-span-2 flex items-center justify-end gap-2">
-          <div class="flex flex-wrap gap-1 justify-end">
-            <For each={homeHighlights}>
-              {(highlight) => (
-                <span
-                  class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
-                  onClick={() => {
-                    if (auth.isReadOnly()) return;
-
-                    betForm.show(matchId, {
-                      type_id: highlight.typeId,
-                      description: highlight.description,
-                      odds: highlight.odds,
-                      line: highlight.line,
-                    });
-                  }}
-                >
-                  {highlight.text}
-                </span>
-              )}
-            </For>
-          </div>
-          <div
-            class={`text-center sm:text-right text-sm sm:text-base ${homeClass}`}
-          >
-            {homeValue()}
-          </div>
+        <div
+          class={`col-span-1 sm:col-span-2 text-center sm:text-right text-sm sm:text-base ${homeClass}`}
+        >
+          {homeValue()}
         </div>
 
-        {/* Center label */}
         <div class="col-span-1 sm:col-span-3 text-center font-medium text-base-content/60 text-xs sm:text-base">
           {label()}
         </div>
 
-        {/* Away side with bet highlights on the right */}
-        <div class="col-span-1 sm:col-span-2 flex items-center justify-start gap-2">
-          <div
-            class={`text-center sm:text-left text-sm sm:text-base ${awayClass}`}
-          >
-            {awayValue()}
-          </div>
-          <div class="flex flex-wrap gap-1 justify-start">
-            <For each={awayHighlights}>
-              {(highlight) => (
-                <span
-                  class="badge badge-accent badge-xs cursor-pointer hover:badge-accent-focus transition-colors"
-                  onClick={() => {
-                    if (auth.isReadOnly()) return;
-
-                    betForm.show(matchId, {
-                      type_id: highlight.typeId,
-                      description: highlight.description,
-                      odds: highlight.odds,
-                      line: highlight.line,
-                    });
-                  }}
-                >
-                  {highlight.text}
-                </span>
-              )}
-            </For>
-          </div>
+        <div
+          class={`col-span-1 sm:col-span-2 text-center sm:text-left text-sm sm:text-base ${awayClass}`}
+        >
+          {awayValue()}
         </div>
       </div>
     </div>
@@ -606,7 +428,7 @@ const StatRow = ({
 };
 
 function Comparison(
-  props: AnalysisData & { juiceData?: JuiceFixture; matchId: number },
+  props: AnalysisData & { matchId: number },
 ) {
   // Check if form data is available for both teams with >= 5 games
   const hasFormData =
@@ -738,7 +560,6 @@ function Comparison(
 
         <StatRow
           label={() => "W-D-L Record"}
-          juiceData={props.juiceData}
           homeValue={homeRecord}
           awayValue={awayRecord}
           matchId={props.matchId}
@@ -766,7 +587,6 @@ function Comparison(
 
         <StatRow
           label={() => "GF:GA (Diff)"}
-          juiceData={props.juiceData}
           homeValue={homeGoalRatio}
           awayValue={awayGoalRatio}
           homeClass={
@@ -789,7 +609,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => activeTab() === "form" ? "xG" : "Avg Goals For"}
-          juiceData={props.juiceData}
           homeValue={homeXgf}
           awayValue={awayXgf}
         />
@@ -797,7 +616,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => activeTab() === "form" ? "xGA" : "Avg Goals Against"}
-          juiceData={props.juiceData}
           homeValue={homeXga}
           awayValue={awayXga}
         />
@@ -805,7 +623,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => "Strike Rate"}
-          juiceData={props.juiceData}
           homeValue={homeStrikeRate}
           awayValue={awayStrikeRate}
         />
@@ -813,7 +630,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => "+1.5 Goals For"}
-          juiceData={props.juiceData}
           homeValue={homeOnePlusScored}
           awayValue={awayOnePlusScored}
         />
@@ -821,7 +637,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => "Clean Sheets"}
-          juiceData={props.juiceData}
           homeValue={homeCleanSheets}
           awayValue={awayCleanSheets}
         />
@@ -829,7 +644,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => "+0.5 Goals Against"}
-          juiceData={props.juiceData}
           homeValue={homeOneConceded}
           awayValue={awayOneConceded}
         />
@@ -837,7 +651,6 @@ function Comparison(
         <StatRow
           matchId={props.matchId}
           label={() => "+1.5 Goals Against"}
-          juiceData={props.juiceData}
           homeValue={homeTwoConceded}
           awayValue={awayTwoConceded}
         />
