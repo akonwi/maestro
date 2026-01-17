@@ -71,6 +71,23 @@ fn get_team_fixtures(team_id: Int, league_id: Int, season: Int) Dynamic!Str {
   Result::ok(body)
 }
 
+// todo: build a search params helper because these args could be a Map of anything that implements ToString
+
+// Fetch completed fixtures for a team in a league/season
+// todo: accept optional status param in 👆🏿 when Ard supports it
+fn get_team_played_fixtures(team_id: Int, league_id: Int, season: Int, last: Int?) [Dynamic]!Str {
+  mut query = "team={team_id}&league={league_id}&season={season}&status=FT"
+  match last {
+    l => { query =+ "&last={l}" },
+    _ => ()
+  }
+  let body = try send_request("https://v3.football.api-sports.io/fixtures?{query}")
+  let data = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
+    Result::err("Couldn't decode response from fapi/fixtures: {errs.at(0)}")
+  }
+  Result::ok(data)
+}
+
 // Fetch today's fixtures (no status = scheduled)
 fn get_today_fixtures(date: Str) Dynamic!Str {
   let body = try send_request("https://v3.football.api-sports.io/fixtures?status=NS&timezone=America/New_York&date={date}")

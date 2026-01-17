@@ -1,5 +1,10 @@
+use ard/async
 use ard/decode
 use ard/sql
+
+use maestro/fapi
+use maestro/fixtures
+use maestro/leagues
 
 struct Shots {
   total: Int
@@ -50,7 +55,7 @@ struct Metrics {
   against: TeamMetrics,
 }
 
-fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
+fn get_metrics_from_db(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
   let base_query = "SELECT f.*, fs.* FROM fixtures f
     JOIN fixture_stats fs ON f.id = fs.fixture_id
     WHERE f.league_id = @league_id AND f.season = @season
@@ -126,4 +131,81 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
     team: team,
     against: opp,
   })
+}
+
+fn get_metrics_from_api(team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
+  let entries = try fapi::get_team_played_fixtures(team_id: team_id, league_id: league_id, season: season, last: limit)
+
+  mut fibers: [async::Fiber<fixtures::FixtureStats!Str>] = []
+  for e in entries {
+    let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    fibers.push(async::eval(fn() fixtures::FixtureStats!Str {
+      let data = try fapi::get_fixture(fixture_id)
+      let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+      Result::ok(fs)
+    }))
+  }
+
+  mut metrics = Metrics{
+    num_fixtures: fibers.size(),
+    team: TeamMetrics::new(),
+    against: TeamMetrics::new(),
+  }
+
+  for f in fibers {
+    let fs = try f.get()
+    let is_home = fs.fixture.home.id == team_id
+
+    let team_stats = match is_home {
+      true => fs.home,
+      false => fs.away
+    }
+    let opp_stats = match is_home {
+      true => fs.away,
+      false => fs.home
+    }
+
+    metrics.team.shots.total =+ team_stats.shots
+    metrics.team.shots.blocked =+ team_stats.shots_blocked
+    metrics.team.shots.on_target =+ team_stats.shots_on_goal
+    metrics.team.shots.off_target =+ team_stats.shots - team_stats.shots_blocked - team_stats.shots_on_goal
+    metrics.team.shots.in_box =+ team_stats.shots_in_box
+    metrics.team.shots.out_box =+ team_stats.shots_out_box
+    metrics.team.xg =+ team_stats.xg
+    metrics.team.corners =+ team_stats.corners
+
+    metrics.against.shots.total =+ opp_stats.shots
+    metrics.against.shots.blocked =+ opp_stats.shots_blocked
+    metrics.against.shots.on_target =+ opp_stats.shots_on_goal
+    metrics.against.shots.off_target =+ opp_stats.shots - opp_stats.shots_blocked - opp_stats.shots_on_goal
+    metrics.against.shots.in_box =+ opp_stats.shots_in_box
+    metrics.against.shots.out_box =+ opp_stats.shots_out_box
+    metrics.against.xg =+ opp_stats.xg
+    metrics.against.corners =+ opp_stats.corners
+  }
+
+  let num_games = Float::from_int(metrics.num_fixtures)
+
+  metrics.team.shots.per_game = Float::from_int(metrics.team.shots.total) / num_games
+  metrics.team.shots.on_target_per_game = Float::from_int(metrics.team.shots.on_target) / num_games
+  metrics.team.shots.off_target_per_game = Float::from_int(metrics.team.shots.off_target) / num_games
+  metrics.team.shots.in_box_per_game = Float::from_int(metrics.team.shots.in_box) / num_games
+  metrics.team.shots.out_box_per_game = Float::from_int(metrics.team.shots.out_box) / num_games
+  metrics.team.shots.blocked_per_game = Float::from_int(metrics.team.shots.blocked) / num_games
+
+  metrics.against.shots.per_game = Float::from_int(metrics.against.shots.total) / num_games
+  metrics.against.shots.on_target_per_game = Float::from_int(metrics.against.shots.on_target) / num_games
+  metrics.against.shots.off_target_per_game = Float::from_int(metrics.against.shots.off_target) / num_games
+  metrics.against.shots.in_box_per_game = Float::from_int(metrics.against.shots.in_box) / num_games
+  metrics.against.shots.out_box_per_game = Float::from_int(metrics.against.shots.out_box) / num_games
+  metrics.against.shots.blocked_per_game = Float::from_int(metrics.against.shots.blocked) / num_games
+
+  Result::ok(metrics)
+}
+
+fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
+  match leagues::is_following(db, league_id) {
+    true => get_metrics_from_db(db: db, team_id: team_id, league_id: league_id, season: season, limit: limit),
+    false => get_metrics_from_api(team_id: team_id, league_id: league_id, season: season, limit: limit),
+  }
 }
