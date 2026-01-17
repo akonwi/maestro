@@ -293,16 +293,14 @@ export default function TeamStatsPage() {
           </div>
 
           {/* Game Metrics */}
-          <Show when={isTeamInFollowedLeague()}>
-            <Suspense fallback={<GameMetrics.Loading />}>
-              <GameMetrics
-                teamId={teamId}
-                leagueId={league}
-                season={season}
-                limit={activeTab() === "form" ? 5 : undefined}
-              />
-            </Suspense>
-          </Show>
+          <Suspense fallback={<GameMetrics.Loading />}>
+            <GameMetrics
+              teamId={teamId}
+              leagueId={league}
+              season={season}
+              limit={activeTab() === "form" ? 5 : undefined}
+            />
+          </Suspense>
 
           {/* Match Statistics */}
           <div class="card bg-base-100 border border-base-300">

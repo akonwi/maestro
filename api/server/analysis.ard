@@ -1,5 +1,6 @@
 use ard/async
 use ard/decode
+use ard/duration
 use ard/sql
 
 use maestro/fapi
@@ -137,8 +138,12 @@ fn get_metrics_from_api(team_id: Int, league_id: Int, season: Int, limit: Int?) 
   let entries = try fapi::get_team_played_fixtures(team_id: team_id, league_id: league_id, season: season, last: limit)
 
   mut fibers: [async::Fiber<fixtures::FixtureStats!Str>] = []
-  for e in entries {
+  for e, i in entries {
     let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+
+    // this is pretty ugly. to mitigate getting rate-limited, try to stagger requests
+    if i > 9 { async::sleep(duration::from_seconds(1)) }
+
     fibers.push(async::eval(fn() fixtures::FixtureStats!Str {
       let data = try fapi::get_fixture(fixture_id)
       let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
