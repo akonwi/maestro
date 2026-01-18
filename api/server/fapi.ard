@@ -115,8 +115,8 @@ fn get_team_fixtures(db: sql::Database, team_id: Int, league_id: Int, season: In
   }
 }
 
-fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, season: Int, last: Int?) [Dynamic]!Str {
-  mut query = "team={team_id}&league={league_id}&season={season}&status=FT"
+fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, last: Int?) [Dynamic]!Str {
+  mut query = "team={team_id}&league={league_id}&status=FT"
   match last {
     l => { query =+ "&last={l}" },
     _ => ()

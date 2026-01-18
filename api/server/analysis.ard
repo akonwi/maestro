@@ -134,8 +134,8 @@ fn get_metrics_from_db(db: sql::Database, team_id: Int, league_id: Int, season: 
   })
 }
 
-fn get_metrics_from_api(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
-  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: limit)
+fn get_metrics_from_api(db: sql::Database, team_id: Int, league_id: Int, limit: Int?) Metrics!Str {
+  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, last: limit)
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e, i in entries {
@@ -208,6 +208,6 @@ fn get_metrics_from_api(db: sql::Database, team_id: Int, league_id: Int, season:
 fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
   match leagues::is_following(db, league_id) {
     true => get_metrics_from_db(db: db, team_id: team_id, league_id: league_id, season: season, limit: limit),
-    false => get_metrics_from_api(db: db, team_id: team_id, league_id: league_id, season: season, limit: limit),
+    false => get_metrics_from_api(db: db, team_id: team_id, league_id: league_id, limit: limit),
   }
 }
