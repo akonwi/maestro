@@ -72,8 +72,8 @@ struct Comparison {
   away: Snapshot,
 }
 
-fn get_comparison(fixture_id: Int) Comparison!Str {
-  let body = try fapi::get_predictions(fixture_id)
+fn get_comparison(db: sql::Database, fixture_id: Int) Comparison!Str {
+  let body = try fapi::get_predictions(db, fixture_id)
 
   fn decode_stats(data: Dynamic) Snapshot![decode::Error] {
     let id = try decode_id(data)
@@ -288,7 +288,7 @@ fn get_form(db: sql::Database, team_id: Int, before: Int) Snapshot!Str {
 fn get_form_comparison(db: sql::Database, fixture: fixtures::Fixture) Comparison!Str {
   match leagues::is_following(db, fixture.league.id) {
     false => {
-      let comp = try get_comparison(fixture.id)
+      let comp = try get_comparison(db, fixture.id)
       match comp.home.num_games >= 5 and comp.away.num_games >= 5 {
         true => Result::ok(comp),
         false => Result::err("Insufficient games")
@@ -407,7 +407,7 @@ private fn find_juice() {
   let ignored_leagues = leagues::get_ignored(db)
 
   mut entries: [FixturePicks] = []
-  for fixture in fixtures::find_today() {
+  for fixture in fixtures::find_today(db) {
     if not ignored_leagues.has(fixture.league.id) {
       match get_form_comparison(db, fixture) {
         ok(comp) => {
@@ -416,7 +416,7 @@ private fn find_juice() {
             stats: [],
           }
           // find odds, if team over/under makes sense, save it
-          match odds::get(fixture.id) {
+          match odds::get(db, fixture.id) {
             ok(all_odds) => {
               for odd in all_odds {
                 if odd.id == odds::OUTCOME  {
