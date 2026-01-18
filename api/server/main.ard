@@ -252,22 +252,6 @@ fn main() {
                   internal_error("Error getting analysis: {err}")
                 }
 
-                let form_comparison = match leagues::is_following(conn, fixture.league_id) {
-                  true => {
-                    let home_form = try predictions::get_form(conn, fixture.home.id, fixture.timestamp) -> err {
-                      internal_error("Error getting home form: {err}")
-                    }
-                    let away_form = try predictions::get_form(conn, fixture.away.id, fixture.timestamp) -> err {
-                      internal_error("Error getting away form: {err}")
-                    }
-                    maybe::some(predictions::Comparison{
-                      home: home_form,
-                      away: away_form,
-                    })
-                  },
-                  false => maybe::none(),
-                }
-
                 mut data = [
                   "home": fixture.home.to_dyn(),
                   "away": fixture.away.to_dyn(),
@@ -278,12 +262,12 @@ fn main() {
                 ]
 
                 // add 'form' key if we have form data
-                match form_comparison {
-                  comp => data.set("form", Dynamic::object([
+                match predictions::get_form_comparison(conn, fixture)  {
+                  ok(comp) => data.set("form", Dynamic::object([
                     "home": comp.home.to_dyn(),
                     "away": comp.away.to_dyn(),
                   ])),
-                  _ => ()
+                  err => ()
                 }
 
                 match json::encode(Dynamic::object(data)) {
