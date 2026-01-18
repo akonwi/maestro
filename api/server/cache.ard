@@ -21,6 +21,20 @@ let TTL_LEAGUE = 14400             // 4 hours
 let TTL_TEAM = 86400               // 24 hours
 let TTL_TEAM_PLAYED = 21600        // 6 hours
 
+// todo: Endpoint enum with .to_str() and .ttl() methods
+let entity_ttl = [
+  "predictions": TTL_PREDICTIONS,
+  "odds": TTL_ODDS,
+  "league_season": TTL_LEAGUE_SEASON,
+  "fixture": TTL_FIXTURE,
+  "team_fixtures": TTL_TEAM_FIXTURES,
+  "today_fixtures": TTL_TODAY_FIXTURES,
+  "season_fixtures": TTL_SEASON_FIXTURES,
+  "league": TTL_LEAGUE,
+  "team": TTL_TEAM,
+  "team_played": TTL_TEAM_PLAYED
+]
+
 // Get cached response if it exists and hasn't expired
 // Returns none if not cached, expired, or on any error (cache miss)
 fn get(db: sql::Database, endpoint: Str, resource_id: Str) Dynamic? {
@@ -52,8 +66,9 @@ fn get(db: sql::Database, endpoint: Str, resource_id: Str) Dynamic? {
 }
 
 // Set cache entry
-fn set(db: sql::Database, endpoint: Str, resource_id: Str, response: Dynamic, ttl_seconds: Int) Void!Str {
+fn set(db: sql::Database, endpoint: Str, resource_id: Str, response: Dynamic) Void!Str {
   let now = chrono::now()
+  let ttl_seconds = entity_ttl.get(endpoint).or(TTL_PREDICTIONS)
   let expires_at = now + ttl_seconds
   let response_str = try json::encode(response) -> err {
     let msg = "Failed to encode response to JSON for cache: {err}"
