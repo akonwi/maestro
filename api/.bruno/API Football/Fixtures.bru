@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: https://v3.football.api-sports.io/fixtures?season=2025&league=40&team=54
+  url: https://v3.football.api-sports.io/fixtures?season=2025&league=40&team=54&status=FT
   body: none
   auth: inherit
 }
@@ -14,8 +14,9 @@ params:query {
   season: 2025
   league: 40
   team: 54
+  status: FT
   ~date: 2025-12-07
-  ~status: NS
   ~id: 1487910
   ~timezone: America/New_York
+  ~last: 
 }

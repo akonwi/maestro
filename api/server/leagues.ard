@@ -132,8 +132,8 @@ fn toggle_hidden(db: sql::Database, id: Int, hidden: Bool) Void!Str {
   ])
 }
 
-fn fetch(id: Int) League!Str {
-  let body = try fapi::get_league(id)
+fn fetch(db: sql::Database, id: Int) League!Str {
+  let body = try fapi::get_league(db, id)
 
   let data = try decode::run(
     body,
@@ -155,7 +155,7 @@ fn get(db: sql::Database, id: Int) League?!Str {
       Result::ok(maybe::some(league))
     },
     _ => {
-      let league = try fetch(id)
+      let league = try fetch(db, id)
       Result::ok(maybe::some(league))
     }
   }

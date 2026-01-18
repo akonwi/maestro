@@ -37,8 +37,8 @@ fn Team::from_api(data: Dynamic) Team!Str {
   Result::ok(Team{ id: id, name: name })
 }
 
-fn fetch(id: Int) Team?!Str {
-  let entry = try fapi::get_team(id)
+fn fetch(db: sql::Database, id: Int) Team?!Str {
+  let entry = try fapi::get_team(db, id)
   let team = try Team::from_api(entry)
   Result::ok(maybe::some(team))
 }
@@ -50,6 +50,6 @@ fn get(db: sql::Database, id: Int) Team?!Str {
       let team = try Team::from_row(row)
       Result::ok(maybe::some(team))
     },
-    _ => fetch(id)
+    _ => fetch(db, id)
   }
 }

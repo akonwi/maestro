@@ -1,0 +1,110 @@
+use ard/async
+use ard/chrono
+use ard/decode
+use ard/duration
+use ard/io
+use ard/json
+use ard/maybe
+use ard/sql
+
+use maestro/db as _db
+
+// TTL constants in seconds
+let TTL_PREDICTIONS = 3600        // 1 hour
+let TTL_ODDS = 14400              // 4 hours
+let TTL_LEAGUE_SEASON = 86400      // 24 hours
+let TTL_FIXTURE = 7200             // 2 hours
+let TTL_TEAM_FIXTURES = 21600      // 6 hours
+let TTL_TODAY_FIXTURES = 900       // 15 minutes
+let TTL_SEASON_FIXTURES = 21600    // 6 hours
+let TTL_LEAGUE = 14400             // 4 hours
+let TTL_TEAM = 86400               // 24 hours
+let TTL_TEAM_PLAYED = 21600        // 6 hours
+
+// todo: Endpoint enum with .to_str() and .ttl() methods
+let entity_ttl = [
+  "predictions": TTL_PREDICTIONS,
+  "odds": TTL_ODDS,
+  "league_season": TTL_LEAGUE_SEASON,
+  "fixture": TTL_FIXTURE,
+  "team_fixtures": TTL_TEAM_FIXTURES,
+  "today_fixtures": TTL_TODAY_FIXTURES,
+  "season_fixtures": TTL_SEASON_FIXTURES,
+  "league": TTL_LEAGUE,
+  "team": TTL_TEAM,
+  "team_played": TTL_TEAM_PLAYED
+]
+
+// Get cached response if it exists and hasn't expired
+// Returns none if not cached, expired, or on any error (cache miss)
+fn get(db: sql::Database, endpoint: Str, resource_id: Str) Dynamic? {
+  let now = chrono::now()
+
+  let row = try db.query(
+    "SELECT response FROM api_cache WHERE endpoint = @endpoint AND resource_id = @resource_id AND expires_at > @now"
+  ).first(["endpoint": endpoint, "resource_id": resource_id, "now": now]) -> err {
+    io::print("[CACHE] Failed to read cache ({endpoint}/{resource_id}): {err}")
+    maybe::none()
+  }
+
+  match row {
+    r => {
+      let response_str = try decode::run(r, decode::field("response", decode::string)) -> _ {
+        io::print("[CACHE] Failed to decode response from cache")
+        maybe::none()
+      }
+
+      let response = try decode::from_json(response_str) -> _ {
+        io::print("[CACHE] Failed to parse cached JSON")
+        maybe::none()
+      }
+
+      maybe::some(response)
+    },
+    _ => maybe::none()
+  }
+}
+
+// Set cache entry
+fn set(db: sql::Database, endpoint: Str, resource_id: Str, response: Dynamic) Void!Str {
+  let now = chrono::now()
+  let ttl_seconds = entity_ttl.get(endpoint).or(TTL_PREDICTIONS)
+  let expires_at = now + ttl_seconds
+  let response_str = try json::encode(response) -> err {
+    let msg = "Failed to encode response to JSON for cache: {err}"
+    io::print(msg)
+    Result::err(msg)
+  }
+
+  let sql = "INSERT INTO api_cache (endpoint, resource_id, response, ttl_seconds, created_at, expires_at)
+             VALUES (@endpoint, @resource_id, @response, @ttl_seconds, @created_at, @expires_at)
+             ON CONFLICT(endpoint, resource_id) DO UPDATE SET response = @response, created_at = @created_at, expires_at = @expires_at"
+
+  try db.query(sql).run([
+    "endpoint": endpoint,
+    "resource_id": resource_id,
+    "response": response_str,
+    "ttl_seconds": ttl_seconds,
+    "created_at": now,
+    "expires_at": expires_at
+  ]) -> err {
+    let msg = "Failed to cache response: {err}"
+    io::print(msg)
+    Result::err(msg)
+  }
+
+  Result::ok(())
+}
+
+// Clean up expired cache entries
+fn cleanup_job() {
+  while {
+    let db = _db::connect()
+    match db.query("DELETE FROM api_cache WHERE expires_at <= @now").run(["now": chrono::now()]) {
+      ok => io::print("Cleaned up expired cache data"),
+      err => io::print("Failed to clean up expired cache entries: {err}")
+    }
+    db.close()
+    async::sleep(duration::from_hours(1))
+  }
+}
