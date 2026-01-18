@@ -25,91 +25,71 @@ fn send_request(url: Str) Dynamic!Str {
 
 fn get_fixture(db: sql::Database, id: Int) Dynamic!Str {
   let id_str = id.to_str()
-  let cached_result = cache::get(db, "fixture", id_str)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        body => {
-          let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-            Result::err("Could not decode response[0] in data for fixture({id}): {errs.at(0)}")
-          }
-          Result::ok(entry)
-        },
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/fixtures?id={id}")
-          cache::set(db, "fixture", id_str, body, cache::TTL_FIXTURE)
-
-          let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-            Result::err("Could not decode response[0] in data for fixture({id}): {errs.at(0)}")
-          }
-          Result::ok(entry)
-        }
+  let cached_body = cache::get(db, "fixture", id_str)
+  match cached_body {
+    body => {
+      let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
+        Result::err("Could not decode response[0] in data for fixture({id}): {errs.at(0)}")
       }
+      Result::ok(entry)
     },
-    err(e) => Result::err(e)
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/fixtures?id={id}")
+      cache::set(db, "fixture", id_str, body, cache::TTL_FIXTURE)
+
+      let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
+        Result::err("Could not decode response[0] in data for fixture({id}): {errs.at(0)}")
+      }
+      Result::ok(entry)
+    }
   }
 }
 
 fn get_team(db: sql::Database, id: Int) Dynamic!Str {
   let id_str = id.to_str()
-  let cached_result = cache::get(db, "team", id_str)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        body => {
-          let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-            Result::err("Could not decode response[0] in data for team({id}): {errs.at(0)}")
-          }
-          Result::ok(entry)
-        },
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/teams?id={id}")
-          cache::set(db, "team", id_str, body, cache::TTL_TEAM)
-
-          let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-            Result::err("Could not decode response[0] in data for team({id}): {errs.at(0)}")
-          }
-          Result::ok(entry)
-        }
+  let cached_body = cache::get(db, "team", id_str)
+  match cached_body {
+    body => {
+      let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
+        Result::err("Could not decode response[0] in data for team({id}): {errs.at(0)}")
       }
+      Result::ok(entry)
     },
-    err(e) => Result::err(e)
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/teams?id={id}")
+      cache::set(db, "team", id_str, body, cache::TTL_TEAM)
+
+      let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
+        Result::err("Could not decode response[0] in data for team({id}): {errs.at(0)}")
+      }
+      Result::ok(entry)
+    }
   }
 }
 
 fn get_odds(db: sql::Database, fixture_id: Int) Dynamic!Str {
   let id_str = fixture_id.to_str()
-  let cached_result = cache::get(db, "odds", id_str)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        cached_body => Result::ok(cached_body),
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/odds?fixture={fixture_id}&bookmaker=8")
-          cache::set(db, "odds", id_str, body, cache::TTL_ODDS)
-          Result::ok(body)
-        }
-      }
-    },
-    err(e) => Result::err(e)
+  let cached_body = cache::get(db, "odds", id_str)
+  match cached_body {
+    body => Result::ok(body),
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/odds?fixture={fixture_id}&bookmaker=8")
+      cache::set(db, "odds", id_str, body, cache::TTL_ODDS)
+      Result::ok(body)
+    }
   }
 }
 
 fn get_predictions(db: sql::Database, fixture_id: Int) Dynamic!Str {
   let id_str = fixture_id.to_str()
-  let cached_result = cache::get(db, "predictions", id_str)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        cached_body => Result::ok(cached_body),
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/predictions?fixture={fixture_id}")
-          cache::set(db, "predictions", id_str, body, cache::TTL_PREDICTIONS)
-          Result::ok(body)
-        }
-      }
-    },
-    err(e) => Result::err(e)
+  let cached_body = cache::get(db, "predictions", id_str)
+  match cached_body {
+    body => Result::ok(body),
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/predictions?fixture={fixture_id}")
+      cache::set(db, "predictions", id_str, body, cache::TTL_PREDICTIONS)
+      Result::ok(body)
+    }
   }
 }
 
@@ -122,37 +102,27 @@ fn get_league_current_season(db: sql::Database, league_id: Int) Int!Str {
 
 fn get_league(db: sql::Database, league_id: Int) Dynamic!Str {
   let id_str = league_id.to_str()
-  let cached_result = cache::get(db, "league", id_str)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        cached_body => Result::ok(cached_body),
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/leagues?id={league_id}")
-          cache::set(db, "league", id_str, body, cache::TTL_LEAGUE)
-          Result::ok(body)
-        }
-      }
-    },
-    err(e) => Result::err(e)
+  let cached_body = cache::get(db, "league", id_str)
+  match cached_body {
+    body => Result::ok(body),
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/leagues?id={league_id}")
+      cache::set(db, "league", id_str, body, cache::TTL_LEAGUE)
+      Result::ok(body)
+    }
   }
 }
 
 fn get_team_fixtures(db: sql::Database, team_id: Int, league_id: Int, season: Int) Dynamic!Str {
   let resource_id = "{team_id}:{league_id}:{season}"
-  let cached_result = cache::get(db, "team_fixtures", resource_id)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        cached_body => Result::ok(cached_body),
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/fixtures?team={team_id}&league={league_id}&season={season}")
-          cache::set(db, "team_fixtures", resource_id, body, cache::TTL_TEAM_FIXTURES)
-          Result::ok(body)
-        }
-      }
-    },
-    err(e) => Result::err(e)
+  let cached_body = cache::get(db, "team_fixtures", resource_id)
+  match cached_body {
+    body => Result::ok(body),
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/fixtures?team={team_id}&league={league_id}&season={season}")
+      cache::set(db, "team_fixtures", resource_id, body, cache::TTL_TEAM_FIXTURES)
+      Result::ok(body)
+    }
   }
 }
 
@@ -170,44 +140,34 @@ fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, sea
 }
 
 fn get_today_fixtures(db: sql::Database, date: Str) Dynamic!Str {
-  let cached_result = cache::get(db, "today_fixtures", date)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        cached_body => Result::ok(cached_body),
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/fixtures?status=NS&timezone=America/New_York&date={date}")
-          cache::set(db, "today_fixtures", date, body, cache::TTL_TODAY_FIXTURES)
-          Result::ok(body)
-        }
-      }
-    },
-    err(e) => Result::err(e)
+  let cached_body = cache::get(db, "today_fixtures", date)
+  match cached_body {
+    body => Result::ok(body),
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/fixtures?status=NS&timezone=America/New_York&date={date}")
+      cache::set(db, "today_fixtures", date, body, cache::TTL_TODAY_FIXTURES)
+      Result::ok(body)
+    }
   }
 }
 
 fn get_season_fixtures(db: sql::Database, league_id: Int, season: Int) [Dynamic]!Str {
   let resource_id = "{league_id}:{season}"
-  let cached_result = cache::get(db, "season_fixtures", resource_id)
-  match cached_result {
-    ok(maybe_body) => {
-      match maybe_body {
-        cached_body => {
-          let entries = try decode::run(cached_body, decode::field("response", decode::list(decode::dynamic))) -> errs {
-            Result::err("Unable to decode response: {errs.at(0)}")
-          }
-          Result::ok(entries)
-        },
-        _ => {
-          let body = try send_request("https://v3.football.api-sports.io/fixtures?league={league_id}&season={season}")
-          let entries = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
-            Result::err("Unable to decode response: {errs.at(0)}")
-          }
-          cache::set(db, "season_fixtures", resource_id, body, cache::TTL_SEASON_FIXTURES)
-          Result::ok(entries)
-        }
+  let cached_body = cache::get(db, "season_fixtures", resource_id)
+  match cached_body {
+    body => {
+      let entries = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
+        Result::err("Unable to decode response: {errs.at(0)}")
       }
+      Result::ok(entries)
     },
-    err(e) => Result::err(e)
+    _ => {
+      let body = try send_request("https://v3.football.api-sports.io/fixtures?league={league_id}&season={season}")
+      let entries = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
+        Result::err("Unable to decode response: {errs.at(0)}")
+      }
+      cache::set(db, "season_fixtures", resource_id, body, cache::TTL_SEASON_FIXTURES)
+      Result::ok(entries)
+    }
   }
 }

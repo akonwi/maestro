@@ -22,26 +22,32 @@ let TTL_TEAM = 86400               // 24 hours
 let TTL_TEAM_PLAYED = 21600        // 6 hours
 
 // Get cached response if it exists and hasn't expired
-fn get(db: sql::Database, endpoint: Str, resource_id: Str) Dynamic?!Str {
+// Returns none if not cached, expired, or on any error (cache miss)
+fn get(db: sql::Database, endpoint: Str, resource_id: Str) Dynamic? {
   let now = chrono::now()
 
   let row = try db.query(
     "SELECT response FROM api_cache WHERE endpoint = @endpoint AND resource_id = @resource_id AND expires_at > @now"
-  ).first(["endpoint": endpoint, "resource_id": resource_id, "now": now])
+  ).first(["endpoint": endpoint, "resource_id": resource_id, "now": now]) -> err {
+    io::print("[CACHE] Failed to read cache ({endpoint}/{resource_id}): {err}")
+    maybe::none()
+  }
 
   match row {
     r => {
-      let response_str = try decode::run(r, decode::field("response", decode::string)) -> errs {
-        Result::err(errs.at(0).to_str())
+      let response_str = try decode::run(r, decode::field("response", decode::string)) -> _ {
+        io::print("[CACHE] Failed to decode response from cache")
+        maybe::none()
       }
 
-      let response = try decode::from_json(response_str) -> found {
-        Result::err("Failed to parse cached response: {found}")
+      let response = try decode::from_json(response_str) -> _ {
+        io::print("[CACHE] Failed to parse cached JSON")
+        maybe::none()
       }
 
-      Result::ok(maybe::some(response))
+      maybe::some(response)
     },
-    _ => Result::ok(maybe::none())
+    _ => maybe::none()
   }
 }
 
