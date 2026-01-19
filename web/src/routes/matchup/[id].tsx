@@ -6,6 +6,7 @@ import { type Fixture, useFixture } from "~/api/fixtures";
 import { getPerformance } from "~/api/teams";
 import { FormTimeline } from "~/components/form-timeline";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
+import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
 import { StatsTable } from "~/components/matchup/stats-table";
 
 function logoUrl(id: number) {
@@ -367,6 +368,17 @@ export default function MatchupPage() {
               </div>
             </div>
           </Show>
+
+          {/* Attack vs Defense Metrics */}
+          <MetricsMatchup
+            homeId={analysis()!.home.id}
+            awayId={analysis()!.away.id}
+            homeName={analysis()!.home.name}
+            awayName={analysis()!.away.name}
+            leagueId={fixture()!.league.id}
+            season={fixture()!.season}
+            limit={activeTab() === "form" ? 5 : undefined}
+          />
 
           {/* Detailed Stats Table */}
           <Show when={homeStats() && awayStats()}>
