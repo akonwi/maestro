@@ -23,7 +23,7 @@ export function FormTimeline(props: FormTimelineProps) {
   return (
     <div class="flex gap-2 overflow-x-auto w-full">
       <For each={props.fixtures}>
-        {(fixture) => {
+        {fixture => {
           const result = getResult(fixture);
           return (
             <div

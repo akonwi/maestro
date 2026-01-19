@@ -1,11 +1,11 @@
-import { useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { type TeamStats, useMatchup } from "~/api/analysis";
 import { type Fixture, useFixture } from "~/api/fixtures";
 import { getPerformance } from "~/api/teams";
+import { FormTimeline } from "~/components/form-timeline";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
-import { FormTimeline } from "~/components/matchup/form-timeline";
 import { StatsTable } from "~/components/matchup/stats-table";
 
 function logoUrl(id: number) {
@@ -194,17 +194,20 @@ export default function MatchupPage() {
             <div class="card-body">
               <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                 {/* Home Team */}
-                <div class="flex flex-col items-center gap-2 flex-1">
+                <A
+                  href={`/teams/${analysis()!.home.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
+                  class="flex flex-col items-center gap-2 flex-1 hover:opacity-80 transition-opacity"
+                >
                   <img
                     src={logoUrl(analysis()!.home.id)}
                     alt={analysis()!.home.name}
                     class="w-16 h-16"
                   />
-                  <div class="text-xl font-bold text-center">
+                  <div class="text-xl font-bold text-center link-hover">
                     {analysis()!.home.name}
                   </div>
                   <div class="text-sm text-base-content/60">Home</div>
-                </div>
+                </A>
 
                 {/* Score / VS */}
                 <div class="text-center">
@@ -220,17 +223,20 @@ export default function MatchupPage() {
                 </div>
 
                 {/* Away Team */}
-                <div class="flex flex-col items-center gap-2 flex-1">
+                <A
+                  href={`/teams/${analysis()!.away.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
+                  class="flex flex-col items-center gap-2 flex-1 hover:opacity-80 transition-opacity"
+                >
                   <img
                     src={logoUrl(analysis()!.away.id)}
                     alt={analysis()!.away.name}
                     class="w-16 h-16"
                   />
-                  <div class="text-xl font-bold text-center">
+                  <div class="text-xl font-bold text-center link-hover">
                     {analysis()!.away.name}
                   </div>
                   <div class="text-sm text-base-content/60">Away</div>
-                </div>
+                </A>
               </div>
             </div>
           </div>

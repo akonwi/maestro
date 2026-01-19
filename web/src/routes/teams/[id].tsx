@@ -4,7 +4,6 @@ import {
   createEffect,
   createMemo,
   createSignal,
-  For,
   Match,
   Show,
   Suspense,
@@ -13,6 +12,7 @@ import {
 import { Fixture, Team } from "~/api/fixtures";
 import { useLeagues } from "~/api/leagues";
 import { getPerformance } from "~/api/teams";
+import { FormTimeline } from "~/components/form-timeline";
 import { GameMetrics } from "~/components/game-metrics";
 
 type ComputedStats = {
@@ -111,7 +111,7 @@ export default function TeamStatsPage() {
 
   const isTeamInFollowedLeague = () => {
     if (!league || !leaguesQuery.data) return false;
-    return leaguesQuery.data.some((l) => l.id === league && !l.hidden);
+    return leaguesQuery.data.some(l => l.id === league && !l.hidden);
   };
 
   const perf = () => performanceQuery.data;
@@ -121,7 +121,7 @@ export default function TeamStatsPage() {
 
   const recentFormFixtures = () => {
     const all = perf()?.fixtures.all ?? [];
-    const completed = all.filter((f) => f.finished);
+    const completed = all.filter(f => f.finished);
     const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
     return sorted.slice(-5);
   };
@@ -130,7 +130,8 @@ export default function TeamStatsPage() {
     computeStatsFromFixtures(recentFormFixtures(), teamId),
   );
 
-  const showTabs = () => isTeamInFollowedLeague() && recentFormFixtures().length >= 5;
+  const showTabs = () =>
+    isTeamInFollowedLeague() && recentFormFixtures().length >= 5;
 
   // Default to "form" tab when form data becomes available (only on initial load)
   let hasSetDefaultTab = false;
@@ -160,24 +161,6 @@ export default function TeamStatsPage() {
       failedToScore: p.failed_to_score,
     } as ComputedStats;
   });
-
-  const formatSummary = (fixture: Fixture) => {
-    const isHome = fixture.home.id === teamId;
-    const opponent = isHome ? fixture.away.name : fixture.home.name;
-
-    return `${isHome ? "vs" : "at"} ${opponent} (${fixture.home_goals} - ${fixture.away_goals})`;
-  };
-
-  const formatOutcome = (fixture: Fixture) => {
-    switch (fixture.winner_id) {
-      case teamId:
-        return "W";
-      case null:
-        return "D";
-      default:
-        return "L";
-    }
-  };
 
   const getWinRate = () => {
     const s = stats();
@@ -270,25 +253,7 @@ export default function TeamStatsPage() {
           <div class="card bg-base-100 border border-base-300">
             <div class="card-body">
               <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
-              <div class="flex gap-2">
-                <For each={recentFormFixtures()}>
-                  {(fixture) => (
-                    <div
-                      classList={{
-                        "badge-warning": fixture.winner_id === null,
-                        "badge-success": fixture.winner_id === teamId,
-                        "badge-error":
-                          typeof fixture.winner_id === "number" &&
-                          fixture.winner_id !== teamId,
-                      }}
-                      class="badge badge-lg tooltip"
-                      data-tip={formatSummary(fixture)}
-                    >
-                      {formatOutcome(fixture)}
-                    </div>
-                  )}
-                </For>
-              </div>
+              <FormTimeline fixtures={recentFormFixtures()} teamId={teamId} />
             </div>
           </div>
 
