@@ -7,12 +7,10 @@ import {
   Match,
   onCleanup,
   Show,
-  Suspense,
   Switch,
   useContext,
 } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
-import { Matchup, MatchupSkeleton } from "~/components/matchup";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
 import { BetFormContext } from "~/components/bet-form.context";
@@ -46,7 +44,6 @@ function Page() {
   // Date navigation state from URL search params
   const [searchParams, setSearchParams] = useSearchParams<{
     date?: string;
-    matchId?: string;
   }>();
 
   const selectedDate = () => {
@@ -63,16 +60,7 @@ function Page() {
     }
   };
 
-  const selectedMatchId = () =>
-    typeof searchParams.matchId === "string"
-      ? Number(searchParams.matchId).valueOf()
-      : null;
-  const juiceFixture = () => {
-    const matchId = selectedMatchId();
-    if (matchId != null)
-      return juiceQuery.data?.find(entry => entry.fixture.id === matchId);
-    return undefined;
-  };
+  const matchupUrl = (fixtureId: number) => `/matchup/${fixtureId}`;
 
   const formattedDate = createMemo(() => {
     const date = new Date(selectedDate() + "T00:00:00"); // Ensure consistent timezone
@@ -271,14 +259,14 @@ function Page() {
                       {/* Match Header */}
                       <div class="flex justify-between items-start">
                         <div>
-                          <h3
-                            class="text-lg font-semibold cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => {
-                              setSearchParams({ matchId: bet.fixture.id });
-                            }}
+                          <a
+                            href={matchupUrl(bet.fixture.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-lg font-semibold hover:text-primary transition-colors"
                           >
                             {formatMatchup(bet.fixture)}
-                          </h3>
+                          </a>
                           <p class="text-base-content/60 text-sm">
                             {bet.fixture.league.name} •{" "}
                             {formatFixtureTime(bet.fixture.timestamp)}
@@ -377,12 +365,7 @@ function Page() {
               <tbody>
                 <For each={juice()}>
                   {({ bet, betType, value }) => (
-                    <tr
-                      class="cursor-pointer hover:bg-base-200 transition-colors"
-                      onClick={() => {
-                        setSearchParams({ matchId: bet.fixture.id });
-                      }}
-                    >
+                    <tr class="hover:bg-base-200 transition-colors">
                       <td class="font-medium">
                         <span class="badge badge-primary">
                           {formatOdds(value.odd)}
@@ -394,7 +377,16 @@ function Page() {
                           <div class="text-base-content/60">{value.name}</div>
                         </div>
                       </td>
-                      <td>{formatMatchup(bet.fixture)}</td>
+                      <td>
+                        <a
+                          href={matchupUrl(bet.fixture.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hover:text-primary transition-colors"
+                        >
+                          {formatMatchup(bet.fixture)}
+                        </a>
+                      </td>
                       <td>{bet.fixture.league.name}</td>
                       <td>{formatFixtureTime(bet.fixture.timestamp)}</td>
                     </tr>
@@ -405,18 +397,6 @@ function Page() {
           </div>
         </Match>
       </Switch>
-
-      <Show when={selectedMatchId() != null}>
-        <Suspense fallback={<MatchupSkeleton />}>
-          <Matchup
-            matchId={selectedMatchId()!}
-            valueBets={juiceFixture()}
-            onClose={() => {
-              setSearchParams({ matchId: undefined });
-            }}
-          />
-        </Suspense>
-      </Show>
     </div>
   );
 }

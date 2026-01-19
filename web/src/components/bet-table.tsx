@@ -1,8 +1,7 @@
-import { createSignal, For, Match, Show, Suspense, Switch } from "solid-js";
+import { createSignal, For, Match, Show, Switch } from "solid-js";
 import { ContextMenu } from "@kobalte/core/context-menu";
 import { useBets, useDeleteBet, useUpdateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
-import { Matchup } from "./matchup";
 
 function useStacked<T>() {
   const [stack, update] = createSignal<T[]>([]);
@@ -32,9 +31,6 @@ export const calculateProfit = (amount: number, odds: number): number => {
 export function BetTable() {
   const [filter, setFilter] = createSignal<"all" | "win" | "lose" | "pending">(
     "all",
-  );
-  const [selectedMatchId, setSelectedMatchId] = createSignal<number | null>(
-    null,
   );
   const {
     current: cursor,
@@ -142,12 +138,14 @@ export function BetTable() {
                           <ContextMenu.Trigger as="tr">
                             <td>{bet.id}</td>
                             <td>
-                              <button
-                                class="btn btn-link p-0"
-                                onClick={() => setSelectedMatchId(bet.match_id)}
+                              <a
+                                href={`/matchup/${bet.match_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="link link-primary"
                               >
                                 {bet.match_id}
-                              </button>
+                              </a>
                             </td>
                             <td>
                               <div class="text-sm">
@@ -295,17 +293,6 @@ export function BetTable() {
             </>
           )}
 
-          <Show when={selectedMatchId() != null}>
-            {/*defer evaluation because a null selectedMatchup will cause type errors*/}
-            <Suspense fallback={<div>Loading...</div>}>
-              <Matchup
-                matchId={selectedMatchId()!}
-                onClose={() => {
-                  setSelectedMatchId(null);
-                }}
-              />
-            </Suspense>
-          </Show>
         </div>
       </Match>
     </Switch>
