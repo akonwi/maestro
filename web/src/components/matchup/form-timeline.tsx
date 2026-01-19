@@ -1,38 +1,44 @@
 import { For } from "solid-js";
-import type { TeamStats } from "~/api/analysis";
+import type { Fixture } from "~/api/fixtures";
 
 interface FormTimelineProps {
-  stats: TeamStats;
+  fixtures: Fixture[];
+  teamId: number;
 }
 
 export function FormTimeline(props: FormTimelineProps) {
-  const results = () => {
-    const blocks: Array<{ result: "W" | "D" | "L"; tooltip: string }> = [];
-    for (let i = 0; i < props.stats.wins; i++)
-      blocks.push({ result: "W", tooltip: "Win" });
-    for (let i = 0; i < props.stats.draws; i++)
-      blocks.push({ result: "D", tooltip: "Draw" });
-    for (let i = 0; i < props.stats.losses; i++)
-      blocks.push({ result: "L", tooltip: "Loss" });
-    return blocks;
+  const getResult = (fixture: Fixture): "W" | "D" | "L" => {
+    if (fixture.winner_id === props.teamId) return "W";
+    if (fixture.winner_id === null) return "D";
+    return "L";
+  };
+
+  const getTooltip = (fixture: Fixture) => {
+    const isHome = fixture.home.id === props.teamId;
+    const opponent = isHome ? fixture.away.name : fixture.home.name;
+    const score = `${fixture.home_goals}-${fixture.away_goals}`;
+    return `${isHome ? "vs" : "at"} ${opponent} (${score})`;
   };
 
   return (
-    <div class="flex gap-1 overflow-x-auto w-full pb-1">
-      <For each={results()}>
-        {(item) => (
-          <div
-            classList={{
-              "badge-success": item.result === "W",
-              "badge-warning": item.result === "D",
-              "badge-error": item.result === "L",
-            }}
-            class="badge badge-lg tooltip flex-shrink-0"
-            data-tip={item.tooltip}
-          >
-            {item.result}
-          </div>
-        )}
+    <div class="flex gap-2 overflow-x-auto w-full">
+      <For each={props.fixtures}>
+        {(fixture) => {
+          const result = getResult(fixture);
+          return (
+            <div
+              classList={{
+                "badge-warning": result === "D",
+                "badge-success": result === "W",
+                "badge-error": result === "L",
+              }}
+              class="badge badge-lg flex-shrink-0"
+              title={getTooltip(fixture)}
+            >
+              {result}
+            </div>
+          );
+        }}
       </For>
     </div>
   );

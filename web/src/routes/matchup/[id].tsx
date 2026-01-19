@@ -1,14 +1,9 @@
 import { useParams } from "@solidjs/router";
-import {
-  createMemo,
-  createSignal,
-  Match,
-  Show,
-  Suspense,
-  Switch,
-} from "solid-js";
+import { useQuery } from "@tanstack/solid-query";
+import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { type TeamStats, useMatchup } from "~/api/analysis";
-import { useFixture } from "~/api/fixtures";
+import { type Fixture, useFixture } from "~/api/fixtures";
+import { getPerformance } from "~/api/teams";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
 import { FormTimeline } from "~/components/matchup/form-timeline";
 import { StatsTable } from "~/components/matchup/stats-table";
@@ -79,12 +74,43 @@ function MatchupSkeleton() {
   );
 }
 
+function getRecentFormFixtures(
+  allFixtures: Fixture[],
+  limit?: number,
+): Fixture[] {
+  const completed = allFixtures.filter(f => f.finished);
+  const sorted = [...completed].sort((a, b) => b.timestamp - a.timestamp);
+  return limit ? sorted.slice(0, limit) : sorted;
+}
+
 export default function MatchupPage() {
   const params = useParams();
   const matchId = () => Number(params.id);
 
   const analysisQuery = useMatchup(matchId());
   const fixtureQuery = useFixture(matchId());
+
+  const homePerformanceQuery = useQuery(() => {
+    const f = fixtureQuery.data;
+    const a = analysisQuery.data;
+    if (!f || !a) return { queryKey: ["disabled"], enabled: false };
+    return getPerformance(() => ({
+      id: a.home.id,
+      league: f.league.id,
+      season: f.season,
+    }))();
+  });
+
+  const awayPerformanceQuery = useQuery(() => {
+    const f = fixtureQuery.data;
+    const a = analysisQuery.data;
+    if (!f || !a) return { queryKey: ["disabled"], enabled: false };
+    return getPerformance(() => ({
+      id: a.away.id,
+      league: f.league.id,
+      season: f.season,
+    }))();
+  });
 
   const hasFormData = () => {
     const form = analysisQuery.data?.form;
@@ -97,6 +123,20 @@ export default function MatchupPage() {
   };
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
+
+  const homeFormFixtures = createMemo(() => {
+    const perf = homePerformanceQuery.data;
+    if (!perf) return [];
+    const limit = activeTab() === "form" ? 5 : undefined;
+    return getRecentFormFixtures(perf.fixtures.all, limit);
+  });
+
+  const awayFormFixtures = createMemo(() => {
+    const perf = awayPerformanceQuery.data;
+    if (!perf) return [];
+    const limit = activeTab() === "form" ? 5 : undefined;
+    return getRecentFormFixtures(perf.fixtures.all, limit);
+  });
 
   const homeStats = createMemo(() =>
     activeTab() === "season"
@@ -229,7 +269,10 @@ export default function MatchupPage() {
                         {getFormRating(homeStats()!)}
                       </span>
                     </div>
-                    <FormTimeline stats={homeStats()!} />
+                    <FormTimeline
+                      fixtures={homeFormFixtures()}
+                      teamId={analysis()!.home.id}
+                    />
                     <div class="text-sm text-base-content/60 mt-2">
                       {homeStats()!.wins}W - {homeStats()!.draws}D -{" "}
                       {homeStats()!.losses}L
@@ -246,7 +289,10 @@ export default function MatchupPage() {
                         {getFormRating(awayStats()!)}
                       </span>
                     </div>
-                    <FormTimeline stats={awayStats()!} />
+                    <FormTimeline
+                      fixtures={awayFormFixtures()}
+                      teamId={analysis()!.away.id}
+                    />
                     <div class="text-sm text-base-content/60 mt-2">
                       {awayStats()!.wins}W - {awayStats()!.draws}D -{" "}
                       {awayStats()!.losses}L
