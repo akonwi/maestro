@@ -1,4 +1,5 @@
 import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { A } from "@solidjs/router";
 import { ContextMenu } from "@kobalte/core/context-menu";
 import { useBets, useDeleteBet, useUpdateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
@@ -138,14 +139,13 @@ export function BetTable() {
                           <ContextMenu.Trigger as="tr">
                             <td>{bet.id}</td>
                             <td>
-                              <a
+                              <A
                                 href={`/matchup/${bet.match_id}`}
                                 target="_blank"
-                                rel="noopener noreferrer"
                                 class="link link-primary"
                               >
                                 {bet.match_id}
-                              </a>
+                              </A>
                             </td>
                             <td>
                               <div class="text-sm">

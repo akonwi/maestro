@@ -10,7 +10,7 @@ import {
   Switch,
   useContext,
 } from "solid-js";
-import { useSearchParams } from "@solidjs/router";
+import { A, useSearchParams } from "@solidjs/router";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
 import { BetFormContext } from "~/components/bet-form.context";
@@ -259,14 +259,13 @@ function Page() {
                       {/* Match Header */}
                       <div class="flex justify-between items-start">
                         <div>
-                          <a
+                          <A
                             href={matchupUrl(bet.fixture.id)}
                             target="_blank"
-                            rel="noopener noreferrer"
                             class="text-lg font-semibold hover:text-primary transition-colors"
                           >
                             {formatMatchup(bet.fixture)}
-                          </a>
+                          </A>
                           <p class="text-base-content/60 text-sm">
                             {bet.fixture.league.name} •{" "}
                             {formatFixtureTime(bet.fixture.timestamp)}
@@ -378,14 +377,13 @@ function Page() {
                         </div>
                       </td>
                       <td>
-                        <a
+                        <A
                           href={matchupUrl(bet.fixture.id)}
                           target="_blank"
-                          rel="noopener noreferrer"
                           class="hover:text-primary transition-colors"
                         >
                           {formatMatchup(bet.fixture)}
-                        </a>
+                        </A>
                       </td>
                       <td>{bet.fixture.league.name}</td>
                       <td>{formatFixtureTime(bet.fixture.timestamp)}</td>

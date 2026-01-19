@@ -1,4 +1,5 @@
 import { Toast, toaster } from "@kobalte/core/toast";
+import { A } from "@solidjs/router";
 import { createMemo, createSignal, For, Show, useContext } from "solid-js";
 import { createStore } from "solid-js/store";
 import { CreateBetData, useCreateBet } from "~/api/bets";
@@ -121,9 +122,9 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
               <button class="btn btn-ghost" onClick={close}>
                 Cancel
               </button>
-              <a href="/maestro/settings" class="btn btn-primary">
+              <A href="/settings" class="btn btn-primary">
                 Go to Settings
-              </a>
+              </A>
             </div>
           </div>
         </div>
