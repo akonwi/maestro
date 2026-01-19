@@ -191,51 +191,51 @@ export default function MatchupPage() {
 
           {/* Teams Header Card */}
           <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="card-body p-4 md:p-8">
+              <div class="flex flex-row items-center justify-between gap-2 md:gap-6">
                 {/* Home Team */}
                 <A
                   href={`/teams/${analysis()!.home.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
-                  class="flex flex-col items-center gap-2 flex-1 hover:opacity-80 transition-opacity"
+                  class="flex flex-col items-center gap-1 md:gap-2 flex-1 hover:opacity-80 transition-opacity min-w-0"
                 >
                   <img
                     src={logoUrl(analysis()!.home.id)}
                     alt={analysis()!.home.name}
-                    class="w-16 h-16"
+                    class="w-10 h-10 md:w-16 md:h-16"
                   />
-                  <div class="text-xl font-bold text-center link-hover">
+                  <div class="text-sm md:text-xl font-bold text-center link-hover truncate w-full">
                     {analysis()!.home.name}
                   </div>
-                  <div class="text-sm text-base-content/60">Home</div>
+                  <div class="text-xs md:text-sm text-base-content/60">Home</div>
                 </A>
 
                 {/* Score / VS */}
-                <div class="text-center">
+                <div class="text-center flex-shrink-0">
                   <Show
                     when={fixture()!.finished}
-                    fallback={<div class="text-2xl font-bold">VS</div>}
+                    fallback={<div class="text-lg md:text-2xl font-bold">VS</div>}
                   >
-                    <div class="text-3xl font-bold">
+                    <div class="text-xl md:text-3xl font-bold">
                       {fixture()!.home_goals} - {fixture()!.away_goals}
                     </div>
-                    <div class="badge badge-neutral mt-2">Full Time</div>
+                    <div class="badge badge-neutral badge-sm md:badge-md mt-1 md:mt-2">Full Time</div>
                   </Show>
                 </div>
 
                 {/* Away Team */}
                 <A
                   href={`/teams/${analysis()!.away.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
-                  class="flex flex-col items-center gap-2 flex-1 hover:opacity-80 transition-opacity"
+                  class="flex flex-col items-center gap-1 md:gap-2 flex-1 hover:opacity-80 transition-opacity min-w-0"
                 >
                   <img
                     src={logoUrl(analysis()!.away.id)}
                     alt={analysis()!.away.name}
-                    class="w-16 h-16"
+                    class="w-10 h-10 md:w-16 md:h-16"
                   />
-                  <div class="text-xl font-bold text-center link-hover">
+                  <div class="text-sm md:text-xl font-bold text-center link-hover truncate w-full">
                     {analysis()!.away.name}
                   </div>
-                  <div class="text-sm text-base-content/60">Away</div>
+                  <div class="text-xs md:text-sm text-base-content/60">Away</div>
                 </A>
               </div>
             </div>
