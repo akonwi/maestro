@@ -13,9 +13,12 @@ import {
 import { A, useSearchParams } from "@solidjs/router";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
+import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
 import { BetFormContext } from "~/components/bet-form.context";
 
 function Page() {
+  useScrollRestoration();
+
   // Responsive view mode based on viewport size
   const [viewMode, setViewMode] = createSignal<"list" | "table">("list");
   const onResize = () => {
