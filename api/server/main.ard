@@ -226,12 +226,6 @@ fn main() {
         }
       },
 
-      "/leagues/:id/fixtures": fn(req: http::Request) http::Response {
-        match req.method {
-          _ => not_found
-        }
-      },
-
       "/fixtures/:id": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
