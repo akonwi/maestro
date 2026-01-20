@@ -207,7 +207,7 @@ function Page() {
       </div>
 
       <Switch>
-        <Match when={juiceQuery.error}>
+        <Match when={juiceQuery.isError}>
           <div class="alert alert-error">
             <span>
               Failed to load value bets:{" "}
@@ -218,7 +218,7 @@ function Page() {
           </div>
         </Match>
 
-        <Match when={juiceQuery.isLoading}>
+        <Match when={juiceQuery.isPending}>
           <div class="flex w-52 flex-col gap-4">
             <div class="skeleton h-32 w-full"></div>
             <div class="skeleton h-4 w-28"></div>

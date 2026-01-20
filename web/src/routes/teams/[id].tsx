@@ -127,7 +127,7 @@ export default function TeamStatsPage() {
       <h1 class="text-3xl font-bold">Team Statistics</h1>
 
       <Switch>
-        <Match when={performanceQuery.error}>
+        <Match when={performanceQuery.isError}>
           <div class="alert alert-error">
             <span>
               Failed to load team performance:{" "}
@@ -138,7 +138,7 @@ export default function TeamStatsPage() {
           </div>
         </Match>
 
-        <Match when={performanceQuery.isLoading}>
+        <Match when={performanceQuery.isPending}>
           <div class="flex w-52 flex-col gap-4">
             <div class="skeleton h-32 w-full"></div>
             <div class="skeleton h-4 w-28"></div>

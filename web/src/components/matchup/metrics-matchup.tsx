@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/solid-query";
-import { createSignal, Show } from "solid-js";
+import { createSignal, Match, Switch } from "solid-js";
 import { type TeamMetrics, teamMetricsQueryOptions } from "~/api/analysis";
 import { useAuth } from "~/contexts/auth";
 import { RadarChart } from "./radar-chart";
@@ -208,9 +208,9 @@ export function MetricsMatchup(props: MetricsMatchupProps) {
     ),
   );
 
-  const isLoading = () =>
-    homeMetricsQuery.isLoading || awayMetricsQuery.isLoading;
-  const hasError = () => homeMetricsQuery.error || awayMetricsQuery.error;
+  const isPending = () =>
+    homeMetricsQuery.isPending || awayMetricsQuery.isPending;
+  const hasError = () => homeMetricsQuery.isError || awayMetricsQuery.isError;
   const hasData = () => homeMetricsQuery.data && awayMetricsQuery.data;
 
   return (
@@ -234,87 +234,91 @@ export function MetricsMatchup(props: MetricsMatchupProps) {
           </div>
         </div>
 
-        <Show when={isLoading()}>
-          <div class="flex flex-col gap-4">
-            <div class="skeleton h-4 w-full" />
-            <div class="skeleton h-6 w-full" />
-            <div class="skeleton h-4 w-full" />
-            <div class="skeleton h-6 w-full" />
-          </div>
-        </Show>
-
-        <Show when={hasError()}>
-          <div class="alert alert-error">
-            <span>
-              Failed to load metrics:{" "}
-              {homeMetricsQuery.error instanceof Error
-                ? homeMetricsQuery.error.message
-                : awayMetricsQuery.error instanceof Error
-                  ? awayMetricsQuery.error.message
-                  : "Unknown error"}
-            </span>
-          </div>
-        </Show>
-
-        <Show when={hasData()}>
-          <Show when={viewMode() === "bars"}>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <MatchupSection
-                title={`${props.homeName} Attack`}
-                subtitle={`vs ${props.awayName} Defense`}
-                attackMetrics={homeMetricsQuery.data!.for}
-                defenseMetrics={awayMetricsQuery.data!.against}
-                attackLabel="ATK"
-                defenseLabel="DEF"
-              />
-              <MatchupSection
-                title={`${props.awayName} Attack`}
-                subtitle={`vs ${props.homeName} Defense`}
-                attackMetrics={awayMetricsQuery.data!.for}
-                defenseMetrics={homeMetricsQuery.data!.against}
-                attackLabel="ATK"
-                defenseLabel="DEF"
-              />
+        <Switch>
+          <Match when={isPending()}>
+            <div class="flex flex-col gap-4">
+              <div class="skeleton h-4 w-full" />
+              <div class="skeleton h-6 w-full" />
+              <div class="skeleton h-4 w-full" />
+              <div class="skeleton h-6 w-full" />
             </div>
-          </Show>
+          </Match>
 
-          <Show when={viewMode() === "radar"}>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="flex flex-col items-center">
-                <div class="text-center mb-2">
-                  <h4 class="font-medium">{props.homeName} Attack</h4>
-                  <p class="text-sm text-base-content/60">
-                    vs {props.awayName} Defense
-                  </p>
-                </div>
-                <RadarChart
-                  attackLabel={`${props.homeName} ATK`}
-                  defenseLabel={`${props.awayName} DEF`}
-                  data={buildRadarData(
-                    homeMetricsQuery.data!.for,
-                    awayMetricsQuery.data!.against,
-                  )}
-                />
-              </div>
-              <div class="flex flex-col items-center">
-                <div class="text-center mb-2">
-                  <h4 class="font-medium">{props.awayName} Attack</h4>
-                  <p class="text-sm text-base-content/60">
-                    vs {props.homeName} Defense
-                  </p>
-                </div>
-                <RadarChart
-                  attackLabel={`${props.awayName} ATK`}
-                  defenseLabel={`${props.homeName} DEF`}
-                  data={buildRadarData(
-                    awayMetricsQuery.data!.for,
-                    homeMetricsQuery.data!.against,
-                  )}
-                />
-              </div>
+          <Match when={hasError()}>
+            <div class="alert alert-error">
+              <span>
+                Failed to load metrics:{" "}
+                {homeMetricsQuery.error instanceof Error
+                  ? homeMetricsQuery.error.message
+                  : awayMetricsQuery.error instanceof Error
+                    ? awayMetricsQuery.error.message
+                    : "Unknown error"}
+              </span>
             </div>
-          </Show>
-        </Show>
+          </Match>
+
+          <Match when={hasData()}>
+            <Switch>
+              <Match when={viewMode() === "bars"}>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <MatchupSection
+                    title={`${props.homeName} Attack`}
+                    subtitle={`vs ${props.awayName} Defense`}
+                    attackMetrics={homeMetricsQuery.data!.for}
+                    defenseMetrics={awayMetricsQuery.data!.against}
+                    attackLabel="ATK"
+                    defenseLabel="DEF"
+                  />
+                  <MatchupSection
+                    title={`${props.awayName} Attack`}
+                    subtitle={`vs ${props.homeName} Defense`}
+                    attackMetrics={awayMetricsQuery.data!.for}
+                    defenseMetrics={homeMetricsQuery.data!.against}
+                    attackLabel="ATK"
+                    defenseLabel="DEF"
+                  />
+                </div>
+              </Match>
+
+              <Match when={viewMode() === "radar"}>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="flex flex-col items-center">
+                    <div class="text-center mb-2">
+                      <h4 class="font-medium">{props.homeName} Attack</h4>
+                      <p class="text-sm text-base-content/60">
+                        vs {props.awayName} Defense
+                      </p>
+                    </div>
+                    <RadarChart
+                      attackLabel={`${props.homeName} ATK`}
+                      defenseLabel={`${props.awayName} DEF`}
+                      data={buildRadarData(
+                        homeMetricsQuery.data!.for,
+                        awayMetricsQuery.data!.against,
+                      )}
+                    />
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <div class="text-center mb-2">
+                      <h4 class="font-medium">{props.awayName} Attack</h4>
+                      <p class="text-sm text-base-content/60">
+                        vs {props.homeName} Defense
+                      </p>
+                    </div>
+                    <RadarChart
+                      attackLabel={`${props.awayName} ATK`}
+                      defenseLabel={`${props.homeName} DEF`}
+                      data={buildRadarData(
+                        awayMetricsQuery.data!.for,
+                        homeMetricsQuery.data!.against,
+                      )}
+                    />
+                  </div>
+                </div>
+              </Match>
+            </Switch>
+          </Match>
+        </Switch>
       </div>
     </div>
   );

@@ -174,7 +174,7 @@ export function GameMetrics(props: GameMetricsProps) {
           )}
         </Show>
 
-        <Show when={metricsQuery.error}>
+        <Show when={metricsQuery.isError}>
           <div class="alert alert-error">
             <span>
               Failed to load game metrics:{" "}
