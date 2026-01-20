@@ -77,6 +77,17 @@ fn main() {
   http::serve(
     port: port,
     handlers: [
+      "/health": fn(req: http::Request) http::Response {
+        match req.method {
+          http::Method::Get => {
+            mut headers = res_headers
+            headers.drop("Content-Type")
+            http::Response{status: 200, headers: headers, body: "Ok"}
+          },
+          _ => not_found
+        }
+      },
+
       "/juice": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
