@@ -23,6 +23,9 @@ const formatGoals = (stats: TeamStats) => {
 const formatPercentage = (count: number, total: number) =>
   total > 0 ? `${Math.round((count / total) * 100)}%` : "0%";
 
+const formatDecimal = (value: number | null | undefined, decimals = 2) =>
+  typeof value === "number" ? value.toFixed(decimals) : "-";
+
 export function StatsTable(props: StatsTableProps) {
   const rows = () => {
     const homeGames = getGamesPlayed(props.home);
@@ -41,18 +44,18 @@ export function StatsTable(props: StatsTableProps) {
       },
       {
         label: "xGF",
-        home: props.home.xgf.toFixed(2),
-        away: props.away.xgf.toFixed(2),
+        home: formatDecimal(props.home.xgf),
+        away: formatDecimal(props.away.xgf),
       },
       {
         label: "xGA",
-        home: props.home.xga.toFixed(2),
-        away: props.away.xga.toFixed(2),
+        home: formatDecimal(props.home.xga),
+        away: formatDecimal(props.away.xga),
       },
       {
         label: "Strike Rate",
-        home: props.home.strike_rate.toFixed(1),
-        away: props.away.strike_rate.toFixed(1),
+        home: formatDecimal(props.home.strike_rate, 1),
+        away: formatDecimal(props.away.strike_rate, 1),
       },
       {
         label: "Clean Sheets",

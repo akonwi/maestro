@@ -16,7 +16,7 @@ import { BetFormContext } from "~/components/bet-form.context";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
 import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
-import { formatOdds } from "~/lib/formatters";
+import { formatFixtureTime, formatOdds } from "~/lib/formatters";
 
 function Page() {
   useScrollRestoration();
@@ -99,15 +99,6 @@ function Page() {
 
   const formatMatchup = (fixture: Fixture) => {
     return `${fixture.home.name} vs ${fixture.away.name}`;
-  };
-
-  const formatFixtureTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false, // Force 24-hour format
-    });
   };
 
   // Table sorting functions

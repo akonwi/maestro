@@ -9,23 +9,25 @@ interface ComparisonBarProps {
 }
 
 export function ComparisonBar(props: ComparisonBarProps) {
-  const format = () => props.formatValue ?? ((v: number) => v.toFixed(2));
+  const format = () =>
+    props.formatValue ??
+    ((v: number) => (typeof v === "number" ? v.toFixed(2) : "-"));
 
-  const total = () => props.homeValue + props.awayValue;
+  const total = () => (props.homeValue ?? 0) + (props.awayValue ?? 0);
   const homePercent = () =>
-    total() > 0 ? (props.homeValue / total()) * 100 : 50;
+    total() > 0 ? ((props.homeValue ?? 0) / total()) * 100 : 50;
   const awayPercent = () =>
-    total() > 0 ? (props.awayValue / total()) * 100 : 50;
+    total() > 0 ? ((props.awayValue ?? 0) / total()) * 100 : 50;
 
   const homeLeads = () =>
     props.inverse
-      ? props.homeValue < props.awayValue
-      : props.homeValue > props.awayValue;
+      ? (props.homeValue ?? 0) < (props.awayValue ?? 0)
+      : (props.homeValue ?? 0) > (props.awayValue ?? 0);
 
   const awayLeads = () =>
     props.inverse
-      ? props.awayValue < props.homeValue
-      : props.awayValue > props.homeValue;
+      ? (props.awayValue ?? 0) < (props.homeValue ?? 0)
+      : (props.awayValue ?? 0) > (props.homeValue ?? 0);
 
   return (
     <div class="space-y-1">

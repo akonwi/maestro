@@ -1,11 +1,121 @@
-import { Show } from "solid-js";
-import { useTeamMetrics } from "~/api/analysis";
+import { For, Show } from "solid-js";
+import { type TeamMetrics, useTeamMetrics } from "~/api/analysis";
 
 interface GameMetricsProps {
   teamId: number;
   leagueId: number;
   season: number;
   limit?: number;
+}
+
+type MetricConfig = {
+  label: string;
+  getValue: (data: TeamMetrics["for"]) => { perGame: number; total: number };
+  decimals?: number;
+};
+
+const METRICS: MetricConfig[] = [
+  {
+    label: "Total Shots",
+    getValue: d => ({
+      perGame: d.perGame.shots.total,
+      total: d.total.shots.total,
+    }),
+  },
+  {
+    label: "Shots on Goal",
+    getValue: d => ({
+      perGame: d.perGame.shots.onGoal,
+      total: d.total.shots.onGoal,
+    }),
+  },
+  {
+    label: "Shots Missed",
+    getValue: d => ({
+      perGame: d.perGame.shots.missed,
+      total: d.total.shots.missed,
+    }),
+  },
+  {
+    label: "Blocked Shots",
+    getValue: d => ({
+      perGame: d.perGame.shots.blocked,
+      total: d.total.shots.blocked,
+    }),
+  },
+  {
+    label: "Shots Inside Box",
+    getValue: d => ({
+      perGame: d.perGame.shots.insideBox,
+      total: d.total.shots.insideBox,
+    }),
+  },
+  {
+    label: "Shots Outside Box",
+    getValue: d => ({
+      perGame: d.perGame.shots.outsideBox,
+      total: d.total.shots.outsideBox,
+    }),
+  },
+  {
+    label: "Expected Goals",
+    getValue: d => ({ perGame: d.perGame.xg, total: d.total.xg }),
+    decimals: 2,
+  },
+  {
+    label: "Corner Kicks",
+    getValue: d => ({ perGame: d.perGame.corners, total: d.total.corners }),
+  },
+];
+
+function MetricItem(props: {
+  label: string;
+  perGame: number;
+  total: number;
+  decimals?: number;
+}) {
+  const decimals = props.decimals ?? 1;
+  return (
+    <div class="flex-1 min-w-[150px]">
+      <div class="text-sm text-base-content/70">{props.label}</div>
+      <div class="text-2xl font-medium">{props.perGame.toFixed(decimals)}</div>
+      <div class="text-xs text-base-content/60">
+        {decimals === 2 ? props.total.toFixed(2) : props.total}
+      </div>
+    </div>
+  );
+}
+
+function MetricSection(props: {
+  title: string;
+  titleClass?: string;
+  data: TeamMetrics["for"];
+  layout: "grid" | "flex";
+}) {
+  return (
+    <div>
+      <h4 class={`font-medium mb-4 ${props.titleClass ?? ""}`}>
+        {props.title}
+      </h4>
+      <div
+        class={props.layout === "grid" ? "space-y-4" : "flex gap-4 flex-wrap"}
+      >
+        <For each={METRICS}>
+          {metric => {
+            const values = metric.getValue(props.data);
+            return (
+              <MetricItem
+                label={metric.label}
+                perGame={values.perGame}
+                total={values.total}
+                decimals={metric.decimals}
+              />
+            );
+          }}
+        </For>
+      </div>
+    </div>
+  );
 }
 
 export function GameMetrics(props: GameMetricsProps) {
@@ -21,399 +131,39 @@ export function GameMetrics(props: GameMetricsProps) {
       <div class="card-body">
         <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
         <Show when={metricsQuery.data}>
-          <div>
-            {/* Mobile Layout: 2 columns */}
-            <div class="grid grid-cols-2 gap-4 md:hidden">
-              <div>
-                <h4 class="font-medium mb-4 text-primary">Offensive</h4>
-                <div class="space-y-4">
-                  <div>
-                    <div class="text-sm text-base-content/70">Total Shots</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data?.for.perGame.shots.total.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data?.for.total.shots.total}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">
-                      Shots on Goal
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data?.for.perGame.shots.onGoal.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data?.for.total.shots.onGoal}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Shots Missed</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data?.for.perGame.shots.missed.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data?.for.total.shots.missed}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Blocked Shots
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data?.for.perGame.shots.blocked.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data?.for.total.shots.blocked}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots Inside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.insideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.insideBox}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots Outside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.outsideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.outsideBox}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Expected Goals (xG)
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.xg.toFixed(2)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.xg.toFixed(2)}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Corner Kicks</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.corners.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.corners}
-                    </div>
-                  </div>
-                </div>
+          {data => (
+            <div>
+              {/* Mobile Layout: 2 columns side by side */}
+              <div class="grid grid-cols-2 gap-4 md:hidden">
+                <MetricSection
+                  title="Offensive"
+                  titleClass="text-primary"
+                  data={data().for}
+                  layout="grid"
+                />
+                <MetricSection
+                  title="Defensive"
+                  data={data().against}
+                  layout="grid"
+                />
               </div>
 
-              <div>
-                <h4 class="font-medium mb-4">Defensive</h4>
-                <div class="space-y-4">
-                  <div>
-                    <div class="text-sm text-base-content/70">Total Shots</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.total.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.total}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">
-                      Shots on Goal
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.onGoal.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.onGoal}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">Shots Missed</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.missed.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.missed}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">
-                      Blocked Shots
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.blocked.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.blocked}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">
-                      Shots Inside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.insideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.insideBox}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">
-                      Shots Outside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.outsideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.outsideBox}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">
-                      Expected Goals (xGA)
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.xg.toFixed(2)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.xg.toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-sm text-base-content/70">Corner Kicks</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.corners.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.corners}
-                    </div>
-                  </div>
-                </div>
+              {/* Desktop Layout: Stacked rows */}
+              <div class="hidden md:block md:space-y-6">
+                <MetricSection
+                  title="Offensive"
+                  titleClass="text-primary"
+                  data={data().for}
+                  layout="flex"
+                />
+                <MetricSection
+                  title="Defensive"
+                  data={data().against}
+                  layout="flex"
+                />
               </div>
             </div>
-
-            {/* Desktop Layout: Stacked rows */}
-            <div class="hidden md:space-y-6 md:block">
-              <div>
-                <h4 class="font-medium mb-4 text-primary">Offensive</h4>
-                <div class="flex gap-4 flex-wrap">
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Total Shots</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.total.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.total}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots on Goal
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.onGoal.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.onGoal}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Shots Missed</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.missed.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.missed}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Blocked Shots
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.blocked.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.blocked}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots Inside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.insideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.insideBox}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots Outside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.shots.outsideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.shots.outsideBox}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Expected Goals (xG)
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.xg.toFixed(2)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.xg.toFixed(2)}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Corner Kicks</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.for.perGame.corners.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.for.total.corners}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 class="font-medium mb-4">Defensive</h4>
-                <div class="flex gap-4 flex-wrap">
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Total Shots Against
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.total.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.total}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots on Goal
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.onGoal.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.onGoal}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Shots Missed</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.missed.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.missed}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Blocked Shots
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.blocked.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.blocked}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots Inside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.insideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.insideBox}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Shots Outside Box
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.shots.outsideBox.toFixed(
-                        1,
-                      )}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.shots.outsideBox}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">
-                      Expected Goals (xGA)
-                    </div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.xg.toFixed(2)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.xg.toFixed(2)}
-                    </div>
-                  </div>
-                  <div class="flex-1 min-w-[150px]">
-                    <div class="text-sm text-base-content/70">Corner Kicks</div>
-                    <div class="text-2xl font-medium">
-                      {metricsQuery.data!.against.perGame.corners.toFixed(1)}
-                    </div>
-                    <div class="text-xs text-base-content/60">
-                      {metricsQuery.data!.against.total.corners}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </Show>
 
         <Show when={metricsQuery.error}>
@@ -436,9 +186,9 @@ GameMetrics.Loading = () => (
     <div class="card-body">
       <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
       <div class="flex w-52 flex-col gap-4">
-        <div class="skeleton h-4 w-full"></div>
-        <div class="skeleton h-4 w-3/4"></div>
-        <div class="skeleton h-4 w-1/2"></div>
+        <div class="skeleton h-4 w-full" />
+        <div class="skeleton h-4 w-3/4" />
+        <div class="skeleton h-4 w-1/2" />
       </div>
     </div>
   </div>

@@ -43,3 +43,15 @@ export function calculatePayout(amount: number, odds: number): number {
 export function calculateProfit(amount: number, odds: number): number {
   return calculatePayout(amount, odds) - amount;
 }
+
+/**
+ * Format a timestamp as a time string (HH:MM in 24-hour format)
+ */
+export function formatFixtureTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
