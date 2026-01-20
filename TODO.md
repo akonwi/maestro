@@ -1,2 +1,0 @@
-- [ ] unfollowing leagues
- - right now it's kind of binary between hide + follow
