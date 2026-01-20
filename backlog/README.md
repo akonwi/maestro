@@ -53,6 +53,12 @@ Lower priority enhancements:
 ### Phase 5: Optional/Low Priority
 - [020](./betting-strategy/020-h2h-analysis.md) - Head-to-Head Analysis (same-season only)
 
+### Maintenance/Tech Debt
+Code quality improvements identified during codebase review:
+- [021](./maintenance/021-error-response-codes.md) - Proper HTTP Error Response Codes
+- [022](./maintenance/022-bet-create-error-types.md) - Union Error Type for Bet Creation
+- [023](./maintenance/023-league-sync-error-tracking.md) - Track League Sync Errors
+
 ## Success Metrics
 
 **Betting Performance:**
