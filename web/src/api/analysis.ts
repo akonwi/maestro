@@ -29,23 +29,21 @@ export type ComparisonData = {
   away: TeamStats;
 };
 
-export type AnalysisData = {
-  home: Team;
-  away: Team;
-  comparison: ComparisonData;
-  form?: ComparisonData; // Recent form data (last 5 games from local DB, nullable)
+export type MatchupStatsData = {
+  season: ComparisonData;
+  form: ComparisonData | null;
 };
 
-export function useMatchup(matchId: number) {
-  return useQuery<AnalysisData>(() => ({
-    queryKey: ["analysis", { matchId }],
+export function useMatchupStats(fixtureId: number) {
+  return useQuery<MatchupStatsData>(() => ({
+    queryKey: ["matchup", { fixtureId }, "stats"],
     queryFn: async () => {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/analysis/${matchId}`,
+        `${import.meta.env.VITE_API_BASE_URL}/matchup/${fixtureId}/stats`,
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch analysis: ${response.status}`);
+        throw new Error(`Failed to fetch matchup stats: ${response.status}`);
       }
 
       return response.json();

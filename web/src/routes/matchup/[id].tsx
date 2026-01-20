@@ -1,6 +1,6 @@
 import { A, useParams } from "@solidjs/router";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
-import { type TeamStats, useMatchup } from "~/api/analysis";
+import { type TeamStats, useMatchupStats } from "~/api/analysis";
 import { useFixture, useMatchupForm } from "~/api/fixtures";
 import { FormTimeline } from "~/components/form-timeline";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
@@ -77,19 +77,11 @@ export default function MatchupPage() {
   const params = useParams();
   const matchId = () => Number(params.id);
 
-  const analysisQuery = useMatchup(matchId());
   const fixtureQuery = useFixture(matchId());
+  const statsQuery = useMatchupStats(matchId());
   const formQuery = useMatchupForm(matchId());
 
-  const hasFormData = () => {
-    const form = analysisQuery.data?.form;
-    return (
-      form?.home &&
-      form?.away &&
-      form.home.num_games >= 5 &&
-      form.away.num_games >= 5
-    );
-  };
+  const hasFormData = () => statsQuery.data?.form !== null;
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
 
@@ -98,14 +90,14 @@ export default function MatchupPage() {
 
   const homeStats = createMemo(() =>
     activeTab() === "season"
-      ? analysisQuery.data?.comparison.home
-      : (analysisQuery.data?.form?.home ?? analysisQuery.data?.comparison.home),
+      ? statsQuery.data?.season.home
+      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home),
   );
 
   const awayStats = createMemo(() =>
     activeTab() === "season"
-      ? analysisQuery.data?.comparison.away
-      : (analysisQuery.data?.form?.away ?? analysisQuery.data?.comparison.away),
+      ? statsQuery.data?.season.away
+      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away),
   );
 
   const formattedDateTime = createMemo(() => {
@@ -122,21 +114,20 @@ export default function MatchupPage() {
   });
 
   const fixture = () => fixtureQuery.data;
-  const analysis = () => analysisQuery.data;
 
   return (
     <div class="space-y-6 max-w-4xl mx-auto">
       <Switch>
-        <Match when={analysisQuery.error || fixtureQuery.error}>
+        <Match when={statsQuery.error || fixtureQuery.error}>
           <div class="alert alert-error">
             <span>
               Failed to load matchup:{" "}
-              {analysisQuery.error?.message ?? fixtureQuery.error?.message}
+              {statsQuery.error?.message ?? fixtureQuery.error?.message}
             </span>
           </div>
         </Match>
 
-        <Match when={analysisQuery?.isSuccess && fixtureQuery.isSuccess}>
+        <Match when={statsQuery.isSuccess && fixtureQuery.isSuccess}>
           {/* Header */}
           <div class="text-sm text-base-content/60">
             {fixture()!.league.name} • {formattedDateTime().date} •{" "}
@@ -149,16 +140,16 @@ export default function MatchupPage() {
               <div class="flex flex-row items-center justify-between gap-2 md:gap-6">
                 {/* Home Team */}
                 <A
-                  href={`/teams/${analysis()!.home.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
+                  href={`/teams/${fixture()!.home.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
                   class="flex flex-col items-center gap-1 md:gap-2 flex-1 hover:opacity-80 transition-opacity min-w-0"
                 >
                   <img
-                    src={logoUrl(analysis()!.home.id)}
-                    alt={analysis()!.home.name}
+                    src={logoUrl(fixture()!.home.id)}
+                    alt={fixture()!.home.name}
                     class="w-10 h-10 md:w-16 md:h-16"
                   />
                   <div class="text-sm md:text-xl font-bold text-center link-hover truncate w-full">
-                    {analysis()!.home.name}
+                    {fixture()!.home.name}
                   </div>
                   <div class="text-xs md:text-sm text-base-content/60">
                     Home
@@ -184,16 +175,16 @@ export default function MatchupPage() {
 
                 {/* Away Team */}
                 <A
-                  href={`/teams/${analysis()!.away.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
+                  href={`/teams/${fixture()!.away.id}?league=${fixture()!.league.id}&season=${fixture()!.season}`}
                   class="flex flex-col items-center gap-1 md:gap-2 flex-1 hover:opacity-80 transition-opacity min-w-0"
                 >
                   <img
-                    src={logoUrl(analysis()!.away.id)}
-                    alt={analysis()!.away.name}
+                    src={logoUrl(fixture()!.away.id)}
+                    alt={fixture()!.away.name}
                     class="w-10 h-10 md:w-16 md:h-16"
                   />
                   <div class="text-sm md:text-xl font-bold text-center link-hover truncate w-full">
-                    {analysis()!.away.name}
+                    {fixture()!.away.name}
                   </div>
                   <div class="text-xs md:text-sm text-base-content/60">
                     Away
@@ -230,7 +221,7 @@ export default function MatchupPage() {
                   {/* Home Form */}
                   <div>
                     <div class="flex items-center justify-between mb-2">
-                      <span class="font-medium">{analysis()!.home.name}</span>
+                      <span class="font-medium">{fixture()!.home.name}</span>
                       <span
                         class={`badge ${getFormBadgeClass(getFormRating(homeStats()!))}`}
                       >
@@ -239,7 +230,7 @@ export default function MatchupPage() {
                     </div>
                     <FormTimeline
                       fixtures={homeFormFixtures()}
-                      teamId={analysis()!.home.id}
+                      teamId={fixture()!.home.id}
                     />
                     <div class="text-sm text-base-content/60 mt-2">
                       {homeStats()!.wins}W - {homeStats()!.draws}D -{" "}
@@ -250,7 +241,7 @@ export default function MatchupPage() {
                   {/* Away Form */}
                   <div>
                     <div class="flex items-center justify-between mb-2">
-                      <span class="font-medium">{analysis()!.away.name}</span>
+                      <span class="font-medium">{fixture()!.away.name}</span>
                       <span
                         class={`badge ${getFormBadgeClass(getFormRating(awayStats()!))}`}
                       >
@@ -259,7 +250,7 @@ export default function MatchupPage() {
                     </div>
                     <FormTimeline
                       fixtures={awayFormFixtures()}
-                      teamId={analysis()!.away.id}
+                      teamId={fixture()!.away.id}
                     />
                     <div class="text-sm text-base-content/60 mt-2">
                       {awayStats()!.wins}W - {awayStats()!.draws}D -{" "}
@@ -281,31 +272,31 @@ export default function MatchupPage() {
                     label="Expected Goals For (xGF)"
                     homeValue={homeStats()!.xgf}
                     awayValue={awayStats()!.xgf}
-                    homeName={analysis()!.home.name}
-                    awayName={analysis()!.away.name}
+                    homeName={fixture()!.home.name}
+                    awayName={fixture()!.away.name}
                   />
                   <ComparisonBar
                     label="Expected Goals Against (xGA)"
                     homeValue={homeStats()!.xga}
                     awayValue={awayStats()!.xga}
-                    homeName={analysis()!.home.name}
-                    awayName={analysis()!.away.name}
+                    homeName={fixture()!.home.name}
+                    awayName={fixture()!.away.name}
                     inverse
                   />
                   <ComparisonBar
                     label="Goals Scored"
                     homeValue={homeStats()!.goals_for}
                     awayValue={awayStats()!.goals_for}
-                    homeName={analysis()!.home.name}
-                    awayName={analysis()!.away.name}
+                    homeName={fixture()!.home.name}
+                    awayName={fixture()!.away.name}
                     formatValue={(v) => v.toString()}
                   />
                   <ComparisonBar
                     label="Goals Conceded"
                     homeValue={homeStats()!.goals_against}
                     awayValue={awayStats()!.goals_against}
-                    homeName={analysis()!.home.name}
-                    awayName={analysis()!.away.name}
+                    homeName={fixture()!.home.name}
+                    awayName={fixture()!.away.name}
                     inverse
                     formatValue={(v) => v.toString()}
                   />
@@ -313,16 +304,16 @@ export default function MatchupPage() {
                     label="Clean Sheets"
                     homeValue={homeStats()!.cleansheets}
                     awayValue={awayStats()!.cleansheets}
-                    homeName={analysis()!.home.name}
-                    awayName={analysis()!.away.name}
+                    homeName={fixture()!.home.name}
+                    awayName={fixture()!.away.name}
                     formatValue={(v) => v.toString()}
                   />
                   <ComparisonBar
                     label="Win Rate"
                     homeValue={homeStats()!.win_rate}
                     awayValue={awayStats()!.win_rate}
-                    homeName={analysis()!.home.name}
-                    awayName={analysis()!.away.name}
+                    homeName={fixture()!.home.name}
+                    awayName={fixture()!.away.name}
                     formatValue={(v) => `${(v * 100).toFixed(0)}%`}
                   />
                 </div>
@@ -332,10 +323,10 @@ export default function MatchupPage() {
 
           {/* Attack vs Defense Metrics */}
           <MetricsMatchup
-            homeId={analysis()!.home.id}
-            awayId={analysis()!.away.id}
-            homeName={analysis()!.home.name}
-            awayName={analysis()!.away.name}
+            homeId={fixture()!.home.id}
+            awayId={fixture()!.away.id}
+            homeName={fixture()!.home.name}
+            awayName={fixture()!.away.name}
             leagueId={fixture()!.league.id}
             season={fixture()!.season}
             limit={activeTab() === "form" ? 5 : undefined}
@@ -349,8 +340,8 @@ export default function MatchupPage() {
                 <StatsTable
                   home={homeStats()!}
                   away={awayStats()!}
-                  homeName={analysis()!.home.name}
-                  awayName={analysis()!.away.name}
+                  homeName={fixture()!.home.name}
+                  awayName={fixture()!.away.name}
                 />
               </div>
             </div>

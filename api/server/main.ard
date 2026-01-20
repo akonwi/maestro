@@ -271,6 +271,55 @@ fn main() {
         }
       },
 
+      // Provide computed statistics for the teams coming into in the fixture.
+      "/matchup/:fixture_id/stats": fn(req: http::Request) http::Response {
+        match req.method {
+          http::Method::Get => {
+            let fixture_id = try Int::from_str(req.path_param("fixture_id")) -> _ { not_found }
+            let fixture = try fixtures::get(conn, fixture_id) -> internal_error
+
+            let comparison = try predictions::get_comparison(conn, fixture_id) -> err {
+              internal_error("Error getting stat comparison: {err}")
+            }
+
+            let form_data = match comparison.home.num_games > 5 and comparison.away.num_games > 5 {
+              true => {
+                let home_form = try predictions::get_form_from_api(
+                  db: conn,
+                  team_id: comparison.home.id,
+                  league_id: fixture.league.id
+                ) -> internal_error
+                let away_form = try predictions::get_form_from_api(
+                  db: conn,
+                  team_id: comparison.away.id,
+                  league_id: fixture.league.id
+                ) -> internal_error
+
+                Dynamic::object([
+                  "home": home_form.to_dyn(),
+                  "away": away_form.to_dyn(),
+                ])
+              },
+              false => Dynamic::from(())
+            }
+
+            let data = Dynamic::object([
+              "season": Dynamic::object([
+                "home": comparison.home.to_dyn(),
+                "away": comparison.away.to_dyn(),
+              ]),
+              "form": form_data,
+            ])
+
+            match json::encode(data) {
+              ok(body) => http::Response{status:200, body:body, headers:res_headers},
+              err => internal_error(err)
+            }
+          },
+          _ => not_found
+        }
+      },
+
       "/analysis/:matchId": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
