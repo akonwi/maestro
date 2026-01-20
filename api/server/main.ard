@@ -320,51 +320,6 @@ fn main() {
         }
       },
 
-      "/analysis/:matchId": fn(req: http::Request) http::Response {
-        match req.method {
-          http::Method::Get => {
-            let fixture_id = try Int::from_str(req.path_param("matchId")) -> _ { not_found }
-            match fixture_id < -1 {
-              true => {
-                mut headers = res_headers
-                headers.drop("Content-Type")
-                http::Response{status: 400, body: "Invalid match id", headers: headers}
-              },
-              false => {
-                let fixture = try fixtures::get(conn, fixture_id) -> internal_error
-                let analysis = try predictions::get_comparison(conn, fixture_id) -> err {
-                  internal_error("Error getting analysis: {err}")
-                }
-
-                mut data = [
-                  "home": fixture.home.to_dyn(),
-                  "away": fixture.away.to_dyn(),
-                  "comparison": Dynamic::object([
-                    "home": analysis.home.to_dyn(),
-                    "away": analysis.away.to_dyn(),
-                  ]),
-                ]
-
-                // add 'form' key if we have form data
-                match predictions::get_form_comparison(conn, fixture)  {
-                  ok(comp) => data.set("form", Dynamic::object([
-                    "home": comp.home.to_dyn(),
-                    "away": comp.away.to_dyn(),
-                  ])),
-                  err => ()
-                }
-
-                match json::encode(Dynamic::object(data)) {
-                  ok(body) => http::Response{status:200, body:body, headers:res_headers},
-                  err => internal_error(err)
-                }
-              }
-            }
-          },
-          _ => not_found
-        }
-      },
-
       "/teams/:id": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
