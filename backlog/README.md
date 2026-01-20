@@ -34,6 +34,8 @@ Requires schema changes or moderate refactoring:
 - [008](./betting-strategy/008-betting-stats-enhancements.md) - Enhanced Betting Stats & Analysis
 - [009](./ux/009-matchup-visualization.md) - Improved Matchup Visualization
 - [010](./statistics/010-poisson-distribution.md) - Poisson Distribution Goal Model
+- [025](./betting-strategy/025-corner-betting.md) - Corner Betting (match totals & team lines)
+- [027](./statistics/027-game-control-metric.md) - Game Control / Field Tilt Metric
 
 ### Phase 3: Larger Features (1-2 weeks each)
 Significant new functionality:
@@ -41,6 +43,7 @@ Significant new functionality:
 - [012](./statistics/012-league-adjusted-metrics.md) - League-Adjusted Metrics
 - [013](./ux/013-advanced-filtering.md) - Advanced Filtering & Search
 - [014](./ux/014-dashboard-charts.md) - Dashboard Charts & Trends
+- [026](./statistics/026-backtesting.md) - Backtesting (CLI + API + frontend)
 
 ### Phase 4: Nice-to-Haves
 Lower priority enhancements:
@@ -58,6 +61,7 @@ Code quality improvements identified during codebase review:
 - [021](./maintenance/021-error-response-codes.md) - Proper HTTP Error Response Codes
 - [022](./maintenance/022-bet-create-error-types.md) - Union Error Type for Bet Creation
 - [023](./maintenance/023-league-sync-error-tracking.md) - Track League Sync Errors
+- [024](./maintenance/024-unfollow-leagues.md) - Unfollow Leagues (Remove Preference)
 
 ## Success Metrics
 
