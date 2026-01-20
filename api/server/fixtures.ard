@@ -747,7 +747,7 @@ fn find_today(db: sql::Database) [Fixture] {
   }
 }
 
-fn find_from_api(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
+fn find(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
   let body = try fapi::get_team_fixtures(db, team_id, league_id, season)
   let fixtures = try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
     let msg = collapse_errors("Error decoding body.response while from fetched fixtures(team={team_id}, league={league_id}, season={season})", errs)
@@ -755,15 +755,6 @@ fn find_from_api(db: sql::Database, team_id: Int, league_id: Int, season: Int) [
   }
 
   Result::ok(fixtures)
-}
-
-// main way to get a list of fixtures. check in database and fall back to the external API
-fn find(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
-  let rows = try find_from_db(db: db, team_id: team_id, league_id: league_id, season: season)
-  match rows.size() {
-    0 => find_from_api(db: db, team_id: team_id, league_id: league_id, season: season),
-    _ => Result::ok(rows)
-  }
 }
 
 fn find_played(db: sql::Database, team_id: Int, league_id: Int, count: Int) [Fixture]!Str {
