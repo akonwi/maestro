@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { Portal } from "solid-js/web";
 import { Toast } from "@kobalte/core/toast";
 import { BetFormProvider } from "./components/bet-form.provider";
+import { PageSkeleton } from "./components/page-skeleton";
 
 const AuthProvider = clientOnly(() => import("~/contexts/auth.provider"));
 
@@ -24,7 +25,7 @@ export default function App() {
               <div class="min-h-screen bg-base-200">
                 <Header />
                 <main class="container mx-auto px-4 py-8">
-                  <Suspense fallback={<div>Loading...</div>}>
+                  <Suspense fallback={<PageSkeleton />}>
                     {props.children}
                   </Suspense>
                 </main>
