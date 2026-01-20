@@ -48,6 +48,12 @@ fn empty_200() http::Response {
   http::Response{status: 200, headers: res_headers, body: ""}
 }
 
+fn no_content() http::Response {
+  mut headers = res_headers
+  headers.drop("Content-Type")
+  http::Response{status: 204, headers: headers, body: ""}
+}
+
 mut nf_headers = res_headers
 nf_headers.drop("Content-Type")
 let not_found = http::Response{status:404, body:"Not found", headers:nf_headers}
@@ -80,9 +86,7 @@ fn main() {
       "/health": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
-            mut headers = res_headers
-            headers.drop("Content-Type")
-            http::Response{status: 200, headers: headers, body: "Ok"}
+            http::Response{status: 200, headers: res_headers, body: "\{\"status\":\"ok\"}"}
           },
           _ => not_found
         }
@@ -158,7 +162,7 @@ fn main() {
                   id => {
                     let raw_body = try decode::from_json(req.body.or("")) -> err { internal_error("Unable to parse request body: {err}") }
                     try bets::update(conn, id, raw_body) -> internal_error
-                    empty_200()
+                    no_content()
                   },
                   _ => not_found
                 }
@@ -202,8 +206,7 @@ fn main() {
                 // todo: not all failures are 500
                 let input = try leagues::decode_follow_request(body) -> errs { internal_error(errs.at(0).to_str()) }
                 try leagues::create(conn, input) -> internal_error
-
-                http::Response{status: 200, headers: res_headers, body: ""}
+                no_content()
               },
               false => unauthorized()
             }
@@ -216,8 +219,7 @@ fn main() {
                 let id = try decode::run(body, decode::field("id", decode::int)) -> errs { internal_error(errs.at(0).to_str()) }
                 let hidden = try decode::run(body, decode::field("hidden", decode::bool)) -> errs { internal_error(errs.at(0).to_str()) }
                 try leagues::toggle_hidden(conn, id, hidden) -> internal_error
-
-                http::Response{status: 200, headers: res_headers, body: ""}
+                no_content()
               },
               false => unauthorized()
             }
