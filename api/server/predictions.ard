@@ -136,145 +136,8 @@ fn get_comparison(db: sql::Database, fixture_id: Int) Comparison!Str {
 }
 
 // returns metrics over the last 5 games before the given timestamp
-fn get_form(db: sql::Database, team_id: Int, before: Int) Snapshot!Str {
-  let rows = try db.query("SELECT
-    f.id,
-    l.id as league_id,
-    f.season,
-    f.home_id,
-    f.away_id,
-    f.timestamp,
-    f.finished,
-    f.home_goals,
-    f.away_goals,
-    h.name as home_name,
-    a.name as away_name,
-    l.name as league_name,
-    team_stats.xg as team_xg,
-    opp_stats.xg as opp_xg
-  FROM fixtures f
-  INNER JOIN leagues l ON l.id = f.league_id
-  INNER JOIN teams h ON h.id = f.home_id
-  INNER JOIN teams a ON a.id = f.away_id
-  LEFT JOIN fixture_stats team_stats ON team_stats.fixture_id = f.id AND team_stats.team_id = @team_id
-  LEFT JOIN fixture_stats opp_stats ON opp_stats.fixture_id = f.id AND opp_stats.team_id != @team_id
-  WHERE (f.home_id = @team_id OR f.away_id = @team_id)
-  AND f.finished = true
-  AND f.timestamp < @before
-  ORDER BY f.timestamp DESC
-  LIMIT 5")
-    .all(["team_id": team_id, "before": before])
-
-  mut fixtures_list: [fixtures::Fixture] = []
-  mut xg_for_total = 0.0
-  mut xg_against_total = 0.0
-
-  for row, idx in rows {
-    let fixture = try fixtures::from_row(row) -> errs {
-      Result::err(errs.at(0).to_str())
-    }
-    fixtures_list.push(fixture)
-
-    // Accumulate xG values from fixture_stats
-    let team_xg = decode::run(row, decode::field("team_xg", decode::float)).or(0.0)
-    let opp_xg = decode::run(row, decode::field("opp_xg", decode::float)).or(0.0)
-    xg_for_total =+ team_xg
-    xg_against_total =+ opp_xg
-  }
-
-  mut wins = 0
-  mut losses = 0
-  mut draws = 0
-  mut goals_for = 0
-  mut goals_against = 0
-  mut one_plus_scored = 0
-  mut cleansheets = 0
-  mut failed_to_score = 0
-  mut at_least_1_against = 0
-  mut two_plus_conceded = 0
-
-  for fixture in fixtures_list {
-    match fixture.home.id == team_id {
-      true => {
-        goals_for =+ fixture.home_goals
-        goals_against =+ fixture.away_goals
-        if fixture.home_goals == 0 { failed_to_score =+ 1 }
-        if fixture.away_goals == 0 { cleansheets =+ 1 }
-        if fixture.home_goals > 1 { one_plus_scored =+ 1 }
-        if fixture.away_goals >= 1 { at_least_1_against =+ 1 }
-        if fixture.away_goals >= 2 { two_plus_conceded =+ 1 }
-        match {
-          fixture.is_home_win() => { wins =+ 1 },
-          fixture.is_away_win() => { losses =+ 1 },
-          _ => { draws =+ 1 }
-        }
-      },
-      false => {
-        goals_for =+ fixture.away_goals
-        goals_against =+ fixture.home_goals
-        if fixture.away_goals == 0 { failed_to_score =+ 1 }
-        if fixture.home_goals == 0 { cleansheets =+ 1 }
-        if fixture.away_goals > 1 { one_plus_scored =+ 1 }
-        if fixture.home_goals >= 1 { at_least_1_against =+ 1 }
-        if fixture.home_goals >= 2 { two_plus_conceded =+ 1 }
-        match {
-          fixture.is_away_win() => { wins =+ 1 },
-          fixture.is_home_win() => { losses =+ 1 },
-          _ => { draws =+ 1 }
-        }
-      }
-    }
-  }
-
-  let num_games = fixtures_list.size()
-  match num_games == 0 {
-    true => Result::ok(Snapshot{
-      num_games: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      goals_against: 0,
-      goals_for: 0,
-      one_plus_scored: 0,
-      strike_rate: 0.0,
-      goals_diff: 0,
-      xgf: 0.0,
-      xga: 0.0,
-      leakiness: 0.0,
-      cleansheets: 0,
-      one_conceded: 0,
-      two_plus_conceded: 0,
-      win_rate: 0.0,
-    }),
-    false => {
-      let games = Float::from_int(num_games)
-      let xgf = xg_for_total / games
-      let xga = xg_against_total / games
-      let one_conceded = at_least_1_against - two_plus_conceded
-
-      Result::ok(Snapshot{
-        num_games: num_games,
-        wins: wins,
-        losses: losses,
-        draws: draws,
-        goals_against: goals_against,
-        goals_for: goals_for,
-        one_plus_scored: one_plus_scored,
-        strike_rate: 1.0 - Float::from_int(failed_to_score) / games,
-        goals_diff: goals_for - goals_against,
-        xgf: xgf,
-        xga: xga,
-        leakiness: Float::from_int(two_plus_conceded) / games * 100.0,
-        cleansheets: cleansheets,
-        one_conceded: one_conceded,
-        two_plus_conceded: two_plus_conceded,
-        win_rate: Float::from_int(wins) / games,
-      })
-    }
-  }
-}
-
-fn get_form_from_api(db: sql::Database, team_id: Int, league_id: Int) Snapshot!Str {
+// todo: this should support a timestamp or date so that it can provide form at that point
+fn get_form(db: sql::Database, team_id: Int, league_id: Int) Snapshot!Str {
   let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, last: maybe::some(5))
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
@@ -389,23 +252,10 @@ fn get_form_from_api(db: sql::Database, team_id: Int, league_id: Int) Snapshot!S
 // Returns form-based comparison if league is followed and both teams have ≥5 games
 // falls back to normal comparison for unfollowed leagues
 fn get_form_comparison(db: sql::Database, fixture: fixtures::Fixture) Comparison!Str {
-  match leagues::is_following(db, fixture.league.id) {
-    false => {
-      let home_form = try get_form_from_api(db: db, team_id: fixture.home.id, league_id: fixture.league_id)
-      let away_form = try get_form_from_api(db: db, team_id: fixture.away.id, league_id: fixture.league_id)
+  let home_form = try get_form(db: db, team_id: fixture.home.id, league_id: fixture.league_id)
+  let away_form = try get_form(db: db, team_id: fixture.away.id, league_id: fixture.league_id)
 
-      Result::ok(Comparison{ home: home_form, away: away_form })
-    },
-    true => {
-      let home_form = try get_form(db, fixture.home.id, fixture.timestamp)
-      let away_form = try get_form(db, fixture.away.id, fixture.timestamp)
-
-      match home_form.num_games >= 5 and away_form.num_games >= 5 {
-        true => Result::ok(Comparison{ home: home_form, away: away_form }),
-        false => Result::err("Insufficient games")
-      }
-    }
-  }
+  Result::ok(Comparison{ home: home_form, away: away_form })
 }
 
 struct FixturePicks {

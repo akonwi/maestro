@@ -289,12 +289,12 @@ fn main() {
 
             let form_data = match comparison.home.num_games > 5 and comparison.away.num_games > 5 {
               true => {
-                let home_form = try predictions::get_form_from_api(
+                let home_form = try predictions::get_form(
                   db: conn,
                   team_id: fixture.home.id,
                   league_id: fixture.league.id
                 ) -> internal_error
-                let away_form = try predictions::get_form_from_api(
+                let away_form = try predictions::get_form(
                   db: conn,
                   team_id: fixture.away.id,
                   league_id: fixture.league.id
