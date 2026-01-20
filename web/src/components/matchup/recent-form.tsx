@@ -1,4 +1,4 @@
-import { createMemo, Show, Suspense } from "solid-js";
+import { createMemo, Match, Suspense, Switch } from "solid-js";
 import { type TeamStats, useMatchupStats } from "~/api/analysis";
 import { useMatchupForm } from "~/api/fixtures";
 import { FormTimeline } from "~/components/form-timeline";
@@ -96,54 +96,72 @@ function Inner(props: RecentFormProps) {
   );
 
   return (
-    <Show when={homeStats() && awayStats()}>
-      <div class="card bg-base-100 border border-base-300">
-        <div class="card-body">
-          <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Home Form */}
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="font-medium">{props.homeTeam.name}</span>
-                <span
-                  class={`badge ${getFormBadgeClass(getFormRating(homeStats()!))}`}
-                >
-                  {getFormRating(homeStats()!)}
-                </span>
-              </div>
-              <FormTimeline
-                fixtures={homeFormFixtures()}
-                teamId={props.homeTeam.id}
-              />
-              <div class="text-sm text-base-content/60 mt-2">
-                {homeStats()!.wins}W - {homeStats()!.draws}D -{" "}
-                {homeStats()!.losses}L
-              </div>
-            </div>
+    <Switch>
+      <Match when={statsQuery.isError}>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <div class="text-error text-sm">Failed to load stats</div>
+          </div>
+        </div>
+      </Match>
 
-            {/* Away Form */}
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="font-medium">{props.awayTeam.name}</span>
-                <span
-                  class={`badge ${getFormBadgeClass(getFormRating(awayStats()!))}`}
-                >
-                  {getFormRating(awayStats()!)}
-                </span>
+      <Match when={formQuery.isError}>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <div class="text-error text-sm">Failed to load form data</div>
+          </div>
+        </div>
+      </Match>
+
+      <Match when={statsQuery.isSuccess && formQuery.isSuccess}>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Home Form */}
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-medium">{props.homeTeam.name}</span>
+                  <span
+                    class={`badge ${getFormBadgeClass(getFormRating(homeStats()!))}`}
+                  >
+                    {getFormRating(homeStats()!)}
+                  </span>
+                </div>
+                <FormTimeline
+                  fixtures={homeFormFixtures()}
+                  teamId={props.homeTeam.id}
+                />
+                <div class="text-sm text-base-content/60 mt-2">
+                  {homeStats()!.wins}W - {homeStats()!.draws}D -{" "}
+                  {homeStats()!.losses}L
+                </div>
               </div>
-              <FormTimeline
-                fixtures={awayFormFixtures()}
-                teamId={props.awayTeam.id}
-              />
-              <div class="text-sm text-base-content/60 mt-2">
-                {awayStats()!.wins}W - {awayStats()!.draws}D -{" "}
-                {awayStats()!.losses}L
+
+              {/* Away Form */}
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-medium">{props.awayTeam.name}</span>
+                  <span
+                    class={`badge ${getFormBadgeClass(getFormRating(awayStats()!))}`}
+                  >
+                    {getFormRating(awayStats()!)}
+                  </span>
+                </div>
+                <FormTimeline
+                  fixtures={awayFormFixtures()}
+                  teamId={props.awayTeam.id}
+                />
+                <div class="text-sm text-base-content/60 mt-2">
+                  {awayStats()!.wins}W - {awayStats()!.draws}D -{" "}
+                  {awayStats()!.losses}L
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </Show>
+      </Match>
+    </Switch>
   );
 }
 

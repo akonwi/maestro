@@ -3,9 +3,9 @@ import { A, useParams } from "@solidjs/router";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { useMatchupStats } from "~/api/analysis";
 import { useFixture } from "~/api/fixtures";
-import { ComparisonBar } from "~/components/matchup/comparison-bar";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
 import { RecentForm } from "~/components/matchup/recent-form";
+import { StatComparison } from "~/components/matchup/stat-comparison";
 import { StatsTable } from "~/components/matchup/stats-table";
 
 function logoUrl(id: number) {
@@ -53,7 +53,9 @@ export default function MatchupPage() {
   const fixture = () => fixtureQuery.data;
   const statsQuery = useMatchupStats(matchId());
 
-  const hasFormData = () => statsQuery.data?.form !== null;
+  // Only show form tab if stats loaded successfully and form data exists
+  const hasFormData = () =>
+    statsQuery.isSuccess && statsQuery.data?.form !== null;
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
 
@@ -85,16 +87,13 @@ export default function MatchupPage() {
   return (
     <div class="space-y-6 max-w-4xl mx-auto">
       <Switch>
-        <Match when={statsQuery.error || fixtureQuery.error}>
+        <Match when={fixtureQuery.isError}>
           <div class="alert alert-error">
-            <span>
-              Failed to load matchup:{" "}
-              {statsQuery.error?.message ?? fixtureQuery.error?.message}
-            </span>
+            <span>Failed to load matchup: {fixtureQuery.error?.message}</span>
           </div>
         </Match>
 
-        <Match when={statsQuery.isSuccess && fixtureQuery.isSuccess}>
+        <Match when={fixtureQuery.isSuccess}>
           {/* Header */}
           <div class="text-sm text-base-content/60">
             {fixture()?.league.name} • {formattedDateTime().date} •{" "}
@@ -195,64 +194,13 @@ export default function MatchupPage() {
             activeTab={activeTab()}
           />
 
-          {/* Comparison Bars */}
-          <Show when={homeStats() && awayStats()}>
-            <div class="card bg-base-100 border border-base-300">
-              <div class="card-body">
-                <h3 class="text-lg font-semibold mb-4">Stat Comparison</h3>
-                <div class="space-y-4">
-                  <ComparisonBar
-                    label="Expected Goals For (xGF)"
-                    homeValue={homeStats()!.xgf}
-                    awayValue={awayStats()!.xgf}
-                    homeName={fixture()!.home.name}
-                    awayName={fixture()!.away.name}
-                  />
-                  <ComparisonBar
-                    label="Expected Goals Against (xGA)"
-                    homeValue={homeStats()!.xga}
-                    awayValue={awayStats()!.xga}
-                    homeName={fixture()!.home.name}
-                    awayName={fixture()!.away.name}
-                    inverse
-                  />
-                  <ComparisonBar
-                    label="Goals Scored"
-                    homeValue={homeStats()!.goals_for}
-                    awayValue={awayStats()!.goals_for}
-                    homeName={fixture()!.home.name}
-                    awayName={fixture()!.away.name}
-                    formatValue={(v) => v.toString()}
-                  />
-                  <ComparisonBar
-                    label="Goals Conceded"
-                    homeValue={homeStats()!.goals_against}
-                    awayValue={awayStats()!.goals_against}
-                    homeName={fixture()!.home.name}
-                    awayName={fixture()!.away.name}
-                    inverse
-                    formatValue={(v) => v.toString()}
-                  />
-                  <ComparisonBar
-                    label="Clean Sheets"
-                    homeValue={homeStats()!.cleansheets}
-                    awayValue={awayStats()!.cleansheets}
-                    homeName={fixture()!.home.name}
-                    awayName={fixture()!.away.name}
-                    formatValue={(v) => v.toString()}
-                  />
-                  <ComparisonBar
-                    label="Win Rate"
-                    homeValue={homeStats()!.win_rate}
-                    awayValue={awayStats()!.win_rate}
-                    homeName={fixture()!.home.name}
-                    awayName={fixture()!.away.name}
-                    formatValue={(v) => `${(v * 100).toFixed(0)}%`}
-                  />
-                </div>
-              </div>
-            </div>
-          </Show>
+          {/* Stat Comparison */}
+          <StatComparison
+            fixtureId={matchId()}
+            homeTeam={fixture()!.home}
+            awayTeam={fixture()!.away}
+            activeTab={activeTab()}
+          />
 
           {/* Attack vs Defense Metrics */}
           <MetricsMatchup
