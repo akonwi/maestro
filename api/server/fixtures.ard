@@ -158,8 +158,6 @@ fn find_from_db(db: sql::Database, team_id: Int, league_id: Int, season: Int) [F
   Result::ok(fixtures)
 }
 
-let finished_statuses = ["FT", "AET", "PEN", "WO", "AWD"]
-
 fn decode_is_finished(data: Dynamic) Bool![decode::Error] {
   let api_status = try decode::string(data)
 
