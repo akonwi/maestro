@@ -286,12 +286,12 @@ fn main() {
               true => {
                 let home_form = try predictions::get_form_from_api(
                   db: conn,
-                  team_id: comparison.home.id,
+                  team_id: fixture.home.id,
                   league_id: fixture.league.id
                 ) -> internal_error
                 let away_form = try predictions::get_form_from_api(
                   db: conn,
-                  team_id: comparison.away.id,
+                  team_id: fixture.away.id,
                   league_id: fixture.league.id
                 ) -> internal_error
 
