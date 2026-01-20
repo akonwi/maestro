@@ -136,11 +136,7 @@ export default function MatchupPage() {
           </div>
         </Match>
 
-        <Match when={analysisQuery.isLoading || fixtureQuery.isLoading}>
-          <MatchupSkeleton />
-        </Match>
-
-        <Match when={analysis() && fixture()}>
+        <Match when={analysisQuery?.isSuccess && fixtureQuery.isSuccess}>
           {/* Header */}
           <div class="text-sm text-base-content/60">
             {fixture()!.league.name} • {formattedDateTime().date} •{" "}
