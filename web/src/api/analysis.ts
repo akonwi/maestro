@@ -1,8 +1,3 @@
-export type Team = {
-  id: number;
-  name: string;
-};
-
 export type TeamStats = {
   num_games: number;
   wins: number;
