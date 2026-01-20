@@ -8,7 +8,7 @@ use maestro/fapi
 struct League {
   id: Int,
   name: Str,
-  // unless explcitly set to true in the db, the league will by followed (synced on a regular basis)
+  // unless explicitly set to true in the db, the league will be followed (synced on a regular basis)
   hidden: Bool,
 
   // if it's in the database & not hidden, it's being followed
