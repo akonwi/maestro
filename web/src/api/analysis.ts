@@ -51,6 +51,18 @@ export function useMatchupStats(fixtureId: number) {
   }));
 }
 
+type TeamMetricsApiResponse = {
+  shots: {
+    total: number;
+    on_target: number;
+    off_target: number;
+    blocked: number;
+    in_box: number;
+  };
+  xg: number;
+  corners: number;
+};
+
 export type UseTeamMetrics = {
   teamId: number;
   leagueId: number;
@@ -129,7 +141,7 @@ export function useTeamMetrics(getProps: () => UseTeamMetrics) {
         const body = await response.json();
         const numFixtures = body.num_fixtures || 1;
 
-        const buildStats = (team: any) => {
+        const buildStats = (team: TeamMetricsApiResponse) => {
           const totalShots = team.shots.total;
           const shotStats = {
             total: totalShots,

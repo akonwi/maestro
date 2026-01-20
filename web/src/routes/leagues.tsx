@@ -1,26 +1,22 @@
 import { useQueryClient } from "@tanstack/solid-query";
 import { For, Suspense } from "solid-js";
-import { useLeagues, useToggleLeague } from "~/api/leagues";
+import { type League, useLeagues, useToggleLeague } from "~/api/leagues";
 
 export default function LeaguesPage() {
   const leaguesQuery = useLeagues();
   const toggleLeague = useToggleLeague();
   const queryClient = useQueryClient();
 
-  const handleToggleLeague = (league: {
-    id: number;
-    name: string;
-    hidden: boolean;
-  }) => {
+  const handleToggleLeague = (league: League) => {
     const newHiddenState = !league.hidden;
     toggleLeague.mutate(
       { id: league.id, hidden: newHiddenState },
       {
         onSuccess: () => {
           // Update the local cache to reflect the change immediately
-          queryClient.setQueryData(["leagues"], (oldData: any) => {
+          queryClient.setQueryData<League[]>(["leagues"], oldData => {
             if (!oldData) return oldData;
-            return oldData.map((l: any) =>
+            return oldData.map(l =>
               l.id === league.id ? { ...l, hidden: newHiddenState } : l,
             );
           });

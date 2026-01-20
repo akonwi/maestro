@@ -11,6 +11,7 @@ import {
   Switch,
   useContext,
 } from "solid-js";
+import type { Fixture } from "~/api/fixtures";
 import { BetFormContext } from "~/components/bet-form.context";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
@@ -96,7 +97,7 @@ function Page() {
 
   const [_, betForm] = useContext(BetFormContext);
 
-  const formatMatchup = (fixture: any) => {
+  const formatMatchup = (fixture: Fixture) => {
     return `${fixture.home.name} vs ${fixture.away.name}`;
   };
 
