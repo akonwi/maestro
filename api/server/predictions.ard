@@ -315,16 +315,16 @@ fn pick_team_goal_lines(odd: odds::Stat, stats: Snapshot, mut entry: FixturePick
   }
 }
 
-fn pick_cleansheet_lines(odd: odds::Stat, stats: Snapshot, mut entry: FixturePicks) {
+fn pick_cleansheet_lines(odd: odds::Stat, stats: Snapshot, opponent: Snapshot, mut entry: FixturePicks) {
   mut lines: [odds::Line] = []
   for line in odd.values {
     if line.odd >= -150 {
-      if line.name == "No" and (stats.xga >= 1.5 or stats.leakiness >= 0.5) {
+      if line.name == "No" and (stats.xga >= 1.5 or stats.leakiness >= 0.5 or opponent.xgf >= 1.5) {
         lines.push(line)
       }
 
-      // be extremely conservative
-      if line.name == "Yes" and stats.xga < 1.0 {
+      // be conservative: good defense AND opponent doesn't score much
+      if line.name == "Yes" and stats.xga < 1.0 and opponent.xgf <= 1.3 {
         lines.push(line)
       }
     }
@@ -384,11 +384,11 @@ private fn find_juice() {
                 }
 
                 if odd.id == odds::HOME_CLEANSHEET {
-                  pick_cleansheet_lines(odd, comp.home, entry)
+                  pick_cleansheet_lines(odd, comp.home, comp.away, entry)
                 }
 
                 if odd.id == odds::AWAY_CLEANSHEET {
-                  pick_cleansheet_lines(odd, comp.away, entry)
+                  pick_cleansheet_lines(odd, comp.away, comp.home, entry)
                 }
               }
             },
