@@ -79,7 +79,7 @@ function Inner(props: StatComparisonProps) {
               awayValue={awayStats()!.goals_for}
               homeName={props.homeTeam.name}
               awayName={props.awayTeam.name}
-              formatValue={(v) => v.toString()}
+              formatValue={v => v.toString()}
             />
             <ComparisonBar
               label="Goals Conceded"
@@ -88,7 +88,7 @@ function Inner(props: StatComparisonProps) {
               homeName={props.homeTeam.name}
               awayName={props.awayTeam.name}
               inverse
-              formatValue={(v) => v.toString()}
+              formatValue={v => v.toString()}
             />
             <ComparisonBar
               label="Clean Sheets"
@@ -96,7 +96,7 @@ function Inner(props: StatComparisonProps) {
               awayValue={awayStats()!.cleansheets}
               homeName={props.homeTeam.name}
               awayName={props.awayTeam.name}
-              formatValue={(v) => v.toString()}
+              formatValue={v => v.toString()}
             />
             <ComparisonBar
               label="Win Rate"
@@ -104,7 +104,7 @@ function Inner(props: StatComparisonProps) {
               awayValue={awayStats()!.win_rate}
               homeName={props.homeTeam.name}
               awayName={props.awayTeam.name}
-              formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+              formatValue={v => `${(v * 100).toFixed(0)}%`}
             />
           </div>
         </div>

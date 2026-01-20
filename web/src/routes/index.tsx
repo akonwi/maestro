@@ -1,3 +1,4 @@
+import { A, useSearchParams } from "@solidjs/router";
 import { clientOnly } from "@solidjs/start";
 import {
   createEffect,
@@ -10,11 +11,11 @@ import {
   Switch,
   useContext,
 } from "solid-js";
-import { A, useSearchParams } from "@solidjs/router";
+import { BetFormContext } from "~/components/bet-form.context";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
 import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
-import { BetFormContext } from "~/components/bet-form.context";
+import { formatOdds } from "~/lib/formatters";
 
 function Page() {
   useScrollRestoration();
@@ -36,7 +37,7 @@ function Page() {
 
   // Persist sort setting to localStorage
   createEffect(() => {
-    let sort = sortByOdds();
+    const sort = sortByOdds();
     if (sort === null) {
       localStorage.removeItem("valueBetsSortByOdds");
     } else {
@@ -94,13 +95,6 @@ function Page() {
   };
 
   const [_, betForm] = useContext(BetFormContext);
-
-  const formatOdds = (odd: number) => {
-    if (odd > 0) {
-      return `+${odd}`;
-    }
-    return odd.toString();
-  };
 
   const formatMatchup = (fixture: any) => {
     return `${fixture.home.name} vs ${fixture.away.name}`;

@@ -1,16 +1,6 @@
 import { Match, Switch } from "solid-js";
 import { useBetOverview } from "~/api/bets";
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
-
-const formatPercentage = (value: number) => {
-  return `${value.toFixed(1)}%`;
-};
+import { formatCurrency, formatPercentage } from "~/lib/formatters";
 
 export function BettingStats() {
   const query = useBetOverview();

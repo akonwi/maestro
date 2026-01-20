@@ -1,6 +1,6 @@
+import { useQueryClient } from "@tanstack/solid-query";
 import { For, Suspense } from "solid-js";
 import { useLeagues, useToggleLeague } from "~/api/leagues";
-import { useQueryClient } from "@tanstack/solid-query";
 
 export default function LeaguesPage() {
   const leaguesQuery = useLeagues();

@@ -4,6 +4,7 @@ import { createMemo, createSignal, For, Show, useContext } from "solid-js";
 import { createStore } from "solid-js/store";
 import { CreateBetData, useCreateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
+import { calculatePayout, formatOdds } from "~/lib/formatters";
 import { BetFormContext } from "./bet-form.context";
 
 export interface BetFormProps {
@@ -32,14 +33,8 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
   const payout = createMemo(() => {
     const amt = formData.amount || 0;
     const oddsVal = formData.odds || 0;
-
     if (oddsVal === 0 || amt === 0) return 0;
-
-    if (oddsVal > 0) {
-      return amt + amt * (oddsVal / 100);
-    } else {
-      return amt + amt * (100 / Math.abs(oddsVal));
-    }
+    return calculatePayout(amt, oddsVal);
   });
 
   const validateBet = (betData: CreateBetData): string[] => {
@@ -70,15 +65,9 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
       return;
     }
 
-    const formatOdds = (odd: number) => {
-      if (odd > 0) {
-        return `+${odd}`;
-      }
-      return odd.toString();
-    };
     createBet.mutate(betData, {
       onSuccess: () => {
-        const id = toaster.show((props) => (
+        const id = toaster.show(props => (
           <Toast
             toastId={props.toastId}
             class="alert bordered border-base-300 w-full flex justify-between"
@@ -103,7 +92,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
   if (auth.isReadOnly()) {
     return (
       <div class="modal modal-open" onClick={close}>
-        <div class="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div class="modal-box" onClick={e => e.stopPropagation()}>
           <div class="flex justify-between items-center mb-4">
             <h3 class="font-bold text-lg">API Token Required</h3>
             <button class="btn btn-sm btn-circle btn-ghost" onClick={close}>
@@ -136,7 +125,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
     <div class="modal modal-open" onClick={close}>
       <div
         class="modal-box w-11/12 max-w-5xl max-h-[95vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <div class="flex justify-between items-center mb-4">
           <h3 class="font-bold text-lg">Record New Bet</h3>
@@ -148,7 +137,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
         <Show when={errors.length > 0}>
           <div class="alert alert-error mb-4">
             <ul>
-              <For each={errors()}>{(item) => <li>{item}</li>}</For>
+              <For each={errors()}>{item => <li>{item}</li>}</For>
             </ul>
           </div>
         </Show>
@@ -174,7 +163,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
               placeholder="e.g., Chelsea to win, Over 2.5 goals"
               class="input input-bordered w-full"
               value={formData.description}
-              onChange={(e) => setFormData({ description: e.target.value })}
+              onChange={e => setFormData({ description: e.target.value })}
               required
             />
           </div>
@@ -191,7 +180,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
                 placeholder="-1.5, 2.5, 0"
                 class="input input-bordered"
                 value={formData.line}
-                onChange={(e) =>
+                onChange={e =>
                   setFormData({ line: new Number(e.target.value).valueOf() })
                 }
               />
@@ -208,7 +197,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
                 placeholder="-150, +200"
                 class="input input-bordered"
                 value={formData.odds}
-                onChange={(e) =>
+                onChange={e =>
                   setFormData({ odds: new Number(e.target.value).valueOf() })
                 }
                 required
@@ -237,7 +226,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
                 placeholder="100.00"
                 class="input input-bordered"
                 value={formData.amount}
-                onChange={(e) =>
+                onChange={e =>
                   setFormData({ amount: new Number(e.target.value).valueOf() })
                 }
                 required

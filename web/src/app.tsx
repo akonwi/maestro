@@ -1,12 +1,12 @@
 import "./app.css";
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { clientOnly } from "@solidjs/start";
-import { Suspense } from "solid-js";
-import { Header } from "~/components/header";
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
-import { Portal } from "solid-js/web";
 import { Toast } from "@kobalte/core/toast";
+import { Router } from "@solidjs/router";
+import { clientOnly } from "@solidjs/start";
+import { FileRoutes } from "@solidjs/start/router";
+import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { Suspense } from "solid-js";
+import { Portal } from "solid-js/web";
+import { Header } from "~/components/header";
 import { BetFormProvider } from "./components/bet-form.provider";
 import { PageSkeleton } from "./components/page-skeleton";
 
@@ -18,7 +18,7 @@ export default function App() {
   return (
     <Router
       base={import.meta.env.SERVER_BASE_URL}
-      root={(props) => (
+      root={props => (
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BetFormProvider>

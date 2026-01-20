@@ -431,17 +431,15 @@ export function GameMetrics(props: GameMetricsProps) {
   );
 }
 
-GameMetrics.Loading = function () {
-  return (
-    <div class="card bg-base-100 border border-base-300">
-      <div class="card-body">
-        <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
-        <div class="flex w-52 flex-col gap-4">
-          <div class="skeleton h-4 w-full"></div>
-          <div class="skeleton h-4 w-3/4"></div>
-          <div class="skeleton h-4 w-1/2"></div>
-        </div>
+GameMetrics.Loading = () => (
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body">
+      <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
+      <div class="flex w-52 flex-col gap-4">
+        <div class="skeleton h-4 w-full"></div>
+        <div class="skeleton h-4 w-3/4"></div>
+        <div class="skeleton h-4 w-1/2"></div>
       </div>
     </div>
-  );
-};
+  </div>
+);

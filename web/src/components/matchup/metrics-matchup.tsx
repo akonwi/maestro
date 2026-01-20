@@ -1,5 +1,5 @@
 import { createSignal, Show } from "solid-js";
-import { useTeamMetrics, type TeamMetrics } from "~/api/analysis";
+import { type TeamMetrics, useTeamMetrics } from "~/api/analysis";
 import { RadarChart } from "./radar-chart";
 
 interface MetricsMatchupProps {
@@ -50,7 +50,9 @@ function MetricBar(props: MetricBarProps) {
         </div>
         <div
           class={`flex items-center justify-end pr-2 text-xs font-medium transition-all ${
-            !attackWins() ? "bg-secondary text-secondary-content" : "bg-base-300"
+            !attackWins()
+              ? "bg-secondary text-secondary-content"
+              : "bg-base-300"
           }`}
           style={{ width: `${defensePercent()}%` }}
         >

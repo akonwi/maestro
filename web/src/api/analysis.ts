@@ -96,7 +96,12 @@ export function useTeamMetrics(getProps: () => UseTeamMetrics) {
     return {
       queryKey: [
         "teams",
-        { id: props.teamId, leagueId: props.leagueId, season: props.season, limit: props.limit },
+        {
+          id: props.teamId,
+          leagueId: props.leagueId,
+          season: props.season,
+          limit: props.limit,
+        },
         "metrics",
       ],
       queryFn: async () => {
@@ -112,56 +117,56 @@ export function useTeamMetrics(getProps: () => UseTeamMetrics) {
           `${import.meta.env.VITE_API_BASE_URL}/teams/${
             props.teamId
           }/metrics?${params.toString()}`,
-        {
-          headers: auth.headers(),
-        },
-      );
+          {
+            headers: auth.headers(),
+          },
+        );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch team metrics: ${response.status}`);
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch team metrics: ${response.status}`);
+        }
 
-      const body = await response.json();
-      const numFixtures = body.num_fixtures || 1;
+        const body = await response.json();
+        const numFixtures = body.num_fixtures || 1;
 
-      const buildStats = (team: any) => {
-        const totalShots = team.shots.total;
-        const shotStats = {
-          total: totalShots,
-          onGoal: team.shots.on_target,
-          missed: team.shots.off_target,
-          blocked: team.shots.blocked,
-          insideBox: team.shots.in_box,
-          outsideBox: totalShots - team.shots.in_box,
+        const buildStats = (team: any) => {
+          const totalShots = team.shots.total;
+          const shotStats = {
+            total: totalShots,
+            onGoal: team.shots.on_target,
+            missed: team.shots.off_target,
+            blocked: team.shots.blocked,
+            insideBox: team.shots.in_box,
+            outsideBox: totalShots - team.shots.in_box,
+          };
+
+          return {
+            total: {
+              shots: shotStats,
+              xg: team.xg,
+              corners: team.corners,
+            },
+            perGame: {
+              shots: {
+                total: totalShots / numFixtures,
+                onGoal: team.shots.on_target / numFixtures,
+                missed: team.shots.off_target / numFixtures,
+                blocked: team.shots.blocked / numFixtures,
+                insideBox: team.shots.in_box / numFixtures,
+                outsideBox: (totalShots - team.shots.in_box) / numFixtures,
+              },
+              xg: team.xg / numFixtures,
+              corners: team.corners / numFixtures,
+            },
+          };
         };
 
         return {
-          total: {
-            shots: shotStats,
-            xg: team.xg,
-            corners: team.corners,
-          },
-          perGame: {
-            shots: {
-              total: totalShots / numFixtures,
-              onGoal: team.shots.on_target / numFixtures,
-              missed: team.shots.off_target / numFixtures,
-              blocked: team.shots.blocked / numFixtures,
-              insideBox: team.shots.in_box / numFixtures,
-              outsideBox: (totalShots - team.shots.in_box) / numFixtures,
-            },
-            xg: team.xg / numFixtures,
-            corners: team.corners / numFixtures,
-          },
+          num_fixtures: numFixtures,
+          for: buildStats(body.team),
+          against: buildStats(body.against),
         };
-      };
-
-      return {
-        num_fixtures: numFixtures,
-        for: buildStats(body.team),
-        against: buildStats(body.against),
-      };
-    },
-  };
+      },
+    };
   });
 }

@@ -14,5 +14,5 @@ type IBetFormContext = [
 
 export const BetFormContext = createContext<IBetFormContext>([
   { isOpen: false },
-  { show: function () {}, close: () => {} },
+  { show: () => {}, close: () => {} },
 ]);

@@ -11,7 +11,7 @@ export function useLeagues() {
   const auth = useAuth();
   return useQuery(() => ({
     queryKey: ["leagues"],
-    queryFn: async function (): Promise<League[]> {
+    queryFn: async (): Promise<League[]> => {
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/leagues`,
         {
@@ -33,11 +33,11 @@ export function useLeagues() {
 export function useTrackLeague() {
   const auth = useAuth();
   return useMutation(() => ({
-    mutationFn: async function (input: {
+    mutationFn: async (input: {
       id: number;
       name: string;
       hidden?: boolean;
-    }) {
+    }) => {
       if (auth.isReadOnly()) {
         return null;
       }
@@ -66,7 +66,7 @@ export function useTrackLeague() {
 export function useToggleLeague() {
   const auth = useAuth();
   return useMutation(() => ({
-    mutationFn: async function (input: { id: number; hidden: boolean }) {
+    mutationFn: async (input: { id: number; hidden: boolean }) => {
       if (auth.isReadOnly()) {
         return null;
       }

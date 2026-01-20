@@ -1,8 +1,13 @@
-import { createSignal, For, Match, Show, Switch } from "solid-js";
-import { A } from "@solidjs/router";
 import { ContextMenu } from "@kobalte/core/context-menu";
+import { A } from "@solidjs/router";
+import { createSignal, For, Match, Show, Switch } from "solid-js";
 import { useBets, useDeleteBet, useUpdateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
+import {
+  calculatePayout,
+  calculateProfit,
+  formatCurrency,
+} from "~/lib/formatters";
 
 function useStacked<T>() {
   const [stack, update] = createSignal<T[]>([]);
@@ -13,21 +18,6 @@ function useStacked<T>() {
     pop: () => update(([_, ...rest]) => rest),
   };
 }
-
-// Bet calculations (American odds format)
-export const calculatePayout = (amount: number, odds: number): number => {
-  if (odds > 0) {
-    // Positive odds: +200 means bet $100 to win $200
-    return amount + amount * (odds / 100);
-  } else {
-    // Negative odds: -150 means bet $150 to win $100
-    return amount + amount * (100 / Math.abs(odds));
-  }
-};
-
-export const calculateProfit = (amount: number, odds: number): number => {
-  return calculatePayout(amount, odds) - amount;
-};
 
 export function BetTable() {
   const [filter, setFilter] = createSignal<"all" | "win" | "lose" | "pending">(
@@ -58,13 +48,6 @@ export function BetTable() {
     if (confirm("Are you sure you want to delete this bet?")) {
       deleteBet.mutate(betId);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
   };
 
   const getResultBadge = (result: string) => {
@@ -292,7 +275,6 @@ export function BetTable() {
               </div>
             </>
           )}
-
         </div>
       </Match>
     </Switch>

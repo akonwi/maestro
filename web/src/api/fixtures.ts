@@ -30,7 +30,7 @@ export type Fixture = {
 export function useFixture(id: number) {
   return useQuery(() => ({
     queryKey: ["matches", { id }],
-    queryFn: async function (): Promise<Fixture> {
+    queryFn: async (): Promise<Fixture> => {
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/fixtures/${id}`,
       );
@@ -54,7 +54,7 @@ export function useFixtures(options: Accessor<UseFixturesOptions>) {
 
   return useQuery(() => ({
     queryKey: ["fixtures", options()],
-    queryFn: async function (): Promise<Fixture[]> {
+    queryFn: async (): Promise<Fixture[]> => {
       const leagueId = options().leagueId;
       const season = options().season;
       const teamId = options().teamId;

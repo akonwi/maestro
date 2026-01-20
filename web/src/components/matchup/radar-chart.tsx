@@ -1,4 +1,4 @@
-import { For, createMemo } from "solid-js";
+import { createMemo, For } from "solid-js";
 
 interface RadarChartProps {
   attackLabel: string;
@@ -135,12 +135,7 @@ export function RadarChart(props: RadarChartProps) {
           {(d, index) => {
             const point = getPoint(index(), d.defense);
             return (
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r="4"
-                class="fill-secondary"
-              />
+              <circle cx={point.x} cy={point.y} r="4" class="fill-secondary" />
             );
           }}
         </For>
@@ -150,12 +145,7 @@ export function RadarChart(props: RadarChartProps) {
           {(d, index) => {
             const point = getPoint(index(), d.attack);
             return (
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r="4"
-                class="fill-primary"
-              />
+              <circle cx={point.x} cy={point.y} r="4" class="fill-primary" />
             );
           }}
         </For>

@@ -165,7 +165,7 @@ export type BetOverview = {
 export function useBetOverview() {
   return useQuery(() => ({
     queryKey: ["bets", "overview"],
-    queryFn: async function (): Promise<BetOverview> {
+    queryFn: async (): Promise<BetOverview> => {
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
       );

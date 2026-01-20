@@ -1,5 +1,5 @@
-import { Fixture } from "./fixtures";
 import { Accessor } from "solid-js";
+import { Fixture } from "./fixtures";
 
 export type TeamPerformance = {
   league: {
@@ -65,7 +65,7 @@ export function getPerformance(
   const _params = params();
   return () => ({
     queryKey: ["teams", _params, "performance"],
-    queryFn: async function (): Promise<TeamPerformance> {
+    queryFn: async (): Promise<TeamPerformance> => {
       const searchParams = new URLSearchParams({
         league_id: _params.league.toString(),
         season: _params.season.toString(),
