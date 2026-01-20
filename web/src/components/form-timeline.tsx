@@ -23,7 +23,7 @@ export function FormTimeline(props: FormTimelineProps) {
   return (
     <div class="flex gap-2 overflow-x-auto w-full">
       <For each={props.fixtures}>
-        {fixture => {
+        {(fixture) => {
           const result = getResult(fixture);
           return (
             <div
@@ -32,7 +32,7 @@ export function FormTimeline(props: FormTimelineProps) {
                 "badge-success": result === "W",
                 "badge-error": result === "L",
               }}
-              class="badge badge-lg flex-shrink-0"
+              class="badge badge-lg shrink-0"
               title={getTooltip(fixture)}
             >
               {result}

@@ -236,45 +236,84 @@ fn main() {
         }
       },
 
-      "/analysis/:matchId": fn(req: http::Request) http::Response {
+      // Returns the recent completed fixtures for both teams in the fixture.
+      // It defaults to the last 5.
+      "/matchup/:fixture_id/form": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
-            let fixture_id = try Int::from_str(req.path_param("matchId")) -> _ { not_found }
-            match fixture_id < -1 {
+            let fixture_id = try Int::from_str(req.path_param("fixture_id")) -> _ { not_found }
+            let fixture = try fixtures::get(conn, fixture_id) -> internal_error
+
+            let home_form = try fixtures::find_played(
+              db: conn,
+              team_id: fixture.home.id,
+              league_id: fixture.league.id,
+              count: 5
+            ) -> internal_error
+            let away_form = try fixtures::find_played(
+              db: conn,
+              team_id: fixture.away.id,
+              league_id: fixture.league.id,
+              count: 5
+            ) -> internal_error
+
+            let data = Dynamic::object([
+              "home": Dynamic::list(home_form, fn (f) { f.to_dynamic() }),
+              "away": Dynamic::list(away_form, fn (f) { f.to_dynamic() }),
+            ])
+
+            match json::encode(data) {
+              ok(body) => http::Response{status:200, body:body, headers:res_headers},
+              err => internal_error(err)
+            }
+          },
+          _ => not_found
+        }
+      },
+
+      // Provide computed statistics for the teams coming into in the fixture.
+      "/matchup/:fixture_id/stats": fn(req: http::Request) http::Response {
+        match req.method {
+          http::Method::Get => {
+            let fixture_id = try Int::from_str(req.path_param("fixture_id")) -> _ { not_found }
+            let fixture = try fixtures::get(conn, fixture_id) -> internal_error
+
+            let comparison = try predictions::get_comparison(conn, fixture_id) -> err {
+              internal_error("Error getting stat comparison: {err}")
+            }
+
+            let form_data = match comparison.home.num_games > 5 and comparison.away.num_games > 5 {
               true => {
-                mut headers = res_headers
-                headers.drop("Content-Type")
-                http::Response{status: 400, body: "Invalid match id", headers: headers}
+                let home_form = try predictions::get_form_from_api(
+                  db: conn,
+                  team_id: fixture.home.id,
+                  league_id: fixture.league.id
+                ) -> internal_error
+                let away_form = try predictions::get_form_from_api(
+                  db: conn,
+                  team_id: fixture.away.id,
+                  league_id: fixture.league.id
+                ) -> internal_error
+
+                Dynamic::object([
+                  "home": home_form.to_dyn(),
+                  "away": away_form.to_dyn(),
+                ])
               },
-              false => {
-                let fixture = try fixtures::get(conn, fixture_id) -> internal_error
-                let analysis = try predictions::get_comparison(conn, fixture_id) -> err {
-                  internal_error("Error getting analysis: {err}")
-                }
+              false => Dynamic::from(())
+            }
 
-                mut data = [
-                  "home": fixture.home.to_dyn(),
-                  "away": fixture.away.to_dyn(),
-                  "comparison": Dynamic::object([
-                    "home": analysis.home.to_dyn(),
-                    "away": analysis.away.to_dyn(),
-                  ]),
-                ]
+            let data = Dynamic::object([
+              "season": Dynamic::object([
+                "home": comparison.home.to_dyn(),
+                "away": comparison.away.to_dyn(),
+              ]),
+              "form": form_data,
+            ])
 
-                // add 'form' key if we have form data
-                match predictions::get_form_comparison(conn, fixture)  {
-                  ok(comp) => data.set("form", Dynamic::object([
-                    "home": comp.home.to_dyn(),
-                    "away": comp.away.to_dyn(),
-                  ])),
-                  err => ()
-                }
-
-                match json::encode(Dynamic::object(data)) {
-                  ok(body) => http::Response{status:200, body:body, headers:res_headers},
-                  err => internal_error(err)
-                }
-              }
+            match json::encode(data) {
+              ok(body) => http::Response{status:200, body:body, headers:res_headers},
+              err => internal_error(err)
             }
           },
           _ => not_found
