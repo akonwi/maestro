@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/solid-query";
 import { For, Show } from "solid-js";
-import { type TeamMetrics, useTeamMetrics } from "~/api/analysis";
+import { type TeamMetrics, teamMetricsQueryOptions } from "~/api/analysis";
+import { useAuth } from "~/contexts/auth";
 
 interface GameMetricsProps {
   teamId: number;
@@ -119,12 +121,18 @@ function MetricSection(props: {
 }
 
 export function GameMetrics(props: GameMetricsProps) {
-  const metricsQuery = useTeamMetrics(() => ({
-    teamId: props.teamId,
-    leagueId: props.leagueId,
-    season: props.season,
-    limit: props.limit,
-  }));
+  const auth = useAuth();
+  const metricsQuery = useQuery(() =>
+    teamMetricsQueryOptions(
+      {
+        teamId: props.teamId,
+        leagueId: props.leagueId,
+        season: props.season,
+        limit: props.limit,
+      },
+      auth.headers,
+    ),
+  );
 
   return (
     <div class="card bg-base-100 border border-base-300">

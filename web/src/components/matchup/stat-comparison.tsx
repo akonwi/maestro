@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/solid-query";
 import { createMemo, Show, Suspense } from "solid-js";
-import { useMatchupStats } from "~/api/analysis";
+import { matchupStatsQueryOptions } from "~/api/analysis";
 import { ComparisonBar } from "./comparison-bar";
 
 interface StatComparisonProps {
@@ -28,7 +29,7 @@ function StatComparisonSkeleton() {
 }
 
 function Inner(props: StatComparisonProps) {
-  const statsQuery = useMatchupStats(props.fixtureId);
+  const statsQuery = useQuery(() => matchupStatsQueryOptions(props.fixtureId));
 
   const homeStats = createMemo(() =>
     props.activeTab === "season"

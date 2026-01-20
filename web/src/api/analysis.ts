@@ -1,6 +1,3 @@
-import { useQuery } from "@tanstack/solid-query";
-import { useAuth } from "~/contexts/auth";
-
 export type Team = {
   id: number;
   name: string;
@@ -34,22 +31,20 @@ export type MatchupStatsData = {
   form: ComparisonData | null;
 };
 
-export function useMatchupStats(fixtureId: number) {
-  return useQuery<MatchupStatsData>(() => ({
-    queryKey: ["matchup", { fixtureId }, "stats"],
-    queryFn: async () => {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/matchup/${fixtureId}/stats`,
-      );
+export const matchupStatsQueryOptions = (fixtureId: number) => ({
+  queryKey: ["matchup", { fixtureId }, "stats"] as const,
+  queryFn: async (): Promise<MatchupStatsData> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/matchup/${fixtureId}/stats`,
+    );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch matchup stats: ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch matchup stats: ${response.status}`);
+    }
 
-      return response.json();
-    },
-  }));
-}
+    return response.json();
+  },
+});
 
 type TeamMetricsApiResponse = {
   shots: {
@@ -63,14 +58,7 @@ type TeamMetricsApiResponse = {
   corners: number;
 };
 
-export type UseTeamMetrics = {
-  teamId: number;
-  leagueId: number;
-  season: number;
-  limit?: number;
-};
-
-export type TeamMetricsCacheKey = {
+export type TeamMetricsParams = {
   teamId: number;
   leagueId: number;
   season: number;
@@ -100,85 +88,77 @@ export type TeamMetrics = Record<
   }
 > & { num_fixtures: number };
 
-export function useTeamMetrics(getProps: () => UseTeamMetrics) {
-  const auth = useAuth();
+export const teamMetricsQueryOptions = (
+  params: TeamMetricsParams,
+  headers: () => Record<string, string>,
+) => ({
+  queryKey: [
+    "teams",
+    {
+      id: params.teamId,
+      leagueId: params.leagueId,
+      season: params.season,
+      limit: params.limit,
+    },
+    "metrics",
+  ] as const,
+  queryFn: async (): Promise<TeamMetrics> => {
+    const searchParams = new URLSearchParams({
+      season: params.season.toString(),
+      league_id: params.leagueId.toString(),
+    });
+    if (params.limit) {
+      searchParams.set("limit", params.limit.toString());
+    }
 
-  return useQuery(() => {
-    const props = getProps();
-    return {
-      queryKey: [
-        "teams",
-        {
-          id: props.teamId,
-          leagueId: props.leagueId,
-          season: props.season,
-          limit: props.limit,
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/teams/${params.teamId}/metrics?${searchParams.toString()}`,
+      { headers: headers() },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch team metrics: ${response.status}`);
+    }
+
+    const body = await response.json();
+    const numFixtures = body.num_fixtures || 1;
+
+    const buildStats = (team: TeamMetricsApiResponse) => {
+      const totalShots = team.shots.total;
+      const shotStats = {
+        total: totalShots,
+        onGoal: team.shots.on_target,
+        missed: team.shots.off_target,
+        blocked: team.shots.blocked,
+        insideBox: team.shots.in_box,
+        outsideBox: totalShots - team.shots.in_box,
+      };
+
+      return {
+        total: {
+          shots: shotStats,
+          xg: team.xg,
+          corners: team.corners,
         },
-        "metrics",
-      ],
-      queryFn: async () => {
-        const params = new URLSearchParams({
-          season: props.season.toString(),
-          league_id: props.leagueId.toString(),
-        });
-        if (props.limit) {
-          params.set("limit", props.limit.toString());
-        }
-
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/teams/${
-            props.teamId
-          }/metrics?${params.toString()}`,
-          {
-            headers: auth.headers(),
+        perGame: {
+          shots: {
+            total: totalShots / numFixtures,
+            onGoal: team.shots.on_target / numFixtures,
+            missed: team.shots.off_target / numFixtures,
+            blocked: team.shots.blocked / numFixtures,
+            insideBox: team.shots.in_box / numFixtures,
+            outsideBox: (totalShots - team.shots.in_box) / numFixtures,
           },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch team metrics: ${response.status}`);
-        }
-
-        const body = await response.json();
-        const numFixtures = body.num_fixtures || 1;
-
-        const buildStats = (team: TeamMetricsApiResponse) => {
-          const totalShots = team.shots.total;
-          const shotStats = {
-            total: totalShots,
-            onGoal: team.shots.on_target,
-            missed: team.shots.off_target,
-            blocked: team.shots.blocked,
-            insideBox: team.shots.in_box,
-            outsideBox: totalShots - team.shots.in_box,
-          };
-
-          return {
-            total: {
-              shots: shotStats,
-              xg: team.xg,
-              corners: team.corners,
-            },
-            perGame: {
-              shots: {
-                total: totalShots / numFixtures,
-                onGoal: team.shots.on_target / numFixtures,
-                missed: team.shots.off_target / numFixtures,
-                blocked: team.shots.blocked / numFixtures,
-                insideBox: team.shots.in_box / numFixtures,
-                outsideBox: (totalShots - team.shots.in_box) / numFixtures,
-              },
-              xg: team.xg / numFixtures,
-              corners: team.corners / numFixtures,
-            },
-          };
-        };
-
-        return {
-          num_fixtures: numFixtures,
-          for: buildStats(body.team),
-          against: buildStats(body.against),
-        };
-      },
+          xg: team.xg / numFixtures,
+          corners: team.corners / numFixtures,
+        },
+      };
     };
-  });
-}
+
+    return {
+      num_fixtures: numFixtures,
+      for: buildStats(body.team),
+      against: buildStats(body.against),
+    };
+  },
+});

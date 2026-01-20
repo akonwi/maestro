@@ -1,8 +1,9 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: Switch and Match ensure where something can be asserted */
 import { A, useParams } from "@solidjs/router";
+import { useQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
-import { useMatchupStats } from "~/api/analysis";
-import { useFixture } from "~/api/fixtures";
+import { matchupStatsQueryOptions } from "~/api/analysis";
+import { fixtureQueryOptions } from "~/api/fixtures";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
 import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
@@ -49,9 +50,9 @@ export default function MatchupPage() {
   const params = useParams();
   const matchId = () => Number(params.id);
 
-  const fixtureQuery = useFixture(matchId());
+  const fixtureQuery = useQuery(() => fixtureQueryOptions(matchId()));
   const fixture = () => fixtureQuery.data;
-  const statsQuery = useMatchupStats(matchId());
+  const statsQuery = useQuery(() => matchupStatsQueryOptions(matchId()));
 
   // Only show form tab if stats loaded successfully and form data exists
   const hasFormData = () =>

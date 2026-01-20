@@ -1,5 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/solid-query";
-import { Accessor } from "solid-js";
+import { useMutation, useQueryClient } from "@tanstack/solid-query";
 import { useAuth } from "~/contexts/auth";
 
 export interface Bet {
@@ -12,17 +11,6 @@ export interface Bet {
   result: "pending" | "win" | "lose" | "push";
 }
 
-export interface BettingStats {
-  totalBets: number;
-  totalWagered: number;
-  totalWinnings: number;
-  totalLosses: number;
-  netProfit: number;
-  roi: number;
-  winRate: number;
-  pendingBets: number;
-}
-
 export interface CreateBetData {
   match_id: number;
   type_id: number;
@@ -32,45 +20,61 @@ export interface CreateBetData {
   amount: number;
 }
 
-export interface UpdateBetData {
-  description?: string;
-  line?: number;
-  odds?: number;
-  amount?: number;
-  result?: Bet["result"];
-}
-
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export function useBets(
-  matchId: Accessor<number | null>,
-  after: Accessor<number | null>,
-) {
-  return useQuery<{
+export type BetsQueryParams = {
+  matchId?: number | null;
+  after?: number | null;
+};
+
+export const betsQueryOptions = (params: BetsQueryParams) => ({
+  queryKey: ["bets", { matchId: params.matchId, after: params.after }] as const,
+  queryFn: async (): Promise<{
     bets: Bet[];
     cursor?: number | null;
     has_next?: boolean | null;
-  }>(() => ({
-    queryKey: ["bets", { matchId: matchId(), after: after() }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (typeof matchId() === "number") {
-        params.append("match_id", matchId()!.toString());
-      }
-      if (typeof after() === "number") {
-        params.append("after", after()!.toString());
-      }
-      const queryString = params.size > 0 ? params.toString() : "";
-      const response = await fetch(`${baseUrl}/bets?${queryString}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      return response.json();
-    },
-  }));
-}
+  }> => {
+    const searchParams = new URLSearchParams();
+    if (typeof params.matchId === "number") {
+      searchParams.append("match_id", params.matchId.toString());
+    }
+    if (typeof params.after === "number") {
+      searchParams.append("after", params.after.toString());
+    }
+    const queryString = searchParams.size > 0 ? searchParams.toString() : "";
+    const response = await fetch(`${baseUrl}/bets?${queryString}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.json();
+  },
+});
+
+export type BetOverview = {
+  bets: Bet[];
+  num_pending: number;
+  total_wagered: number;
+  win_rate: number;
+  gross_payout: number;
+  net_profit: number;
+  gross_loss: number;
+  roi: number;
+};
+
+export const betOverviewQueryOptions = () => ({
+  queryKey: ["bets", "overview"] as const,
+  queryFn: async (): Promise<BetOverview> => {
+    const response = await fetch(`${baseUrl}/bets/overview`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});
 
 export function useCreateBet() {
   const queryClient = useQueryClient();
@@ -94,7 +98,6 @@ export function useCreateBet() {
       return response.json();
     },
     onSuccess: data => {
-      // invalidate because if there were no bets in the cache, normalization won't kick in
       queryClient.invalidateQueries({
         queryKey: ["bets", { matchId: data.match_id }],
       });
@@ -119,7 +122,7 @@ export function useUpdateBet() {
 
       return response.json();
     },
-    onSettled: (data, error, input) => {
+    onSettled: (_data, error) => {
       if (error == null)
         queryClient.invalidateQueries({
           queryKey: ["bets"],
@@ -145,36 +148,7 @@ export function useDeleteBet() {
       }
     },
     onSuccess: () => {
-      // todo: auto-normaliztion won't happen because server returns empty body
       queryClient.invalidateQueries({ queryKey: ["bets"] });
-    },
-  }));
-}
-
-export type BetOverview = {
-  bets: Bet[];
-  num_pending: number;
-  total_wagered: number;
-  win_rate: number;
-  gross_payout: number;
-  net_profit: number;
-  gross_loss: number;
-  roi: number;
-};
-
-export function useBetOverview() {
-  return useQuery(() => ({
-    queryKey: ["bets", "overview"],
-    queryFn: async (): Promise<BetOverview> => {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/bets/overview`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return response.json();
     },
   }));
 }

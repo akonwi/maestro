@@ -10,10 +10,11 @@ import {
   Switch,
 } from "solid-js";
 import { Team } from "~/api/fixtures";
-import { useLeagues } from "~/api/leagues";
-import { getPerformance } from "~/api/teams";
+import { leaguesQueryOptions } from "~/api/leagues";
+import { performanceQueryOptions } from "~/api/teams";
 import { FormTimeline } from "~/components/form-timeline";
 import { GameMetrics } from "~/components/game-metrics";
+import { useAuth } from "~/contexts/auth";
 import { computeStatsFromFixtures } from "~/lib/stats";
 
 function logoUrl(model: "teams" | "leagues", id: number) {
@@ -23,6 +24,7 @@ function logoUrl(model: "teams" | "leagues", id: number) {
 export default function TeamStatsPage() {
   const routeParams = useParams();
   const [searchParams] = useSearchParams();
+  const auth = useAuth();
   const teamId = Number(routeParams.id);
   const league = Number(searchParams.league);
   const season = Number(searchParams.season);
@@ -41,11 +43,11 @@ export default function TeamStatsPage() {
       return response.json();
     },
   }));
-  const performanceQuery = useQuery(
-    getPerformance(() => ({ id: teamId, league, season })),
+  const performanceQuery = useQuery(() =>
+    performanceQueryOptions({ id: teamId, league, season }),
   );
 
-  const leaguesQuery = useLeagues();
+  const leaguesQuery = useQuery(() => leaguesQueryOptions(auth.headers));
 
   const isTeamInFollowedLeague = () => {
     if (!league || !leaguesQuery.data) return false;

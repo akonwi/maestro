@@ -1,6 +1,7 @@
+import { useQuery } from "@tanstack/solid-query";
 import { createMemo, Match, Suspense, Switch } from "solid-js";
-import { type TeamStats, useMatchupStats } from "~/api/analysis";
-import { useMatchupForm } from "~/api/fixtures";
+import { matchupStatsQueryOptions, type TeamStats } from "~/api/analysis";
+import { matchupFormQueryOptions } from "~/api/fixtures";
 import { FormTimeline } from "~/components/form-timeline";
 
 interface RecentFormProps {
@@ -77,8 +78,8 @@ const getFormBadgeClass = (rating: string) => {
 };
 
 function Inner(props: RecentFormProps) {
-  const statsQuery = useMatchupStats(props.fixtureId);
-  const formQuery = useMatchupForm(props.fixtureId);
+  const statsQuery = useQuery(() => matchupStatsQueryOptions(props.fixtureId));
+  const formQuery = useQuery(() => matchupFormQueryOptions(props.fixtureId));
 
   const homeFormFixtures = createMemo(() => formQuery.data?.home ?? []);
   const awayFormFixtures = createMemo(() => formQuery.data?.away ?? []);

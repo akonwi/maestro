@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/solid-query";
 import { createSignal, Show } from "solid-js";
-import { type TeamMetrics, useTeamMetrics } from "~/api/analysis";
+import { type TeamMetrics, teamMetricsQueryOptions } from "~/api/analysis";
+import { useAuth } from "~/contexts/auth";
 import { RadarChart } from "./radar-chart";
 
 interface MetricsMatchupProps {
@@ -179,21 +181,32 @@ function buildRadarData(
 }
 
 export function MetricsMatchup(props: MetricsMatchupProps) {
+  const auth = useAuth();
   const [viewMode, setViewMode] = createSignal<"bars" | "radar">("radar");
 
-  const homeMetricsQuery = useTeamMetrics(() => ({
-    teamId: props.homeId,
-    leagueId: props.leagueId,
-    season: props.season,
-    limit: props.limit,
-  }));
+  const homeMetricsQuery = useQuery(() =>
+    teamMetricsQueryOptions(
+      {
+        teamId: props.homeId,
+        leagueId: props.leagueId,
+        season: props.season,
+        limit: props.limit,
+      },
+      auth.headers,
+    ),
+  );
 
-  const awayMetricsQuery = useTeamMetrics(() => ({
-    teamId: props.awayId,
-    leagueId: props.leagueId,
-    season: props.season,
-    limit: props.limit,
-  }));
+  const awayMetricsQuery = useQuery(() =>
+    teamMetricsQueryOptions(
+      {
+        teamId: props.awayId,
+        leagueId: props.leagueId,
+        season: props.season,
+        limit: props.limit,
+      },
+      auth.headers,
+    ),
+  );
 
   const isLoading = () =>
     homeMetricsQuery.isLoading || awayMetricsQuery.isLoading;

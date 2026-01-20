@@ -1,7 +1,4 @@
-import { useQuery } from "@tanstack/solid-query";
-import { Accessor } from "solid-js";
-import { useAuth } from "~/contexts/auth";
-import { League } from "./leagues";
+import type { League } from "./leagues";
 
 export type Team = {
   id: number;
@@ -27,21 +24,18 @@ export type Fixture = {
   };
 };
 
-export function useFixture(id: number) {
-  return useQuery(() => ({
-    queryKey: ["matches", { id }],
-    queryFn: async (): Promise<Fixture> => {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/fixtures/${id}`,
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    },
-  }));
-}
+export const fixtureQueryOptions = (id: number) => ({
+  queryKey: ["matches", { id }] as const,
+  queryFn: async (): Promise<Fixture> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/fixtures/${id}`,
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  },
+});
 
 export type UseFixturesOptions = {
   leagueId: number;
@@ -49,48 +43,37 @@ export type UseFixturesOptions = {
   teamId: number;
 };
 
-export function useFixtures(options: Accessor<UseFixturesOptions>) {
-  const auth = useAuth();
+export const fixturesQueryOptions = (options: UseFixturesOptions) => ({
+  queryKey: ["fixtures", options] as const,
+  queryFn: async (): Promise<Fixture[]> => {
+    const params = new URLSearchParams({
+      league_id: options.leagueId.toString(),
+      season: options.season.toString(),
+    });
 
-  return useQuery(() => ({
-    queryKey: ["fixtures", options()],
-    queryFn: async (): Promise<Fixture[]> => {
-      const leagueId = options().leagueId;
-      const season = options().season;
-      const teamId = options().teamId;
-      const params = new URLSearchParams({
-        league_id: leagueId.toString(),
-        season: season.toString(),
-      });
-
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_API_BASE_URL
-        }/teams/${teamId}/fixtures?${params.toString()}`,
-      );
-      return await response.json();
-    },
-  }));
-}
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/teams/${options.teamId}/fixtures?${params.toString()}`,
+    );
+    return response.json();
+  },
+});
 
 export type MatchupForm = {
   home: Fixture[];
   away: Fixture[];
 };
 
-export function useMatchupForm(fixtureId: number) {
-  return useQuery<MatchupForm>(() => ({
-    queryKey: ["matchup", { fixtureId }, "form"],
-    queryFn: async () => {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/matchup/${fixtureId}/form`,
-      );
+export const matchupFormQueryOptions = (fixtureId: number) => ({
+  queryKey: ["matchup", { fixtureId }, "form"] as const,
+  queryFn: async (): Promise<MatchupForm> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/matchup/${fixtureId}/form`,
+    );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch matchup form: ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch matchup form: ${response.status}`);
+    }
 
-      return response.json();
-    },
-  }));
-}
+    return response.json();
+  },
+});

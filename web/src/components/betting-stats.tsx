@@ -1,9 +1,10 @@
+import { useQuery } from "@tanstack/solid-query";
 import { Match, Switch } from "solid-js";
-import { useBetOverview } from "~/api/bets";
+import { betOverviewQueryOptions } from "~/api/bets";
 import { formatCurrency, formatPercentage } from "~/lib/formatters";
 
 export function BettingStats() {
-  const query = useBetOverview();
+  const query = useQuery(() => betOverviewQueryOptions());
   const totalBetsCount = () => query.data?.bets.length ?? 0;
   const pendingBetsCount = () => query.data?.num_pending ?? 0;
   const totalWagered = () => formatCurrency(query.data?.total_wagered ?? 0);

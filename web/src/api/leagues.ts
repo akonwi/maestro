@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/solid-query";
+import { useMutation } from "@tanstack/solid-query";
 import { useAuth } from "~/contexts/auth";
 
 export interface League {
@@ -7,28 +7,25 @@ export interface League {
   hidden: boolean;
 }
 
-export function useLeagues() {
-  const auth = useAuth();
-  return useQuery(() => ({
-    queryKey: ["leagues"],
-    queryFn: async (): Promise<League[]> => {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/leagues`,
-        {
-          method: "GET",
-          headers: auth.headers(),
-        },
-      );
+export const leaguesQueryOptions = (headers: () => Record<string, string>) => ({
+  queryKey: ["leagues"] as const,
+  queryFn: async (): Promise<League[]> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/leagues`,
+      {
+        method: "GET",
+        headers: headers(),
+      },
+    );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch leagues: ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch leagues: ${response.status}`);
+    }
 
-      const body = await response.json();
-      return body.leagues;
-    },
-  }));
-}
+    const body = await response.json();
+    return body.leagues;
+  },
+});
 
 export function useTrackLeague() {
   const auth = useAuth();

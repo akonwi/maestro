@@ -1,5 +1,4 @@
-import { Accessor } from "solid-js";
-import { Fixture } from "./fixtures";
+import type { Fixture } from "./fixtures";
 
 export type TeamPerformance = {
   league: {
@@ -55,32 +54,27 @@ export type TeamPerformance = {
   };
 };
 
-export function getPerformance(
-  params: Accessor<{
-    id: number;
-    league: number;
-    season: number;
-  }>,
-) {
-  const _params = params();
-  return () => ({
-    queryKey: ["teams", _params, "performance"],
-    queryFn: async (): Promise<TeamPerformance> => {
-      const searchParams = new URLSearchParams({
-        league_id: _params.league.toString(),
-        season: _params.season.toString(),
-      });
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/teams/${
-          _params.id
-        }/performance?${searchParams.toString()}`,
-      );
+export type PerformanceParams = {
+  id: number;
+  league: number;
+  season: number;
+};
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch team statistics: ${response.status}`);
-      }
+export const performanceQueryOptions = (params: PerformanceParams) => ({
+  queryKey: ["teams", params, "performance"] as const,
+  queryFn: async (): Promise<TeamPerformance> => {
+    const searchParams = new URLSearchParams({
+      league_id: params.league.toString(),
+      season: params.season.toString(),
+    });
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/teams/${params.id}/performance?${searchParams.toString()}`,
+    );
 
-      return response.json();
-    },
-  });
-}
+    if (!response.ok) {
+      throw new Error(`Failed to fetch team statistics: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});

@@ -1,13 +1,10 @@
 import { ContextMenu } from "@kobalte/core/context-menu";
 import { A } from "@solidjs/router";
+import { useQuery } from "@tanstack/solid-query";
 import { createSignal, For, Match, Show, Switch } from "solid-js";
-import { useBets, useDeleteBet, useUpdateBet } from "~/api/bets";
+import { betsQueryOptions, useDeleteBet, useUpdateBet } from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
-import {
-  calculatePayout,
-  calculateProfit,
-  formatCurrency,
-} from "~/lib/formatters";
+import { calculateProfit, formatCurrency } from "~/lib/formatters";
 
 function useStacked<T>() {
   const [stack, update] = createSignal<T[]>([]);
@@ -30,7 +27,9 @@ export function BetTable() {
     pop: goBack,
   } = useStacked<number>();
 
-  const query = useBets(() => null, cursor);
+  const query = useQuery(() =>
+    betsQueryOptions({ matchId: null, after: cursor() }),
+  );
   const auth = useAuth();
   const deleteBet = useDeleteBet();
   const updateBet = useUpdateBet();
