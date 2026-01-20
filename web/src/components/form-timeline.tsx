@@ -1,4 +1,4 @@
-import { For, Suspense } from "solid-js";
+import { For } from "solid-js";
 import type { Fixture } from "~/api/fixtures";
 
 interface FormTimelineProps {
@@ -6,7 +6,7 @@ interface FormTimelineProps {
   teamId: number;
 }
 
-function Inner(props: FormTimelineProps) {
+export function FormTimeline(props: FormTimelineProps) {
   const getResult = (fixture: Fixture): "W" | "D" | "L" => {
     if (fixture.winner_id === props.teamId) return "W";
     if (fixture.winner_id === null) return "D";
@@ -41,13 +41,5 @@ function Inner(props: FormTimelineProps) {
         }}
       </For>
     </div>
-  );
-}
-
-export function FormTimeline(props: FormTimelineProps) {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Inner {...props} />
-    </Suspense>
   );
 }

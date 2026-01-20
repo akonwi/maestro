@@ -1,45 +1,16 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: Switch and Match ensure where something can be asserted */
 import { A, useParams } from "@solidjs/router";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
-import { type TeamStats, useMatchupStats } from "~/api/analysis";
-import { useFixture, useMatchupForm } from "~/api/fixtures";
-import { FormTimeline } from "~/components/form-timeline";
+import { useMatchupStats } from "~/api/analysis";
+import { useFixture } from "~/api/fixtures";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
+import { RecentForm } from "~/components/matchup/recent-form";
 import { StatsTable } from "~/components/matchup/stats-table";
 
 function logoUrl(id: number) {
   return `https://media.api-sports.io/football/teams/${id}.png`;
 }
-
-const getGamesPlayed = (stats: TeamStats) =>
-  stats.wins + stats.losses + stats.draws;
-
-const getFormRating = (stats: TeamStats) => {
-  const gamesPlayed = getGamesPlayed(stats);
-  if (gamesPlayed === 0) return "unknown";
-  const winRate = stats.wins / gamesPlayed;
-
-  if (winRate >= 0.65) return "excellent";
-  if (winRate >= 0.5) return "good";
-  if (winRate >= 0.35) return "average";
-  return "poor";
-};
-
-const getFormBadgeClass = (rating: string) => {
-  switch (rating.toLowerCase()) {
-    case "excellent":
-      return "badge-success";
-    case "good":
-      return "badge-info";
-    case "average":
-      return "badge-warning";
-    case "poor":
-      return "badge-error";
-    default:
-      return "badge-ghost";
-  }
-};
 
 export function MatchupSkeleton() {
   return (
@@ -81,14 +52,10 @@ export default function MatchupPage() {
   const fixtureQuery = useFixture(matchId());
   const fixture = () => fixtureQuery.data;
   const statsQuery = useMatchupStats(matchId());
-  const formQuery = useMatchupForm(matchId());
 
   const hasFormData = () => statsQuery.data?.form !== null;
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
-
-  const homeFormFixtures = createMemo(() => formQuery.data?.home ?? []);
-  const awayFormFixtures = createMemo(() => formQuery.data?.away ?? []);
 
   const homeStats = createMemo(() =>
     activeTab() === "season"
@@ -221,56 +188,12 @@ export default function MatchupPage() {
           </Show>
 
           {/* Recent Form */}
-          <Show when={homeStats() && awayStats()}>
-            <div class="card bg-base-100 border border-base-300">
-              <div class="card-body">
-                <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Home Form */}
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="font-medium">{fixture()?.home.name}</span>
-                      <span
-                        class={`badge ${getFormBadgeClass(
-                          getFormRating(homeStats()!),
-                        )}`}
-                      >
-                        {getFormRating(homeStats()!)}
-                      </span>
-                    </div>
-                    <FormTimeline
-                      fixtures={homeFormFixtures()}
-                      teamId={fixture()!.home.id}
-                    />
-                    <div class="text-sm text-base-content/60 mt-2">
-                      {homeStats()!.wins}W - {homeStats()!.draws}D -{" "}
-                      {homeStats()!.losses}L
-                    </div>
-                  </div>
-
-                  {/* Away Form */}
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="font-medium">{fixture()!.away.name}</span>
-                      <span
-                        class={`badge ${getFormBadgeClass(getFormRating(awayStats()!))}`}
-                      >
-                        {getFormRating(awayStats()!)}
-                      </span>
-                    </div>
-                    <FormTimeline
-                      fixtures={awayFormFixtures()}
-                      teamId={fixture()!.away.id}
-                    />
-                    <div class="text-sm text-base-content/60 mt-2">
-                      {awayStats()!.wins}W - {awayStats()!.draws}D -{" "}
-                      {awayStats()!.losses}L
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Show>
+          <RecentForm
+            fixtureId={matchId()}
+            homeTeam={fixture()!.home}
+            awayTeam={fixture()!.away}
+            activeTab={activeTab()}
+          />
 
           {/* Comparison Bars */}
           <Show when={homeStats() && awayStats()}>
