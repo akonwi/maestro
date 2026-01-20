@@ -13,6 +13,7 @@ import {
 } from "solid-js";
 import type { Fixture } from "~/api/fixtures";
 import { BetFormContext } from "~/components/bet-form.context";
+import { LeagueMenu } from "~/components/league-menu";
 import { useAuth } from "~/contexts/auth";
 import { useJuice } from "~/hooks/data/use-juice";
 import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
@@ -242,8 +243,12 @@ function Page() {
           <div class="space-y-4">
             <For each={juiceQuery.data}>
               {bet => (
-                <div class="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow">
-                  <div class="card-body">
+                <LeagueMenu
+                  league={bet.fixture.league}
+                  trigger="context"
+                >
+                  <div class="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow">
+                    <div class="card-body">
                     <div class="flex flex-col gap-4">
                       {/* Match Header */}
                       <div class="flex justify-between items-start">
@@ -309,6 +314,7 @@ function Page() {
                     </div>
                   </div>
                 </div>
+                </LeagueMenu>
               )}
             </For>
           </div>
@@ -353,7 +359,12 @@ function Page() {
               <tbody>
                 <For each={juice()}>
                   {({ bet, betType, value }) => (
-                    <tr class="hover:bg-base-200 transition-colors">
+                    <LeagueMenu
+                      league={bet.fixture.league}
+                      trigger="context"
+                      as="tr"
+                      class="hover:bg-base-200 transition-colors"
+                    >
                       <td class="font-medium">
                         <span class="badge badge-primary">
                           {formatOdds(value.odd)}
@@ -376,7 +387,7 @@ function Page() {
                       </td>
                       <td>{bet.fixture.league.name}</td>
                       <td>{formatFixtureTime(bet.fixture.timestamp)}</td>
-                    </tr>
+                    </LeagueMenu>
                   )}
                 </For>
               </tbody>

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { matchupStatsQueryOptions } from "~/api/analysis";
 import { fixtureQueryOptions } from "~/api/fixtures";
+import { LeagueMenu } from "~/components/league-menu";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
 import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
@@ -96,9 +97,14 @@ export default function MatchupPage() {
 
         <Match when={fixtureQuery.isSuccess}>
           {/* Header */}
-          <div class="text-sm text-base-content/60">
-            {fixture()?.league.name} • {formattedDateTime().date} •{" "}
-            {formattedDateTime().time}
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-base-content/60">
+              {fixture()?.league.name} • {formattedDateTime().date} •{" "}
+              {formattedDateTime().time}
+            </div>
+            <LeagueMenu league={fixture()!.league} trigger="dropdown">
+              {null}
+            </LeagueMenu>
           </div>
 
           {/* Teams Header Card */}
