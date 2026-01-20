@@ -72,3 +72,25 @@ export function useFixtures(options: Accessor<UseFixturesOptions>) {
     },
   }));
 }
+
+export type MatchupForm = {
+  home: Fixture[];
+  away: Fixture[];
+};
+
+export function useMatchupForm(fixtureId: number) {
+  return useQuery<MatchupForm>(() => ({
+    queryKey: ["matchup", { fixtureId }, "form"],
+    queryFn: async () => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/matchup/${fixtureId}/form`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch matchup form: ${response.status}`);
+      }
+
+      return response.json();
+    },
+  }));
+}

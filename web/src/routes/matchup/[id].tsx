@@ -1,9 +1,7 @@
 import { A, useParams } from "@solidjs/router";
-import { useQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { type TeamStats, useMatchup } from "~/api/analysis";
-import { type Fixture, useFixture } from "~/api/fixtures";
-import { getPerformance } from "~/api/teams";
+import { useFixture, useMatchupForm } from "~/api/fixtures";
 import { FormTimeline } from "~/components/form-timeline";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
@@ -42,7 +40,7 @@ const getFormBadgeClass = (rating: string) => {
   }
 };
 
-function MatchupSkeleton() {
+export function MatchupSkeleton() {
   return (
     <div class="space-y-6">
       <div class="animate-pulse bg-base-300 h-8 w-48 rounded" />
@@ -75,43 +73,13 @@ function MatchupSkeleton() {
   );
 }
 
-function getRecentFormFixtures(
-  allFixtures: Fixture[],
-  limit?: number,
-): Fixture[] {
-  const completed = allFixtures.filter(f => f.finished);
-  const sorted = [...completed].sort((a, b) => b.timestamp - a.timestamp);
-  return limit ? sorted.slice(0, limit) : sorted;
-}
-
 export default function MatchupPage() {
   const params = useParams();
   const matchId = () => Number(params.id);
 
   const analysisQuery = useMatchup(matchId());
   const fixtureQuery = useFixture(matchId());
-
-  const homePerformanceQuery = useQuery(() => {
-    const f = fixtureQuery.data;
-    const a = analysisQuery.data;
-    if (!f || !a) return { queryKey: ["disabled"], enabled: false };
-    return getPerformance(() => ({
-      id: a.home.id,
-      league: f.league.id,
-      season: f.season,
-    }))();
-  });
-
-  const awayPerformanceQuery = useQuery(() => {
-    const f = fixtureQuery.data;
-    const a = analysisQuery.data;
-    if (!f || !a) return { queryKey: ["disabled"], enabled: false };
-    return getPerformance(() => ({
-      id: a.away.id,
-      league: f.league.id,
-      season: f.season,
-    }))();
-  });
+  const formQuery = useMatchupForm(matchId());
 
   const hasFormData = () => {
     const form = analysisQuery.data?.form;
@@ -125,19 +93,8 @@ export default function MatchupPage() {
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
 
-  const homeFormFixtures = createMemo(() => {
-    const perf = homePerformanceQuery.data;
-    if (!perf) return [];
-    const limit = activeTab() === "form" ? 5 : undefined;
-    return getRecentFormFixtures(perf.fixtures.all, limit);
-  });
-
-  const awayFormFixtures = createMemo(() => {
-    const perf = awayPerformanceQuery.data;
-    if (!perf) return [];
-    const limit = activeTab() === "form" ? 5 : undefined;
-    return getRecentFormFixtures(perf.fixtures.all, limit);
-  });
+  const homeFormFixtures = createMemo(() => formQuery.data?.home ?? []);
+  const awayFormFixtures = createMemo(() => formQuery.data?.away ?? []);
 
   const homeStats = createMemo(() =>
     activeTab() === "season"
@@ -207,19 +164,25 @@ export default function MatchupPage() {
                   <div class="text-sm md:text-xl font-bold text-center link-hover truncate w-full">
                     {analysis()!.home.name}
                   </div>
-                  <div class="text-xs md:text-sm text-base-content/60">Home</div>
+                  <div class="text-xs md:text-sm text-base-content/60">
+                    Home
+                  </div>
                 </A>
 
                 {/* Score / VS */}
                 <div class="text-center flex-shrink-0">
                   <Show
                     when={fixture()!.finished}
-                    fallback={<div class="text-lg md:text-2xl font-bold">VS</div>}
+                    fallback={
+                      <div class="text-lg md:text-2xl font-bold">VS</div>
+                    }
                   >
                     <div class="text-xl md:text-3xl font-bold">
                       {fixture()!.home_goals} - {fixture()!.away_goals}
                     </div>
-                    <div class="badge badge-neutral badge-sm md:badge-md mt-1 md:mt-2">Full Time</div>
+                    <div class="badge badge-neutral badge-sm md:badge-md mt-1 md:mt-2">
+                      Full Time
+                    </div>
                   </Show>
                 </div>
 
@@ -236,7 +199,9 @@ export default function MatchupPage() {
                   <div class="text-sm md:text-xl font-bold text-center link-hover truncate w-full">
                     {analysis()!.away.name}
                   </div>
-                  <div class="text-xs md:text-sm text-base-content/60">Away</div>
+                  <div class="text-xs md:text-sm text-base-content/60">
+                    Away
+                  </div>
                 </A>
               </div>
             </div>
@@ -337,7 +302,7 @@ export default function MatchupPage() {
                     awayValue={awayStats()!.goals_for}
                     homeName={analysis()!.home.name}
                     awayName={analysis()!.away.name}
-                    formatValue={v => v.toString()}
+                    formatValue={(v) => v.toString()}
                   />
                   <ComparisonBar
                     label="Goals Conceded"
@@ -346,7 +311,7 @@ export default function MatchupPage() {
                     homeName={analysis()!.home.name}
                     awayName={analysis()!.away.name}
                     inverse
-                    formatValue={v => v.toString()}
+                    formatValue={(v) => v.toString()}
                   />
                   <ComparisonBar
                     label="Clean Sheets"
@@ -354,7 +319,7 @@ export default function MatchupPage() {
                     awayValue={awayStats()!.cleansheets}
                     homeName={analysis()!.home.name}
                     awayName={analysis()!.away.name}
-                    formatValue={v => v.toString()}
+                    formatValue={(v) => v.toString()}
                   />
                   <ComparisonBar
                     label="Win Rate"
@@ -362,7 +327,7 @@ export default function MatchupPage() {
                     awayValue={awayStats()!.win_rate}
                     homeName={analysis()!.home.name}
                     awayName={analysis()!.away.name}
-                    formatValue={v => `${(v * 100).toFixed(0)}%`}
+                    formatValue={(v) => `${(v * 100).toFixed(0)}%`}
                   />
                 </div>
               </div>

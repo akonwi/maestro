@@ -1,4 +1,4 @@
-import { For } from "solid-js";
+import { For, Suspense } from "solid-js";
 import type { Fixture } from "~/api/fixtures";
 
 interface FormTimelineProps {
@@ -6,7 +6,7 @@ interface FormTimelineProps {
   teamId: number;
 }
 
-export function FormTimeline(props: FormTimelineProps) {
+function Inner(props: FormTimelineProps) {
   const getResult = (fixture: Fixture): "W" | "D" | "L" => {
     if (fixture.winner_id === props.teamId) return "W";
     if (fixture.winner_id === null) return "D";
@@ -23,7 +23,7 @@ export function FormTimeline(props: FormTimelineProps) {
   return (
     <div class="flex gap-2 overflow-x-auto w-full">
       <For each={props.fixtures}>
-        {fixture => {
+        {(fixture) => {
           const result = getResult(fixture);
           return (
             <div
@@ -32,7 +32,7 @@ export function FormTimeline(props: FormTimelineProps) {
                 "badge-success": result === "W",
                 "badge-error": result === "L",
               }}
-              class="badge badge-lg flex-shrink-0"
+              class="badge badge-lg shrink-0"
               title={getTooltip(fixture)}
             >
               {result}
@@ -41,5 +41,13 @@ export function FormTimeline(props: FormTimelineProps) {
         }}
       </For>
     </div>
+  );
+}
+
+export function FormTimeline(props: FormTimelineProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Inner {...props} />
+    </Suspense>
   );
 }

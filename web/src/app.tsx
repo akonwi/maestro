@@ -17,14 +17,16 @@ export default function App() {
   return (
     <Router
       base={import.meta.env.SERVER_BASE_URL}
-      root={props => (
+      root={(props) => (
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BetFormProvider>
               <div class="min-h-screen bg-base-200">
                 <Header />
                 <main class="container mx-auto px-4 py-8">
-                  <Suspense>{props.children}</Suspense>
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {props.children}
+                  </Suspense>
                 </main>
               </div>
             </BetFormProvider>
