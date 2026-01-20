@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: Switch and Match ensure where something can be asserted */
 import { A, useParams } from "@solidjs/router";
 import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { type TeamStats, useMatchupStats } from "~/api/analysis";
@@ -78,6 +79,7 @@ export default function MatchupPage() {
   const matchId = () => Number(params.id);
 
   const fixtureQuery = useFixture(matchId());
+  const fixture = () => fixtureQuery.data;
   const statsQuery = useMatchupStats(matchId());
   const formQuery = useMatchupForm(matchId());
 
@@ -113,8 +115,6 @@ export default function MatchupPage() {
     };
   });
 
-  const fixture = () => fixtureQuery.data;
-
   return (
     <div class="space-y-6 max-w-4xl mx-auto">
       <Switch>
@@ -130,7 +130,7 @@ export default function MatchupPage() {
         <Match when={statsQuery.isSuccess && fixtureQuery.isSuccess}>
           {/* Header */}
           <div class="text-sm text-base-content/60">
-            {fixture()!.league.name} • {formattedDateTime().date} •{" "}
+            {fixture()?.league.name} • {formattedDateTime().date} •{" "}
             {formattedDateTime().time}
           </div>
 
@@ -157,7 +157,7 @@ export default function MatchupPage() {
                 </A>
 
                 {/* Score / VS */}
-                <div class="text-center flex-shrink-0">
+                <div class="text-center shrink-0">
                   <Show
                     when={fixture()!.finished}
                     fallback={
@@ -198,13 +198,21 @@ export default function MatchupPage() {
           <Show when={hasFormData()}>
             <div class="tabs tabs-boxed w-fit">
               <button
-                class={`tab ${activeTab() === "season" ? "tab-active" : ""}`}
+                type="button"
+                classList={{
+                  "tab-active": activeTab() === "season",
+                }}
+                class="tab"
                 onClick={() => setActiveTab("season")}
               >
                 Season
               </button>
               <button
-                class={`tab ${activeTab() === "form" ? "tab-active" : ""}`}
+                type="button"
+                classList={{
+                  "tab-active": activeTab() === "form",
+                }}
+                class="tab"
                 onClick={() => setActiveTab("form")}
               >
                 Last 5
@@ -221,9 +229,11 @@ export default function MatchupPage() {
                   {/* Home Form */}
                   <div>
                     <div class="flex items-center justify-between mb-2">
-                      <span class="font-medium">{fixture()!.home.name}</span>
+                      <span class="font-medium">{fixture()?.home.name}</span>
                       <span
-                        class={`badge ${getFormBadgeClass(getFormRating(homeStats()!))}`}
+                        class={`badge ${getFormBadgeClass(
+                          getFormRating(homeStats()!),
+                        )}`}
                       >
                         {getFormRating(homeStats()!)}
                       </span>
