@@ -164,6 +164,13 @@ The API uses a custom Ard-based migration system:
 - `HOST` - Server host (default: 0.0.0.0 in Docker)
 - `X_API_TOKEN` - Valid API token for authentication
 
+## Documentation
+
+Feature-specific documentation is available in the `docs/` folder:
+
+- `docs/caching.md` - Caching strategies
+- `docs/league-management.md` - League follow/hide functionality
+
 ## Notes
 
 - Ard is a custom compiled language. For language syntax and standard library reference, see https://www.ard.run/getting-started/introduction/
