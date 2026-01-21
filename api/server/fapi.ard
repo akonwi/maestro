@@ -1,5 +1,6 @@
 use ard/decode
 use ard/http
+use ard/io
 use ard/maybe
 use ard/sql
 
@@ -7,6 +8,22 @@ use maestro/cache
 use maestro/config
 
 // API-Football module - consolidates all external API calls to v3.football.api-sports.io
+
+fn flatten_values(map: [Str:Str]) Str {
+  mut str = ""
+  for key, value in map {
+    str =+ " {value}"
+  }
+  str
+}
+
+fn join_strs(list: [Str]) Str {
+  mut str = ""
+  for it in list {
+    str =+ " " + it
+  }
+  str
+}
 
 fn send_request(url: Str) Dynamic!Str {
   let req = http::Request{
@@ -19,8 +36,40 @@ fn send_request(url: Str) Dynamic!Str {
   }
 
   let res = try http::send(req) -> err { Result::err("Error fetching {url}: {err}") }
-  let body = try decode::from_json(res.body) -> found { Result::err("Unable to parse response body as JSON for {url}. Found {found}") }
-  Result::ok(body)
+
+  // todo: handle 429
+  match res.status {
+    200 => {
+      let body = try decode::from_json(res.body) -> found {
+        Result::err("Unable to parse response body as JSON for {url}. Found {found}")
+      }
+
+      // the API is documented as returning a list of strings but in reality, does something different:
+      // when no errors - it's an empty list
+      // when there are errors - it's a map of field name to message string
+      let parse_errors = decode::one_of(decode::list(decode::string), [fn(data: Dynamic) [Str]![decode::Error] {
+        mut msgs: [Str] = []
+        decode::map(decode::string, fn(v: Dynamic) Void![decode::Error] {
+          match decode::string(v) {
+            ok => msgs.push(ok),
+            err => (),
+          }
+          Result::ok(())
+        })
+        Result::ok(msgs)
+      }])
+
+      let errors = try decode::run(body, decode::field("errors", parse_errors)) -> errs {
+        Result::err("Bad Request. Couldn't decode fapi errors: {errs.at(0)}")
+      }
+
+      match errors.size() > 0 {
+        true => Result::err(join_strs(errors)),
+        false => Result::ok(body)
+      }
+    },
+    _ => Result::err("Bad request ({url}). Received {res.status}")
+  }
 }
 
 fn get_fixture(db: sql::Database, id: Int) Dynamic!Str {
