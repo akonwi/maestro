@@ -36,6 +36,7 @@ Requires schema changes or moderate refactoring:
 - [010](./statistics/010-poisson-distribution.md) - Poisson Distribution Goal Model
 - [025](./betting-strategy/025-corner-betting.md) - Corner Betting (match totals & team lines)
 - [027](./statistics/027-game-control-metric.md) - Game Control / Field Tilt Metric
+- [029](./statistics/029-venue-filtered-stats.md) - Venue-Filtered Stats (Home/Away Splits for Matchups)
 
 ### Phase 3: Larger Features (1-2 weeks each)
 Significant new functionality:
@@ -62,6 +63,7 @@ Code quality improvements identified during codebase review:
 - [022](./maintenance/022-bet-create-error-types.md) - Union Error Type for Bet Creation
 - [023](./maintenance/023-league-sync-error-tracking.md) - Track League Sync Errors
 - [024](./maintenance/024-unfollow-leagues.md) - Unfollow Leagues (Remove Preference)
+- [028](./maintenance/028-fapi-rate-limiting.md) - API-Football Rate Limit Handling
 
 ## Success Metrics
 
