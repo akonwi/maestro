@@ -12,13 +12,17 @@ import { PageSkeleton } from "./components/page-skeleton";
 
 const AuthProvider = clientOnly(() => import("~/contexts/auth.provider"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { refetchOnWindowFocus: false },
+  },
+});
 
 export default function App() {
   return (
     <Router
       base={import.meta.env.SERVER_BASE_URL}
-      root={props => (
+      root={(props) => (
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BetFormProvider>
