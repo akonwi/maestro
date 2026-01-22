@@ -755,8 +755,8 @@ fn find(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!
   Result::ok(fixtures)
 }
 
-fn find_played(db: sql::Database, team_id: Int, league_id: Int, count: Int) [Fixture]!Str {
-  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, last: maybe::some(count))
+fn find_played(db: sql::Database, team_id: Int, league_id: Int, season: Int, count: Int) [Fixture]!Str {
+  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: maybe::some(count))
   mut fixtures: [Fixture] = []
   for e in entries {
     let fixture = try Fixture::from_api_entry(e) -> errs { Result::err(errs.at(0).to_str()) }

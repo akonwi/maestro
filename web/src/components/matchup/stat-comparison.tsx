@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/solid-query";
-import { createMemo, Match, Suspense, Switch } from "solid-js";
+import { createMemo, createSignal, Match, Show, Suspense, Switch } from "solid-js";
 import { matchupStatsQueryOptions } from "~/api/analysis";
 import { ComparisonBar } from "./comparison-bar";
 
@@ -9,6 +9,8 @@ interface StatComparisonProps {
   awayTeam: { id: number; name: string };
   activeTab: "season" | "form";
 }
+
+type VenueView = "contextual" | "full";
 
 const StatComparisonLoading = () => (
   <div class="card bg-base-100 border border-base-300">
@@ -28,18 +30,25 @@ const StatComparisonLoading = () => (
 
 function Inner(props: StatComparisonProps) {
   const statsQuery = useQuery(() => matchupStatsQueryOptions(props.fixtureId));
+  const [venueView, setVenueView] = createSignal<VenueView>("contextual");
 
-  const homeStats = createMemo(() =>
-    props.activeTab === "season"
-      ? statsQuery.data?.season.home
-      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home),
-  );
+  const homeStats = createMemo(() => {
+    if (props.activeTab === "form") {
+      return statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall;
+    }
+    const seasonStats = statsQuery.data?.season.home;
+    if (!seasonStats) return undefined;
+    return venueView() === "contextual" ? seasonStats.home_only : seasonStats.overall;
+  });
 
-  const awayStats = createMemo(() =>
-    props.activeTab === "season"
-      ? statsQuery.data?.season.away
-      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away),
-  );
+  const awayStats = createMemo(() => {
+    if (props.activeTab === "form") {
+      return statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall;
+    }
+    const seasonStats = statsQuery.data?.season.away;
+    if (!seasonStats) return undefined;
+    return venueView() === "contextual" ? seasonStats.away_only : seasonStats.overall;
+  });
 
   const hasData = () => homeStats() && awayStats();
 
@@ -56,7 +65,29 @@ function Inner(props: StatComparisonProps) {
       <Match when={hasData()}>
         <div class="card bg-base-100 border border-base-300">
           <div class="card-body">
-            <h3 class="text-lg font-semibold mb-4">Stat Comparison</h3>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">Stat Comparison</h3>
+              <Show when={props.activeTab === "season"}>
+                <div class="join">
+                  <button
+                    type="button"
+                    class="btn btn-xs join-item"
+                    classList={{ "btn-active": venueView() === "contextual" }}
+                    onClick={() => setVenueView("contextual")}
+                  >
+                    Contextual
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-xs join-item"
+                    classList={{ "btn-active": venueView() === "full" }}
+                    onClick={() => setVenueView("full")}
+                  >
+                    Full
+                  </button>
+                </div>
+              </Show>
+            </div>
             <div class="space-y-4">
               <ComparisonBar
                 label="Expected Goals For (xGF)"

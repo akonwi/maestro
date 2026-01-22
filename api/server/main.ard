@@ -255,12 +255,14 @@ fn main() {
               db: conn,
               team_id: fixture.home.id,
               league_id: fixture.league.id,
+              season: fixture.season,
               count: 5
             ) -> internal_error
             let away_form = try fixtures::find_played(
               db: conn,
               team_id: fixture.away.id,
               league_id: fixture.league.id,
+              season: fixture.season,
               count: 5
             ) -> internal_error
 
@@ -285,21 +287,33 @@ fn main() {
             let fixture_id = try Int::from_str(req.path_param("fixture_id")) -> _ { not_found }
             let fixture = try fixtures::get(conn, fixture_id) -> internal_error
 
-            let comparison = try predictions::get_comparison(conn, fixture_id) -> err {
-              internal_error("Error getting stat comparison: {err}")
-            }
+            let home_season = try predictions::get_team_season_stats(
+              db: conn,
+              team_id: fixture.home.id,
+              league_id: fixture.league.id,
+              season: fixture.season
+            ) -> internal_error
 
-            let form_data = match comparison.home.num_games > 5 and comparison.away.num_games > 5 {
+            let away_season = try predictions::get_team_season_stats(
+              db: conn,
+              team_id: fixture.away.id,
+              league_id: fixture.league.id,
+              season: fixture.season
+            ) -> internal_error
+
+            let form_data = match home_season.overall.num_games > 5 and away_season.overall.num_games > 5 {
               true => {
                 let home_form = try predictions::get_form(
                   db: conn,
                   team_id: fixture.home.id,
-                  league_id: fixture.league.id
+                  league_id: fixture.league.id,
+                  season: fixture.season
                 ) -> internal_error
                 let away_form = try predictions::get_form(
                   db: conn,
                   team_id: fixture.away.id,
-                  league_id: fixture.league.id
+                  league_id: fixture.league.id,
+                  season: fixture.season
                 ) -> internal_error
 
                 Dynamic::object([
@@ -312,8 +326,8 @@ fn main() {
 
             let data = Dynamic::object([
               "season": Dynamic::object([
-                "home": comparison.home.to_dyn(),
-                "away": comparison.away.to_dyn(),
+                "home": home_season.to_dyn(),
+                "away": away_season.to_dyn(),
               ]),
               "form": form_data,
             ])

@@ -60,18 +60,25 @@ export default function MatchupPage() {
     statsQuery.isSuccess && statsQuery.data?.form !== null;
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
+  const [venueView, setVenueView] = createSignal<"contextual" | "full">("contextual");
 
-  const homeStats = createMemo(() =>
-    activeTab() === "season"
-      ? statsQuery.data?.season.home
-      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home),
-  );
+  const homeStats = createMemo(() => {
+    if (activeTab() === "form") {
+      return statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall;
+    }
+    const seasonStats = statsQuery.data?.season.home;
+    if (!seasonStats) return undefined;
+    return venueView() === "contextual" ? seasonStats.home_only : seasonStats.overall;
+  });
 
-  const awayStats = createMemo(() =>
-    activeTab() === "season"
-      ? statsQuery.data?.season.away
-      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away),
-  );
+  const awayStats = createMemo(() => {
+    if (activeTab() === "form") {
+      return statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall;
+    }
+    const seasonStats = statsQuery.data?.season.away;
+    if (!seasonStats) return undefined;
+    return venueView() === "contextual" ? seasonStats.away_only : seasonStats.overall;
+  });
 
   const formattedDateTime = createMemo(() => {
     const timestamp = fixtureQuery.data?.timestamp;
@@ -224,7 +231,29 @@ export default function MatchupPage() {
           <Show when={homeStats() && awayStats()}>
             <div class="card bg-base-100 border border-base-300">
               <div class="card-body">
-                <h3 class="text-lg font-semibold mb-4">Detailed Stats</h3>
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-semibold">Detailed Stats</h3>
+                  <Show when={activeTab() === "season"}>
+                    <div class="join">
+                      <button
+                        type="button"
+                        class="btn btn-xs join-item"
+                        classList={{ "btn-active": venueView() === "contextual" }}
+                        onClick={() => setVenueView("contextual")}
+                      >
+                        Contextual
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-xs join-item"
+                        classList={{ "btn-active": venueView() === "full" }}
+                        onClick={() => setVenueView("full")}
+                      >
+                        Full
+                      </button>
+                    </div>
+                  </Show>
+                </div>
                 <StatsTable
                   home={homeStats()!}
                   away={awayStats()!}

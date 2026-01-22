@@ -21,8 +21,19 @@ export type ComparisonData = {
   away: TeamStats;
 };
 
+export type TeamSeasonStats = {
+  overall: TeamStats;
+  home_only: TeamStats;
+  away_only: TeamStats;
+};
+
+export type SeasonComparisonData = {
+  home: TeamSeasonStats;
+  away: TeamSeasonStats;
+};
+
 export type MatchupStatsData = {
-  season: ComparisonData;
+  season: SeasonComparisonData;
   form: ComparisonData | null;
 };
 

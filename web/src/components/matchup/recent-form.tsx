@@ -86,14 +86,14 @@ function Inner(props: RecentFormProps) {
 
   const homeStats = createMemo(() =>
     props.activeTab === "season"
-      ? statsQuery.data?.season.home
-      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home),
+      ? statsQuery.data?.season.home.overall
+      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall),
   );
 
   const awayStats = createMemo(() =>
     props.activeTab === "season"
-      ? statsQuery.data?.season.away
-      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away),
+      ? statsQuery.data?.season.away.overall
+      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall),
   );
 
   return (
