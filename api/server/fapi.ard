@@ -27,22 +27,22 @@ fn join_strs(list: [Str]) Str {
   str
 }
 
-private fn fetch(url: Str) http::Response!Str {
+private fn fetch(path: Str) http::Response!Str {
   let req = http::Request{
     method: http::Method::Get,
-    url: url,
+    url: "https://v3.football.api-sports.io/"+path,
     headers: [
       "x-rapidapi-key": config::api_key(),
       "Accept": "application/json",
     ],
   }
 
-  let res = try http::send(req) -> err { Result::err("Error fetching {url}: {err}") }
+  let res = try http::send(req) -> err { Result::err("Error fetching {path}: {err}") }
   Result::ok(res)
 }
 
-fn send_request(url: Str) Dynamic!Str {
-  mut res = try fetch(url)
+fn send_request(path: Str) Dynamic!Str {
+  mut res = try fetch(path)
 
   mut attempts = 1
   while attempts < 3 and res.status == 429 {
@@ -50,13 +50,13 @@ fn send_request(url: Str) Dynamic!Str {
     // Per-minute limit resets quickly, so wait 2 seconds and retry
     async::sleep(duration::from_seconds(2))
     attempts =+ 1
-    res = try fetch(url)
+    res = try fetch(path)
   }
 
   match res.status {
     200 => {
       let body = try decode::from_json(res.body) -> found {
-        Result::err("Unable to parse response body as JSON for {url}. Found {found}")
+        Result::err("Unable to parse response body as JSON for {path}. Found {found}")
       }
 
       // the API is documented as returning a list of strings but in reality, does something different:
@@ -83,7 +83,7 @@ fn send_request(url: Str) Dynamic!Str {
         false => Result::ok(body)
       }
     },
-    _ => Result::err("Bad request ({url}). Received {res.status}")
+    _ => Result::err("Bad request ({path}). Received {res.status}")
   }
 }
 
@@ -92,7 +92,7 @@ fn get_fixture(db: sql::Database, id: Int) Dynamic!Str {
   let body = match cache::get(db, "fixture", id_str) {
     body => body,
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/fixtures?id={id}")
+      let body = try send_request("fixtures?id={id}")
       cache::set(db, "fixture", id_str, body)
       body
     }
@@ -109,7 +109,7 @@ fn get_team(db: sql::Database, id: Int) Dynamic!Str {
   let body = match cache::get(db, "team", id_str) {
     body => body,
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/teams?id={id}")
+      let body = try send_request("teams?id={id}")
       cache::set(db, "team", id_str, body)
       body
     }
@@ -126,7 +126,7 @@ fn get_odds(db: sql::Database, fixture_id: Int) Dynamic!Str {
   match cached_body {
     body => Result::ok(body),
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/odds?fixture={fixture_id}&bookmaker=8")
+      let body = try send_request("odds?fixture={fixture_id}&bookmaker=8")
       cache::set(db, "odds", id_str, body)
       Result::ok(body)
     }
@@ -139,7 +139,7 @@ fn get_predictions(db: sql::Database, fixture_id: Int) Dynamic!Str {
   match cached_body {
     body => Result::ok(body),
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/predictions?fixture={fixture_id}")
+      let body = try send_request("predictions?fixture={fixture_id}")
       cache::set(db, "predictions", id_str, body)
       Result::ok(body)
     }
@@ -147,7 +147,7 @@ fn get_predictions(db: sql::Database, fixture_id: Int) Dynamic!Str {
 }
 
 fn get_league_current_season(db: sql::Database, league_id: Int) Int!Str {
-  let body = try send_request("https://v3.football.api-sports.io/leagues?id={league_id}&current=true")
+  let body = try send_request("leagues?id={league_id}&current=true")
   let dig_out_season = decode::field("response", decode::at(0, decode::field("seasons", decode::at(0, decode::field("year", decode::int)))))
   let season = try dig_out_season(body) -> errs { Result::err(errs.at(0).to_str()) }
   Result::ok(season)
@@ -159,7 +159,7 @@ fn get_league(db: sql::Database, league_id: Int) Dynamic!Str {
   match cached_body {
     body => Result::ok(body),
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/leagues?id={league_id}")
+      let body = try send_request("leagues?id={league_id}")
       cache::set(db, "league", id_str, body)
       Result::ok(body)
     }
@@ -172,7 +172,7 @@ fn get_team_fixtures(db: sql::Database, team_id: Int, league_id: Int, season: In
   match cached_body {
     body => Result::ok(body),
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/fixtures?team={team_id}&league={league_id}&season={season}")
+      let body = try send_request("fixtures?team={team_id}&league={league_id}&season={season}")
       cache::set(db, "team_fixtures", resource_id, body)
       Result::ok(body)
     }
@@ -185,7 +185,7 @@ fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, las
     l => { query =+ "&last={l}" },
     _ => ()
   }
-  let body = try send_request("https://v3.football.api-sports.io/fixtures?{query}")
+  let body = try send_request("fixtures?{query}")
   let data = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
     Result::err("Couldn't decode response: {errs.at(0)}")
   }
@@ -197,7 +197,7 @@ fn get_today_fixtures(db: sql::Database, date: Str) Dynamic!Str {
   match cached_body {
     body => Result::ok(body),
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/fixtures?status=NS&timezone=America/New_York&date={date}")
+      let body = try send_request("fixtures?status=NS&timezone=America/New_York&date={date}")
       cache::set(db, "today_fixtures", date, body)
       Result::ok(body)
     }
@@ -215,7 +215,7 @@ fn get_season_fixtures(db: sql::Database, league_id: Int, season: Int) [Dynamic]
       Result::ok(entries)
     },
     _ => {
-      let body = try send_request("https://v3.football.api-sports.io/fixtures?league={league_id}&season={season}")
+      let body = try send_request("fixtures?league={league_id}&season={season}")
       let entries = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
         Result::err("Unable to decode response: {errs.at(0)}")
       }
