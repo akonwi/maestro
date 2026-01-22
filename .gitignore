@@ -17,3 +17,5 @@ Thumbs.db
 
 *.sqlite
 *.sqbpro
+
+.bruno

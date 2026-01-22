@@ -1,4 +1,6 @@
+use ard/async
 use ard/decode
+use ard/duration
 use ard/http
 use ard/io
 use ard/maybe
@@ -25,7 +27,7 @@ fn join_strs(list: [Str]) Str {
   str
 }
 
-fn send_request(url: Str) Dynamic!Str {
+private fn fetch(url: Str) http::Response!Str {
   let req = http::Request{
     method: http::Method::Get,
     url: url,
@@ -36,8 +38,21 @@ fn send_request(url: Str) Dynamic!Str {
   }
 
   let res = try http::send(req) -> err { Result::err("Error fetching {url}: {err}") }
+  Result::ok(res)
+}
 
-  // todo: handle 429
+fn send_request(url: Str) Dynamic!Str {
+  mut res = try fetch(url)
+
+  mut attempts = 1
+  while attempts < 3 and res.status == 429 {
+    // Rate limited - no Retry-After header from API-Football
+    // Per-minute limit resets quickly, so wait 2 seconds and retry
+    async::sleep(duration::from_seconds(2))
+    attempts =+ 1
+    res = try fetch(url)
+  }
+
   match res.status {
     200 => {
       let body = try decode::from_json(res.body) -> found {
