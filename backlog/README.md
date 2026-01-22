@@ -63,7 +63,6 @@ Code quality improvements identified during codebase review:
 - [022](./maintenance/022-bet-create-error-types.md) - Union Error Type for Bet Creation
 - [023](./maintenance/023-league-sync-error-tracking.md) - Track League Sync Errors
 - [024](./maintenance/024-unfollow-leagues.md) - Unfollow Leagues (Remove Preference)
-- [028](./maintenance/028-fapi-rate-limiting.md) - API-Football Rate Limit Handling
 
 ## Success Metrics
 

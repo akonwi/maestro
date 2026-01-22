@@ -62,7 +62,7 @@ Modify `predictions.ard` to support venue filtering when fetching stats from API
 2. Filter by venue (home_id == team_id or away_id == team_id)
 3. Compute `Snapshot` from filtered fixtures
 
-**Prerequisite**: Rate limit handling ([028](../maintenance/028-fapi-rate-limiting.md)) should be implemented first to ensure reliable API calls.
+**Prerequisite**: Rate limit handling in `fapi.ard` (completed) ensures reliable API calls.
 
 ### Frontend Implementation
 
