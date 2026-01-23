@@ -11,6 +11,14 @@ Maestro is a soccer statistics platform with two main components:
 
 The web app is deployed to GitHub Pages, and the API is hosted on Zeabur.
 
+## Philosophy
+
+This codebase will outlive you. Every shortcut becomes someone else's burden. Evey hack compounds into technical debt that slows the whole team down.
+
+You are not just writing code. You are shaping the future of this project. The patterns you establish will be copied. The corners you cut will be cut again.
+
+Fight entropy. Leave the codebase better than you found it.
+
 ## Technology Stack
 
 ### Web (`web/`)
