@@ -56,19 +56,45 @@ struct Metrics {
   against: TeamMetrics,
 }
 
-fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?) Metrics!Str {
+// i feel like "venue" isn't the best term for this
+enum Venue {
+  All,
+  Home,
+  Away
+}
+
+fn Venue::from_str(str: Str) Venue {
+  match {
+    str == "home" => Venue::Home,
+    str == "away" => Venue::Away,
+    _ => Venue::All
+  }
+}
+
+fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, limit: Int?, venue: Venue) Metrics!Str {
   let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: limit)
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e, i in entries {
     let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    let home_id = try decode::run(e, decode::path(["teams", "home", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
 
-    // this is pretty ugly. to mitigate getting rate-limited, try to stagger requests
-    if i > 9 { async::sleep(duration::from_seconds(1)) }
+    // Filter by venue: only process if team played at the specified venue
+    let is_home = home_id == team_id
+    let should_process = match venue {
+      Venue::All => true,
+      Venue::Home => is_home,
+      Venue::Away => not is_home
+    }
 
-    let data = try fapi::get_fixture(db, fixture_id)
-    let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
-    fixture_stats_list.push(fs)
+    if should_process {
+      // this is pretty ugly. to mitigate getting rate-limited, try to stagger requests
+      if i > 9 { async::sleep(duration::from_seconds(1)) }
+
+      let data = try fapi::get_fixture(db, fixture_id)
+      let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+      fixture_stats_list.push(fs)
+    }
   }
 
   mut metrics = Metrics{

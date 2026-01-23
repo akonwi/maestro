@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/solid-query";
-import { createMemo, createSignal, Match, Show, Suspense, Switch } from "solid-js";
+import { createMemo, Match, Suspense, Switch } from "solid-js";
 import { matchupStatsQueryOptions } from "~/api/analysis";
 import { ComparisonBar } from "./comparison-bar";
 
@@ -8,9 +8,8 @@ interface StatComparisonProps {
   homeTeam: { id: number; name: string };
   awayTeam: { id: number; name: string };
   activeTab: "season" | "form";
+  venueView: "contextual" | "full";
 }
-
-type VenueView = "contextual" | "full";
 
 const StatComparisonLoading = () => (
   <div class="card bg-base-100 border border-base-300">
@@ -30,7 +29,6 @@ const StatComparisonLoading = () => (
 
 function Inner(props: StatComparisonProps) {
   const statsQuery = useQuery(() => matchupStatsQueryOptions(props.fixtureId));
-  const [venueView, setVenueView] = createSignal<VenueView>("contextual");
 
   const homeStats = createMemo(() => {
     if (props.activeTab === "form") {
@@ -38,7 +36,7 @@ function Inner(props: StatComparisonProps) {
     }
     const seasonStats = statsQuery.data?.season.home;
     if (!seasonStats) return undefined;
-    return venueView() === "contextual" ? seasonStats.home_only : seasonStats.overall;
+    return props.venueView === "contextual" ? seasonStats.home_only : seasonStats.overall;
   });
 
   const awayStats = createMemo(() => {
@@ -47,7 +45,7 @@ function Inner(props: StatComparisonProps) {
     }
     const seasonStats = statsQuery.data?.season.away;
     if (!seasonStats) return undefined;
-    return venueView() === "contextual" ? seasonStats.away_only : seasonStats.overall;
+    return props.venueView === "contextual" ? seasonStats.away_only : seasonStats.overall;
   });
 
   const hasData = () => homeStats() && awayStats();
@@ -65,29 +63,7 @@ function Inner(props: StatComparisonProps) {
       <Match when={hasData()}>
         <div class="card bg-base-100 border border-base-300">
           <div class="card-body">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Stat Comparison</h3>
-              <Show when={props.activeTab === "season"}>
-                <div class="join">
-                  <button
-                    type="button"
-                    class="btn btn-xs join-item"
-                    classList={{ "btn-active": venueView() === "contextual" }}
-                    onClick={() => setVenueView("contextual")}
-                  >
-                    Contextual
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-xs join-item"
-                    classList={{ "btn-active": venueView() === "full" }}
-                    onClick={() => setVenueView("full")}
-                  >
-                    Full
-                  </button>
-                </div>
-              </Show>
-            </div>
+            <h3 class="text-lg font-semibold mb-4">Stat Comparison</h3>
             <div class="space-y-4">
               <ComparisonBar
                 label="Expected Goals For (xGF)"

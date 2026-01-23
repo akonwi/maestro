@@ -380,8 +380,9 @@ fn main() {
               http::Response{status: 400, body: "Invalid season parameter", headers: headers}
             }
             let limit = Int::from_str(req.query_param("limit"))
+            let venue = analysis::Venue::from_str(req.query_param("venue"))
 
-            let data = try analysis::get_metrics(db: conn, team_id: team_id, league_id: league_id, season: season, limit: limit) -> internal_error
+            let data = try analysis::get_metrics(db: conn, team_id: team_id, league_id: league_id, season: season, limit: limit, venue: venue) -> internal_error
             match json::encode(data) {
               ok(body) => http::Response{status:200, body:body, headers:res_headers},
               err => internal_error(err)

@@ -69,6 +69,7 @@ export type TeamMetricsParams = {
   leagueId: number;
   season: number;
   limit?: number;
+  venue?: "home" | "away";
 };
 
 type ShotMetrics = {
@@ -105,6 +106,7 @@ export const teamMetricsQueryOptions = (
       leagueId: params.leagueId,
       season: params.season,
       limit: params.limit,
+      venue: params.venue,
     },
     "metrics",
   ] as const,
@@ -115,6 +117,9 @@ export const teamMetricsQueryOptions = (
     });
     if (params.limit) {
       searchParams.set("limit", params.limit.toString());
+    }
+    if (params.venue) {
+      searchParams.set("venue", params.venue);
     }
 
     const response = await fetch(

@@ -176,27 +176,49 @@ export default function MatchupPage() {
 
           {/* Tabs */}
           <Show when={hasFormData()}>
-            <div class="tabs tabs-boxed w-fit">
-              <button
-                type="button"
-                classList={{
-                  "tab-active": activeTab() === "season",
-                }}
-                class="tab"
-                onClick={() => setActiveTab("season")}
-              >
-                Season
-              </button>
-              <button
-                type="button"
-                classList={{
-                  "tab-active": activeTab() === "form",
-                }}
-                class="tab"
-                onClick={() => setActiveTab("form")}
-              >
-                Last 5
-              </button>
+            <div class="flex items-center justify-between">
+              <div class="tabs tabs-boxed w-fit">
+                <button
+                  type="button"
+                  classList={{
+                    "tab-active": activeTab() === "season",
+                  }}
+                  class="tab"
+                  onClick={() => setActiveTab("season")}
+                >
+                  Season
+                </button>
+                <button
+                  type="button"
+                  classList={{
+                    "tab-active": activeTab() === "form",
+                  }}
+                  class="tab"
+                  onClick={() => setActiveTab("form")}
+                >
+                  Last 5
+                </button>
+              </div>
+              <Show when={activeTab() === "season"}>
+                <div class="tabs tabs-boxed">
+                  <button
+                    type="button"
+                    class="tab"
+                    classList={{ "tab-active": venueView() === "contextual" }}
+                    onClick={() => setVenueView("contextual")}
+                  >
+                    Contextual
+                  </button>
+                  <button
+                    type="button"
+                    class="tab"
+                    classList={{ "tab-active": venueView() === "full" }}
+                    onClick={() => setVenueView("full")}
+                  >
+                    Full
+                  </button>
+                </div>
+              </Show>
             </div>
           </Show>
 
@@ -214,6 +236,7 @@ export default function MatchupPage() {
             homeTeam={fixture()!.home}
             awayTeam={fixture()!.away}
             activeTab={activeTab()}
+            venueView={venueView()}
           />
 
           {/* Attack vs Defense Metrics */}
@@ -225,35 +248,14 @@ export default function MatchupPage() {
             leagueId={fixture()!.league.id}
             season={fixture()!.season}
             limit={activeTab() === "form" ? 5 : undefined}
+            venueView={activeTab() === "season" ? venueView() : undefined}
           />
 
           {/* Detailed Stats Table */}
           <Show when={homeStats() && awayStats()}>
             <div class="card bg-base-100 border border-base-300">
               <div class="card-body">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-semibold">Detailed Stats</h3>
-                  <Show when={activeTab() === "season"}>
-                    <div class="join">
-                      <button
-                        type="button"
-                        class="btn btn-xs join-item"
-                        classList={{ "btn-active": venueView() === "contextual" }}
-                        onClick={() => setVenueView("contextual")}
-                      >
-                        Contextual
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-xs join-item"
-                        classList={{ "btn-active": venueView() === "full" }}
-                        onClick={() => setVenueView("full")}
-                      >
-                        Full
-                      </button>
-                    </div>
-                  </Show>
-                </div>
+                <h3 class="text-lg font-semibold mb-4">Detailed Stats</h3>
                 <StatsTable
                   home={homeStats()!}
                   away={awayStats()!}
