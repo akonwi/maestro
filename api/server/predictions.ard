@@ -135,10 +135,235 @@ fn get_comparison(db: sql::Database, fixture_id: Int) Comparison!Str {
   Result::ok(comparison)
 }
 
+// Constructs a Snapshot from raw counter values, computing derived stats like
+// strike_rate, xgf/xga averages, leakiness, one_conceded, and win_rate.
+// Returns an empty snapshot with zeroed values if games_counted is 0.
+fn build_snapshot(
+  games_counted: Int,
+  wins: Int,
+  losses: Int,
+  draws: Int,
+  goals_for: Int,
+  goals_against: Int,
+  xg_for_total: Float,
+  xg_against_total: Float,
+  one_plus_scored: Int,
+  cleansheets: Int,
+  failed_to_score: Int,
+  at_least_1_against: Int,
+  two_plus_conceded: Int
+) Snapshot {
+  match games_counted == 0 {
+    true => Snapshot{
+      num_games: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      goals_against: 0,
+      goals_for: 0,
+      one_plus_scored: 0,
+      strike_rate: 0.0,
+      goals_diff: 0,
+      xgf: 0.0,
+      xga: 0.0,
+      leakiness: 0.0,
+      cleansheets: 0,
+      one_conceded: 0,
+      two_plus_conceded: 0,
+      win_rate: 0.0,
+    },
+    false => {
+      let games = Float::from_int(games_counted)
+      let xgf = xg_for_total / games
+      let xga = xg_against_total / games
+      let one_conceded = at_least_1_against - two_plus_conceded
+
+      Snapshot{
+        num_games: games_counted,
+        wins: wins,
+        losses: losses,
+        draws: draws,
+        goals_against: goals_against,
+        goals_for: goals_for,
+        one_plus_scored: one_plus_scored,
+        strike_rate: 1.0 - Float::from_int(failed_to_score) / games,
+        goals_diff: goals_for - goals_against,
+        xgf: xgf,
+        xga: xga,
+        leakiness: Float::from_int(two_plus_conceded) / games * 100.0,
+        cleansheets: cleansheets,
+        one_conceded: one_conceded,
+        two_plus_conceded: two_plus_conceded,
+        win_rate: Float::from_int(wins) / games,
+      }
+    }
+  }
+}
+
+struct TeamSeasonStats {
+  overall: Snapshot,
+  home_only: Snapshot,
+  away_only: Snapshot,
+}
+
+impl TeamSeasonStats {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "overall": @overall.to_dyn(),
+      "home_only": @home_only.to_dyn(),
+      "away_only": @away_only.to_dyn(),
+    ])
+  }
+}
+
+// Computes stats split by home/away in a single pass
+fn compute_season_stats(fixture_stats_list: [fixtures::FixtureStats], team_id: Int) TeamSeasonStats {
+  // Overall counters
+  mut all_wins = 0
+  mut all_losses = 0
+  mut all_draws = 0
+  mut all_goals_for = 0
+  mut all_goals_against = 0
+  mut all_xg_for = 0.0
+  mut all_xg_against = 0.0
+  mut all_one_plus_scored = 0
+  mut all_cleansheets = 0
+  mut all_failed_to_score = 0
+  mut all_at_least_1_against = 0
+  mut all_two_plus_conceded = 0
+  mut all_games = 0
+
+  // Home-only counters
+  mut home_wins = 0
+  mut home_losses = 0
+  mut home_draws = 0
+  mut home_goals_for = 0
+  mut home_goals_against = 0
+  mut home_xg_for = 0.0
+  mut home_xg_against = 0.0
+  mut home_one_plus_scored = 0
+  mut home_cleansheets = 0
+  mut home_failed_to_score = 0
+  mut home_at_least_1_against = 0
+  mut home_two_plus_conceded = 0
+  mut home_games = 0
+
+  // Away-only counters
+  mut away_wins = 0
+  mut away_losses = 0
+  mut away_draws = 0
+  mut away_goals_for = 0
+  mut away_goals_against = 0
+  mut away_xg_for = 0.0
+  mut away_xg_against = 0.0
+  mut away_one_plus_scored = 0
+  mut away_cleansheets = 0
+  mut away_failed_to_score = 0
+  mut away_at_least_1_against = 0
+  mut away_two_plus_conceded = 0
+  mut away_games = 0
+
+  for fs in fixture_stats_list {
+    let is_home = fs.fixture.home.id == team_id
+
+    let team_stats = match is_home {
+      true => fs.home,
+      false => fs.away
+    }
+    let opp_stats = match is_home {
+      true => fs.away,
+      false => fs.home
+    }
+    let team_goals = match is_home {
+      true => fs.fixture.home_goals,
+      false => fs.fixture.away_goals
+    }
+    let opp_goals = match is_home {
+      true => fs.fixture.away_goals,
+      false => fs.fixture.home_goals
+    }
+
+    // Update overall
+    all_games =+ 1
+    all_goals_for =+ team_goals
+    all_goals_against =+ opp_goals
+    all_xg_for =+ team_stats.xg
+    all_xg_against =+ opp_stats.xg
+    if team_goals == 0 { all_failed_to_score =+ 1 }
+    if opp_goals == 0 { all_cleansheets =+ 1 }
+    if team_goals > 1 { all_one_plus_scored =+ 1 }
+    if opp_goals >= 1 { all_at_least_1_against =+ 1 }
+    if opp_goals >= 2 { all_two_plus_conceded =+ 1 }
+    match {
+      team_goals > opp_goals => { all_wins =+ 1 },
+      team_goals < opp_goals => { all_losses =+ 1 },
+      _ => { all_draws =+ 1 }
+    }
+
+    // Update home or away bucket
+    match is_home {
+      true => {
+        home_games =+ 1
+        home_goals_for =+ team_goals
+        home_goals_against =+ opp_goals
+        home_xg_for =+ team_stats.xg
+        home_xg_against =+ opp_stats.xg
+        if team_goals == 0 { home_failed_to_score =+ 1 }
+        if opp_goals == 0 { home_cleansheets =+ 1 }
+        if team_goals > 1 { home_one_plus_scored =+ 1 }
+        if opp_goals >= 1 { home_at_least_1_against =+ 1 }
+        if opp_goals >= 2 { home_two_plus_conceded =+ 1 }
+        match {
+          team_goals > opp_goals => { home_wins =+ 1 },
+          team_goals < opp_goals => { home_losses =+ 1 },
+          _ => { home_draws =+ 1 }
+        }
+      },
+      false => {
+        away_games =+ 1
+        away_goals_for =+ team_goals
+        away_goals_against =+ opp_goals
+        away_xg_for =+ team_stats.xg
+        away_xg_against =+ opp_stats.xg
+        if team_goals == 0 { away_failed_to_score =+ 1 }
+        if opp_goals == 0 { away_cleansheets =+ 1 }
+        if team_goals > 1 { away_one_plus_scored =+ 1 }
+        if opp_goals >= 1 { away_at_least_1_against =+ 1 }
+        if opp_goals >= 2 { away_two_plus_conceded =+ 1 }
+        match {
+          team_goals > opp_goals => { away_wins =+ 1 },
+          team_goals < opp_goals => { away_losses =+ 1 },
+          _ => { away_draws =+ 1 }
+        }
+      }
+    }
+  }
+
+  TeamSeasonStats{
+    overall: build_snapshot(all_games, all_wins, all_losses, all_draws, all_goals_for, all_goals_against, all_xg_for, all_xg_against, all_one_plus_scored, all_cleansheets, all_failed_to_score, all_at_least_1_against, all_two_plus_conceded),
+    home_only: build_snapshot(home_games, home_wins, home_losses, home_draws, home_goals_for, home_goals_against, home_xg_for, home_xg_against, home_one_plus_scored, home_cleansheets, home_failed_to_score, home_at_least_1_against, home_two_plus_conceded),
+    away_only: build_snapshot(away_games, away_wins, away_losses, away_draws, away_goals_for, away_goals_against, away_xg_for, away_xg_against, away_one_plus_scored, away_cleansheets, away_failed_to_score, away_at_least_1_against, away_two_plus_conceded),
+  }
+}
+
+fn get_team_season_stats(db: sql::Database, team_id: Int, league_id: Int, season: Int) TeamSeasonStats!Str {
+  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: maybe::none())
+
+  mut fixture_stats_list: [fixtures::FixtureStats] = []
+  for e in entries {
+    let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    let data = try fapi::get_fixture(db, fixture_id)
+    let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+    fixture_stats_list.push(fs)
+  }
+
+  Result::ok(compute_season_stats(fixture_stats_list, team_id))
+}
+
 // returns metrics over the last 5 games before the given timestamp
 // todo: this should support a timestamp or date so that it can provide form at that point
-fn get_form(db: sql::Database, team_id: Int, league_id: Int) Snapshot!Str {
-  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, last: maybe::some(5))
+fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapshot!Str {
+  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: maybe::some(5))
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e in entries {
@@ -252,8 +477,8 @@ fn get_form(db: sql::Database, team_id: Int, league_id: Int) Snapshot!Str {
 // Returns form-based comparison if league is followed and both teams have ≥5 games
 // falls back to normal comparison for unfollowed leagues
 fn get_form_comparison(db: sql::Database, fixture: fixtures::Fixture) Comparison!Str {
-  let home_form = try get_form(db: db, team_id: fixture.home.id, league_id: fixture.league_id)
-  let away_form = try get_form(db: db, team_id: fixture.away.id, league_id: fixture.league_id)
+  let home_form = try get_form(db: db, team_id: fixture.home.id, league_id: fixture.league_id, season: fixture.season)
+  let away_form = try get_form(db: db, team_id: fixture.away.id, league_id: fixture.league_id, season: fixture.season)
 
   Result::ok(Comparison{ home: home_form, away: away_form })
 }

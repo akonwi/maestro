@@ -12,6 +12,7 @@ interface MetricsMatchupProps {
   leagueId: number;
   season: number;
   limit?: number;
+  venueView?: "contextual" | "full";
 }
 
 interface MetricBarProps {
@@ -182,7 +183,7 @@ function buildRadarData(
 
 export function MetricsMatchup(props: MetricsMatchupProps) {
   const auth = useAuth();
-  const [viewMode, setViewMode] = createSignal<"bars" | "radar">("radar");
+  const [viewMode, setViewMode] = createSignal<"bars" | "radar">("bars");
 
   const homeMetricsQuery = useQuery(() =>
     teamMetricsQueryOptions(
@@ -191,6 +192,7 @@ export function MetricsMatchup(props: MetricsMatchupProps) {
         leagueId: props.leagueId,
         season: props.season,
         limit: props.limit,
+        venue: props.venueView === "contextual" ? "home" : undefined,
       },
       auth.headers,
     ),
@@ -203,6 +205,7 @@ export function MetricsMatchup(props: MetricsMatchupProps) {
         leagueId: props.leagueId,
         season: props.season,
         limit: props.limit,
+        venue: props.venueView === "contextual" ? "away" : undefined,
       },
       auth.headers,
     ),

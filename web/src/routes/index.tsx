@@ -243,77 +243,74 @@ function Page() {
           <div class="space-y-4">
             <For each={juiceQuery.data}>
               {bet => (
-                <LeagueMenu
-                  league={bet.fixture.league}
-                  trigger="context"
-                >
+                <LeagueMenu league={bet.fixture.league} trigger="context">
                   <div class="card bg-base-100 border border-base-300 hover:shadow-md transition-shadow">
                     <div class="card-body">
-                    <div class="flex flex-col gap-4">
-                      {/* Match Header */}
-                      <div class="flex justify-between items-start">
-                        <div>
-                          <A
-                            href={matchupUrl(bet.fixture.id)}
-                            target="_blank"
-                            class="text-lg font-semibold hover:text-primary transition-colors"
-                          >
-                            {formatMatchup(bet.fixture)}
-                          </A>
-                          <p class="text-base-content/60 text-sm">
-                            {bet.fixture.league.name} •{" "}
-                            {formatFixtureTime(bet.fixture.timestamp)}
-                          </p>
+                      <div class="flex flex-col gap-4">
+                        {/* Match Header */}
+                        <div class="flex justify-between items-start">
+                          <div>
+                            <A
+                              href={matchupUrl(bet.fixture.id)}
+                              target="_blank"
+                              class="text-lg font-semibold hover:text-primary transition-colors"
+                            >
+                              {formatMatchup(bet.fixture)}
+                            </A>
+                            <p class="text-base-content/60 text-sm">
+                              {bet.fixture.league.name} •{" "}
+                              {formatFixtureTime(bet.fixture.timestamp)}
+                            </p>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <img
+                              src={`https://media.api-sports.io/football/teams/${bet.fixture.home.id}.png`}
+                              alt={bet.fixture.home.name}
+                              class="w-6 h-6"
+                            />
+                            <span class="text-sm">vs</span>
+                            <img
+                              src={`https://media.api-sports.io/football/teams/${bet.fixture.away.id}.png`}
+                              alt={bet.fixture.away.name}
+                              class="w-6 h-6"
+                            />
+                          </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                          <img
-                            src={`https://media.api-sports.io/football/teams/${bet.fixture.home.id}.png`}
-                            alt={bet.fixture.home.name}
-                            class="w-6 h-6"
-                          />
-                          <span class="text-sm">vs</span>
-                          <img
-                            src={`https://media.api-sports.io/football/teams/${bet.fixture.away.id}.png`}
-                            alt={bet.fixture.away.name}
-                            class="w-6 h-6"
-                          />
-                        </div>
-                      </div>
 
-                      {/* Betting Markets */}
-                      <div class="space-y-3">
-                        <For each={bet.stats}>
-                          {betType => (
-                            <div class="bg-base-200 p-3 rounded-lg">
-                              <h4 class="font-medium text-sm mb-2">
-                                {betType.name}
-                              </h4>
-                              <div class="flex flex-wrap gap-2">
-                                <For each={betType.values}>
-                                  {value => (
-                                    <button
-                                      aria-disabled={auth.isReadOnly()}
-                                      class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
-                                      onClick={() =>
-                                        betForm.show(bet.fixture.id, {
-                                          type_id: betType.id,
-                                          odds: value.odd,
-                                          description: betType.name,
-                                        })
-                                      }
-                                    >
-                                      {value.name}: {formatOdds(value.odd)}
-                                    </button>
-                                  )}
-                                </For>
+                        {/* Betting Markets */}
+                        <div class="space-y-3">
+                          <For each={bet.stats}>
+                            {betType => (
+                              <div class="bg-base-200 p-3 rounded-lg">
+                                <h4 class="font-medium text-sm mb-2">
+                                  {betType.name}
+                                </h4>
+                                <div class="flex flex-wrap gap-2">
+                                  <For each={betType.values}>
+                                    {value => (
+                                      <button
+                                        aria-disabled={auth.isReadOnly()}
+                                        class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+                                        onClick={() =>
+                                          betForm.show(bet.fixture.id, {
+                                            type_id: betType.id,
+                                            odds: value.odd,
+                                            description: betType.name,
+                                          })
+                                        }
+                                      >
+                                        {value.name}: {formatOdds(value.odd)}
+                                      </button>
+                                    )}
+                                  </For>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </For>
+                            )}
+                          </For>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 </LeagueMenu>
               )}
             </For>

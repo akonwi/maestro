@@ -21,8 +21,19 @@ export type ComparisonData = {
   away: TeamStats;
 };
 
+export type TeamSeasonStats = {
+  overall: TeamStats;
+  home_only: TeamStats;
+  away_only: TeamStats;
+};
+
+export type SeasonComparisonData = {
+  home: TeamSeasonStats;
+  away: TeamSeasonStats;
+};
+
 export type MatchupStatsData = {
-  season: ComparisonData;
+  season: SeasonComparisonData;
   form: ComparisonData | null;
 };
 
@@ -35,6 +46,37 @@ export const matchupStatsQueryOptions = (fixtureId: number) => ({
 
     if (!response.ok) {
       throw new Error(`Failed to fetch matchup stats: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});
+
+export type TeamStatsData = {
+  season: TeamSeasonStats;
+  form: TeamStats | null;
+};
+
+export type TeamStatsParams = {
+  teamId: number;
+  leagueId: number;
+  season: number;
+};
+
+export const teamStatsQueryOptions = (params: TeamStatsParams) => ({
+  queryKey: ["teams", params, "stats"] as const,
+  queryFn: async (): Promise<TeamStatsData> => {
+    const searchParams = new URLSearchParams({
+      league_id: params.leagueId.toString(),
+      season: params.season.toString(),
+    });
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/teams/${params.teamId}/stats?${searchParams.toString()}`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch team stats: ${response.status}`);
     }
 
     return response.json();
@@ -58,6 +100,7 @@ export type TeamMetricsParams = {
   leagueId: number;
   season: number;
   limit?: number;
+  venue?: "home" | "away";
 };
 
 type ShotMetrics = {
@@ -94,6 +137,7 @@ export const teamMetricsQueryOptions = (
       leagueId: params.leagueId,
       season: params.season,
       limit: params.limit,
+      venue: params.venue,
     },
     "metrics",
   ] as const,
@@ -104,6 +148,9 @@ export const teamMetricsQueryOptions = (
     });
     if (params.limit) {
       searchParams.set("limit", params.limit.toString());
+    }
+    if (params.venue) {
+      searchParams.set("venue", params.venue);
     }
 
     const response = await fetch(

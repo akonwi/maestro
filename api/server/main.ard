@@ -255,12 +255,14 @@ fn main() {
               db: conn,
               team_id: fixture.home.id,
               league_id: fixture.league.id,
+              season: fixture.season,
               count: 5
             ) -> internal_error
             let away_form = try fixtures::find_played(
               db: conn,
               team_id: fixture.away.id,
               league_id: fixture.league.id,
+              season: fixture.season,
               count: 5
             ) -> internal_error
 
@@ -285,21 +287,33 @@ fn main() {
             let fixture_id = try Int::from_str(req.path_param("fixture_id")) -> _ { not_found }
             let fixture = try fixtures::get(conn, fixture_id) -> internal_error
 
-            let comparison = try predictions::get_comparison(conn, fixture_id) -> err {
-              internal_error("Error getting stat comparison: {err}")
-            }
+            let home_season = try predictions::get_team_season_stats(
+              db: conn,
+              team_id: fixture.home.id,
+              league_id: fixture.league.id,
+              season: fixture.season
+            ) -> internal_error
 
-            let form_data = match comparison.home.num_games > 5 and comparison.away.num_games > 5 {
+            let away_season = try predictions::get_team_season_stats(
+              db: conn,
+              team_id: fixture.away.id,
+              league_id: fixture.league.id,
+              season: fixture.season
+            ) -> internal_error
+
+            let form_data = match home_season.overall.num_games > 5 and away_season.overall.num_games > 5 {
               true => {
                 let home_form = try predictions::get_form(
                   db: conn,
                   team_id: fixture.home.id,
-                  league_id: fixture.league.id
+                  league_id: fixture.league.id,
+                  season: fixture.season
                 ) -> internal_error
                 let away_form = try predictions::get_form(
                   db: conn,
                   team_id: fixture.away.id,
-                  league_id: fixture.league.id
+                  league_id: fixture.league.id,
+                  season: fixture.season
                 ) -> internal_error
 
                 Dynamic::object([
@@ -312,8 +326,8 @@ fn main() {
 
             let data = Dynamic::object([
               "season": Dynamic::object([
-                "home": comparison.home.to_dyn(),
-                "away": comparison.away.to_dyn(),
+                "home": home_season.to_dyn(),
+                "away": away_season.to_dyn(),
               ]),
               "form": form_data,
             ])
@@ -366,8 +380,63 @@ fn main() {
               http::Response{status: 400, body: "Invalid season parameter", headers: headers}
             }
             let limit = Int::from_str(req.query_param("limit"))
+            let venue = analysis::Venue::from_str(req.query_param("venue"))
 
-            let data = try analysis::get_metrics(db: conn, team_id: team_id, league_id: league_id, season: season, limit: limit) -> internal_error
+            let data = try analysis::get_metrics(db: conn, team_id: team_id, league_id: league_id, season: season, limit: limit, venue: venue) -> internal_error
+            match json::encode(data) {
+              ok(body) => http::Response{status:200, body:body, headers:res_headers},
+              err => internal_error(err)
+            }
+          },
+          http::Method::Options => empty_200(),
+          _ => not_found
+        }
+      },
+
+      "/teams/:id/stats": fn(req: http::Request) http::Response {
+        match req.method {
+          http::Method::Get => {
+            let team_id = try Int::from_str(req.path_param("id")) -> _ {
+              mut headers = res_headers
+              headers.drop("Content-Type")
+              http::Response{status: 400, body: "Invalid team id", headers: headers}
+            }
+            let league_id = try Int::from_str(req.query_param("league_id")) -> _ {
+              mut headers = res_headers
+              headers.drop("Content-Type")
+              http::Response{status: 400, body: "Invalid league_id parameter", headers: headers}
+            }
+            let season = try Int::from_str(req.query_param("season")) -> _ {
+              mut headers = res_headers
+              headers.drop("Content-Type")
+              http::Response{status: 400, body: "Invalid season parameter", headers: headers}
+            }
+
+            let season_stats = try predictions::get_team_season_stats(
+              db: conn,
+              team_id: team_id,
+              league_id: league_id,
+              season: season
+            ) -> internal_error
+
+            let form_data = match season_stats.overall.num_games > 5 {
+              true => {
+                let form = try predictions::get_form(
+                  db: conn,
+                  team_id: team_id,
+                  league_id: league_id,
+                  season: season
+                ) -> internal_error
+                form.to_dyn()
+              },
+              false => Dynamic::from(())
+            }
+
+            let data = Dynamic::object([
+              "season": season_stats.to_dyn(),
+              "form": form_data,
+            ])
+
             match json::encode(data) {
               ok(body) => http::Response{status:200, body:body, headers:res_headers},
               err => internal_error(err)

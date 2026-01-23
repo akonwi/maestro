@@ -8,6 +8,7 @@ interface StatComparisonProps {
   homeTeam: { id: number; name: string };
   awayTeam: { id: number; name: string };
   activeTab: "season" | "form";
+  venueView: "contextual" | "full";
 }
 
 const StatComparisonLoading = () => (
@@ -29,17 +30,31 @@ const StatComparisonLoading = () => (
 function Inner(props: StatComparisonProps) {
   const statsQuery = useQuery(() => matchupStatsQueryOptions(props.fixtureId));
 
-  const homeStats = createMemo(() =>
-    props.activeTab === "season"
-      ? statsQuery.data?.season.home
-      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home),
-  );
+  const homeStats = createMemo(() => {
+    if (props.activeTab === "form") {
+      return (
+        statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall
+      );
+    }
+    const seasonStats = statsQuery.data?.season.home;
+    if (!seasonStats) return undefined;
+    return props.venueView === "contextual"
+      ? seasonStats.home_only
+      : seasonStats.overall;
+  });
 
-  const awayStats = createMemo(() =>
-    props.activeTab === "season"
-      ? statsQuery.data?.season.away
-      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away),
-  );
+  const awayStats = createMemo(() => {
+    if (props.activeTab === "form") {
+      return (
+        statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall
+      );
+    }
+    const seasonStats = statsQuery.data?.season.away;
+    if (!seasonStats) return undefined;
+    return props.venueView === "contextual"
+      ? seasonStats.away_only
+      : seasonStats.overall;
+  });
 
   const hasData = () => homeStats() && awayStats();
 

@@ -60,18 +60,35 @@ export default function MatchupPage() {
     statsQuery.isSuccess && statsQuery.data?.form !== null;
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
-
-  const homeStats = createMemo(() =>
-    activeTab() === "season"
-      ? statsQuery.data?.season.home
-      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home),
+  const [venueView, setVenueView] = createSignal<"contextual" | "full">(
+    "contextual",
   );
 
-  const awayStats = createMemo(() =>
-    activeTab() === "season"
-      ? statsQuery.data?.season.away
-      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away),
-  );
+  const homeStats = createMemo(() => {
+    if (activeTab() === "form") {
+      return (
+        statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall
+      );
+    }
+    const seasonStats = statsQuery.data?.season.home;
+    if (!seasonStats) return undefined;
+    return venueView() === "contextual"
+      ? seasonStats.home_only
+      : seasonStats.overall;
+  });
+
+  const awayStats = createMemo(() => {
+    if (activeTab() === "form") {
+      return (
+        statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall
+      );
+    }
+    const seasonStats = statsQuery.data?.season.away;
+    if (!seasonStats) return undefined;
+    return venueView() === "contextual"
+      ? seasonStats.away_only
+      : seasonStats.overall;
+  });
 
   const formattedDateTime = createMemo(() => {
     const timestamp = fixtureQuery.data?.timestamp;
@@ -169,27 +186,49 @@ export default function MatchupPage() {
 
           {/* Tabs */}
           <Show when={hasFormData()}>
-            <div class="tabs tabs-boxed w-fit">
-              <button
-                type="button"
-                classList={{
-                  "tab-active": activeTab() === "season",
-                }}
-                class="tab"
-                onClick={() => setActiveTab("season")}
-              >
-                Season
-              </button>
-              <button
-                type="button"
-                classList={{
-                  "tab-active": activeTab() === "form",
-                }}
-                class="tab"
-                onClick={() => setActiveTab("form")}
-              >
-                Last 5
-              </button>
+            <div class="flex items-center justify-between">
+              <div class="tabs tabs-boxed w-fit">
+                <button
+                  type="button"
+                  classList={{
+                    "tab-active": activeTab() === "season",
+                  }}
+                  class="tab"
+                  onClick={() => setActiveTab("season")}
+                >
+                  Season
+                </button>
+                <button
+                  type="button"
+                  classList={{
+                    "tab-active": activeTab() === "form",
+                  }}
+                  class="tab"
+                  onClick={() => setActiveTab("form")}
+                >
+                  Last 5
+                </button>
+              </div>
+              <Show when={activeTab() === "season"}>
+                <div class="tabs tabs-boxed">
+                  <button
+                    type="button"
+                    class="tab"
+                    classList={{ "tab-active": venueView() === "contextual" }}
+                    onClick={() => setVenueView("contextual")}
+                  >
+                    Contextual
+                  </button>
+                  <button
+                    type="button"
+                    class="tab"
+                    classList={{ "tab-active": venueView() === "full" }}
+                    onClick={() => setVenueView("full")}
+                  >
+                    Full
+                  </button>
+                </div>
+              </Show>
             </div>
           </Show>
 
@@ -207,6 +246,7 @@ export default function MatchupPage() {
             homeTeam={fixture()!.home}
             awayTeam={fixture()!.away}
             activeTab={activeTab()}
+            venueView={venueView()}
           />
 
           {/* Attack vs Defense Metrics */}
@@ -218,6 +258,7 @@ export default function MatchupPage() {
             leagueId={fixture()!.league.id}
             season={fixture()!.season}
             limit={activeTab() === "form" ? 5 : undefined}
+            venueView={activeTab() === "season" ? venueView() : undefined}
           />
 
           {/* Detailed Stats Table */}
