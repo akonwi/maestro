@@ -129,7 +129,7 @@ function MatchupSection(props: {
           defenseValue={props.defenseMetrics.perGame.xg}
           attackLabel={props.attackLabel}
           defenseLabel={props.defenseLabel}
-          formatValue={(v) => v.toFixed(2)}
+          formatValue={v => v.toFixed(2)}
         />
         <MetricBar
           label="Corners/Game"

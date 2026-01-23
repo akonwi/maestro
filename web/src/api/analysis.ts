@@ -52,6 +52,37 @@ export const matchupStatsQueryOptions = (fixtureId: number) => ({
   },
 });
 
+export type TeamStatsData = {
+  season: TeamSeasonStats;
+  form: TeamStats | null;
+};
+
+export type TeamStatsParams = {
+  teamId: number;
+  leagueId: number;
+  season: number;
+};
+
+export const teamStatsQueryOptions = (params: TeamStatsParams) => ({
+  queryKey: ["teams", params, "stats"] as const,
+  queryFn: async (): Promise<TeamStatsData> => {
+    const searchParams = new URLSearchParams({
+      league_id: params.leagueId.toString(),
+      season: params.season.toString(),
+    });
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/teams/${params.teamId}/stats?${searchParams.toString()}`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch team stats: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});
+
 type TeamMetricsApiResponse = {
   shots: {
     total: number;

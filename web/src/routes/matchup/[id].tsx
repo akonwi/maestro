@@ -60,24 +60,34 @@ export default function MatchupPage() {
     statsQuery.isSuccess && statsQuery.data?.form !== null;
 
   const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
-  const [venueView, setVenueView] = createSignal<"contextual" | "full">("contextual");
+  const [venueView, setVenueView] = createSignal<"contextual" | "full">(
+    "contextual",
+  );
 
   const homeStats = createMemo(() => {
     if (activeTab() === "form") {
-      return statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall;
+      return (
+        statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall
+      );
     }
     const seasonStats = statsQuery.data?.season.home;
     if (!seasonStats) return undefined;
-    return venueView() === "contextual" ? seasonStats.home_only : seasonStats.overall;
+    return venueView() === "contextual"
+      ? seasonStats.home_only
+      : seasonStats.overall;
   });
 
   const awayStats = createMemo(() => {
     if (activeTab() === "form") {
-      return statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall;
+      return (
+        statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall
+      );
     }
     const seasonStats = statsQuery.data?.season.away;
     if (!seasonStats) return undefined;
-    return venueView() === "contextual" ? seasonStats.away_only : seasonStats.overall;
+    return venueView() === "contextual"
+      ? seasonStats.away_only
+      : seasonStats.overall;
   });
 
   const formattedDateTime = createMemo(() => {

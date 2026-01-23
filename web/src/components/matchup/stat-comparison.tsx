@@ -32,20 +32,28 @@ function Inner(props: StatComparisonProps) {
 
   const homeStats = createMemo(() => {
     if (props.activeTab === "form") {
-      return statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall;
+      return (
+        statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall
+      );
     }
     const seasonStats = statsQuery.data?.season.home;
     if (!seasonStats) return undefined;
-    return props.venueView === "contextual" ? seasonStats.home_only : seasonStats.overall;
+    return props.venueView === "contextual"
+      ? seasonStats.home_only
+      : seasonStats.overall;
   });
 
   const awayStats = createMemo(() => {
     if (props.activeTab === "form") {
-      return statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall;
+      return (
+        statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall
+      );
     }
     const seasonStats = statsQuery.data?.season.away;
     if (!seasonStats) return undefined;
-    return props.venueView === "contextual" ? seasonStats.away_only : seasonStats.overall;
+    return props.venueView === "contextual"
+      ? seasonStats.away_only
+      : seasonStats.overall;
   });
 
   const hasData = () => homeStats() && awayStats();

@@ -1,21 +1,11 @@
 import { useParams, useSearchParams } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  Match,
-  Show,
-  Suspense,
-  Switch,
-} from "solid-js";
+import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
+import { teamStatsQueryOptions } from "~/api/analysis";
 import { Team } from "~/api/fixtures";
-import { leaguesQueryOptions } from "~/api/leagues";
 import { performanceQueryOptions } from "~/api/teams";
 import { FormTimeline } from "~/components/form-timeline";
 import { GameMetrics } from "~/components/game-metrics";
-import { useAuth } from "~/contexts/auth";
-import { computeStatsFromFixtures } from "~/lib/stats";
 
 function logoUrl(model: "teams" | "leagues", id: number) {
   return `https://media.api-sports.io/football/${model}/${id}.png`;
@@ -24,7 +14,6 @@ function logoUrl(model: "teams" | "leagues", id: number) {
 export default function TeamStatsPage() {
   const routeParams = useParams();
   const [searchParams] = useSearchParams();
-  const auth = useAuth();
   const teamId = Number(routeParams.id);
   const league = Number(searchParams.league);
   const season = Number(searchParams.season);
@@ -46,48 +35,40 @@ export default function TeamStatsPage() {
   const performanceQuery = useQuery(() =>
     performanceQueryOptions({ id: teamId, league, season }),
   );
-
-  const leaguesQuery = useQuery(() => leaguesQueryOptions(auth.headers));
-
-  const isTeamInFollowedLeague = () => {
-    if (!league || !leaguesQuery.data) return false;
-    return leaguesQuery.data.some(l => l.id === league && !l.hidden);
-  };
+  const statsQuery = useQuery(() =>
+    teamStatsQueryOptions({ teamId, leagueId: league, season }),
+  );
 
   const perf = () => performanceQuery.data;
   const team = () => teamQuery.data;
 
-  const [activeTab, setActiveTab] = createSignal<"season" | "form">("season");
+  const [activeTab, setActiveTab] = createSignal<"season" | "form">("form");
 
-  const recentFormFixtures = () => {
+  const formFixtures = createMemo(() => {
     const all = perf()?.fixtures.all ?? [];
-    const completed = all.filter(f => f.finished);
+    const completed = all.filter((f) => f.finished);
     const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
-    return sorted.slice(-5);
-  };
-
-  const formStats = createMemo(() =>
-    computeStatsFromFixtures(recentFormFixtures(), teamId),
-  );
-
-  const showTabs = () =>
-    isTeamInFollowedLeague() && recentFormFixtures().length >= 5;
-
-  // Default to "form" tab when form data becomes available (only on initial load)
-  let hasSetDefaultTab = false;
-  createEffect(() => {
-    if (!hasSetDefaultTab && showTabs()) {
-      setActiveTab("form");
-      hasSetDefaultTab = true;
+    if (activeTab() === "form") {
+      return sorted.slice(-5);
     }
+    return sorted;
   });
 
-  // Reactive stats based on active tab
-  const stats = createMemo(() => {
+  // Show tabs if we have form data from the stats endpoint
+  const hasFormData = () =>
+    statsQuery.isSuccess && statsQuery.data?.form !== null;
+  const showTabs = () => hasFormData();
+
+  // Rich stats from the new stats endpoint (Snapshot data)
+  const snapshotStats = createMemo(() => {
     if (activeTab() === "form") {
-      return formStats();
+      return statsQuery.data?.form ?? statsQuery.data?.season.overall;
     }
-    // Season stats from performance data
+    return statsQuery.data?.season.overall;
+  });
+
+  // Basic stats from performance endpoint (for home/away split table)
+  const perfStats = createMemo(() => {
     const p = perf();
     if (!p) return null;
     return {
@@ -99,15 +80,13 @@ export default function TeamStatsPage() {
       goalsAgainst: p.goals.against,
       cleansheets: p.cleansheets,
       failedToScore: p.failed_to_score,
-    } as ComputedStats;
+    };
   });
 
   const getWinRate = () => {
-    const s = stats();
-    if (!s?.played.total) return "0";
-    return s.played.total > 0
-      ? ((s.wins.total / s.played.total) * 100).toFixed(1)
-      : "0";
+    const s = snapshotStats();
+    if (!s?.num_games) return "0";
+    return (s.win_rate * 100).toFixed(1);
   };
 
   if (!teamId || !league || !season) {
@@ -175,13 +154,17 @@ export default function TeamStatsPage() {
           <Show when={showTabs()}>
             <div class="tabs tabs-boxed w-fit">
               <button
-                class={`tab ${activeTab() === "season" ? "tab-active" : ""}`}
+                type="button"
+                classList={{ "tab-active": activeTab() === "season" }}
+                class="tab"
                 onClick={() => setActiveTab("season")}
               >
                 Season
               </button>
               <button
-                class={`tab ${activeTab() === "form" ? "tab-active" : ""}`}
+                type="button"
+                classList={{ "tab-active": activeTab() === "form" }}
+                class="tab"
                 onClick={() => setActiveTab("form")}
               >
                 Last 5
@@ -192,161 +175,202 @@ export default function TeamStatsPage() {
           {/* Form */}
           <div class="card bg-base-100 border border-base-300">
             <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">Recent Form</h3>
-              <FormTimeline fixtures={recentFormFixtures()} teamId={teamId} />
+              <h3 class="text-lg font-semibold mb-4">Form</h3>
+              <FormTimeline fixtures={formFixtures()} teamId={teamId} />
             </div>
           </div>
 
           {/* Game Metrics */}
-          <Suspense fallback={<GameMetrics.Loading />}>
-            <GameMetrics
-              teamId={teamId}
-              leagueId={league}
-              season={season}
-              limit={activeTab() === "form" ? 5 : undefined}
-            />
-          </Suspense>
+          <GameMetrics
+            teamId={teamId}
+            leagueId={league}
+            season={season}
+            limit={activeTab() === "form" ? 5 : undefined}
+          />
 
           {/* Match Statistics */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">Match Statistics</h3>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="text-center">
-                  <div class="text-2xl font-bold">{stats()?.played.total}</div>
-                  <div class="text-sm text-base-content/60">Matches Played</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-success">
-                    {stats()?.wins.total}
+          <Show when={snapshotStats()}>
+            <div class="card bg-base-100 border border-base-300">
+              <div class="card-body">
+                <h3 class="text-lg font-semibold mb-4">Match Statistics</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold">
+                      {snapshotStats()?.num_games}
+                    </div>
+                    <div class="text-sm text-base-content/60">Matches</div>
                   </div>
-                  <div class="text-sm text-base-content/60">Wins</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-warning">
-                    {stats()?.draws.total}
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-success">
+                      {snapshotStats()?.wins}
+                    </div>
+                    <div class="text-sm text-base-content/60">Wins</div>
                   </div>
-                  <div class="text-sm text-base-content/60">Draws</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-error">
-                    {stats()?.losses.total}
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-warning">
+                      {snapshotStats()?.draws}
+                    </div>
+                    <div class="text-sm text-base-content/60">Draws</div>
                   </div>
-                  <div class="text-sm text-base-content/60">Losses</div>
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-error">
+                      {snapshotStats()?.losses}
+                    </div>
+                    <div class="text-sm text-base-content/60">Losses</div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                <div class="text-center">
-                  <div class="text-xl font-bold">{stats()?.goalsFor.total}</div>
-                  <div class="text-sm text-base-content/60">Goals For</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-xl font-bold">
-                    {stats()?.goalsAgainst.total}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.goals_for}
+                    </div>
+                    <div class="text-sm text-base-content/60">Goals For</div>
                   </div>
-                  <div class="text-sm text-base-content/60">Goals Against</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-xl font-bold">
-                    {stats()?.cleansheets.total}
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.goals_against}
+                    </div>
+                    <div class="text-sm text-base-content/60">
+                      Goals Against
+                    </div>
                   </div>
-                  <div class="text-sm text-base-content/60">Clean Sheets</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-xl font-bold">
-                    {stats()?.failedToScore.total}
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.cleansheets}
+                    </div>
+                    <div class="text-sm text-base-content/60">Clean Sheets</div>
                   </div>
-                  <div class="text-sm text-base-content/60">
-                    Failed to Score
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {((snapshotStats()?.strike_rate ?? 0) * 100).toFixed(0)}%
+                    </div>
+                    <div class="text-sm text-base-content/60">Strike Rate</div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.xgf.toFixed(2)}
+                    </div>
+                    <div class="text-sm text-base-content/60">xG For</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.xga.toFixed(2)}
+                    </div>
+                    <div class="text-sm text-base-content/60">xG Against</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.one_conceded}
+                    </div>
+                    <div class="text-sm text-base-content/60">1 Conceded</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-xl font-bold">
+                      {snapshotStats()?.two_plus_conceded}
+                    </div>
+                    <div class="text-sm text-base-content/60">2+ Conceded</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Show>
 
           {/* Home vs Away Split */}
-          <div class="card bg-base-100 border border-base-300">
-            <div class="card-body">
-              <h3 class="text-lg font-semibold mb-4">
-                Home vs Away Performance
-              </h3>
-              <div class="overflow-x-auto">
-                <table class="table table-zebra w-full">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th class="text-center">Home</th>
-                      <th class="text-center">Away</th>
-                      <th class="text-center">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Played</td>
-                      <td class="text-center">{stats()?.played.home}</td>
-                      <td class="text-center">{stats()?.played.away}</td>
-                      <td class="text-center font-bold">
-                        {stats()?.played.total}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Wins</td>
-                      <td class="text-center text-success">
-                        {stats()?.wins.home}
-                      </td>
-                      <td class="text-center text-success">
-                        {stats()?.wins.away}
-                      </td>
-                      <td class="text-center font-bold text-success">
-                        {stats()?.wins.total}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Draws</td>
-                      <td class="text-center text-warning">
-                        {stats()?.draws.home}
-                      </td>
-                      <td class="text-center text-warning">
-                        {stats()?.draws.away}
-                      </td>
-                      <td class="text-center font-bold text-warning">
-                        {stats()?.draws.total}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Losses</td>
-                      <td class="text-center text-error">
-                        {stats()?.losses.home}
-                      </td>
-                      <td class="text-center text-error">
-                        {stats()?.losses.away}
-                      </td>
-                      <td class="text-center font-bold text-error">
-                        {stats()?.losses.total}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Goals For</td>
-                      <td class="text-center">{stats()?.goalsFor.home}</td>
-                      <td class="text-center">{stats()?.goalsFor.away}</td>
-                      <td class="text-center font-bold">
-                        {stats()?.goalsFor.total}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Goals Against</td>
-                      <td class="text-center">{stats()?.goalsAgainst.home}</td>
-                      <td class="text-center">{stats()?.goalsAgainst.away}</td>
-                      <td class="text-center font-bold">
-                        {stats()?.goalsAgainst.total}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+          <Show when={perfStats()}>
+            <div class="card bg-base-100 border border-base-300">
+              <div class="card-body">
+                <h3 class="text-lg font-semibold mb-4">
+                  Home vs Away Performance
+                </h3>
+                <div class="overflow-x-auto">
+                  <table class="table table-zebra w-full">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th class="text-center">Home</th>
+                        <th class="text-center">Away</th>
+                        <th class="text-center">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Played</td>
+                        <td class="text-center">{perfStats()?.played.home}</td>
+                        <td class="text-center">{perfStats()?.played.away}</td>
+                        <td class="text-center font-bold">
+                          {perfStats()?.played.total}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Wins</td>
+                        <td class="text-center text-success">
+                          {perfStats()?.wins.home}
+                        </td>
+                        <td class="text-center text-success">
+                          {perfStats()?.wins.away}
+                        </td>
+                        <td class="text-center font-bold text-success">
+                          {perfStats()?.wins.total}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Draws</td>
+                        <td class="text-center text-warning">
+                          {perfStats()?.draws.home}
+                        </td>
+                        <td class="text-center text-warning">
+                          {perfStats()?.draws.away}
+                        </td>
+                        <td class="text-center font-bold text-warning">
+                          {perfStats()?.draws.total}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Losses</td>
+                        <td class="text-center text-error">
+                          {perfStats()?.losses.home}
+                        </td>
+                        <td class="text-center text-error">
+                          {perfStats()?.losses.away}
+                        </td>
+                        <td class="text-center font-bold text-error">
+                          {perfStats()?.losses.total}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Goals For</td>
+                        <td class="text-center">
+                          {perfStats()?.goalsFor.home}
+                        </td>
+                        <td class="text-center">
+                          {perfStats()?.goalsFor.away}
+                        </td>
+                        <td class="text-center font-bold">
+                          {perfStats()?.goalsFor.total}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Goals Against</td>
+                        <td class="text-center">
+                          {perfStats()?.goalsAgainst.home}
+                        </td>
+                        <td class="text-center">
+                          {perfStats()?.goalsAgainst.away}
+                        </td>
+                        <td class="text-center font-bold">
+                          {perfStats()?.goalsAgainst.total}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
+          </Show>
         </Match>
       </Switch>
     </div>

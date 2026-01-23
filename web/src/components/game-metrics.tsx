@@ -1,5 +1,6 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: solid primitives make this easier */
 import { useQuery } from "@tanstack/solid-query";
-import { For, Show } from "solid-js";
+import { For, Match, Suspense, Switch } from "solid-js";
 import { type TeamMetrics, teamMetricsQueryOptions } from "~/api/analysis";
 import { useAuth } from "~/contexts/auth";
 
@@ -19,54 +20,54 @@ type MetricConfig = {
 const METRICS: MetricConfig[] = [
   {
     label: "Total Shots",
-    getValue: d => ({
+    getValue: (d) => ({
       perGame: d.perGame.shots.total,
       total: d.total.shots.total,
     }),
   },
   {
     label: "Shots on Goal",
-    getValue: d => ({
+    getValue: (d) => ({
       perGame: d.perGame.shots.onGoal,
       total: d.total.shots.onGoal,
     }),
   },
   {
     label: "Shots Missed",
-    getValue: d => ({
+    getValue: (d) => ({
       perGame: d.perGame.shots.missed,
       total: d.total.shots.missed,
     }),
   },
   {
     label: "Blocked Shots",
-    getValue: d => ({
+    getValue: (d) => ({
       perGame: d.perGame.shots.blocked,
       total: d.total.shots.blocked,
     }),
   },
   {
     label: "Shots Inside Box",
-    getValue: d => ({
+    getValue: (d) => ({
       perGame: d.perGame.shots.insideBox,
       total: d.total.shots.insideBox,
     }),
   },
   {
     label: "Shots Outside Box",
-    getValue: d => ({
+    getValue: (d) => ({
       perGame: d.perGame.shots.outsideBox,
       total: d.total.shots.outsideBox,
     }),
   },
   {
     label: "Expected Goals",
-    getValue: d => ({ perGame: d.perGame.xg, total: d.total.xg }),
+    getValue: (d) => ({ perGame: d.perGame.xg, total: d.total.xg }),
     decimals: 2,
   },
   {
     label: "Corner Kicks",
-    getValue: d => ({ perGame: d.perGame.corners, total: d.total.corners }),
+    getValue: (d) => ({ perGame: d.perGame.corners, total: d.total.corners }),
   },
 ];
 
@@ -91,7 +92,7 @@ function MetricItem(props: {
 function MetricSection(props: {
   title: string;
   titleClass?: string;
-  data: TeamMetrics["for"];
+  data: () => TeamMetrics["for"];
   layout: "grid" | "flex";
 }) {
   return (
@@ -103,13 +104,13 @@ function MetricSection(props: {
         class={props.layout === "grid" ? "space-y-4" : "flex gap-4 flex-wrap"}
       >
         <For each={METRICS}>
-          {metric => {
-            const values = metric.getValue(props.data);
+          {(metric) => {
+            const values = () => metric.getValue(props.data());
             return (
               <MetricItem
                 label={metric.label}
-                perGame={values.perGame}
-                total={values.total}
+                perGame={values().perGame}
+                total={values().total}
                 decimals={metric.decimals}
               />
             );
@@ -120,7 +121,7 @@ function MetricSection(props: {
   );
 }
 
-export function GameMetrics(props: GameMetricsProps) {
+function Inner(props: GameMetricsProps) {
   const auth = useAuth();
   const metricsQuery = useQuery(() =>
     teamMetricsQueryOptions(
@@ -138,20 +139,31 @@ export function GameMetrics(props: GameMetricsProps) {
     <div class="card bg-base-100 border border-base-300">
       <div class="card-body">
         <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
-        <Show when={metricsQuery.data}>
-          {data => (
+        <Switch>
+          <Match when={metricsQuery.isError}>
+            <div class="alert alert-error">
+              <span>
+                Failed to load game metrics:{" "}
+                {metricsQuery.error instanceof Error
+                  ? metricsQuery.error.message
+                  : "Unknown error"}
+              </span>
+            </div>
+          </Match>
+
+          <Match when={metricsQuery.isSuccess}>
             <div>
               {/* Mobile Layout: 2 columns side by side */}
               <div class="grid grid-cols-2 gap-4 md:hidden">
                 <MetricSection
                   title="Offensive"
                   titleClass="text-primary"
-                  data={data().for}
+                  data={() => metricsQuery.data!.for}
                   layout="grid"
                 />
                 <MetricSection
                   title="Defensive"
-                  data={data().against}
+                  data={() => metricsQuery.data!.against}
                   layout="grid"
                 />
               </div>
@@ -161,43 +173,42 @@ export function GameMetrics(props: GameMetricsProps) {
                 <MetricSection
                   title="Offensive"
                   titleClass="text-primary"
-                  data={data().for}
+                  data={() => metricsQuery.data!.for}
                   layout="flex"
                 />
                 <MetricSection
                   title="Defensive"
-                  data={data().against}
+                  data={() => metricsQuery.data!.against}
                   layout="flex"
                 />
               </div>
             </div>
-          )}
-        </Show>
-
-        <Show when={metricsQuery.isError}>
-          <div class="alert alert-error">
-            <span>
-              Failed to load game metrics:{" "}
-              {metricsQuery.error instanceof Error
-                ? metricsQuery.error.message
-                : "Unknown error"}
-            </span>
-          </div>
-        </Show>
+          </Match>
+        </Switch>
       </div>
     </div>
   );
 }
 
-GameMetrics.Loading = () => (
-  <div class="card bg-base-100 border border-base-300">
-    <div class="card-body">
-      <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
-      <div class="flex w-52 flex-col gap-4">
-        <div class="skeleton h-4 w-full" />
-        <div class="skeleton h-4 w-3/4" />
-        <div class="skeleton h-4 w-1/2" />
+export function GameMetrics(props: GameMetricsProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Inner {...props} />
+    </Suspense>
+  );
+}
+
+function Loading() {
+  return (
+    <div class="card bg-base-100 border border-base-300">
+      <div class="card-body">
+        <h3 class="text-lg font-semibold mb-4">Game Metrics</h3>
+        <div class="flex w-52 flex-col gap-4">
+          <div class="skeleton h-4 w-full" />
+          <div class="skeleton h-4 w-3/4" />
+          <div class="skeleton h-4 w-1/2" />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+}
