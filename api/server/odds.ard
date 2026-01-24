@@ -15,10 +15,27 @@ struct Line {
   odd: Int,
 }
 
+// Line with Expected Value data for juice recommendations
+struct EVLine {
+  name: Str,
+  odd: Int,
+  ev_percentage: Float,
+  true_win_prob: Float,
+  implied_prob: Float,
+  edge: Float,
+}
+
 struct Stat {
   id: Int,
   name: Str,
   values: [Line]
+}
+
+// Stat with EV data for juice recommendations
+struct EVStat {
+  id: Int,
+  name: Str,
+  values: [EVLine]
 }
 
 let BET_365 = 8

@@ -24,6 +24,10 @@ export interface JuiceFixture {
     values: Array<{
       name: string;
       odd: number;
+      ev_percentage: number;
+      true_win_prob: number;
+      implied_prob: number;
+      edge: number;
     }>;
   }>;
 }

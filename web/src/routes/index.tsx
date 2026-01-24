@@ -19,6 +19,21 @@ import { useJuice } from "~/hooks/data/use-juice";
 import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
 import { formatFixtureTime, formatOdds } from "~/lib/formatters";
 
+function EVBadge(props: { ev: number }) {
+  const colorClass = () => {
+    if (props.ev >= 10) return "badge-success";
+    if (props.ev >= 5) return "badge-warning";
+    return "badge-ghost";
+  };
+
+  return (
+    <span class={`badge badge-sm ${colorClass()}`}>
+      EV: {props.ev > 0 ? "+" : ""}
+      {props.ev.toFixed(1)}%
+    </span>
+  );
+}
+
 function Page() {
   useScrollRestoration();
 
@@ -32,20 +47,29 @@ function Page() {
   onCleanup(() => window?.removeEventListener("resize", onResize));
 
   // Table sorting state with localStorage persistence
-  const savedSort = localStorage.getItem("valueBetsSortByOdds");
-  const [sortByOdds, setSortByOdds] = createSignal<"asc" | "desc" | null>(
-    savedSort === "asc" || savedSort === "desc" ? savedSort : null,
-  );
+  type SortColumn = "odds" | "ev";
+  type SortDir = "asc" | "desc";
+  const savedSortCol = localStorage.getItem("valueBetsSortCol") as SortColumn | null;
+  const savedSortDir = localStorage.getItem("valueBetsSortDir") as SortDir | null;
+
+  const [sortColumn, setSortColumn] = createSignal<SortColumn | null>(savedSortCol);
+  const [sortDir, setSortDir] = createSignal<SortDir>(savedSortDir ?? "desc");
 
   // Persist sort setting to localStorage
   createEffect(() => {
-    const sort = sortByOdds();
-    if (sort === null) {
-      localStorage.removeItem("valueBetsSortByOdds");
+    const col = sortColumn();
+    const dir = sortDir();
+    if (col === null) {
+      localStorage.removeItem("valueBetsSortCol");
+      localStorage.removeItem("valueBetsSortDir");
     } else {
-      localStorage.setItem("valueBetsSortByOdds", sort);
+      localStorage.setItem("valueBetsSortCol", col);
+      localStorage.setItem("valueBetsSortDir", dir);
     }
   });
+
+  // Legacy alias for backward compatibility
+  const sortByOdds = () => (sortColumn() === "odds" ? sortDir() : null);
 
   // Date navigation state from URL search params
   const [searchParams, setSearchParams] = useSearchParams<{
@@ -103,13 +127,23 @@ function Page() {
   };
 
   // Table sorting functions
-  const handleOddsSort = () => {
-    setSortByOdds(current => {
-      if (current === null) return "desc";
-      if (current === "desc") return "asc";
-      return null;
-    });
+  const handleColumnSort = (column: "odds" | "ev") => {
+    if (sortColumn() === column) {
+      // Toggle direction or clear
+      if (sortDir() === "desc") {
+        setSortDir("asc");
+      } else {
+        setSortColumn(null);
+      }
+    } else {
+      // Switch to this column
+      setSortColumn(column);
+      setSortDir("desc");
+    }
   };
+
+  const handleOddsSort = () => handleColumnSort("odds");
+  const handleEVSort = () => handleColumnSort("ev");
 
   // Prepare table data with sorting
   const juice = createMemo(() => {
@@ -128,15 +162,16 @@ function Page() {
       ),
     );
 
-    if (sortByOdds() === null) return flattened;
+    const col = sortColumn();
+    if (col === null) return flattened;
 
     return flattened.sort((a, b) => {
-      const aOdds = a.value.odd;
-      const bOdds = b.value.odd;
-      if (sortByOdds() === "asc") {
-        return aOdds - bOdds;
+      const aVal = col === "odds" ? a.value.odd : a.value.ev_percentage;
+      const bVal = col === "odds" ? b.value.odd : b.value.ev_percentage;
+      if (sortDir() === "asc") {
+        return aVal - bVal;
       } else {
-        return bOdds - aOdds;
+        return bVal - aVal;
       }
     });
   });
@@ -288,19 +323,22 @@ function Page() {
                                 <div class="flex flex-wrap gap-2">
                                   <For each={betType.values}>
                                     {value => (
-                                      <button
-                                        aria-disabled={auth.isReadOnly()}
-                                        class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
-                                        onClick={() =>
-                                          betForm.show(bet.fixture.id, {
-                                            type_id: betType.id,
-                                            odds: value.odd,
-                                            description: betType.name,
-                                          })
-                                        }
-                                      >
-                                        {value.name}: {formatOdds(value.odd)}
-                                      </button>
+                                      <div class="flex flex-col items-start gap-1">
+                                        <button
+                                          aria-disabled={auth.isReadOnly()}
+                                          class="badge badge-lg badge-primary cursor-pointer hover:badge-primary-focus transition-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+                                          onClick={() =>
+                                            betForm.show(bet.fixture.id, {
+                                              type_id: betType.id,
+                                              odds: value.odd,
+                                              description: betType.name,
+                                            })
+                                          }
+                                        >
+                                          {value.name}: {formatOdds(value.odd)}
+                                        </button>
+                                        <EVBadge ev={value.ev_percentage} />
+                                      </div>
                                     )}
                                   </For>
                                 </div>
@@ -347,6 +385,31 @@ function Page() {
                       </Show>
                     </div>
                   </th>
+                  <th
+                    class="cursor-pointer hover:bg-base-200 select-none"
+                    onClick={handleEVSort}
+                  >
+                    <div class="flex items-center gap-1">
+                      EV
+                      <Show when={sortColumn() === "ev"}>
+                        <svg
+                          class={`w-4 h-4 transition-transform ${
+                            sortDir() === "desc" ? "rotate-180" : "rotate-0"
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={2}
+                            d="M5 15l7-7 7 7"
+                          />
+                        </svg>
+                      </Show>
+                    </div>
+                  </th>
                   <th>Bet Name</th>
                   <th>Match</th>
                   <th>League</th>
@@ -366,6 +429,9 @@ function Page() {
                         <span class="badge badge-primary">
                           {formatOdds(value.odd)}
                         </span>
+                      </td>
+                      <td>
+                        <EVBadge ev={value.ev_percentage} />
                       </td>
                       <td>
                         <div class="text-sm">
