@@ -18,6 +18,95 @@ use maestro/odds
 let decode_id = decode::field("id", decode::int)
 let decode_name = decode::field("name", decode::string)
 
+// Minimum EV percentage to recommend a bet (5%)
+let MIN_EV_THRESHOLD = 5.0
+
+// Convert American odds to implied probability
+// Positive odds (+150): 100 / (odds + 100) = 40%
+// Negative odds (-110): |odds| / (|odds| + 100) = 52.4%
+fn odds_to_implied_probability(american_odds: Int) Float {
+  match american_odds > 0 {
+    true => 100.0 / Float::from_int(american_odds + 100),
+    false => {
+      let abs_odds = american_odds * -1
+      Float::from_int(abs_odds) / Float::from_int(abs_odds + 100)
+    }
+  }
+}
+
+struct EVResult {
+  ev: Float,
+  ev_percentage: Float,
+  true_win_prob: Float,
+  implied_prob: Float,
+  edge: Float,
+}
+
+// Calculate expected value given true probability and American odds
+// EV = (true_prob × win_amount) - (loss_prob × stake)
+// Reference: https://www.pinnacle.com/betting-resources/en/betting-strategy/how-to-calculate-expected-value/ees2ve46tm4htt32
+fn calculate_ev(true_win_prob: Float, american_odds: Int) EVResult {
+  // Convert to decimal odds for payout calculation
+  let decimal_odds = match american_odds > 0 {
+    true => Float::from_int(american_odds) / 100.0 + 1.0,
+    false => 100.0 / Float::from_int(american_odds * -1) + 1.0
+  }
+
+  let win_amount = decimal_odds - 1.0  // Profit on $1 bet
+  let loss_prob = 1.0 - true_win_prob
+
+  let ev = (true_win_prob * win_amount) - (loss_prob * 1.0)
+  let implied_prob = odds_to_implied_probability(american_odds)
+
+  EVResult{
+    ev: ev,
+    ev_percentage: ev * 100.0,
+    true_win_prob: true_win_prob,
+    implied_prob: implied_prob,
+    edge: true_win_prob - implied_prob,
+  }
+}
+
+// Simple probability estimation based on xG difference from line
+// Phase 1: threshold-based buckets, will be refined in Phase 2
+fn estimate_goal_line_probability(expected_goals: Float, line: Float, is_over: Bool) Float {
+  let diff = match is_over {
+    true => expected_goals - line,
+    false => line - expected_goals
+  }
+  match {
+    diff >= 0.5 => 0.72,
+    diff >= 0.3 => 0.62,
+    diff >= 0.0 => 0.52,
+    _ => 0.42
+  }
+}
+
+// Estimate probability for clean sheet bets
+fn estimate_cleansheet_probability(team_xga: Float, opponent_xgf: Float, is_yes: Bool) Float {
+  let opponent_attack = (opponent_xgf + team_xga) / 2.0
+  match is_yes {
+    true => {
+      // Clean sheet YES - need strong defense AND weak opponent
+      match {
+        opponent_attack <= 0.8 => 0.65,
+        opponent_attack <= 1.0 => 0.55,
+        opponent_attack <= 1.2 => 0.45,
+        _ => 0.35
+      }
+    },
+    false => {
+      // Clean sheet NO - opponent likely to score
+      match {
+        opponent_attack >= 1.5 => 0.75,
+        opponent_attack >= 1.2 => 0.65,
+        opponent_attack >= 1.0 => 0.55,
+        _ => 0.45
+      }
+    }
+  }
+}
+
 struct Snapshot {
 	num_games: Int,
 	wins: Int,
@@ -490,54 +579,58 @@ fn get_form_comparison(db: sql::Database, fixture: fixtures::Fixture) Comparison
 
 struct FixturePicks {
   fixture: fixtures::Fixture,
-  stats: [odds::Stat]
+  stats: [odds::EVStat]
 }
 
 fn pick_outcome(odd: odds::Stat, comp: Comparison, mut entry: FixturePicks) {
+  mut lines: [odds::EVLine] = []
   for pick in odd.values {
-    if pick.odd >= -150 {
-      if pick.name == "Home" and comp.home.goals_diff > 0 and comp.away.goals_diff < 0 {
-        entry.stats.push(odds::Stat{
-          id: odd.id,
-          name: pick.name,
-          values: [pick],
-        })
-      }
-      if pick.name == "Away" and comp.away.goals_diff > 0 and comp.home.goals_diff < 0 {
-        entry.stats.push(odds::Stat{
-          id: odd.id,
-          name: pick.name,
-          values: [pick],
-        })
-      }
-    }
-  }
-}
+    // Estimate win probability based on win rates and goal difference
+    let is_home = pick.name == "Home"
+    let is_away = pick.name == "Away"
+    let is_draw = pick.name == "Draw"
 
-fn pick_team_goal_lines(odd: odds::Stat, stats: Snapshot, mut entry: FixturePicks) {
-  mut lines: [odds::Line] = []
-  for line in odd.values {
-    if line.odd >= -150 {
-      if line.name == "Over 1.5" and stats.xgf > 1.5 {
-        lines.push(line)
-      }
-      if line.name == "Over 2.5" and stats.xgf >= 2.25 {
-        lines.push(line)
-      }
-      if line.name == "Under 0.5" and stats.xgf <= 1.0 {
-        lines.push(line)
-      }
-      if line.name == "Under 1.5" and stats.xgf <= 1.5 {
-        lines.push(line)
-      }
-      if line.name == "Under 2.5" and stats.xgf < 2.5 {
-        lines.push(line)
-      }
+    // Calculate base probability and whether to boost
+    let base_prob = match {
+      is_home => comp.home.win_rate,
+      is_away => comp.away.win_rate,
+      is_draw => (Float::from_int(comp.home.draws) / Float::from_int(comp.home.num_games) + Float::from_int(comp.away.draws) / Float::from_int(comp.away.num_games)) / 2.0,
+      _ => 0.33
+    }
+
+    let should_boost = match {
+      is_home => comp.home.goals_diff > 0 and comp.away.goals_diff < 0,
+      is_away => comp.away.goals_diff > 0 and comp.home.goals_diff < 0,
+      _ => false
+    }
+
+    // Apply boost if applicable, cap at 0.85
+    let boosted = base_prob + 0.1
+    let capped = match boosted > 0.85 {
+      true => 0.85,
+      false => boosted
+    }
+    let true_prob = match should_boost {
+      true => capped,
+      false => base_prob
+    }
+
+    let ev_result = calculate_ev(true_prob, pick.odd)
+
+    if ev_result.ev_percentage >= MIN_EV_THRESHOLD {
+      lines.push(odds::EVLine{
+        name: pick.name,
+        odd: pick.odd,
+        ev_percentage: ev_result.ev_percentage,
+        true_win_prob: ev_result.true_win_prob,
+        implied_prob: ev_result.implied_prob,
+        edge: ev_result.edge,
+      })
     }
   }
 
   if lines.size() > 0 {
-    entry.stats.push(odds::Stat{
+    entry.stats.push(odds::EVStat{
       id: odd.id,
       name: odd.name,
       values: lines
@@ -545,23 +638,67 @@ fn pick_team_goal_lines(odd: odds::Stat, stats: Snapshot, mut entry: FixturePick
   }
 }
 
-fn pick_cleansheet_lines(odd: odds::Stat, stats: Snapshot, opponent: Snapshot, mut entry: FixturePicks) {
-  mut lines: [odds::Line] = []
-  for line in odd.values {
-    if line.odd >= -150 {
-      if line.name == "No" and (stats.xga >= 1.5 or stats.leakiness >= 0.5 or opponent.xgf >= 1.5) {
-        lines.push(line)
-      }
+fn pick_team_goal_lines(odd: odds::Stat, team: Snapshot, opponent: Snapshot, mut entry: FixturePicks) {
+  // Expected goals based on team attack vs opponent defense
+  let expected_goals = (team.xgf + opponent.xga) / 2.0
 
-      // be conservative: good defense AND opponent doesn't score much
-      if line.name == "Yes" and stats.xga < 1.0 and opponent.xgf <= 1.3 {
-        lines.push(line)
-      }
+  mut lines: [odds::EVLine] = []
+  for line in odd.values {
+    // Parse line value from name (e.g., "Over 1.5" -> 1.5)
+    let line_value = match {
+      line.name == "Over 0.5" or line.name == "Under 0.5" => 0.5,
+      line.name == "Over 1.5" or line.name == "Under 1.5" => 1.5,
+      line.name == "Over 2.5" or line.name == "Under 2.5" => 2.5,
+      line.name == "Over 3.5" or line.name == "Under 3.5" => 3.5,
+      _ => 0.0
+    }
+
+    let is_over = line.name.starts_with("Over")
+    let true_prob = estimate_goal_line_probability(expected_goals, line_value, is_over)
+    let ev_result = calculate_ev(true_prob, line.odd)
+
+    if ev_result.ev_percentage >= MIN_EV_THRESHOLD {
+      lines.push(odds::EVLine{
+        name: line.name,
+        odd: line.odd,
+        ev_percentage: ev_result.ev_percentage,
+        true_win_prob: ev_result.true_win_prob,
+        implied_prob: ev_result.implied_prob,
+        edge: ev_result.edge,
+      })
     }
   }
 
   if lines.size() > 0 {
-    entry.stats.push(odds::Stat{
+    entry.stats.push(odds::EVStat{
+      id: odd.id,
+      name: odd.name,
+      values: lines
+    })
+  }
+}
+
+fn pick_cleansheet_lines(odd: odds::Stat, team: Snapshot, opponent: Snapshot, mut entry: FixturePicks) {
+  mut lines: [odds::EVLine] = []
+  for line in odd.values {
+    let is_yes = line.name == "Yes"
+    let true_prob = estimate_cleansheet_probability(team.xga, opponent.xgf, is_yes)
+    let ev_result = calculate_ev(true_prob, line.odd)
+
+    if ev_result.ev_percentage >= MIN_EV_THRESHOLD {
+      lines.push(odds::EVLine{
+        name: line.name,
+        odd: line.odd,
+        ev_percentage: ev_result.ev_percentage,
+        true_win_prob: ev_result.true_win_prob,
+        implied_prob: ev_result.implied_prob,
+        edge: ev_result.edge,
+      })
+    }
+  }
+
+  if lines.size() > 0 {
+    entry.stats.push(odds::EVStat{
       id: odd.id,
       name: odd.name,
       values: lines
@@ -606,11 +743,11 @@ private fn find_juice() {
                 }
 
                 if odd.id == odds::HOME_TOTAL_GOALS  {
-                  pick_team_goal_lines(odd, comp.home, entry)
+                  pick_team_goal_lines(odd, comp.home, comp.away, entry)
                 }
 
                 if odd.id == odds::AWAY_TOTAL_GOALS {
-                  pick_team_goal_lines(odd, comp.away, entry)
+                  pick_team_goal_lines(odd, comp.away, comp.home, entry)
                 }
 
                 if odd.id == odds::HOME_CLEANSHEET {

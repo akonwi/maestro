@@ -46,9 +46,33 @@ Expected Value (EV) shows average profit/loss per dollar wagered:
 - Odds floor of `-150`
 - No probability or EV calculation
 
+## References
+
+- [Pinnacle: How to Calculate Expected Value](https://www.pinnacle.com/betting-resources/en/betting-strategy/how-to-calculate-expected-value/ees2ve46tm4htt32)
+- [TheLines: Calculate Implied Probability for American Odds](https://www.thelines.com/calculate-implied-probability-american-betting-odds/)
+
+### Example from Pinnacle
+
+> An NFL underdog is listed at +150 on the moneyline (implied win probability ~40%). After doing your homework, you believe this team actually has about a 45% chance to win.
+>
+> If you place a $20 bet at +150, your potential profit is $30. Using the EV formula:
+> `0.45 × $30 – 0.55 × $20 = $13.50 – $11.00 = +$2.50 expected value`
+>
+> That +$2.50 may seem modest, but it's an edge of 12.5% on your $20 stake.
+
+---
+
 ## Phase 1 Implementation
 
 ### 1. Implied Probability from Odds
+
+Implied probability is what the bookmaker's odds suggest as the "true" chance of an outcome.
+
+**Formulas:**
+| Odds Type | Formula | Example |
+|-----------|---------|---------|
+| Positive (+150) | `100 / (odds + 100)` | 100 / 250 = 40% |
+| Negative (-110) | `|odds| / (|odds| + 100)` | 110 / 210 = 52.4% |
 
 **File:** `api/server/predictions.ard`
 
@@ -58,7 +82,7 @@ fn odds_to_implied_probability(american_odds: Int) Float {
     // Positive odds: +150 = 100/(150+100) = 40%
     100.0 / Float::from_int(american_odds + 100)
   } else {
-    // Negative odds: -150 = 150/(150+100) = 60%
+    // Negative odds: -110 = 110/(110+100) = 52.4%
     let abs_odds = american_odds * -1
     Float::from_int(abs_odds) / Float::from_int(abs_odds + 100)
   }
