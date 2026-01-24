@@ -718,11 +718,10 @@ private fn save_juice(db: sql::Database, id: Str, raw: Str) Void!Str {
 
 private fn find_juice() {
   let db = _db::connect()
-  let ignored_leagues = leagues::get_ignored(db)
 
   mut entries: [FixturePicks] = []
   for fixture in fixtures::find_today(db) {
-    if not ignored_leagues.has(fixture.league.id) {
+    if leagues::is_following(db, fixture.league.id) {
       match get_form_comparison(db, fixture) {
         ok(comp) => {
 
