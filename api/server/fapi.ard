@@ -11,14 +11,6 @@ use maestro/config
 
 // API-Football module - consolidates all external API calls to v3.football.api-sports.io
 
-fn flatten_values(map: [Str:Str]) Str {
-  mut str = ""
-  for key, value in map {
-    str =+ " {value}"
-  }
-  str
-}
-
 fn join_strs(list: [Str]) Str {
   mut str = ""
   for it in list {
@@ -27,7 +19,7 @@ fn join_strs(list: [Str]) Str {
   str
 }
 
-private fn fetch(path: Str) http::Response!Str {
+private fn fetch(path: Str) Dynamic!Str {
   let req = http::Request{
     method: http::Method::Get,
     url: "https://v3.football.api-sports.io/"+path,
@@ -37,53 +29,65 @@ private fn fetch(path: Str) http::Response!Str {
     ],
   }
 
-  let res = try http::send(req) -> err { Result::err("Error fetching {path}: {err}") }
-  Result::ok(res)
+  mut attempts = 0
+  mut data: Dynamic? = maybe::none()
+
+  // make the request and check whether it receives data.
+  // retries when rate limited and aborts if the request couldn't be completed.
+  while data.is_none() and attempts < 3 {
+    let response = try http::send(req) -> err { Result::err("Error fetching /{path}: {err}") }
+    let body = try decode::from_json(response.body) -> found {
+      Result::err("Unable to parse response body as JSON for \{path}. Found {found}")
+    }
+
+    // API-Football doesn't use a status code for rate limit errors. Everything is a 200 and errors are in
+    // body.errors, which is a map ([Str:Str]).
+    let has_rate_limit_key = fn (data: Dynamic) Bool![decode::Error] {
+      let map = try decode::run(data, decode::map(decode::string, decode::dynamic)) -> _ { Result::ok(false) }
+      Result::ok(map.has("rateLimit"))
+    }
+    let is_rate_limited = decode::run(body, decode::field("errors", has_rate_limit_key)).or(false)
+    match is_rate_limited {
+      true => {
+        io::print("[fapi] Rate limit exceeded - (attempt: {attempts + 1}, path: /{path})")
+        async::sleep(duration::from_seconds(30))
+        attempts =+ 1
+      },
+      false => { data = maybe::some(body) }
+    }
+  }
+
+  match data {
+    d => Result::ok(d),
+    _ => Result::err("Failed to fetch /{path} after {attempts} attempts")
+  }
 }
 
 fn send_request(path: Str) Dynamic!Str {
-  mut res = try fetch(path)
+  mut body = try fetch(path)
 
-  mut attempts = 1
-  while attempts < 3 and res.status == 429 {
-    // Rate limited - no Retry-After header from API-Football
-    // Per-minute limit resets quickly, so wait 2 seconds and retry
-    async::sleep(duration::from_seconds(2))
-    attempts =+ 1
-    res = try fetch(path)
+  // the API is documented as `body.errors` being a list of strings but there are two possibilities:
+  // * request has no errors - .errors is an empty list
+  // * request has errors - .errors ss a map of field name to message string
+  let parse_errors = decode::one_of(decode::list(decode::string), [fn(data: Dynamic) [Str]![decode::Error] {
+    mut msgs: [Str] = []
+    decode::map(decode::string, fn(v: Dynamic) Void![decode::Error] {
+      match decode::string(v) {
+        ok => msgs.push(ok),
+        err => (),
+      }
+      Result::ok(())
+    })
+    Result::ok(msgs)
+  }])
+
+  let errors = try decode::run(body, decode::field("errors", parse_errors)) -> errs {
+    Result::err("Bad Request. Couldn't decode fapi errors: {errs.at(0)}")
   }
 
-  match res.status {
-    200 => {
-      let body = try decode::from_json(res.body) -> found {
-        Result::err("Unable to parse response body as JSON for {path}. Found {found}")
-      }
-
-      // the API is documented as returning a list of strings but in reality, does something different:
-      // when no errors - it's an empty list
-      // when there are errors - it's a map of field name to message string
-      let parse_errors = decode::one_of(decode::list(decode::string), [fn(data: Dynamic) [Str]![decode::Error] {
-        mut msgs: [Str] = []
-        decode::map(decode::string, fn(v: Dynamic) Void![decode::Error] {
-          match decode::string(v) {
-            ok => msgs.push(ok),
-            err => (),
-          }
-          Result::ok(())
-        })
-        Result::ok(msgs)
-      }])
-
-      let errors = try decode::run(body, decode::field("errors", parse_errors)) -> errs {
-        Result::err("Bad Request. Couldn't decode fapi errors: {errs.at(0)}")
-      }
-
-      match errors.size() > 0 {
-        true => Result::err(join_strs(errors)),
-        false => Result::ok(body)
-      }
-    },
-    _ => Result::err("Bad request ({path}). Received {res.status}")
+  match errors.size() > 0 {
+    true => Result::err(join_strs(errors)),
+    false => Result::ok(body)
   }
 }
 
