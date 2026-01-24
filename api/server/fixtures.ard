@@ -355,7 +355,6 @@ fn decode_stats(entry: Dynamic) FixtureStats![decode::Error] {
   }
 
   if teams_stats.size() < 2 {
-    io::print("No stats found for (fixture={id})")
     teams_stats = [empty_stats, empty_stats]
   }
 
