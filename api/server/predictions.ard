@@ -507,18 +507,14 @@ fn blend_with_venue(db: sql::Database, form: Snapshot, team_id: Int, league_id: 
 fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapshot!Str {
   let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: maybe::some(5))
 
-  mut fibers: [async::Fiber<fixtures::FixtureStats!Str>] = []
+  mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e in entries {
     let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
 
-    fibers.push(async::eval(fn() fixtures::FixtureStats!Str {
-      let data = try fapi::get_fixture(db, fixture_id)
-      let fs = try fixtures::decode_stats(data) -> errs { Result::err(decode::flatten(errs)) }
-      Result::ok(fs)
-    }))
+    let data = try fapi::get_fixture(db, fixture_id)
+    let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+    fixture_stats_list.push(fs)
   }
-
-  async::join(fibers)
 
   mut wins = 0
   mut losses = 0
@@ -533,8 +529,7 @@ fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapsh
   mut at_least_1_against = 0
   mut two_plus_conceded = 0
 
-  for fiber in fibers {
-    let fs = try fiber.get()
+  for fs in fixture_stats_list {
     let is_home = fs.fixture.home.id == team_id
 
     let team_stats = match is_home {
@@ -573,7 +568,7 @@ fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapsh
     }
   }
 
-  let num_games = fibers.size()
+  let num_games = fixture_stats_list.size()
   match num_games == 0 {
     true => Result::ok(Snapshot{
       num_games: 0,
