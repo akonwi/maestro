@@ -768,40 +768,9 @@ fn find_played(db: sql::Database, team_id: Int, league_id: Int, season: Int, cou
 
 // try db first and fallback to external API
 fn get(db: sql::Database, id: Int) Fixture!Str {
-  let result = try db.query(
-    "SELECT
-      f.id,
-      l.id as league_id,
-      f.season,
-      f.home_id,
-      f.away_id,
-      f.timestamp,
-      f.finished,
-      f.home_goals,
-      f.away_goals,
-      h.name as home_name,
-      a.name as away_name,
-      l.name as league_name
-    FROM fixtures f
-    INNER JOIN leagues l ON l.id = f.league_id
-    INNER JOIN teams h ON h.id = f.home_id
-    INNER JOIN teams a ON a.id = f.away_id
-    WHERE f.id = @id"
-  ).first(["id":id])
-
-  match result {
-    row => {
-      match from_row(row) {
-        ok(fixture) => Result::ok(fixture),
-        err(errs) => Result::err(collapse_errors("Failed to decode fixture ({id}) row", errs))
-      }
-    },
-    _ => {
-      let data = try fapi::get_fixture(db, id)
-      let fixture = try Fixture::from_api_entry(data) -> errs {
-        Result::err(collapse_errors("Failed to decode fixture ({id}) entry", errs))
-      }
-      Result::ok(fixture)
-    }
+  let data = try fapi::get_fixture(db, id)
+  let fixture = try Fixture::from_api_entry(data) -> errs {
+    Result::err(decode::flatten(errs))
   }
+  Result::ok(fixture)
 }
