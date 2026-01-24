@@ -21,6 +21,9 @@ let decode_name = decode::field("name", decode::string)
 // Minimum EV percentage to recommend a bet (5%)
 let MIN_EV_THRESHOLD = 5.0
 
+// Form weight for blending (60% form, 40% season venue stats)
+let FORM_WEIGHT = 0.6
+
 // Convert American odds to implied probability
 // Positive odds (+150): 100 / (odds + 100) = 40%
 // Negative odds (-110): |odds| / (|odds| + 100) = 52.4%
@@ -449,6 +452,56 @@ fn get_team_season_stats(db: sql::Database, team_id: Int, league_id: Int, season
   Result::ok(compute_season_stats(fixture_stats_list, team_id))
 }
 
+// Blend form stats with venue-specific season stats
+// form_weight: 0.0-1.0, higher = more weight on recent form
+fn blend_snapshots(form: Snapshot, season_venue: Snapshot) Snapshot {
+  let fw = FORM_WEIGHT
+  let sw = 1.0 - fw
+
+  // Blend the key metrics
+  let blended_xgf = (form.xgf * fw) + (season_venue.xgf * sw)
+  let blended_xga = (form.xga * fw) + (season_venue.xga * sw)
+  let blended_win_rate = (form.win_rate * fw) + (season_venue.win_rate * sw)
+  let blended_strike_rate = (form.strike_rate * fw) + (season_venue.strike_rate * sw)
+  let blended_leakiness = (form.leakiness * fw) + (season_venue.leakiness * sw)
+
+  // For counts, use form values (more recent/relevant)
+  Snapshot{
+    num_games: form.num_games,
+    wins: form.wins,
+    losses: form.losses,
+    draws: form.draws,
+    goals_against: form.goals_against,
+    goals_for: form.goals_for,
+    one_plus_scored: form.one_plus_scored,
+    strike_rate: blended_strike_rate,
+    goals_diff: form.goals_diff,
+    xgf: blended_xgf,
+    xga: blended_xga,
+    leakiness: blended_leakiness,
+    cleansheets: form.cleansheets,
+    one_conceded: form.one_conceded,
+    two_plus_conceded: form.two_plus_conceded,
+    win_rate: blended_win_rate,
+  }
+}
+
+// Extract venue stats from season stats
+fn get_venue_snapshot(stats: TeamSeasonStats, is_home: Bool) Snapshot {
+  match is_home {
+    true => stats.home_only,
+    false => stats.away_only
+  }
+}
+
+// Helper to get season stats and blend with form, falling back to form if stats unavailable
+fn blend_with_venue(db: sql::Database, form: Snapshot, team_id: Int, league_id: Int, season: Int, is_home: Bool) Snapshot {
+  match get_team_season_stats(db, team_id, league_id, season) {
+    ok(stats) => blend_snapshots(form, get_venue_snapshot(stats, is_home)),
+    err(_) => form
+  }
+}
+
 // returns metrics over the last 5 games before the given timestamp
 // todo: this should support a timestamp or date so that it can provide form at that point
 fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapshot!Str {
@@ -729,20 +782,31 @@ private fn find_juice() {
   for fixture in fixtures::find_today(db) {
     if not ignored_leagues.has(fixture.league.id) {
       match get_form_comparison(db, fixture) {
-        ok(comp) => {
+        ok(form) => {
+          // Get season stats with venue splits for blending
+          // If season stats fail, fall back to form-only (no blending)
+          let home_blended = blend_with_venue(db, form.home, fixture.home.id, fixture.league.id, fixture.season, true)
+          let away_blended = blend_with_venue(db, form.away, fixture.away.id, fixture.league.id, fixture.season, false)
+
+          let comp = Comparison{
+            home: home_blended,
+            away: away_blended,
+          }
+
           mut entry = FixturePicks{
             fixture: fixture,
             stats: [],
           }
+
           // find odds, if team over/under makes sense, save it
           match odds::get(db, fixture.id) {
             ok(all_odds) => {
               for odd in all_odds {
-                if odd.id == odds::OUTCOME  {
+                if odd.id == odds::OUTCOME {
                   pick_outcome(odd, comp, entry)
                 }
 
-                if odd.id == odds::HOME_TOTAL_GOALS  {
+                if odd.id == odds::HOME_TOTAL_GOALS {
                   pick_team_goal_lines(odd, comp.home, comp.away, entry)
                 }
 
