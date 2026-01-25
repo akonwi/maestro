@@ -87,7 +87,9 @@ fn main() {
       "/health": fn(req: http::Request) http::Response {
         match req.method {
           http::Method::Get => {
-            http::Response{status: 200, headers: res_headers, body: "\{\"status\":\"ok\"}"}
+            let payload = Dynamic::object(["status": Dynamic::from("ok")])
+            let body = try json::encode(payload) -> internal_error
+            http::Response{status: 200, headers: res_headers, body: body}
           },
           _ => not_found
         }
