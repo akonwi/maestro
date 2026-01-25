@@ -13,7 +13,6 @@ use maestro/config
 use maestro/db
 use maestro/fixtures
 use maestro/leagues
-use maestro/predictions
 use maestro/odds
 use maestro/teams
 
