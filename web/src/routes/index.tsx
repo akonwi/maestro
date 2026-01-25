@@ -2,7 +2,7 @@ import { A, useSearchParams } from "@solidjs/router";
 import { clientOnly } from "@solidjs/start";
 import { useQuery } from "@tanstack/solid-query";
 import { createMemo, For, Match, Switch } from "solid-js";
-import { fixturesTodayQueryOptions, type Fixture } from "~/api/fixtures";
+import { fixturesTodayQueryOptions } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
 import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
 import { formatFixtureTime } from "~/lib/formatters";
@@ -51,23 +51,22 @@ function Page() {
     setSelectedDate(newDateStr);
   };
 
-  const formatMatchup = (fixture: Fixture) => {
-    return `${fixture.home.name} vs ${fixture.away.name}`;
-  };
-
   const matchupUrl = (fixtureId: number) => `/matchup/${fixtureId}`;
 
+  const leagues = () => fixturesQuery.data ?? [];
+
   return (
-    <div class="space-y-6">
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold">Fixtures</h1>
-        <div class="flex items-center gap-4">
-          <div class="text-lg font-medium text-base-content/80">
+    <div class="space-y-4 md:space-y-6">
+      {/* Header - stacks on mobile */}
+      <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+        <h1 class="text-2xl md:text-3xl font-bold">Fixtures</h1>
+        <div class="flex items-center justify-between sm:justify-end gap-3 md:gap-4">
+          <div class="text-sm md:text-lg font-medium text-base-content/80">
             {formattedDate()}
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 md:gap-2">
             <button
-              class="btn btn-sm btn-outline"
+              class="btn btn-xs md:btn-sm btn-outline"
               onClick={() => navigateDate("prev")}
               aria-label="Previous day"
             >
@@ -86,7 +85,7 @@ function Page() {
               </svg>
             </button>
             <button
-              class="btn btn-sm btn-outline"
+              class="btn btn-xs md:btn-sm btn-outline"
               onClick={() => navigateDate("next")}
               aria-label="Next day"
             >
@@ -105,7 +104,7 @@ function Page() {
               </svg>
             </button>
             <button
-              class="btn btn-sm btn-primary"
+              class="btn btn-xs md:btn-sm btn-primary"
               onClick={() => {
                 const today = new Date().toISOString().split("T")[0] || "";
                 setSelectedDate(today);
@@ -138,7 +137,7 @@ function Page() {
           </div>
         </Match>
 
-        <Match when={(fixturesQuery.data || []).length === 0}>
+        <Match when={leagues().length === 0}>
           <div class="text-center py-12">
             <div class="text-base-content/60 text-lg">
               No fixtures for followed leagues
@@ -150,47 +149,87 @@ function Page() {
         </Match>
 
         <Match when>
-          <div class="space-y-6">
-            <For each={fixturesQuery.data}>
+          <div class="space-y-4 md:space-y-6">
+            <For each={leagues()}>
               {league => (
                 <div class="card bg-base-100 border border-base-300">
-                  <div class="card-body">
+                  <div class="card-body p-3 md:p-6">
                     <LeagueMenu league={league} trigger="context">
-                      <h2 class="card-title text-lg">{league.name}</h2>
+                      <h2 class="card-title text-base md:text-lg">{league.name}</h2>
                     </LeagueMenu>
                     <div class="divide-y divide-base-300">
                       <For each={league.fixtures}>
                         {fixture => (
                           <A
                             href={matchupUrl(fixture.id)}
-                            class="flex items-center justify-between py-3 hover:bg-base-200 -mx-4 px-4 transition-colors"
+                            class="block py-2 md:py-3 hover:bg-base-200 -mx-3 px-3 md:-mx-4 md:px-4 transition-colors"
                           >
-                            <div class="flex items-center gap-3">
-                              <img
-                                src={`https://media.api-sports.io/football/teams/${fixture.home.id}.png`}
-                                alt={fixture.home.name}
-                                class="w-6 h-6"
-                              />
-                              <span class="font-medium">{fixture.home.name}</span>
-                              <span class="text-base-content/50">vs</span>
-                              <span class="font-medium">{fixture.away.name}</span>
-                              <img
-                                src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
-                                alt={fixture.away.name}
-                                class="w-6 h-6"
-                              />
+                            {/* Mobile layout: stacked, full width */}
+                            <div class="md:hidden">
+                              <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 min-w-0 flex-1">
+                                  <img
+                                    src={`https://media.api-sports.io/football/teams/${fixture.home.id}.png`}
+                                    alt={fixture.home.name}
+                                    class="w-5 h-5 shrink-0"
+                                  />
+                                  <span class="text-sm truncate">{fixture.home.name}</span>
+                                </div>
+                                <div class="shrink-0 px-2">
+                                  <Switch>
+                                    <Match when={fixture.finished}>
+                                      <span class="text-sm font-medium">
+                                        {fixture.home_goals} - {fixture.away_goals}
+                                      </span>
+                                    </Match>
+                                    <Match when>
+                                      <span class="text-base-content/50 text-xs">vs</span>
+                                    </Match>
+                                  </Switch>
+                                </div>
+                                <div class="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                                  <span class="text-sm truncate">{fixture.away.name}</span>
+                                  <img
+                                    src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
+                                    alt={fixture.away.name}
+                                    class="w-5 h-5 shrink-0"
+                                  />
+                                </div>
+                              </div>
+                              <div class="text-xs text-base-content/50 mt-1 text-center">
+                                {fixture.finished ? "FT" : formatFixtureTime(fixture.timestamp)}
+                              </div>
                             </div>
-                            <div class="text-sm text-base-content/60">
-                              <Switch>
-                                <Match when={fixture.finished}>
-                                  <span class="font-medium">
-                                    {fixture.home_goals} - {fixture.away_goals}
-                                  </span>
-                                </Match>
-                                <Match when>
-                                  {formatFixtureTime(fixture.timestamp)}
-                                </Match>
-                              </Switch>
+
+                            {/* Desktop layout: horizontal */}
+                            <div class="hidden md:flex md:items-center md:justify-between">
+                              <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <img
+                                  src={`https://media.api-sports.io/football/teams/${fixture.home.id}.png`}
+                                  alt={fixture.home.name}
+                                  class="w-6 h-6 shrink-0"
+                                />
+                                <span class="text-base font-medium truncate">{fixture.home.name}</span>
+                                <span class="text-base-content/50 text-sm shrink-0">vs</span>
+                                <span class="text-base font-medium truncate">{fixture.away.name}</span>
+                                <img
+                                  src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
+                                  alt={fixture.away.name}
+                                  class="w-6 h-6 shrink-0"
+                                />
+                              </div>
+                              <div class="text-sm text-base-content/60 shrink-0 ml-2">
+                                <Switch>
+                                  <Match when={fixture.finished}>
+                                    <span class="font-medium">
+                                      {fixture.home_goals} - {fixture.away_goals}
+                                    </span>
+                                  </Match>
+                                  <Match when>
+                                    {formatFixtureTime(fixture.timestamp)}
+                                  </Match>
+                                </Switch>
+                              </div>
                             </div>
                           </A>
                         )}
