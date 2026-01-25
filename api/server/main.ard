@@ -71,7 +71,6 @@ fn main() {
   }
 
   if config::is_sync_enabled() {
-    async::start(predictions::find_juice_worker)
     async::start(fn() { bets::update_outcomes(conn) })
     async::start(fn() { fixtures::sync(conn) })
   }
@@ -88,17 +87,6 @@ fn main() {
         match req.method {
           http::Method::Get => {
             http::Response{status: 200, headers: res_headers, body: "\{\"status\":\"ok\"}"}
-          },
-          _ => not_found
-        }
-      },
-
-      "/juice": fn(req: http::Request) http::Response {
-        match req.method {
-          http::Method::Get => {
-            let date = req.query_param("date")
-            let body = try predictions::get_juice(conn, date) -> internal_error
-            http::Response{status: 200, headers: res_headers, body: body}
           },
           _ => not_found
         }

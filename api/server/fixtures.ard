@@ -730,20 +730,6 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
   })
 }
 
-// retrieves all fixtures happening today from API-Football
-fn find_today(db: sql::Database) [Fixture] {
-  let today = dates::get_today()
-  let body = try fapi::get_today_fixtures(db, today) -> err {
-    io::print("Error fetching today's fixtures: {err}")
-    List::new<Fixture>()
-  }
-
-  try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
-    io::print("Error decoding body.response: {errs.at(0)}")
-    List::new<Fixture>()
-  }
-}
-
 fn find(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
   let body = try fapi::get_team_fixtures(db, team_id, league_id, season)
   let fixtures = try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {

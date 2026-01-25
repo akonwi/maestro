@@ -236,18 +236,6 @@ fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, sea
   }
 }
 
-fn get_today_fixtures(db: sql::Database, date: Str) Dynamic!Str {
-  let cached_body = cache::get(db, "today_fixtures", date)
-  match cached_body {
-    body => Result::ok(body),
-    _ => {
-      let body = try send_request("fixtures?status=NS&timezone=America/New_York&date={date}")
-      cache::set(db, "today_fixtures", date, body)
-      Result::ok(body)
-    }
-  }
-}
-
 fn get_season_fixtures(db: sql::Database, league_id: Int, season: Int) [Dynamic]!Str {
   let resource_id = "{league_id}:{season}"
   let cached_body = cache::get(db, "season_fixtures", resource_id)
