@@ -92,7 +92,7 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
       if i > 9 { async::sleep(duration::from_seconds(1)) }
 
       let data = try fapi::get_fixture(db, fixture_id)
-      let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+      let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {decode::flatten(errs)}") }
       fixture_stats_list.push(fs)
     }
   }

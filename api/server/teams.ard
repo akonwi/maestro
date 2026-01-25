@@ -4,14 +4,6 @@ use ard/sql
 
 use maestro/fapi
 
-fn collapse_errors(prefix: Str, errors: [decode::Error]) Str {
-  mut msg = prefix
-  for e in errors {
-    msg = "{msg}: {e}"
-  }
-  msg
-}
-
 struct Team { id: Int, name: Str }
 
 impl Team {

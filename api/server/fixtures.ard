@@ -10,15 +10,6 @@ use maestro/fapi
 use maestro/leagues
 use maestro/teams
 
-// todo: put this in ard/decode
-fn collapse_errors(prefix: Str, errors: [decode::Error]) Str {
-  mut msg = prefix
-  for e in errors {
-    msg = "{msg}: {e}"
-  }
-  msg
-}
-
 struct League {
   id: Int,
   name: Str,
@@ -151,7 +142,7 @@ fn find_from_db(db: sql::Database, team_id: Int, league_id: Int, season: Int) [F
 
   mut fixtures: [Fixture] = []
   for row, idx in rows {
-    let f = try from_row(row) -> errs { Result::err(collapse_errors("Failed to decode fixture ({idx}) row", errs)) }
+    let f = try from_row(row) -> errs { Result::err(decode::flatten(errs)) }
     fixtures.push(f)
   }
 
@@ -171,10 +162,6 @@ fn decode_is_finished(data: Dynamic) Bool![decode::Error] {
   }
 
   Result::ok(is_finished)
-}
-
-fn print_errors(errors: [decode::Error]) {
-  io::print(collapse_errors("", errors))
 }
 
 struct TeamStats {
@@ -387,7 +374,7 @@ fn import_season(db: sql::Database, league_id: Int, season: Int) Void!Str {
     let id = try decode::run(fe, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err("Unable to parse fixture id: {errs.at(0)}") }
     let entry = try fapi::get_fixture(db, id) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
 
-    let fixture_n_stats = try decode_stats(entry) -> errs { Result::err(collapse_errors("Error decoding fixture data: ", errs)) }
+    let fixture_n_stats = try decode_stats(entry) -> errs { Result::err(decode::flatten(errs)) }
 
     fixture_stats.push(fixture_n_stats)
   }
@@ -513,9 +500,9 @@ fn sync_fixtures(db: sql::Database, league_id: Int, season: Int) Void!Str  {
   ])
 
   for row in pending_fixtures {
-    let id = try decode_id(row) -> errs { Result::err(collapse_errors("Error decoding id in fixture row: ", errs)) }
+    let id = try decode_id(row) -> errs { Result::err(decode::flatten(errs)) }
     let data = try fapi::get_fixture(db, id) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
-    let f = try decode_stats(data) -> errs { Result::err(collapse_errors("Error decoding fixture data: ", errs)) }
+    let f = try decode_stats(data) -> errs { Result::err(decode::flatten(errs)) }
 
     let tx = try db.begin() -> err { Result::err("Unable to begin transaction to save (fixture={id}): {err}") }
 
@@ -620,7 +607,7 @@ fn sync_season(db: sql::Database, league_id: Int, season: Int) {
     io::print("Unable to get fixture count for league {league_id} season {season}: {err}")
   }
   let count = try decode::run(row.expect("foobar"), decode::field("count", decode::int)) -> errs {
-    io::print("Unable to parse fixture count for league: {league_id} season: {season}: {collapse_errors("", errs)}")
+    io::print("Unable to parse fixture count for league: {league_id} season: {season}: {decode::flatten(errs)}")
   }
 
   match count {
@@ -733,8 +720,7 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
 fn find(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
   let body = try fapi::get_team_fixtures(db, team_id, league_id, season)
   let fixtures = try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
-    let msg = collapse_errors("Error decoding body.response while from fetched fixtures(team={team_id}, league={league_id}, season={season})", errs)
-    Result::err(msg)
+    Result::err(decode::flatten(errs))
   }
 
   Result::ok(fixtures)

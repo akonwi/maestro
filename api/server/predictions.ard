@@ -353,7 +353,7 @@ fn get_team_season_stats(db: sql::Database, team_id: Int, league_id: Int, season
   for e in entries {
     let fixture_id = try decode::run(e, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
     let data = try fapi::get_fixture(db, fixture_id)
-    let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+    let fs = try fixtures::decode_stats(data) -> errs { Result::err(decode::flatten(errs)) }
     fixture_stats_list.push(fs)
   }
 
@@ -370,7 +370,7 @@ fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapsh
     let fixture_id = try decode::run(e, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
 
     let data = try fapi::get_fixture(db, fixture_id)
-    let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
+    let fs = try fixtures::decode_stats(data) -> errs { Result::err(decode::flatten(errs)) }
     fixture_stats_list.push(fs)
   }
 
