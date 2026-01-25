@@ -9,6 +9,7 @@ interface RecentFormProps {
   homeTeam: { id: number; name: string };
   awayTeam: { id: number; name: string };
   activeTab: "season" | "form";
+  venueView: "contextual" | "full";
 }
 
 function RecentFormSkeleton() {
@@ -84,17 +85,27 @@ function Inner(props: RecentFormProps) {
   const homeFormFixtures = createMemo(() => formQuery.data?.home ?? []);
   const awayFormFixtures = createMemo(() => formQuery.data?.away ?? []);
 
-  const homeStats = createMemo(() =>
-    props.activeTab === "season"
-      ? statsQuery.data?.season.home.overall
-      : (statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall),
-  );
+  const homeStats = createMemo(() => {
+    if (props.activeTab === "season") {
+      if (props.venueView === "contextual") {
+        return statsQuery.data?.season.home.home_only;
+      }
 
-  const awayStats = createMemo(() =>
-    props.activeTab === "season"
-      ? statsQuery.data?.season.away.overall
-      : (statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall),
-  );
+      return statsQuery.data?.season.home.overall;
+    }
+    return statsQuery.data?.form?.home ?? statsQuery.data?.season.home.overall;
+  });
+
+  const awayStats = createMemo(() => {
+    if (props.activeTab === "season") {
+      if (props.venueView === "contextual") {
+        return statsQuery.data?.season.away.away_only;
+      }
+
+      return statsQuery.data?.season.away.overall;
+    }
+    return statsQuery.data?.form?.away ?? statsQuery.data?.season.away.overall;
+  });
 
   return (
     <Switch>

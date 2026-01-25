@@ -255,6 +255,7 @@ function Page() {
             homeTeam={fixture()!.home}
             awayTeam={fixture()!.away}
             activeTab={activeTab()}
+            venueView={venueView()}
           />
 
           {/* Stat Comparison */}
