@@ -232,8 +232,10 @@ fn main() {
                 date: date
               ) -> internal_error
 
-              let list = Dynamic::list(fs, fn(f) { f.to_dynamic() })
-              league_fixtures.set(league.id.to_str(), list)
+              if fs.size() > 0 {
+                let list = Dynamic::list(fs, fn(f) { f.to_dynamic() })
+                league_fixtures.set(league.id.to_str(), list)
+              }
             }
 
             let body = try json::encode(league_fixtures) -> internal_error
