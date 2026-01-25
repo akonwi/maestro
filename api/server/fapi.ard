@@ -19,6 +19,7 @@ fn join_strs(list: [Str]) Str {
   str
 }
 
+// makes requests and retries if necessary
 private fn fetch(path: Str) Dynamic!Str {
   let req = http::Request{
     method: http::Method::Get,
@@ -63,6 +64,9 @@ private fn fetch(path: Str) Dynamic!Str {
   }
 }
 
+// prepare and handle requests
+// - parses returned errors
+// - on successful requests, handles boilerplate parsing to dig out `body.response`
 fn send_request(path: Str) Dynamic!Str {
   mut body = try fetch(path)
 
@@ -82,127 +86,71 @@ fn send_request(path: Str) Dynamic!Str {
   }])
 
   let errors = try decode::run(body, decode::field("errors", parse_errors)) -> errs {
-    Result::err("Bad Request. Couldn't decode fapi errors: {errs.at(0)}")
+    Result::err("Couldn't decode fapi errors: {decode::flatten(errs)}")
   }
 
   match errors.size() > 0 {
     true => Result::err(join_strs(errors)),
-    false => Result::ok(body)
+    false => {
+      let data = try decode::run(body, decode::field("response", decode::dynamic)) -> errs {
+        Result::err("Couldn't decode response: {decode::flatten(errs)}")
+      }
+      Result::ok(data)
+    }
   }
 }
 
 fn get_league_fixtures(db: sql::Database, league_id: Int, date: Str, season: Int) Dynamic!Str {
   let path = "fixtures?league={league_id}&season={season}&date={date}"
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => {
-      let data = try decode::run(body, decode::field("response", decode::dynamic)) -> errs {
-        Result::err("Couldn't decode cached response: {decode::flatten(errs)}")
-      }
-      Result::ok(data)
-    },
-    _ => {
-      let body = try send_request(path)
-      let data = try decode::run(body, decode::field("response", decode::dynamic)) -> errs {
-        Result::err("Couldn't decode response: {decode::flatten(errs)}")
-      }
-      cache::set(db, path, body)
-      Result::ok(data)
-    }
-  }
+
+  let data = try cache::get_or_set(db, path, send_request)
+  Result::ok(data)
 }
 
 fn get_fixture(db: sql::Database, id: Int) Dynamic!Str {
   let path = "fixtures?id={id}"
-  let body = match cache::get(db, path) {
-    body => body,
-    _ => {
-      let body = try send_request(path)
-      cache::set(db, path, body)
-      body
-    }
-  }
-
-  let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-    Result::err("Could not decode response[0] in data for fixture({id}): {errs.at(0)}")
+  let data = try cache::get_or_set(db, path, send_request)
+  let entry = try decode::run(data, decode::at(0, decode::dynamic)) -> errs {
+    Result::err(decode::flatten(errs))
   }
   Result::ok(entry)
 }
 
 fn get_team(db: sql::Database, id: Int) Dynamic!Str {
   let path = "teams?id={id}"
-  let body = match cache::get(db, path) {
-    body => body,
-    _ => {
-      let body = try send_request(path)
-      cache::set(db, path, body)
-      body
-    }
-  }
-  let entry = try decode::run(body, decode::field("response", decode::at(0, decode::dynamic))) -> errs {
-    Result::err("Could not decode response[0] in data for team({id}): {errs.at(0)}")
+  let data = try cache::get_or_set(db, path, send_request)
+  let entry = try decode::run(data, decode::at(0, decode::dynamic)) -> errs {
+    Result::err(decode::flatten(errs))
   }
   Result::ok(entry)
 }
 
 fn get_odds(db: sql::Database, fixture_id: Int) Dynamic!Str {
   let path = "odds?fixture={fixture_id}&bookmaker=8"
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => Result::ok(body),
-    _ => {
-      let body = try send_request(path)
-      cache::set(db, path, body)
-      Result::ok(body)
-    }
-  }
+  cache::get_or_set(db, path, send_request)
 }
 
 fn get_predictions(db: sql::Database, fixture_id: Int) Dynamic!Str {
   let path = "predictions?fixture={fixture_id}"
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => Result::ok(body),
-    _ => {
-      let body = try send_request(path)
-      cache::set(db, path, body)
-      Result::ok(body)
-    }
-  }
+  cache::get_or_set(db, path, send_request)
 }
 
-// todo: use cache
 fn get_league_current_season(db: sql::Database, league_id: Int) Int!Str {
-  let body = try send_request("leagues?id={league_id}&current=true")
-  let dig_out_season = decode::field("response", decode::at(0, decode::field("seasons", decode::at(0, decode::field("year", decode::int)))))
-  let season = try dig_out_season(body) -> errs { Result::err(errs.at(0).to_str()) }
+  let path = "leagues?id={league_id}&current=true"
+  let data = try cache::get_or_set(db, path, send_request)
+  let dig_out_season = decode::at(0, decode::field("seasons", decode::at(0, decode::field("year", decode::int))))
+  let season = try dig_out_season(data) -> errs { Result::err(decode::flatten(errs)) }
   Result::ok(season)
 }
 
 fn get_league(db: sql::Database, league_id: Int) Dynamic!Str {
   let path = "leagues?id={league_id}"
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => Result::ok(body),
-    _ => {
-      let body = try send_request(path)
-      cache::set(db, path, body)
-      Result::ok(body)
-    }
-  }
+  cache::get_or_set(db, path, send_request)
 }
 
 fn get_team_fixtures(db: sql::Database, team_id: Int, league_id: Int, season: Int) Dynamic!Str {
   let path = "fixtures?team={team_id}&league={league_id}&season={season}"
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => Result::ok(body),
-    _ => {
-      let body = try send_request(path)
-      cache::set(db, path, body)
-      Result::ok(body)
-    }
-  }
+  cache::get_or_set(db, path, send_request)
 }
 
 fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, season: Int, last: Int?) [Dynamic]!Str {
@@ -211,42 +159,18 @@ fn get_team_played_fixtures(db: sql::Database, team_id: Int, league_id: Int, sea
     l => { path =+ "&last={l}" },
     _ => ()
   }
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => {
-      let data = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
-        Result::err("Couldn't decode cached response: {errs.at(0)}")
-      }
-      Result::ok(data)
-    },
-    _ => {
-      let body = try send_request(path)
-      let data = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
-        Result::err("Couldn't decode response: {errs.at(0)}")
-      }
-      cache::set(db, path, body)
-      Result::ok(data)
-    }
+  let data = try cache::get_or_set(db, path, send_request)
+  let entries = try decode::run(data, decode::list(decode::dynamic)) -> errs {
+    Result::err(decode::flatten(errs))
   }
+  Result::ok(entries)
 }
 
 fn get_season_fixtures(db: sql::Database, league_id: Int, season: Int) [Dynamic]!Str {
   let path = "fixtures?league={league_id}&season={season}"
-  let cached_body = cache::get(db, path)
-  match cached_body {
-    body => {
-      let entries = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
-        Result::err("Unable to decode response: {errs.at(0)}")
-      }
-      Result::ok(entries)
-    },
-    _ => {
-      let body = try send_request(path)
-      let entries = try decode::run(body, decode::field("response", decode::list(decode::dynamic))) -> errs {
-        Result::err("Unable to decode response: {errs.at(0)}")
-      }
-      cache::set(db, path, body)
-      Result::ok(entries)
-    }
+  let data = try cache::get_or_set(db, path, send_request)
+  let entries = try decode::run(data, decode::list(decode::dynamic)) -> errs {
+    Result::err(decode::flatten(errs))
   }
+  Result::ok(entries)
 }

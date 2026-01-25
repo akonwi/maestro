@@ -91,6 +91,17 @@ fn set(db: sql::Database, endpoint: Str, response: Dynamic) Void!Str {
   Result::ok(())
 }
 
+fn get_or_set(db: sql::Database, endpoint: Str, create: fn(Str) Dynamic!Str) Dynamic!Str {
+  match get(db, endpoint) {
+    data => Result::ok(data),
+    _ => {
+      let data = try create(endpoint)
+      set(db, endpoint, data)
+      Result::ok(data)
+    }
+  }
+}
+
 // Clean up expired cache entries
 fn cleanup_job() {
   while {
