@@ -1,7 +1,14 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: Switch and Match ensure where something can be asserted */
 import { A, useParams } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
-import { createMemo, createSignal, Match, Show, Switch } from "solid-js";
+import {
+  createMemo,
+  createSignal,
+  Match,
+  Show,
+  Suspense,
+  Switch,
+} from "solid-js";
 import { matchupStatsQueryOptions } from "~/api/analysis";
 import { fixtureQueryOptions } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
@@ -15,7 +22,7 @@ function logoUrl(id: number) {
   return `https://media.api-sports.io/football/teams/${id}.png`;
 }
 
-export function MatchupSkeleton() {
+function MatchupSkeleton() {
   return (
     <div class="space-y-6">
       <div class="animate-pulse bg-base-300 h-8 w-48 rounded" />
@@ -48,7 +55,7 @@ export function MatchupSkeleton() {
   );
 }
 
-export default function MatchupPage() {
+function Page() {
   const params = useParams();
   const matchId = () => Number(params.id);
 
@@ -288,5 +295,13 @@ export default function MatchupPage() {
         </Match>
       </Switch>
     </div>
+  );
+}
+
+export default function MatchupPage() {
+  return (
+    <Suspense fallback={<MatchupSkeleton />}>
+      <Page />
+    </Suspense>
   );
 }
