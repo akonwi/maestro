@@ -26,7 +26,6 @@ impl League {
 
 struct Fixture {
   id: Int,
-  league_id: Int,
   league: League
   season: Int,
   timestamp: Int,
@@ -99,7 +98,6 @@ fn from_row(row: Dynamic) Fixture![decode::Error] {
 
   Result::ok(Fixture {
     id: id,
-    league_id: league_id,
     league: League{id: league_id, name: league_name},
     season: season,
     timestamp: timestamp,
@@ -323,7 +321,6 @@ fn decode_stats(entry: Dynamic) FixtureStats![decode::Error] {
 
   let fixture = Fixture{
     id: id,
-    league_id: league_id,
     league: League{id: league_id, name: league_name},
     season: season,
     timestamp: timestamp * 1000, // API-football returns the seconds, so normalize to milliseconds
@@ -434,7 +431,7 @@ fn import_season(db: sql::Database, league_id: Int, season: Int) Void!Str {
     try save_teams(db, tx, f.teams)
     try insert_fixture.run([
       "id": f.fixture.id,
-      "league_id": f.fixture.league_id,
+      "league_id": f.fixture.league.id,
       "season": f.fixture.season,
       "home_id": f.fixture.home.id,
       "away_id": f.fixture.away.id,
@@ -447,7 +444,7 @@ fn import_season(db: sql::Database, league_id: Int, season: Int) Void!Str {
     try insert_stats.run([
       "id": f.fixture.id,
       "team_id": f.fixture.home.id,
-      "league_id": f.fixture.league_id,
+      "league_id": f.fixture.league.id,
       "season": f.fixture.season,
       "total_shots": f.home.shots,
       "shots_on_goal": f.home.shots_on_goal,
@@ -469,7 +466,7 @@ fn import_season(db: sql::Database, league_id: Int, season: Int) Void!Str {
     try insert_stats.run([
       "id": f.fixture.id,
       "team_id": f.fixture.away.id,
-      "league_id": f.fixture.league_id,
+      "league_id": f.fixture.league.id,
       "season": f.fixture.season,
       "total_shots": f.away.shots,
       "shots_on_goal": f.away.shots_on_goal,
@@ -707,7 +704,6 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
     id: id,
     season: league.season,
     timestamp: timestamp * 1000, // API-football returns the seconds, so normalize to milliseconds
-    league_id: league.id,
     league: League{id: league.id, name: league.name},
     finished: finished,
     home: home,
