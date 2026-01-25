@@ -55,7 +55,9 @@ function OddsMarket(props: {
               onClick={() => handleLineClick(line.name, line.odd)}
             >
               <span class="text-xs">{line.name}</span>
-              <span class="font-mono font-semibold">{formatOdds(line.odd)}</span>
+              <span class="font-mono font-semibold">
+                {formatOdds(line.odd)}
+              </span>
             </button>
           )}
         </For>
@@ -92,7 +94,9 @@ export function OddsCard(props: OddsCardProps) {
                 <span class="text-error text-sm">Failed to load</span>
               </Match>
               <Match when={!hasCornerOdds()}>
-                <span class="text-base-content/50 text-sm">No odds available</span>
+                <span class="text-base-content/50 text-sm">
+                  No odds available
+                </span>
               </Match>
               <Match when={hasCornerOdds()}>
                 <span class="text-base-content/50 text-sm">

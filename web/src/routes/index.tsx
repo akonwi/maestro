@@ -4,31 +4,19 @@ import { useQuery } from "@tanstack/solid-query";
 import { createMemo, For, Match, Switch } from "solid-js";
 import { fixturesTodayQueryOptions } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
-import { useScrollRestoration } from "~/hooks/use-scroll-restoration";
 import { formatFixtureTime } from "~/lib/formatters";
 
 function Page() {
-  useScrollRestoration();
-
   const [searchParams, setSearchParams] = useSearchParams<{ date?: string }>();
 
   const selectedDate = () => {
-    const dateParam = Array.isArray(searchParams.date)
-      ? searchParams.date[0]
-      : searchParams.date;
-    return dateParam || new Date().toISOString().split("T")[0] || "";
-  };
-
-  const setSelectedDate = (date: string) => {
-    if (date === new Date().toISOString().split("T")[0]) {
-      setSearchParams({ date: undefined });
-    } else {
-      setSearchParams({ date });
-    }
+    return typeof searchParams.date === "string"
+      ? searchParams.date
+      : new Date().toISOString().split("T")[0] || "";
   };
 
   const formattedDate = createMemo(() => {
-    const date = new Date(selectedDate() + "T00:00:00");
+    const date = new Date(`${selectedDate()}T00:00:00`);
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
@@ -37,18 +25,19 @@ function Page() {
     });
   });
 
-  const fixturesQuery = useQuery(() => fixturesTodayQueryOptions(selectedDate()));
+  const fixturesQuery = useQuery(() =>
+    fixturesTodayQueryOptions(selectedDate()),
+  );
 
   const navigateDate = (direction: "prev" | "next") => {
-    const currentDate = new Date(selectedDate() + "T00:00:00");
+    const currentDate = new Date(`${selectedDate()}T00:00:00`);
     const newDate = new Date(currentDate);
     if (direction === "prev") {
       newDate.setDate(currentDate.getDate() - 1);
     } else {
       newDate.setDate(currentDate.getDate() + 1);
     }
-    const newDateStr = newDate.toISOString().split("T")[0]!;
-    setSelectedDate(newDateStr);
+    setSearchParams({ date: newDate.toISOString().split("T")[0] });
   };
 
   const matchupUrl = (fixtureId: number) => `/matchup/${fixtureId}`;
@@ -66,6 +55,7 @@ function Page() {
           </div>
           <div class="flex items-center gap-1 md:gap-2">
             <button
+              type="button"
               class="btn btn-xs md:btn-sm btn-outline"
               onClick={() => navigateDate("prev")}
               aria-label="Previous day"
@@ -76,6 +66,7 @@ function Page() {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
+                <title>Go Back</title>
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -85,6 +76,7 @@ function Page() {
               </svg>
             </button>
             <button
+              type="button"
               class="btn btn-xs md:btn-sm btn-outline"
               onClick={() => navigateDate("next")}
               aria-label="Next day"
@@ -95,6 +87,7 @@ function Page() {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
+                <title>Go Forward</title>
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -104,10 +97,11 @@ function Page() {
               </svg>
             </button>
             <button
+              type="button"
               class="btn btn-xs md:btn-sm btn-primary"
               onClick={() => {
                 const today = new Date().toISOString().split("T")[0] || "";
-                setSelectedDate(today);
+                setSearchParams({ date: today });
               }}
             >
               Today
@@ -151,15 +145,17 @@ function Page() {
         <Match when>
           <div class="space-y-4 md:space-y-6">
             <For each={leagues()}>
-              {league => (
+              {(league) => (
                 <div class="card bg-base-100 border border-base-300">
                   <div class="card-body p-3 md:p-6">
                     <LeagueMenu league={league} trigger="context">
-                      <h2 class="card-title text-base md:text-lg">{league.name}</h2>
+                      <h2 class="card-title text-base md:text-lg">
+                        {league.name}
+                      </h2>
                     </LeagueMenu>
                     <div class="divide-y divide-base-300">
                       <For each={league.fixtures}>
-                        {fixture => (
+                        {(fixture) => (
                           <A
                             href={matchupUrl(fixture.id)}
                             class="block py-2 md:py-3 hover:bg-base-200 -mx-3 px-3 md:-mx-4 md:px-4 transition-colors"
@@ -173,22 +169,29 @@ function Page() {
                                     alt={fixture.home.name}
                                     class="w-5 h-5 shrink-0"
                                   />
-                                  <span class="text-sm truncate">{fixture.home.name}</span>
+                                  <span class="text-sm truncate">
+                                    {fixture.home.name}
+                                  </span>
                                 </div>
                                 <div class="shrink-0 px-2">
                                   <Switch>
                                     <Match when={fixture.finished}>
                                       <span class="text-sm font-medium">
-                                        {fixture.home_goals} - {fixture.away_goals}
+                                        {fixture.home_goals} -{" "}
+                                        {fixture.away_goals}
                                       </span>
                                     </Match>
                                     <Match when>
-                                      <span class="text-base-content/50 text-xs">vs</span>
+                                      <span class="text-base-content/50 text-xs">
+                                        vs
+                                      </span>
                                     </Match>
                                   </Switch>
                                 </div>
                                 <div class="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                                  <span class="text-sm truncate">{fixture.away.name}</span>
+                                  <span class="text-sm truncate">
+                                    {fixture.away.name}
+                                  </span>
                                   <img
                                     src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
                                     alt={fixture.away.name}
@@ -197,7 +200,9 @@ function Page() {
                                 </div>
                               </div>
                               <div class="text-xs text-base-content/50 mt-1 text-center">
-                                {fixture.finished ? "FT" : formatFixtureTime(fixture.timestamp)}
+                                {fixture.finished
+                                  ? "FT"
+                                  : formatFixtureTime(fixture.timestamp)}
                               </div>
                             </div>
 
@@ -209,9 +214,15 @@ function Page() {
                                   alt={fixture.home.name}
                                   class="w-6 h-6 shrink-0"
                                 />
-                                <span class="text-base font-medium truncate">{fixture.home.name}</span>
-                                <span class="text-base-content/50 text-sm shrink-0">vs</span>
-                                <span class="text-base font-medium truncate">{fixture.away.name}</span>
+                                <span class="text-base font-medium truncate">
+                                  {fixture.home.name}
+                                </span>
+                                <span class="text-base-content/50 text-sm shrink-0">
+                                  vs
+                                </span>
+                                <span class="text-base font-medium truncate">
+                                  {fixture.away.name}
+                                </span>
                                 <img
                                   src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
                                   alt={fixture.away.name}
@@ -222,7 +233,8 @@ function Page() {
                                 <Switch>
                                   <Match when={fixture.finished}>
                                     <span class="font-medium">
-                                      {fixture.home_goals} - {fixture.away_goals}
+                                      {fixture.home_goals} -{" "}
+                                      {fixture.away_goals}
                                     </span>
                                   </Match>
                                   <Match when>

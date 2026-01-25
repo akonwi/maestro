@@ -46,7 +46,7 @@ export default function TeamStatsPage() {
 
   const formFixtures = createMemo(() => {
     const all = perf()?.fixtures.all ?? [];
-    const completed = all.filter((f) => f.finished);
+    const completed = all.filter(f => f.finished);
     const sorted = [...completed].sort((a, b) => a.timestamp - b.timestamp);
     if (activeTab() === "form") {
       return sorted.slice(-5);

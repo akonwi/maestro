@@ -20,54 +20,54 @@ type MetricConfig = {
 const METRICS: MetricConfig[] = [
   {
     label: "Total Shots",
-    getValue: (d) => ({
+    getValue: d => ({
       perGame: d.perGame.shots.total,
       total: d.total.shots.total,
     }),
   },
   {
     label: "Shots on Goal",
-    getValue: (d) => ({
+    getValue: d => ({
       perGame: d.perGame.shots.onGoal,
       total: d.total.shots.onGoal,
     }),
   },
   {
     label: "Shots Missed",
-    getValue: (d) => ({
+    getValue: d => ({
       perGame: d.perGame.shots.missed,
       total: d.total.shots.missed,
     }),
   },
   {
     label: "Blocked Shots",
-    getValue: (d) => ({
+    getValue: d => ({
       perGame: d.perGame.shots.blocked,
       total: d.total.shots.blocked,
     }),
   },
   {
     label: "Shots Inside Box",
-    getValue: (d) => ({
+    getValue: d => ({
       perGame: d.perGame.shots.insideBox,
       total: d.total.shots.insideBox,
     }),
   },
   {
     label: "Shots Outside Box",
-    getValue: (d) => ({
+    getValue: d => ({
       perGame: d.perGame.shots.outsideBox,
       total: d.total.shots.outsideBox,
     }),
   },
   {
     label: "Expected Goals",
-    getValue: (d) => ({ perGame: d.perGame.xg, total: d.total.xg }),
+    getValue: d => ({ perGame: d.perGame.xg, total: d.total.xg }),
     decimals: 2,
   },
   {
     label: "Corner Kicks",
-    getValue: (d) => ({ perGame: d.perGame.corners, total: d.total.corners }),
+    getValue: d => ({ perGame: d.perGame.corners, total: d.total.corners }),
   },
 ];
 
@@ -104,7 +104,7 @@ function MetricSection(props: {
         class={props.layout === "grid" ? "space-y-4" : "flex gap-4 flex-wrap"}
       >
         <For each={METRICS}>
-          {(metric) => {
+          {metric => {
             const values = () => metric.getValue(props.data());
             return (
               <MetricItem
