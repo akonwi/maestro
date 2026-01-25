@@ -108,3 +108,30 @@ export const fixturesTodayQueryOptions = (date: string) => ({
     }));
   },
 });
+
+// Odds types
+export type OddsLine = {
+  name: string;
+  odd: number;
+};
+
+export type OddsStat = {
+  id: number;
+  name: string;
+  values: OddsLine[];
+};
+
+export const fixtureOddsQueryOptions = (fixtureId: number) => ({
+  queryKey: ["fixtures", fixtureId, "odds"] as const,
+  queryFn: async (): Promise<OddsStat[]> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/fixtures/${fixtureId}/odds`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch odds: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});

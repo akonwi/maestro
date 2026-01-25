@@ -6,6 +6,7 @@ import { matchupStatsQueryOptions } from "~/api/analysis";
 import { fixtureQueryOptions } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
+import { OddsCard } from "~/components/matchup/odds-card";
 import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
 import { StatsTable } from "~/components/matchup/stats-table";
@@ -183,6 +184,15 @@ export default function MatchupPage() {
               </div>
             </div>
           </div>
+
+          {/* Odds - only show for upcoming matches */}
+          <Show when={!fixture()!.finished}>
+            <OddsCard
+              fixtureId={matchId()}
+              homeName={fixture()!.home.name}
+              awayName={fixture()!.away.name}
+            />
+          </Show>
 
           {/* Tabs */}
           <Show when={hasFormData()}>
