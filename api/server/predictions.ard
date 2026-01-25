@@ -82,19 +82,19 @@ fn get_comparison(db: sql::Database, fixture_id: Int) Comparison!Str {
         path: ["league"]
       }])
     }
-    let num_played = try decode::run(league_data, decode::path(["fixtures", "played", "total"], decode::int))
-    let wins = try decode::run(league_data, decode::path(["fixtures", "wins", "total"], decode::int))
-    let losses = try decode::run(league_data, decode::path(["fixtures", "loses", "total"], decode::int))
-    let draws = try decode::run(league_data, decode::path(["fixtures", "draws", "total"], decode::int))
-    let goals_against = try decode::run(league_data, decode::path(["goals", "against", "total", "total"], decode::int))
+    let num_played = try decode::run(league_data, decode::path2(["fixtures", "played", "total"], decode::int))
+    let wins = try decode::run(league_data, decode::path2(["fixtures", "wins", "total"], decode::int))
+    let losses = try decode::run(league_data, decode::path2(["fixtures", "loses", "total"], decode::int))
+    let draws = try decode::run(league_data, decode::path2(["fixtures", "draws", "total"], decode::int))
+    let goals_against = try decode::run(league_data, decode::path2(["goals", "against", "total", "total"], decode::int))
     let xga = Float::from_int(goals_against) / Float::from_int(num_played)
-    let goals_for = try decode::run(league_data, decode::path(["goals", "for", "total", "total"], decode::int))
+    let goals_for = try decode::run(league_data, decode::path2(["goals", "for", "total", "total"], decode::int))
     let xgf = Float::from_int(goals_for) / Float::from_int(num_played)
-    let one_plus_scored = try decode::run(league_data, decode::path(["goals", "for", "under_over", "1.5", "over"], decode::int))
-    let no_score = try decode::run(league_data, decode::path(["failed_to_score", "total"], decode::int))
-    let cleansheets = try decode::run(league_data, decode::path(["clean_sheet", "total"], decode::int))
-    let at_least_1_against = try decode::run(league_data, decode::path(["goals", "against", "under_over", "0.5", "over"], decode::int))
-    let over_1_against = try decode::run(league_data, decode::path(["goals", "against", "under_over", "1.5", "over"], decode::int))
+    let one_plus_scored = try decode::run(league_data, decode::path2(["goals", "for", "under_over", "1.5", "over"], decode::int))
+    let no_score = try decode::run(league_data, decode::path2(["failed_to_score", "total"], decode::int))
+    let cleansheets = try decode::run(league_data, decode::path2(["clean_sheet", "total"], decode::int))
+    let at_least_1_against = try decode::run(league_data, decode::path2(["goals", "against", "under_over", "0.5", "over"], decode::int))
+    let over_1_against = try decode::run(league_data, decode::path2(["goals", "against", "under_over", "1.5", "over"], decode::int))
     let one_conceded = at_least_1_against - over_1_against
     let two_plus_conceded = over_1_against
 
@@ -351,7 +351,7 @@ fn get_team_season_stats(db: sql::Database, team_id: Int, league_id: Int, season
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e in entries {
-    let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    let fixture_id = try decode::run(e, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
     let data = try fapi::get_fixture(db, fixture_id)
     let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }
     fixture_stats_list.push(fs)
@@ -367,7 +367,7 @@ fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapsh
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e in entries {
-    let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    let fixture_id = try decode::run(e, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
 
     let data = try fapi::get_fixture(db, fixture_id)
     let fs = try fixtures::decode_stats(data) -> errs { Result::err("Unable to decode fixture {fixture_id}: {fixtures::collapse_errors("", errs)}") }

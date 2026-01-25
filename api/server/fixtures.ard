@@ -232,7 +232,7 @@ struct FixtureStats {
 }
 
 fn decode_team_stats(entry: Dynamic) TeamStats![decode::Error] {
-  let id = try decode::run(entry, decode::path(["team", "id"], decode::int))
+  let id = try decode::run(entry, decode::path2(["team", "id"], decode::int))
 
   mut passes = 0
   mut passes_completed = 0
@@ -323,16 +323,16 @@ fn decode_team_stats(entry: Dynamic) TeamStats![decode::Error] {
 
 fn decode_stats(entry: Dynamic) FixtureStats![decode::Error] {
   // fixture info
-  let id = try decode::run(entry, decode::path(["fixture", "id"], decode::int))
-  let timestamp = try decode::run(entry, decode::path(["fixture", "timestamp"], decode::int))
-  let league_id = try decode::run(entry, decode::path(["league", "id"], decode::int))
-  let league_name = try decode::run(entry, decode::path(["league", "name"], decode::string))
-  let season = try decode::run(entry, decode::path(["league", "season"], decode::int))
-  let is_finished = try decode::run(entry, decode::path(["fixture", "status", "short"], decode_is_finished))
-  let home = try decode::run(entry, decode::path(["teams", "home"], decode_team))
-  let away = try decode::run(entry, decode::path(["teams", "away"], decode_team))
-  let home_goals = try decode::run(entry, decode::path(["goals", "home"], decode::nullable(decode::int)))
-  let away_goals = try decode::run(entry, decode::path(["goals", "away"], decode::nullable(decode::int)))
+  let id = try decode::run(entry, decode::path2(["fixture", "id"], decode::int))
+  let timestamp = try decode::run(entry, decode::path2(["fixture", "timestamp"], decode::int))
+  let league_id = try decode::run(entry, decode::path2(["league", "id"], decode::int))
+  let league_name = try decode::run(entry, decode::path2(["league", "name"], decode::string))
+  let season = try decode::run(entry, decode::path2(["league", "season"], decode::int))
+  let is_finished = try decode::run(entry, decode::path2(["fixture", "status", "short"], decode_is_finished))
+  let home = try decode::run(entry, decode::path2(["teams", "home"], decode_team))
+  let away = try decode::run(entry, decode::path2(["teams", "away"], decode_team))
+  let home_goals = try decode::run(entry, decode::path2(["goals", "home"], decode::nullable(decode::int)))
+  let away_goals = try decode::run(entry, decode::path2(["goals", "away"], decode::nullable(decode::int)))
 
   let fixture = Fixture{
     id: id,
@@ -384,7 +384,7 @@ fn import_season(db: sql::Database, league_id: Int, season: Int) Void!Str {
   mut fixture_stats: [FixtureStats] = []
 
   for fe in entries {
-    let id = try decode::run(fe, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err("Unable to parse fixture id: {errs.at(0)}") }
+    let id = try decode::run(fe, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err("Unable to parse fixture id: {errs.at(0)}") }
     let entry = try fapi::get_fixture(db, id) -> err { Result::err("Error fetching fixture (id={id}): {err}") }
 
     let fixture_n_stats = try decode_stats(entry) -> errs { Result::err(collapse_errors("Error decoding fixture data: ", errs)) }
@@ -707,14 +707,14 @@ fn decode_league(data: Dynamic) ApiLeague![decode::Error] {
 }
 
 fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
-  let id = try decode::run(data, decode::path(["fixture", "id"], decode::int))
-  let timestamp = try decode::run(data, decode::path(["fixture", "timestamp"], decode::int))
-  let finished = try decode::run(data, decode::path(["fixture", "status", "short"], decode_is_finished))
+  let id = try decode::run(data, decode::path2(["fixture", "id"], decode::int))
+  let timestamp = try decode::run(data, decode::path2(["fixture", "timestamp"], decode::int))
+  let finished = try decode::run(data, decode::path2(["fixture", "status", "short"], decode_is_finished))
   let league = try decode::run(data, decode::field("league", decode_league))
-  let home = try decode::run(data, decode::path(["teams", "home"], decode_team))
-  let away = try decode::run(data, decode::path(["teams", "away"], decode_team))
-  let home_goals = try decode::run(data, decode::path(["goals", "home"], decode::nullable(decode::int)))
-  let away_goals = try decode::run(data, decode::path(["goals", "away"], decode::nullable(decode::int)))
+  let home = try decode::run(data, decode::path2(["teams", "home"], decode_team))
+  let away = try decode::run(data, decode::path2(["teams", "away"], decode_team))
+  let home_goals = try decode::run(data, decode::path2(["goals", "home"], decode::nullable(decode::int)))
+  let away_goals = try decode::run(data, decode::path2(["goals", "away"], decode::nullable(decode::int)))
 
   Result::ok(Fixture{
     id: id,
