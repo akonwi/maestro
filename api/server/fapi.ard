@@ -137,7 +137,7 @@ fn get_predictions(db: sql::Database, fixture_id: Int) Dynamic!Str {
 
 fn get_league_current_season(db: sql::Database, league_id: Int) Int!Str {
   let path = "leagues?id={league_id}&current=true"
-  let data = try cache::get_or_set(db, path, send_request)
+  let data = try cache::get_or_set(db, path, send_request, cache::TTL_CURRENT_SEASON)
   let dig_out_season = decode::at(0, decode::field("seasons", decode::at(0, decode::field("year", decode::int))))
   let season = try dig_out_season(data) -> errs { Result::err(decode::flatten(errs)) }
   Result::ok(season)

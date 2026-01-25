@@ -10,7 +10,7 @@ use ard/sql
 use maestro/db as _db
 
 // TTL constants in seconds
-let TTL_ODDS = 14400              // 4 hours
+let TTL_ODDS = 14400               // 4 hours
 let TTL_FIXTURE = 7200             // 2 hours
 let TTL_TEAM_FIXTURES = 21600      // 6 hours
 let TTL_TODAY_FIXTURES = 900       // 15 minutes
@@ -18,6 +18,7 @@ let TTL_SEASON_FIXTURES = 21600    // 6 hours
 let TTL_LEAGUE = 14400             // 4 hours
 let TTL_TEAM = 86400               // 24 hours
 let TTL_TEAM_PLAYED = 21600        // 6 hours
+let TTL_CURRENT_SEASON = 86400 * 2 // 48 hours
 
 // Get cached response if it exists and hasn't expired
 // Returns none if not cached, expired, or on any error (cache miss)
@@ -62,9 +63,9 @@ fn get_ttl(endpoint: Str) Int {
 }
 
 // Set cache entry
-fn set(db: sql::Database, endpoint: Str, response: Dynamic) Void!Str {
+fn set(db: sql::Database, endpoint: Str, response: Dynamic, ttl: Int?) Void!Str {
   let now = chrono::now()
-  let ttl_seconds = get_ttl(endpoint)
+  let ttl_seconds = ttl.or(get_ttl(endpoint))
   let expires_at = now + ttl_seconds
   let response_str = try json::encode(response) -> err {
     let msg = "Failed to encode response to JSON for cache: {err}"
@@ -91,7 +92,7 @@ fn set(db: sql::Database, endpoint: Str, response: Dynamic) Void!Str {
   Result::ok(())
 }
 
-fn get_or_set(db: sql::Database, endpoint: Str, create: fn(Str) Dynamic!Str) Dynamic!Str {
+fn get_or_set(db: sql::Database, endpoint: Str, create: fn(Str) Dynamic!Str, ttl: Int?) Dynamic!Str {
   match get(db, endpoint) {
     data => Result::ok(data),
     _ => {
