@@ -321,14 +321,14 @@ fn main() {
             let fixture_id = try Int::from_str(req.path_param("fixture_id")) -> _ { not_found }
             let fixture = try fixtures::get(conn, fixture_id) -> internal_error
 
-            let home_season = try predictions::get_team_season_stats(
+            let home_season = try analysis::get_team_season_stats(
               db: conn,
               team_id: fixture.home.id,
               league_id: fixture.league.id,
               season: fixture.season
             ) -> internal_error
 
-            let away_season = try predictions::get_team_season_stats(
+            let away_season = try analysis::get_team_season_stats(
               db: conn,
               team_id: fixture.away.id,
               league_id: fixture.league.id,
@@ -446,7 +446,7 @@ fn main() {
               http::Response{status: 400, body: "Invalid season parameter", headers: headers}
             }
 
-            let season_stats = try predictions::get_team_season_stats(
+            let season_stats = try analysis::get_team_season_stats(
               db: conn,
               team_id: team_id,
               league_id: league_id,
