@@ -77,3 +77,34 @@ export const matchupFormQueryOptions = (fixtureId: number) => ({
     return response.json();
   },
 });
+
+export type LeagueFixtures = {
+  id: number;
+  name: string;
+  fixtures: Fixture[];
+};
+
+// Response is a map of league ID -> fixtures array
+type FixturesTodayResponse = Record<string, Fixture[]>;
+
+export const fixturesTodayQueryOptions = (date: string) => ({
+  queryKey: ["fixtures", "today", date] as const,
+  queryFn: async (): Promise<LeagueFixtures[]> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/fixtures?date=${date}`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch fixtures: ${response.status}`);
+    }
+
+    const data: FixturesTodayResponse = await response.json();
+
+    // Transform map into array of LeagueFixtures
+    return Object.entries(data).map(([leagueId, fixtures]) => ({
+      id: Number(leagueId),
+      name: fixtures[0]?.league.name ?? "Unknown League",
+      fixtures: fixtures.sort((a, b) => a.timestamp - b.timestamp),
+    }));
+  },
+});
