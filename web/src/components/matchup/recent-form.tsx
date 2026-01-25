@@ -79,7 +79,7 @@ const getFormBadgeClass = (rating: string) => {
 
 function Inner(props: RecentFormProps) {
   const statsQuery = useQuery(() => matchupStatsQueryOptions(props.fixtureId));
-  const formQuery = useQuery(() => matchupFormQueryOptions(props.fixtureId));
+  const formQuery = useQuery(matchupFormQueryOptions(props.fixtureId));
 
   const homeFormFixtures = createMemo(() => formQuery.data?.home ?? []);
   const awayFormFixtures = createMemo(() => formQuery.data?.away ?? []);

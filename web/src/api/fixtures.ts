@@ -24,7 +24,7 @@ export type Fixture = {
   };
 };
 
-export const fixtureQueryOptions = (id: number) => ({
+export const fixtureQueryOptions = (id: number) => () => ({
   queryKey: ["matches", { id }] as const,
   queryFn: async (): Promise<Fixture> => {
     const response = await fetch(
@@ -37,33 +37,12 @@ export const fixtureQueryOptions = (id: number) => ({
   },
 });
 
-export type UseFixturesOptions = {
-  leagueId: number;
-  season: number;
-  teamId: number;
-};
-
-export const fixturesQueryOptions = (options: UseFixturesOptions) => ({
-  queryKey: ["fixtures", options] as const,
-  queryFn: async (): Promise<Fixture[]> => {
-    const params = new URLSearchParams({
-      league_id: options.leagueId.toString(),
-      season: options.season.toString(),
-    });
-
-    const response = await fetch(
-      `${import.meta.env.VITE_API_BASE_URL}/teams/${options.teamId}/fixtures?${params.toString()}`,
-    );
-    return response.json();
-  },
-});
-
 export type MatchupForm = {
   home: Fixture[];
   away: Fixture[];
 };
 
-export const matchupFormQueryOptions = (fixtureId: number) => ({
+export const matchupFormQueryOptions = (fixtureId: number) => () => ({
   queryKey: ["matchup", { fixtureId }, "form"] as const,
   queryFn: async (): Promise<MatchupForm> => {
     const response = await fetch(
@@ -87,7 +66,7 @@ export type LeagueFixtures = {
 // Response is a map of league ID -> fixtures array
 type FixturesTodayResponse = Record<string, Fixture[]>;
 
-export const fixturesTodayQueryOptions = (date: string) => ({
+export const fixturesTodayQueryOptions = (date: string) => () => ({
   queryKey: ["fixtures", "today", date] as const,
   queryFn: async (): Promise<LeagueFixtures[]> => {
     const response = await fetch(
@@ -121,7 +100,7 @@ export type OddsStat = {
   values: OddsLine[];
 };
 
-export const fixtureOddsQueryOptions = (fixtureId: number) => ({
+export const fixtureOddsQueryOptions = (fixtureId: number) => () => ({
   queryKey: ["fixtures", fixtureId, "odds"] as const,
   queryFn: async (): Promise<OddsStat[]> => {
     const response = await fetch(

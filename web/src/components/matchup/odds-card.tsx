@@ -48,7 +48,7 @@ function OddsMarket(props: {
       </div>
       <div class="flex flex-wrap gap-2">
         <For each={props.market.values}>
-          {line => (
+          {(line) => (
             <button
               type="button"
               class="btn btn-sm btn-outline"
@@ -69,10 +69,10 @@ function OddsMarket(props: {
 export function OddsCard(props: OddsCardProps) {
   const [isExpanded, setIsExpanded] = createSignal(false);
 
-  const oddsQuery = useQuery(() => fixtureOddsQueryOptions(props.fixtureId));
+  const oddsQuery = useQuery(fixtureOddsQueryOptions(props.fixtureId));
 
   const cornerMarkets = () =>
-    (oddsQuery.data ?? []).filter(stat => CORNER_MARKET_IDS.has(stat.id));
+    (oddsQuery.data ?? []).filter((stat) => CORNER_MARKET_IDS.has(stat.id));
 
   const hasCornerOdds = () => cornerMarkets().length > 0;
 
@@ -81,7 +81,7 @@ export function OddsCard(props: OddsCardProps) {
       <button
         type="button"
         class="card-body p-4 cursor-pointer"
-        onClick={() => setIsExpanded(prev => !prev)}
+        onClick={() => setIsExpanded((prev) => !prev)}
       >
         <div class="flex items-center justify-between">
           <h3 class="text-lg font-semibold">Odds</h3>
@@ -111,6 +111,7 @@ export function OddsCard(props: OddsCardProps) {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
+              <title>Chevron</title>
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -125,7 +126,7 @@ export function OddsCard(props: OddsCardProps) {
       <Show when={isExpanded() && hasCornerOdds()}>
         <div class="px-4 pb-4 space-y-4">
           <For each={cornerMarkets()}>
-            {market => (
+            {(market) => (
               <OddsMarket
                 market={market}
                 fixtureId={props.fixtureId}
