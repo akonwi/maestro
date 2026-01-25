@@ -773,3 +773,16 @@ fn get(db: sql::Database, id: Int) Fixture!Str {
   }
   Result::ok(fixture)
 }
+
+fn get_league_fixtures(db: sql::Database, league_id: Int, date: Str) [Fixture]!Str {
+  let season = try fapi::get_league_current_season(db, league_id)
+  let data = try fapi::get_league_fixtures(
+    db: db,
+    league_id: league_id,
+    season: season,
+    date: date
+  )
+
+  let fixtures = try decode::run(data, decode::list(Fixture::from_api_entry)) -> errs { Result::err(decode::flatten(errs)) }
+  Result::ok(fixtures)
+}

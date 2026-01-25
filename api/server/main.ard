@@ -1,4 +1,5 @@
 use ard/async
+use ard/dates
 use ard/decode
 use ard/io
 use ard/http
@@ -225,6 +226,31 @@ fn main() {
             }
           },
            _ => not_found
+        }
+      },
+
+      "/fixtures": fn(req: http::Request) http::Response {
+        match req.method {
+          http::Method::Get => {
+            let date = req.query_param("date")
+            let leagues = try leagues::get_active(conn) -> internal_error
+            mut league_fixtures: [Str:Dynamic] = [:]
+
+            for league in leagues {
+              let fs = try fixtures::get_league_fixtures(
+                db: conn,
+                league_id: league.id,
+                date: date
+              ) -> internal_error
+
+              let list = Dynamic::list(fs, fn(f) { f.to_dynamic() })
+              league_fixtures.set(league.id.to_str(), list)
+            }
+
+            let body = try json::encode(league_fixtures) -> internal_error
+            http::Response{status: 200, headers: res_headers, body: body}
+          },
+          _ => not_found
         }
       },
 

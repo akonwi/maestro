@@ -91,6 +91,29 @@ fn send_request(path: Str) Dynamic!Str {
   }
 }
 
+// todo: cache keys could simply be complete path - fixtures?id=2498
+
+fn get_league_fixtures(db: sql::Database, league_id: Int, date: Str, season: Int) Dynamic!Str {
+  let resource_id = "fixtures?league={league_id}&season={season}&date={date}"
+  let cached_body = cache::get(db, "fixtures", resource_id)
+  match cached_body {
+    body => {
+      let data = try decode::run(body, decode::field("response", decode::dynamic)) -> errs {
+        Result::err("Couldn't decode cached response: {decode::flatten(errs)}")
+      }
+      Result::ok(data)
+    },
+    _ => {
+      let body = try send_request(resource_id)
+      let data = try decode::run(body, decode::field("response", decode::dynamic)) -> errs {
+        Result::err("Couldn't decode response: {decode::flatten(errs)}")
+      }
+      cache::set(db, resource_id, resource_id, body)
+      Result::ok(data)
+    }
+  }
+}
+
 fn get_fixture(db: sql::Database, id: Int) Dynamic!Str {
   let id_str = id.to_str()
   let body = match cache::get(db, "fixture", id_str) {
@@ -150,6 +173,7 @@ fn get_predictions(db: sql::Database, fixture_id: Int) Dynamic!Str {
   }
 }
 
+// todo: use cache
 fn get_league_current_season(db: sql::Database, league_id: Int) Int!Str {
   let body = try send_request("leagues?id={league_id}&current=true")
   let dig_out_season = decode::field("response", decode::at(0, decode::field("seasons", decode::at(0, decode::field("year", decode::int)))))
