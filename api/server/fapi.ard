@@ -51,7 +51,7 @@ private fn fetch(path: Str) Dynamic!Str {
     match is_rate_limited {
       true => {
         io::print("[fapi] Rate limit exceeded - (attempt: {attempts + 1}, path: /{path})")
-        async::sleep(duration::from_seconds(30))
+        async::sleep(duration::from_seconds(5))
         attempts =+ 1
       },
       false => { data = maybe::some(body) }
