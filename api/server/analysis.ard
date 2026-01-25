@@ -1,6 +1,7 @@
 use ard/async
 use ard/decode
 use ard/duration
+use ard/maybe
 use ard/sql
 
 use maestro/fapi
@@ -151,4 +152,167 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
   metrics.against.shots.blocked_per_game = Float::from_int(metrics.against.shots.blocked) / num_games
 
   Result::ok(metrics)
+}
+
+// todo: this needs a better name
+// todo: could this be merged with TeamMetrics struct?
+struct Snapshot {
+	num_games: Int,
+	wins: Int,
+	losses: Int,
+	draws:  Int,
+
+	goals_against: Int,
+	goals_for: Int,
+	one_plus_scored: Int, // number of games in which team scored > 1 goal
+	strike_rate: Float, // percentage of matches finding the net
+	goals_diff: Int,
+	xgf: Float,
+	xga: Float,
+	leakiness: Float,
+
+	cleansheets: Int,
+	one_conceded: Int,
+
+	// could be presented as +1.5
+	two_plus_conceded: Int,
+
+	win_rate: Float,
+}
+
+impl Snapshot {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "num_games": Dynamic::from(@num_games),
+      "wins": Dynamic::from(@wins),
+      "losses": Dynamic::from(@losses),
+      "draws": Dynamic::from(@draws),
+      "goals_against": Dynamic::from(@goals_against),
+      "goals_for": Dynamic::from(@goals_for),
+      "one_plus_scored": Dynamic::from(@one_plus_scored),
+      "strike_rate": Dynamic::from(@strike_rate),
+      "goals_diff": Dynamic::from(@goals_diff),
+      "xgf": Dynamic::from(@xgf),
+      "xga": Dynamic::from(@xga),
+      "leakiness": Dynamic::from(@leakiness),
+      "cleansheets": Dynamic::from(@cleansheets),
+      "one_conceded": Dynamic::from(@one_conceded),
+      "two_plus_conceded": Dynamic::from(@two_plus_conceded),
+      "win_rate": Dynamic::from(@win_rate),
+    ])
+  }
+}
+
+// returns metrics over the last 5 games
+// todo: this should support a timestamp or date so that it can provide form at that point
+fn get_form(db: sql::Database, team_id: Int, league_id: Int, season: Int) Snapshot!Str {
+  let entries = try fapi::get_team_played_fixtures(db, team_id: team_id, league_id: league_id, season: season, last: maybe::some(5))
+
+  mut fixture_stats_list: [fixtures::FixtureStats] = []
+  for e in entries {
+    let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+
+    let data = try fapi::get_fixture(db, fixture_id)
+    let fs = try fixtures::decode_stats(data) -> errs { Result::err(decode::flatten(errs)) }
+    fixture_stats_list.push(fs)
+  }
+
+  mut wins = 0
+  mut losses = 0
+  mut draws = 0
+  mut goals_for = 0
+  mut goals_against = 0
+  mut xg_for_total = 0.0
+  mut xg_against_total = 0.0
+  mut one_plus_scored = 0
+  mut cleansheets = 0
+  mut failed_to_score = 0
+  mut at_least_1_against = 0
+  mut two_plus_conceded = 0
+
+  for fs in fixture_stats_list {
+    let is_home = fs.fixture.home.id == team_id
+
+    let team_stats = match is_home {
+      true => fs.home,
+      false => fs.away
+    }
+    let opp_stats = match is_home {
+      true => fs.away,
+      false => fs.home
+    }
+
+    let team_goals = match is_home {
+      true => fs.fixture.home_goals,
+      false => fs.fixture.away_goals
+    }
+    let opp_goals = match is_home {
+      true => fs.fixture.away_goals,
+      false => fs.fixture.home_goals
+    }
+
+    goals_for =+ team_goals
+    goals_against =+ opp_goals
+    xg_for_total =+ team_stats.xg
+    xg_against_total =+ opp_stats.xg
+
+    if team_goals == 0 { failed_to_score =+ 1 }
+    if opp_goals == 0 { cleansheets =+ 1 }
+    if team_goals > 1 { one_plus_scored =+ 1 }
+    if opp_goals >= 1 { at_least_1_against =+ 1 }
+    if opp_goals >= 2 { two_plus_conceded =+ 1 }
+
+    match {
+      team_goals > opp_goals => { wins =+ 1 },
+      team_goals < opp_goals => { losses =+ 1 },
+      _ => { draws =+ 1 }
+    }
+  }
+
+  let num_games = fixture_stats_list.size()
+  match num_games == 0 {
+    true => Result::ok(Snapshot{
+      num_games: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      goals_against: 0,
+      goals_for: 0,
+      one_plus_scored: 0,
+      strike_rate: 0.0,
+      goals_diff: 0,
+      xgf: 0.0,
+      xga: 0.0,
+      leakiness: 0.0,
+      cleansheets: 0,
+      one_conceded: 0,
+      two_plus_conceded: 0,
+      win_rate: 0.0,
+    }),
+    false => {
+      let games = Float::from_int(num_games)
+      let xgf = xg_for_total / games
+      let xga = xg_against_total / games
+      let one_conceded = at_least_1_against - two_plus_conceded
+
+      Result::ok(Snapshot{
+        num_games: num_games,
+        wins: wins,
+        losses: losses,
+        draws: draws,
+        goals_against: goals_against,
+        goals_for: goals_for,
+        one_plus_scored: one_plus_scored,
+        strike_rate: 1.0 - Float::from_int(failed_to_score) / games,
+        goals_diff: goals_for - goals_against,
+        xgf: xgf,
+        xga: xga,
+        leakiness: Float::from_int(two_plus_conceded) / games * 100.0,
+        cleansheets: cleansheets,
+        one_conceded: one_conceded,
+        two_plus_conceded: two_plus_conceded,
+        win_rate: Float::from_int(wins) / games,
+      })
+    }
+  }
 }

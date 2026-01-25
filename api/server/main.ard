@@ -337,13 +337,13 @@ fn main() {
 
             let form_data = match home_season.overall.num_games > 5 and away_season.overall.num_games > 5 {
               true => {
-                let home_form = try predictions::get_form(
+                let home_form = try analysis::get_form(
                   db: conn,
                   team_id: fixture.home.id,
                   league_id: fixture.league.id,
                   season: fixture.season
                 ) -> internal_error
-                let away_form = try predictions::get_form(
+                let away_form = try analysis::get_form(
                   db: conn,
                   team_id: fixture.away.id,
                   league_id: fixture.league.id,
@@ -455,7 +455,7 @@ fn main() {
 
             let form_data = match season_stats.overall.num_games > 5 {
               true => {
-                let form = try predictions::get_form(
+                let form = try analysis::get_form(
                   db: conn,
                   team_id: team_id,
                   league_id: league_id,
