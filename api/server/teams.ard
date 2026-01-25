@@ -23,8 +23,8 @@ fn Team::from_row(row: Dynamic) Team!Str {
 }
 
 fn Team::from_api(data: Dynamic) Team!Str {
-  let id = try decode::run(data, decode::path2(["team", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
-  let name = try decode::run(data, decode::path2(["team", "name"], decode::string)) -> errs { Result::err(errs.at(0).to_str()) }
+  let id = try decode::run(data, decode::path(["team", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+  let name = try decode::run(data, decode::path(["team", "name"], decode::string)) -> errs { Result::err(errs.at(0).to_str()) }
 
   Result::ok(Team{ id: id, name: name })
 }

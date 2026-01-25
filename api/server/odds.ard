@@ -76,7 +76,7 @@ fn decode_bet(data: Dynamic) Stat![decode::Error] {
   })
 }
 
-let decode_odds_data = decode::path2(["response", 0, "bookmakers", 0, "bets"], decode::list(decode_bet))
+let decode_odds_data = decode::path(["response", 0, "bookmakers", 0, "bets"], decode::list(decode_bet))
 
 fn get(db: sql::Database, fixture_id: Int) [Stat]!Str {
   let body = try fapi::get_odds(db, fixture_id)

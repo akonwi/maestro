@@ -76,8 +76,8 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
 
   mut fixture_stats_list: [fixtures::FixtureStats] = []
   for e, i in entries {
-    let fixture_id = try decode::run(e, decode::path2(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
-    let home_id = try decode::run(e, decode::path2(["teams", "home", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    let fixture_id = try decode::run(e, decode::path(["fixture", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
+    let home_id = try decode::run(e, decode::path(["teams", "home", "id"], decode::int)) -> errs { Result::err(errs.at(0).to_str()) }
 
     // Filter by venue: only process if team played at the specified venue
     let is_home = home_id == team_id
