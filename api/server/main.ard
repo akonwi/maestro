@@ -11,6 +11,7 @@ use maestro/bets
 use maestro/cache
 use maestro/config
 use maestro/db
+use maestro/fapi
 use maestro/fixtures
 use maestro/leagues
 use maestro/odds
@@ -525,8 +526,10 @@ fn main() {
               headers.drop("Content-Type")
               http::Response{status: 400, body: "Invalid league_id parameter", headers: headers}
             }
-            let season = Int::from_str(req.query_param("season")).or(config::CURRENT_SEASON)
-
+            let season = match Int::from_str(req.query_param("season")) {
+               s => s,
+               _ => try fapi::get_league_current_season(conn, league_id) -> internal_error
+            }
             let maybe_league = try leagues::get(conn, league_id) -> internal_error
             let league = try maybe_league -> _ { not_found }
 
