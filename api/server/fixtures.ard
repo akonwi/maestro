@@ -714,8 +714,9 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
 }
 
 fn find(db: sql::Database, team_id: Int, league_id: Int, season: Int) [Fixture]!Str {
-  let body = try fapi::get_team_fixtures(db, team_id, league_id, season)
-  let fixtures = try decode::run(body, decode::field("response", decode::list(Fixture::from_api_entry))) -> errs {
+  let data = try fapi::get_team_fixtures(db, team_id, league_id, season)
+  let as_fixtures = decode::list(Fixture::from_api_entry)
+  let fixtures = try as_fixtures(data) -> errs {
     Result::err(decode::flatten(errs))
   }
 
