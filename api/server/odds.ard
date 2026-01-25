@@ -10,6 +10,13 @@ let HOME_CLEANSHEET = 27
 let AWAY_TOTAL_GOALS = 17
 let AWAY_CLEANSHEET = 28
 
+let CORNERS_TOTAL = 45
+let CORNERS_MONEYLINE = 55
+let CORNERS_ASIAN = 56
+let CORNERS_HOME = 57
+let CORNERS_AWAY = 58
+let CORNERS_TOTAL_3_WAY = 85
+
 struct Line {
   name: Str,
   odd: Int,
@@ -52,38 +59,38 @@ fn decode_bet(data: Dynamic) Stat![decode::Error] {
   let name = try decode::run(data, decode::field("name", decode::string))
   let values = try decode::run(data, decode::field("values", decode::list(decode_line)))
 
+  let normalized_name = match {
+    id == CORNERS_TOTAL => "Total Corners",
+    id == CORNERS_MONEYLINE => "Most Corners",
+    id == CORNERS_ASIAN => "Asian Corners",
+    id == CORNERS_HOME => "Home Corners",
+    id == CORNERS_AWAY => "Away Corners",
+    id == CORNERS_TOTAL_3_WAY => "Total Corners (3-Way)",
+    _ => name
+  }
+
   Result::ok(Stat{
     id: id,
-    name: name,
+    name: normalized_name,
     values: values,
   })
 }
 
-fn decode_odds_data(data: Dynamic) [Stat]![decode::Error] {
-  let count = try decode::run(data, decode::field("results", decode::int))
-  match count {
-    0 => Result::ok(List::new<Stat>()),
-    _ => {
-      // Extract response[0].bookmakers[0].bets[0].name
-      let bets = try decode::run(data,
-        decode::field("response",
-          decode::at(0, decode::field("bookmakers",
-              decode::at(0, decode::field("bets", decode::list(decode_bet)))
-            )
-          )
-        )
-      )
-
-      Result::ok(bets)
-    },
-  }
-}
+let decode_odds_data = decode::path2(["response", 0, "bookmakers", 0, "bets"], decode::list(decode_bet))
 
 fn get(db: sql::Database, fixture_id: Int) [Stat]!Str {
   let body = try fapi::get_odds(db, fixture_id)
-  let stats = try decode_odds_data(body) -> errs {
-    io::print("Error decoding odds: {errs.at(0)}")
-    Result::ok(List::new<Stat>())
-  }
-  Result::ok(stats)
+  let stats = try decode_odds_data(body) -> errs { Result::err(decode::flatten(errs)) }
+  let odds = List::keep(stats, fn(o) {
+    match {
+      o.id == CORNERS_TOTAL => true,
+      o.id == CORNERS_MONEYLINE => true,
+      o.id == CORNERS_ASIAN => true,
+      o.id == CORNERS_HOME => true,
+      o.id == CORNERS_AWAY => true,
+      o.id == CORNERS_TOTAL_3_WAY => true,
+      _ => false
+    }
+  })
+  Result::ok(odds)
 }

@@ -14,6 +14,7 @@ use maestro/db
 use maestro/fixtures
 use maestro/leagues
 use maestro/predictions
+use maestro/odds
 use maestro/teams
 
 let X_API_TOKEN = "X-Api-Token"
@@ -249,6 +250,21 @@ fn main() {
             let fixture = try fixtures::get(conn, id) -> internal_error
 
             match json::encode(fixture.to_dynamic()) {
+              ok(body) => http::Response{status:200, body:body, headers:res_headers},
+              err => internal_error(err)
+            }
+          },
+          _ => not_found
+        }
+      },
+
+      "/fixtures/:id/odds": fn(req: http::Request) http::Response {
+        match req.method {
+          http::Method::Get => {
+            let id = try Int::from_str(req.path_param("id")) -> _ { not_found }
+
+            let data = try odds::get(conn, id) -> internal_error
+            match json::encode(data) {
               ok(body) => http::Response{status:200, body:body, headers:res_headers},
               err => internal_error(err)
             }
