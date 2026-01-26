@@ -97,7 +97,7 @@ fn get_or_set(db: sql::Database, endpoint: Str, create: fn(Str) Dynamic!Str, ttl
     data => Result::ok(data),
     _ => {
       let data = try create(endpoint)
-      set(db, endpoint, data)
+      set(db, endpoint, data, ttl)
       Result::ok(data)
     }
   }
