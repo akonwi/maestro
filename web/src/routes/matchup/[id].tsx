@@ -59,7 +59,7 @@ function Page() {
   const params = useParams();
   const matchId = () => Number(params.id);
 
-  const fixtureQuery = useQuery(fixtureQueryOptions(matchId()));
+  const fixtureQuery = useQuery(() => fixtureQueryOptions(matchId()));
   const fixture = () => fixtureQuery.data;
   const statsQuery = useQuery(() => matchupStatsQueryOptions(matchId()));
 

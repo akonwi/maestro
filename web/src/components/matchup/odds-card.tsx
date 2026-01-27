@@ -69,7 +69,7 @@ function OddsMarket(props: {
 export function OddsCard(props: OddsCardProps) {
   const [isExpanded, setIsExpanded] = createSignal(false);
 
-  const oddsQuery = useQuery(fixtureOddsQueryOptions(props.fixtureId));
+  const oddsQuery = useQuery(() => fixtureOddsQueryOptions(props.fixtureId));
 
   const cornerMarkets = () =>
     (oddsQuery.data ?? []).filter((stat) => CORNER_MARKET_IDS.has(stat.id));

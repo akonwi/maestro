@@ -24,7 +24,7 @@ export type Fixture = {
   };
 };
 
-export const fixtureQueryOptions = (id: number) => () => ({
+export const fixtureQueryOptions = (id: number) => ({
   queryKey: ["matches", { id }] as const,
   queryFn: async (): Promise<Fixture> => {
     const response = await fetch(
@@ -42,7 +42,7 @@ export type MatchupForm = {
   away: Fixture[];
 };
 
-export const matchupFormQueryOptions = (fixtureId: number) => () => ({
+export const matchupFormQueryOptions = (fixtureId: number) => ({
   queryKey: ["matchup", { fixtureId }, "form"] as const,
   queryFn: async (): Promise<MatchupForm> => {
     const response = await fetch(
@@ -66,7 +66,7 @@ export type LeagueFixtures = {
 // Response is a map of league ID -> fixtures array
 type FixturesTodayResponse = Record<string, Fixture[]>;
 
-export const fixturesTodayQueryOptions = (date: string) => () => ({
+export const fixturesTodayQueryOptions = (date: string) => ({
   queryKey: ["fixtures", "today", date] as const,
   queryFn: async (): Promise<LeagueFixtures[]> => {
     const response = await fetch(
@@ -100,7 +100,7 @@ export type OddsStat = {
   values: OddsLine[];
 };
 
-export const fixtureOddsQueryOptions = (fixtureId: number) => () => ({
+export const fixtureOddsQueryOptions = (fixtureId: number) => ({
   queryKey: ["fixtures", fixtureId, "odds"] as const,
   queryFn: async (): Promise<OddsStat[]> => {
     const response = await fetch(
