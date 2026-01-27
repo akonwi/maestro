@@ -594,40 +594,43 @@ fn sync_fixtures(db: sql::Database, league_id: Int, season: Int) Void!Str  {
     }
   }
 
+  io::print("Updated fixtures in {league_id} for {season}")
   Result::ok(())
 }
 
-fn sync_season(db: sql::Database, league_id: Int, season: Int) {
+fn sync_season(db: sql::Database, league: leagues::League, season: Int) Void!Str {
   // check whether there are any fixtures already in the db
   let row = try db.query("SELECT count(*) as count FROM fixtures WHERE league_id = @league_id AND season = @season")
-  .first(["league_id": league_id, "season": season]) -> err {
-    io::print("Unable to get fixture count for league {league_id} season {season}: {err}")
+  .first(["league_id": league.id, "season": season]) -> err {
+    Result::err("Unable to get fixture count for league {league.id} season {season}: {err}")
   }
   let count = try decode::run(row.expect("foobar"), decode::field("count", decode::int)) -> errs {
-    io::print("Unable to parse fixture count for league: {league_id} season: {season}: {decode::flatten(errs)}")
+    Result::err("Unable to parse fixture count for league: {league.id} season: {season}: {decode::flatten(errs)}")
   }
 
   match count {
     0 => {
-      io::print("Importing season for league={league_id}, season={season}")
-      match import_season(db: db, league_id: league_id, season: season) {
-        ok => {
-          io::print("Completed import (league={league_id}, season={season})")
-        },
-        err => {
-          io::print("Failed to import (league_id={league_id}, season={season}): {err}")
-          // todo: indicate sync error on leagues table
-        }
+      io::print("Importing season for league={league.id}, season={season}")
+      try import_season(db: db, league_id: league.id, season: season) -> err {
+        // todo: indicate sync error on leagues table
+        Result::err("Failed to import (league_id={league.id}, season={season}): {err}")
       }
     },
     // else, look for incomplete fixtures and update them
     _ => {
-      match sync_fixtures(db: db, league_id: league_id, season: season) {
-        ok => io::print("Updated fixtures in {league_id} for {season}"),
-        err => io::print("Failed to update fixtures in {league_id} for {season}: {err}")
+      try sync_fixtures(db: db, league_id: league.id, season: season) -> err {
+        Result::err("Failed to update fixtures in {league.id} for {season}: {err}")
       }
     }
   }
+
+  try db.query("UPDATE leagues SET synced_at = unixepoch() WHERE id = @league_id")
+  .run(["league_id": league.id]) -> err {
+    Result::err("Unable to update synced_at for league {league.id}: {err}")
+  }
+
+  io::print("Completed sync (league={league.id}, season={season})")
+  Result::ok(())
 }
 
 fn sync(db: sql::Database) {
@@ -637,18 +640,21 @@ fn sync(db: sql::Database) {
 
     for league, i in all_leagues {
       let count = i + 1
-      io::print("[{count}/{all_leagues.size()}] Getting current season for {league.name} (id: {league.id})")
       match fapi::get_league_current_season(db, league.id) {
         ok(season) => {
-          io::print("[{count}/{all_leagues.size()}] Syncing {league.name} (id: {league.id}, season: {season})")
-          sync_season(db: db, league_id: league.id, season: season)
+          if league.needs_sync() {
+            io::print("Syncing {league.name} (id: {league.id}, season: {season})")
+            try sync_season(db, league, season) -> err {
+              io::print("Unable sync fixtures for league {league.id} season {season}: {err}")
+            }
+          }
         },
         err => io::print("Unable to get current season for league {league.id}: {err}")
       }
     }
 
     io::print("Finished fixture sync...")
-    async::sleep(duration::from_hours(12))
+    async::sleep(duration::from_hours(1))
   }
 }
 

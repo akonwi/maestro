@@ -1,3 +1,4 @@
+use ard/chrono
 use ard/decode
 use ard/io
 use ard/maybe
@@ -8,6 +9,7 @@ use maestro/fapi
 struct League {
   id: Int,
   name: Str,
+  synced_at: Int?,
   // unless explicitly set to true in the db, the league will be followed (synced on a regular basis)
   hidden: Bool,
 
@@ -17,28 +19,43 @@ struct League {
 
 impl League {
   fn to_dyn() Dynamic {
+    let synced_at = match @synced_at {
+      time => Dynamic::from(time),
+      _ => Dynamic::from(())
+    }
     Dynamic::object([
       "id": Dynamic::from(@id),
       "name": Dynamic::from(@name),
+      "synced_at": synced_at,
       "hidden": Dynamic::from(@hidden),
       "following": Dynamic::from(@following),
     ])
+  }
+
+  fn needs_sync() Bool {
+    match @synced_at {
+      time => time < chrono::now() - 7200, // 2+ hrs ago
+      _ => @following
+    }
   }
 }
 
 // decoders for db row
 let decode_id = decode::field("id", decode::int)
 let decode_name = decode::field("name", decode::string)
+let decode_synced_at = decode::field("synced_at", decode::nullable(decode::int))
 let decode_hidden = decode::field("hidden", decode::bool)
 
 fn League::from_row(row: Dynamic) League!Str {
-  let id = try decode_id(row) -> errs { Result::err(errs.at(0).to_str()) }
-  let name = try decode_name(row) -> errs { Result::err(errs.at(0).to_str()) }
-  let hidden = try decode_hidden(row) -> errs { Result::err(errs.at(0).to_str()) }
+  let id = try decode_id(row) -> errs { Result::err(decode::flatten(errs)) }
+  let name = try decode_name(row) -> errs { Result::err(decode::flatten(errs)) }
+  let synced_at = try decode_synced_at(row) -> errs { Result::err(decode::flatten(errs)) }
+  let hidden = try decode_hidden(row) -> errs { Result::err(decode::flatten(errs)) }
 
   Result::ok(League{
     id: id,
     name: name,
+    synced_at: synced_at,
     hidden: hidden,
     following: true,
   })
