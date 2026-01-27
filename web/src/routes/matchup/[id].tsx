@@ -9,14 +9,19 @@ import {
   Suspense,
   Switch,
 } from "solid-js";
-import { matchupStatsQueryOptions } from "~/api/analysis";
+import {
+  matchupStatsQueryOptions,
+  teamMetricsQueryOptions,
+} from "~/api/analysis";
 import { fixtureQueryOptions } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
+import { CornerAnalysis } from "~/components/matchup/corner-analysis";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
 import { OddsCard } from "~/components/matchup/odds-card";
 import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
 import { StatsTable } from "~/components/matchup/stats-table";
+import { useAuth } from "~/contexts/auth";
 
 function logoUrl(id: number) {
   return `https://media.api-sports.io/football/teams/${id}.png`;
@@ -58,6 +63,7 @@ function MatchupSkeleton() {
 function Page() {
   const params = useParams();
   const matchId = () => Number(params.id);
+  const auth = useAuth();
 
   const fixtureQuery = useQuery(() => fixtureQueryOptions(matchId()));
   const fixture = () => fixtureQuery.data;
@@ -71,6 +77,51 @@ function Page() {
   const [venueView, setVenueView] = createSignal<"contextual" | "full">(
     "contextual",
   );
+  const [cornerView, setCornerView] = createSignal<"form" | "season">("form");
+
+  // Corner metrics queries for OddsCard projections
+  // Form view: last 5 games (no venue filter - all games count)
+  // Season view: contextual venue filtering (home-only for home team, away-only for away)
+  const homeCornerMetricsQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: fixture()?.home.id ?? 0,
+        leagueId: fixture()?.league.id ?? 0,
+        season: fixture()?.season ?? 0,
+        limit: cornerView() === "form" ? 5 : undefined,
+        venue: cornerView() === "season" ? "home" : undefined,
+      },
+      auth.headers,
+    ),
+    enabled: !!fixture(),
+  }));
+
+  const awayCornerMetricsQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: fixture()?.away.id ?? 0,
+        leagueId: fixture()?.league.id ?? 0,
+        season: fixture()?.season ?? 0,
+        limit: cornerView() === "form" ? 5 : undefined,
+        venue: cornerView() === "season" ? "away" : undefined,
+      },
+      auth.headers,
+    ),
+    enabled: !!fixture(),
+  }));
+
+  const cornerProjections = createMemo(() => {
+    const home = homeCornerMetricsQuery.data;
+    const away = awayCornerMetricsQuery.data;
+    if (!home || !away) return undefined;
+    const homeFor = home.for.perGame.corners;
+    const awayFor = away.for.perGame.corners;
+    return {
+      homeFor,
+      awayFor,
+      total: homeFor + awayFor,
+    };
+  });
 
   const homeStats = createMemo(() => {
     if (activeTab() === "form") {
@@ -192,12 +243,28 @@ function Page() {
             </div>
           </div>
 
-          {/* Odds - only show for upcoming matches */}
+          {/* Corner Analysis & Odds - only show for upcoming matches */}
           <Show when={!fixture()!.finished}>
+            <CornerAnalysis
+              homeName={fixture()!.home.name}
+              awayName={fixture()!.away.name}
+              homeMetrics={homeCornerMetricsQuery.data ?? undefined}
+              awayMetrics={awayCornerMetricsQuery.data ?? undefined}
+              isPending={
+                homeCornerMetricsQuery.isPending ||
+                awayCornerMetricsQuery.isPending
+              }
+              hasError={
+                homeCornerMetricsQuery.isError || awayCornerMetricsQuery.isError
+              }
+              view={cornerView()}
+              onViewChange={setCornerView}
+            />
             <OddsCard
               fixtureId={matchId()}
               homeName={fixture()!.home.name}
               awayName={fixture()!.away.name}
+              cornerProjections={cornerProjections()}
             />
           </Show>
 

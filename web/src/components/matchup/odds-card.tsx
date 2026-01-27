@@ -1,5 +1,13 @@
 import { useQuery } from "@tanstack/solid-query";
-import { createSignal, For, Match, Show, Switch, useContext } from "solid-js";
+import {
+  createMemo,
+  createSignal,
+  For,
+  Match,
+  Show,
+  Switch,
+  useContext,
+} from "solid-js";
 import { fixtureOddsQueryOptions, type OddsStat } from "~/api/fixtures";
 import { formatOdds } from "~/lib/formatters";
 import { BetFormContext } from "../bet-form.context";
@@ -7,10 +15,18 @@ import { BetFormContext } from "../bet-form.context";
 // Corner market IDs
 const CORNER_MARKET_IDS = new Set([45, 55, 56, 57, 58, 77, 85]);
 
+
+export interface CornerProjections {
+  homeFor: number;
+  awayFor: number;
+  total: number;
+}
+
 interface OddsCardProps {
   fixtureId: number;
   homeName: string;
   awayName: string;
+  cornerProjections?: CornerProjections;
 }
 
 function parseLineFromName(name: string): number | undefined {
@@ -19,11 +35,57 @@ function parseLineFromName(name: string): number | undefined {
   return match ? parseFloat(match[0]) : undefined;
 }
 
+function calculateEdge(
+  lineName: string,
+  lineValue: number,
+  projected: number,
+): number {
+  const name = lineName.toLowerCase();
+  const isOver = name.includes("over");
+  const isExact = name.includes("exactly");
+
+  if (isExact) {
+    // For exact bets, closer to projection is better
+    // Negative distance from projection (further = worse)
+    return -Math.abs(lineValue - projected);
+  }
+
+  return isOver ? projected - lineValue : lineValue - projected;
+}
+
+function getProjectionForMarket(
+  marketName: string,
+  projections: CornerProjections | undefined,
+): number | undefined {
+  if (!projections) return undefined;
+
+  const name = marketName.toLowerCase();
+
+  // Check specific patterns first
+  if (name.includes("asian") || name.includes("handicap")) {
+    return projections.homeFor - projections.awayFor;
+  }
+  if (name.includes("home")) return projections.homeFor;
+  if (name.includes("away")) return projections.awayFor;
+  // "Total Corners", "Total Corners (3-Way)", "Most Corners" all use total
+  if (name.includes("total") || name.includes("most")) return projections.total;
+
+  return undefined;
+}
+
+interface OddsLineWithEdge {
+  name: string;
+  odd: number;
+  edge: number | undefined;
+}
+
 function OddsMarket(props: {
   market: OddsStat;
   fixtureId: number;
   homeName: string;
   awayName: string;
+  projection: number | undefined;
+  is3Way: boolean;
 }) {
   const [_, { show }] = useContext(BetFormContext);
 
@@ -41,14 +103,71 @@ function OddsMarket(props: {
     });
   };
 
+  const sortedLines = createMemo((): OddsLineWithEdge[] => {
+    const linesWithEdge = props.market.values.map(line => {
+      const lineValue = parseLineFromName(line.name);
+      const edge =
+        lineValue !== undefined && props.projection !== undefined
+          ? calculateEdge(line.name, lineValue, props.projection)
+          : undefined;
+      return { ...line, edge };
+    });
+
+    // Filter out:
+    // 1. Lines with odds too low to provide meaningful returns (American odds)
+    //    - Positive odds: always keep (good returns)
+    //    - Negative odds: keep if > -150 (e.g., -109 is better than -150)
+    // 2. For 3-way markets: filter out lines too far from projection AND with bad edge
+    const MIN_NEGATIVE_ODDS = -150;
+    const MAX_DISTANCE_3WAY = 2; // Only show lines within 2 of projection
+    const MIN_EDGE_3WAY = -1.5; // Filter out lines with very negative edge
+    const filtered = linesWithEdge.filter(line => {
+      // Filter by odds (American format)
+      // Positive odds are always good, negative odds must be better than threshold
+      if (line.odd < 0 && line.odd < MIN_NEGATIVE_ODDS) return false;
+
+      // For 3-way markets: filter by both distance AND edge
+      if (props.is3Way && props.projection !== undefined) {
+        const lineValue = parseLineFromName(line.name);
+        if (lineValue !== undefined) {
+          // Distance filter: line must be within 2 of projection
+          const distance = Math.abs(lineValue - props.projection);
+          if (distance > MAX_DISTANCE_3WAY) return false;
+        }
+        // Edge filter: don't show lines with very negative edge
+        if (line.edge !== undefined && line.edge < MIN_EDGE_3WAY) return false;
+      }
+
+      return true;
+    });
+
+    // Sort by edge descending (highest positive edge first)
+    if (props.projection !== undefined) {
+      filtered.sort((a, b) => {
+        if (a.edge === undefined) return 1;
+        if (b.edge === undefined) return -1;
+        return b.edge - a.edge;
+      });
+    }
+
+    return filtered;
+  });
+
   return (
     <div class="space-y-2">
-      <div class="text-sm font-medium text-base-content/70">
-        {props.market.name}
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-base-content/70">
+          {props.market.name}
+        </span>
+        <Show when={props.projection !== undefined}>
+          <span class="text-xs text-base-content/50">
+            (proj: {props.projection?.toFixed(1)})
+          </span>
+        </Show>
       </div>
       <div class="flex flex-wrap gap-2">
-        <For each={props.market.values}>
-          {(line) => (
+        <For each={sortedLines()}>
+          {line => (
             <button
               type="button"
               class="btn btn-sm btn-outline"
@@ -58,6 +177,14 @@ function OddsMarket(props: {
               <span class="font-mono font-semibold">
                 {formatOdds(line.odd)}
               </span>
+              <Show when={line.edge !== undefined}>
+                <span
+                  class={`badge badge-xs ${line.edge! > 0 ? "badge-success" : "badge-ghost"}`}
+                >
+                  {line.edge! > 0 ? "+" : ""}
+                  {line.edge!.toFixed(1)}
+                </span>
+              </Show>
             </button>
           )}
         </For>
@@ -72,7 +199,7 @@ export function OddsCard(props: OddsCardProps) {
   const oddsQuery = useQuery(() => fixtureOddsQueryOptions(props.fixtureId));
 
   const cornerMarkets = () =>
-    (oddsQuery.data ?? []).filter((stat) => CORNER_MARKET_IDS.has(stat.id));
+    (oddsQuery.data ?? []).filter(stat => CORNER_MARKET_IDS.has(stat.id));
 
   const hasCornerOdds = () => cornerMarkets().length > 0;
 
@@ -81,7 +208,7 @@ export function OddsCard(props: OddsCardProps) {
       <button
         type="button"
         class="card-body p-4 cursor-pointer"
-        onClick={() => setIsExpanded((prev) => !prev)}
+        onClick={() => setIsExpanded(prev => !prev)}
       >
         <div class="flex items-center justify-between">
           <h3 class="text-lg font-semibold">Odds</h3>
@@ -126,12 +253,17 @@ export function OddsCard(props: OddsCardProps) {
       <Show when={isExpanded() && hasCornerOdds()}>
         <div class="px-4 pb-4 space-y-4">
           <For each={cornerMarkets()}>
-            {(market) => (
+            {market => (
               <OddsMarket
                 market={market}
                 fixtureId={props.fixtureId}
                 homeName={props.homeName}
                 awayName={props.awayName}
+                projection={getProjectionForMarket(
+                  market.name,
+                  props.cornerProjections,
+                )}
+                is3Way={market.name.toLowerCase().includes("3-way")}
               />
             )}
           </For>

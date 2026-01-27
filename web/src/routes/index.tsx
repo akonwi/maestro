@@ -145,7 +145,7 @@ function Page() {
         <Match when>
           <div class="space-y-4 md:space-y-6">
             <For each={leagues()}>
-              {(league) => (
+              {league => (
                 <div class="card bg-base-100 border border-base-300">
                   <div class="card-body p-3 md:p-6">
                     <LeagueMenu league={league} trigger="context">
@@ -155,7 +155,7 @@ function Page() {
                     </LeagueMenu>
                     <div class="divide-y divide-base-300">
                       <For each={league.fixtures}>
-                        {(fixture) => (
+                        {fixture => (
                           <A
                             href={matchupUrl(fixture.id)}
                             class="block py-2 md:py-3 hover:bg-base-200 -mx-3 px-3 md:-mx-4 md:px-4 transition-colors"
