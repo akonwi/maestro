@@ -93,6 +93,7 @@ type TeamMetricsApiResponse = {
   };
   xg: number;
   corners: number;
+  possession: number;
 };
 
 export type TeamMetricsParams = {
@@ -116,6 +117,7 @@ type StatCategory = {
   shots: ShotMetrics;
   xg: number;
   corners: number;
+  possession: number;
 };
 
 export type TeamMetrics = Record<
@@ -181,6 +183,7 @@ export const teamMetricsQueryOptions = (
           shots: shotStats,
           xg: team.xg,
           corners: team.corners,
+          possession: team.possession,
         },
         perGame: {
           shots: {
@@ -193,6 +196,7 @@ export const teamMetricsQueryOptions = (
           },
           xg: team.xg / numFixtures,
           corners: team.corners / numFixtures,
+          possession: team.possession,
         },
       };
     };

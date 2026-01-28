@@ -66,6 +66,46 @@ function MetricBar(props: MetricBarProps) {
   );
 }
 
+function PossessionBar(props: {
+  homeName: string;
+  awayName: string;
+  homeValue: number;
+  awayValue: number;
+}) {
+  // Values are 0-1, convert to percentage for display
+  const homePercent = () => props.homeValue * 100;
+  const awayPercent = () => props.awayValue * 100;
+  const homeWins = () => props.homeValue > props.awayValue;
+
+  return (
+    <div class="space-y-1">
+      <div class="flex justify-between text-sm">
+        <span class="text-base-content/70">{props.homeName}</span>
+        <span class="font-medium">Avg Possession</span>
+        <span class="text-base-content/70">{props.awayName}</span>
+      </div>
+      <div class="flex h-6 rounded-lg overflow-hidden bg-base-200">
+        <div
+          class={`flex items-center justify-start pl-2 text-xs font-medium transition-all ${
+            homeWins() ? "bg-primary text-primary-content" : "bg-base-300"
+          }`}
+          style={{ width: `${homePercent()}%` }}
+        >
+          {homePercent().toFixed(0)}%
+        </div>
+        <div
+          class={`flex items-center justify-end pr-2 text-xs font-medium transition-all ${
+            !homeWins() ? "bg-secondary text-secondary-content" : "bg-base-300"
+          }`}
+          style={{ width: `${awayPercent()}%` }}
+        >
+          {awayPercent().toFixed(0)}%
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MatchupSection(props: {
   title: string;
   subtitle: string;
@@ -261,9 +301,15 @@ export function MetricsMatchup(props: MetricsMatchupProps) {
           </Match>
 
           <Match when={hasData()}>
+            <PossessionBar
+              homeName={props.homeName}
+              awayName={props.awayName}
+              homeValue={homeMetricsQuery.data!.for.perGame.possession}
+              awayValue={awayMetricsQuery.data!.for.perGame.possession}
+            />
             <Switch>
               <Match when={viewMode() === "bars"}>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                   <MatchupSection
                     title={`${props.homeName} Attack`}
                     subtitle={`vs ${props.awayName} Defense`}

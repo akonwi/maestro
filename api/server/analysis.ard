@@ -27,6 +27,7 @@ struct TeamMetrics {
   corners: Int,
   shots: Shots,
   xg: Float,
+  possession: Float,
 }
 
 fn TeamMetrics::new() TeamMetrics {
@@ -47,6 +48,7 @@ fn TeamMetrics::new() TeamMetrics {
       blocked_per_game: 0.0,
     },
     xg: 0.0,
+    possession: 0.0,
   }
 }
 
@@ -124,6 +126,7 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
     metrics.team.shots.out_box =+ team_stats.shots_out_box
     metrics.team.xg =+ team_stats.xg
     metrics.team.corners =+ team_stats.corners
+    metrics.team.possession =+ team_stats.possession
 
     metrics.against.shots.total =+ opp_stats.shots
     metrics.against.shots.blocked =+ opp_stats.shots_blocked
@@ -133,6 +136,7 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
     metrics.against.shots.out_box =+ opp_stats.shots_out_box
     metrics.against.xg =+ opp_stats.xg
     metrics.against.corners =+ opp_stats.corners
+    metrics.against.possession =+ opp_stats.possession
   }
 
   let num_games = Float::from_int(metrics.num_fixtures)
@@ -150,6 +154,10 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
   metrics.against.shots.in_box_per_game = Float::from_int(metrics.against.shots.in_box) / num_games
   metrics.against.shots.out_box_per_game = Float::from_int(metrics.against.shots.out_box) / num_games
   metrics.against.shots.blocked_per_game = Float::from_int(metrics.against.shots.blocked) / num_games
+
+  // Possession average (possession is stored as 0.0-1.0 decimal)
+  metrics.team.possession = metrics.team.possession / num_games
+  metrics.against.possession = metrics.against.possession / num_games
 
   Result::ok(metrics)
 }
