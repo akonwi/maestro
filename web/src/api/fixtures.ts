@@ -89,9 +89,13 @@ export const fixturesTodayQueryOptions = (date: string) => ({
 });
 
 // Odds types
+export type LineType = "over" | "under" | "exactly" | "home" | "away";
+
 export type OddsLine = {
   name: string;
   odd: number;
+  type: LineType;
+  value: number | null;
 };
 
 export type OddsStat = {

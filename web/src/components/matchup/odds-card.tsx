@@ -8,7 +8,11 @@ import {
   Switch,
   useContext,
 } from "solid-js";
-import { fixtureOddsQueryOptions, type OddsStat } from "~/api/fixtures";
+import {
+  fixtureOddsQueryOptions,
+  type LineType,
+  type OddsStat,
+} from "~/api/fixtures";
 import { formatOdds } from "~/lib/formatters";
 import { BetFormContext } from "../bet-form.context";
 
@@ -29,28 +33,27 @@ interface OddsCardProps {
   cornerProjections?: CornerProjections;
 }
 
-function parseLineFromName(name: string): number | undefined {
-  // Extract numeric line from strings like "Over 9.5", "Under 10", "Home -2"
-  const match = name.match(/-?\d+\.?\d*/);
-  return match ? parseFloat(match[0]) : undefined;
-}
-
 function calculateEdge(
-  lineName: string,
-  lineValue: number,
+  type: LineType,
+  value: number,
   projected: number,
 ): number {
-  const name = lineName.toLowerCase();
-  const isOver = name.includes("over");
-  const isExact = name.includes("exactly");
-
-  if (isExact) {
-    // For exact bets, closer to projection is better
-    // Negative distance from projection (further = worse)
-    return -Math.abs(lineValue - projected);
+  switch (type) {
+    case "exactly":
+      // Closer to projection is better
+      return -Math.abs(value - projected);
+    case "home":
+      // Handicap: projected = homeFor - awayFor (positive = home advantage)
+      // Home -6 means home needs to win by 6+
+      return projected - Math.abs(value);
+    case "away":
+      // Away -6 means away needs to win by 6+
+      return -projected - Math.abs(value);
+    case "over":
+      return projected - value;
+    case "under":
+      return value - projected;
   }
-
-  return isOver ? projected - lineValue : lineValue - projected;
 }
 
 function getProjectionForMarket(
@@ -76,6 +79,8 @@ function getProjectionForMarket(
 interface OddsLineWithEdge {
   name: string;
   odd: number;
+  type: LineType;
+  value: number | null;
   edge: number | undefined;
 }
 
@@ -89,9 +94,11 @@ function OddsMarket(props: {
 }) {
   const [_, { show }] = useContext(BetFormContext);
 
-  const handleLineClick = (lineName: string, odd: number) => {
-    const line = parseLineFromName(lineName);
-
+  const handleLineClick = (
+    lineName: string,
+    odd: number,
+    value: number | null,
+  ) => {
     // Build description: "Home Corners Over 5.5" or "Total Corners Over 9.5"
     const description = `${props.market.name} ${lineName}`;
 
@@ -99,16 +106,15 @@ function OddsMarket(props: {
       type_id: props.market.id,
       description,
       odds: odd,
-      line,
+      line: value !== null ? Math.abs(value) : undefined,
     });
   };
 
   const sortedLines = createMemo((): OddsLineWithEdge[] => {
     const linesWithEdge = props.market.values.map(line => {
-      const lineValue = parseLineFromName(line.name);
       const edge =
-        lineValue !== undefined && props.projection !== undefined
-          ? calculateEdge(line.name, lineValue, props.projection)
+        line.value !== null && props.projection !== undefined
+          ? calculateEdge(line.type, line.value, props.projection)
           : undefined;
       return { ...line, edge };
     });
@@ -118,9 +124,11 @@ function OddsMarket(props: {
     //    - Positive odds: always keep (good returns)
     //    - Negative odds: keep if > -150 (e.g., -109 is better than -150)
     // 2. For 3-way markets: filter out lines too far from projection AND with bad edge
+    // 3. For handicap markets: filter out lines with very negative edge
     const MIN_NEGATIVE_ODDS = -150;
     const MAX_DISTANCE_3WAY = 2; // Only show lines within 2 of projection
     const MIN_EDGE_3WAY = -1.5; // Filter out lines with very negative edge
+    const MIN_EDGE_HANDICAP = -4; // Filter out handicap lines with edge worse than -4
     const filtered = linesWithEdge.filter(line => {
       // Filter by odds (American format)
       // Positive odds are always good, negative odds must be better than threshold
@@ -128,14 +136,22 @@ function OddsMarket(props: {
 
       // For 3-way markets: filter by both distance AND edge
       if (props.is3Way && props.projection !== undefined) {
-        const lineValue = parseLineFromName(line.name);
-        if (lineValue !== undefined) {
+        if (line.value !== null) {
           // Distance filter: line must be within 2 of projection
-          const distance = Math.abs(lineValue - props.projection);
+          const distance = Math.abs(line.value - props.projection);
           if (distance > MAX_DISTANCE_3WAY) return false;
         }
         // Edge filter: don't show lines with very negative edge
         if (line.edge !== undefined && line.edge < MIN_EDGE_3WAY) return false;
+      }
+
+      // For handicap markets (home/away): filter out lines with very negative edge
+      if (
+        (line.type === "home" || line.type === "away") &&
+        line.edge !== undefined &&
+        line.edge < MIN_EDGE_HANDICAP
+      ) {
+        return false;
       }
 
       return true;
@@ -171,7 +187,7 @@ function OddsMarket(props: {
             <button
               type="button"
               class="btn btn-sm btn-outline"
-              onClick={() => handleLineClick(line.name, line.odd)}
+              onClick={() => handleLineClick(line.name, line.odd, line.value)}
             >
               <span class="text-xs">{line.name}</span>
               <span class="font-mono font-semibold">

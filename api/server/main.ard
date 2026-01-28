@@ -268,6 +268,7 @@ fn main() {
             let id = try Int::from_str(req.path_param("id")) -> _ { not_found }
 
             let data = try odds::get(conn, id) -> internal_error
+            let data = Dynamic::list(data, fn(stat) { stat.to_dyn() })
             match json::encode(data) {
               ok(body) => http::Response{status:200, body:body, headers:res_headers},
               err => internal_error(err)

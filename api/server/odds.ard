@@ -1,5 +1,6 @@
 use ard/decode
 use ard/io
+use ard/maybe
 use ard/sql
 
 use maestro/fapi
@@ -17,15 +18,79 @@ let CORNERS_HOME = 57
 let CORNERS_AWAY = 58
 let CORNERS_TOTAL_3_WAY = 85
 
+enum LineType {
+  over,
+  under,
+  exactly,
+  home,
+  away,
+}
+
+impl LineType {
+  fn to_str() Str {
+    match @ {
+      LineType::over => "over",
+      LineType::under => "under",
+      LineType::exactly => "exactly",
+      LineType::home => "home",
+      LineType::away => "away",
+    }
+  }
+}
+
+fn LineType::from(name: Str) LineType {
+  match {
+    name.starts_with("Over") => LineType::over,
+    name.starts_with("Under") => LineType::under,
+    name.starts_with("Exactly") => LineType::exactly,
+    name.starts_with("Home") => LineType::home,
+    name.starts_with("Away") => LineType::away,
+    // Default to over if no match found
+    _ => LineType::over
+  }
+}
+
 struct Line {
   name: Str,
   odd: Int,
+
+  _type: LineType,
+  // Home/Away/Draw would have no value for a line
+  // Over 9.5 = 9.5
+  // Under 9.5 = -9.5
+  // Home -0.5 = -0.5
+  value: Float?,
+}
+
+impl Line {
+  fn to_dyn() Dynamic {
+    let value = match @value {
+      v => Dynamic::from(v),
+      _ => Dynamic::from(())
+    }
+    Dynamic::object([
+      "name": Dynamic::from(@name),
+      "type": Dynamic::from(@_type.to_str()),
+      "odd": Dynamic::from(@odd),
+      "value": value,
+    ])
+  }
 }
 
 struct Stat {
   id: Int,
   name: Str,
   values: [Line]
+}
+
+impl Stat {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "id": Dynamic::from(@id),
+      "name": Dynamic::from(@name),
+      "values": Dynamic::list(@values, fn(line) { line.to_dyn() }),
+    ])
+  }
 }
 
 let BET_365 = 8
@@ -42,15 +107,34 @@ fn int_to_string(data: Dynamic) Str![decode::Error] {
   Result::ok(val.to_str())
 }
 
+fn parse_value(name: Str, negative: Bool?) Float? {
+  let parts = name.split(" ")
+  match parts.size() {
+    2 => Float::from_str(parts.at(1)),
+    _ => maybe::none()
+  }
+}
+
 fn decode_line(data: Dynamic) Line![decode::Error] {
   let name = try decode::run(data, decode::field("value", decode::one_of(decode::string, [int_to_string])))
   let odd_str = try decode::run(data, decode::field("odd", decode::string))
   let dec_odd = Float::from_str(odd_str).or(0.0)
   let american_odd = to_american(dec_odd)
 
+  let value = match {
+    name.starts_with("Over") => parse_value(name),
+    name.starts_with("Under") => parse_value(name),
+    name.starts_with("Home") => parse_value(name),
+    name.starts_with("Away") => parse_value(name),
+    name.starts_with("Exactly") => parse_value(name),
+    _ => maybe::none()
+  }
+
   Result::ok(Line{
     name: name,
     odd: american_odd,
+    _type: LineType::from(name),
+    value: value
   })
 }
 
