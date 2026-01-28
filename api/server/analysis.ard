@@ -23,9 +23,18 @@ struct Shots {
   blocked_per_game: Float,
 }
 
+struct Passes {
+  total: Int,
+  per_game: Float,
+  completed: Int,
+  completed_per_game: Float,
+  accuracy: Float,
+}
+
 struct TeamMetrics {
   corners: Int,
   shots: Shots,
+  passes: Passes,
   xg: Float,
   possession: Float,
 }
@@ -46,6 +55,13 @@ fn TeamMetrics::new() TeamMetrics {
       out_box_per_game: 0.0,
       blocked: 0,
       blocked_per_game: 0.0,
+    },
+    passes: Passes {
+      total: 0,
+      per_game: 0.0,
+      completed: 0,
+      completed_per_game: 0.0,
+      accuracy: 0.0,
     },
     xg: 0.0,
     possession: 0.0,
@@ -124,6 +140,8 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
     metrics.team.shots.off_target =+ team_stats.shots - team_stats.shots_blocked - team_stats.shots_on_goal
     metrics.team.shots.in_box =+ team_stats.shots_in_box
     metrics.team.shots.out_box =+ team_stats.shots_out_box
+    metrics.team.passes.total =+ team_stats.passes
+    metrics.team.passes.completed =+ team_stats.passes_completed
     metrics.team.xg =+ team_stats.xg
     metrics.team.corners =+ team_stats.corners
     metrics.team.possession =+ team_stats.possession
@@ -134,6 +152,8 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
     metrics.against.shots.off_target =+ opp_stats.shots - opp_stats.shots_blocked - opp_stats.shots_on_goal
     metrics.against.shots.in_box =+ opp_stats.shots_in_box
     metrics.against.shots.out_box =+ opp_stats.shots_out_box
+    metrics.against.passes.total =+ opp_stats.passes
+    metrics.against.passes.completed =+ opp_stats.passes_completed
     metrics.against.xg =+ opp_stats.xg
     metrics.against.corners =+ opp_stats.corners
     metrics.against.possession =+ opp_stats.possession
@@ -154,6 +174,15 @@ fn get_metrics(db: sql::Database, team_id: Int, league_id: Int, season: Int, lim
   metrics.against.shots.in_box_per_game = Float::from_int(metrics.against.shots.in_box) / num_games
   metrics.against.shots.out_box_per_game = Float::from_int(metrics.against.shots.out_box) / num_games
   metrics.against.shots.blocked_per_game = Float::from_int(metrics.against.shots.blocked) / num_games
+
+  // Passes per-game and accuracy
+  metrics.team.passes.per_game = Float::from_int(metrics.team.passes.total) / num_games
+  metrics.team.passes.completed_per_game = Float::from_int(metrics.team.passes.completed) / num_games
+  metrics.team.passes.accuracy = Float::from_int(metrics.team.passes.completed) / Float::from_int(metrics.team.passes.total)
+
+  metrics.against.passes.per_game = Float::from_int(metrics.against.passes.total) / num_games
+  metrics.against.passes.completed_per_game = Float::from_int(metrics.against.passes.completed) / num_games
+  metrics.against.passes.accuracy = Float::from_int(metrics.against.passes.completed) / Float::from_int(metrics.against.passes.total)
 
   // Possession average (possession is stored as 0.0-1.0 decimal)
   metrics.team.possession = metrics.team.possession / num_games

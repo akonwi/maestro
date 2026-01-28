@@ -91,6 +91,13 @@ type TeamMetricsApiResponse = {
     blocked: number;
     in_box: number;
   };
+  passes: {
+    total: number;
+    completed: number;
+    per_game: number;
+    completed_per_game: number;
+    accuracy: number;
+  };
   xg: number;
   corners: number;
   possession: number;
@@ -113,8 +120,15 @@ type ShotMetrics = {
   outsideBox: number;
 };
 
+type PassMetrics = {
+  total: number;
+  completed: number;
+  accuracy: number;
+};
+
 type StatCategory = {
   shots: ShotMetrics;
+  passes: PassMetrics;
   xg: number;
   corners: number;
   possession: number;
@@ -181,6 +195,11 @@ export const teamMetricsQueryOptions = (
       return {
         total: {
           shots: shotStats,
+          passes: {
+            total: team.passes.total,
+            completed: team.passes.completed,
+            accuracy: team.passes.accuracy,
+          },
           xg: team.xg,
           corners: team.corners,
           possession: team.possession,
@@ -193,6 +212,11 @@ export const teamMetricsQueryOptions = (
             blocked: team.shots.blocked / numFixtures,
             insideBox: team.shots.in_box / numFixtures,
             outsideBox: (totalShots - team.shots.in_box) / numFixtures,
+          },
+          passes: {
+            total: team.passes.per_game,
+            completed: team.passes.completed_per_game,
+            accuracy: team.passes.accuracy,
           },
           xg: team.xg / numFixtures,
           corners: team.corners / numFixtures,

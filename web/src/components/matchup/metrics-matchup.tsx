@@ -66,22 +66,25 @@ function MetricBar(props: MetricBarProps) {
   );
 }
 
-function PossessionBar(props: {
+function SimpleComparisonBar(props: {
+  label: string;
   homeName: string;
   awayName: string;
   homeValue: number;
   awayValue: number;
+  formatValue?: (v: number) => string;
 }) {
-  // Values are 0-1, convert to percentage for display
-  const homePercent = () => props.homeValue * 100;
-  const awayPercent = () => props.awayValue * 100;
+  const format = () => props.formatValue ?? ((v: number) => `${(v * 100).toFixed(0)}%`);
+  const total = () => props.homeValue + props.awayValue;
+  const homePercent = () => (total() > 0 ? (props.homeValue / total()) * 100 : 50);
+  const awayPercent = () => (total() > 0 ? (props.awayValue / total()) * 100 : 50);
   const homeWins = () => props.homeValue > props.awayValue;
 
   return (
     <div class="space-y-1">
       <div class="flex justify-between text-sm">
         <span class="text-base-content/70">{props.homeName}</span>
-        <span class="font-medium">Avg Possession</span>
+        <span class="font-medium">{props.label}</span>
         <span class="text-base-content/70">{props.awayName}</span>
       </div>
       <div class="flex h-6 rounded-lg overflow-hidden bg-base-200">
@@ -91,7 +94,7 @@ function PossessionBar(props: {
           }`}
           style={{ width: `${homePercent()}%` }}
         >
-          {homePercent().toFixed(0)}%
+          {format()(props.homeValue)}
         </div>
         <div
           class={`flex items-center justify-end pr-2 text-xs font-medium transition-all ${
@@ -99,7 +102,7 @@ function PossessionBar(props: {
           }`}
           style={{ width: `${awayPercent()}%` }}
         >
-          {awayPercent().toFixed(0)}%
+          {format()(props.awayValue)}
         </div>
       </div>
     </div>
@@ -178,6 +181,20 @@ function MatchupSection(props: {
           attackLabel={props.attackLabel}
           defenseLabel={props.defenseLabel}
         />
+        <MetricBar
+          label="Passes/Game"
+          attackValue={props.attackMetrics.perGame.passes.total}
+          defenseValue={props.defenseMetrics.perGame.passes.total}
+          attackLabel={props.attackLabel}
+          defenseLabel={props.defenseLabel}
+        />
+        <MetricBar
+          label="Passes Completed/Game"
+          attackValue={props.attackMetrics.perGame.passes.completed}
+          defenseValue={props.defenseMetrics.perGame.passes.completed}
+          attackLabel={props.attackLabel}
+          defenseLabel={props.defenseLabel}
+        />
       </div>
     </div>
   );
@@ -212,6 +229,11 @@ function buildRadarData(
       label: "Corners",
       attack: attackMetrics.perGame.corners,
       defense: defenseMetrics.perGame.corners,
+    },
+    {
+      label: "Passes",
+      attack: attackMetrics.perGame.passes.total,
+      defense: defenseMetrics.perGame.passes.total,
     },
     {
       label: "Blocked",
@@ -301,15 +323,25 @@ export function MetricsMatchup(props: MetricsMatchupProps) {
           </Match>
 
           <Match when={hasData()}>
-            <PossessionBar
-              homeName={props.homeName}
-              awayName={props.awayName}
-              homeValue={homeMetricsQuery.data!.for.perGame.possession}
-              awayValue={awayMetricsQuery.data!.for.perGame.possession}
-            />
+            <div class="space-y-3 mb-4">
+              <SimpleComparisonBar
+                label="Avg Possession"
+                homeName={props.homeName}
+                awayName={props.awayName}
+                homeValue={homeMetricsQuery.data!.for.perGame.possession}
+                awayValue={awayMetricsQuery.data!.for.perGame.possession}
+              />
+              <SimpleComparisonBar
+                label="Pass Accuracy"
+                homeName={props.homeName}
+                awayName={props.awayName}
+                homeValue={homeMetricsQuery.data!.for.perGame.passes.accuracy}
+                awayValue={awayMetricsQuery.data!.for.perGame.passes.accuracy}
+              />
+            </div>
             <Switch>
               <Match when={viewMode() === "bars"}>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <MatchupSection
                     title={`${props.homeName} Attack`}
                     subtitle={`vs ${props.awayName} Defense`}
