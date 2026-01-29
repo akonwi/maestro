@@ -106,6 +106,58 @@ function CornerAnalysisSection(props: { fixture: Fixture }) {
     enabled: !props.fixture.finished,
   }));
 
+  const homeCornerFormQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: props.fixture.home.id,
+        leagueId: props.fixture.league.id,
+        season: props.fixture.season,
+        limit: 5,
+      },
+      auth.headers,
+    ),
+    enabled: !props.fixture.finished,
+  }));
+
+  const awayCornerFormQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: props.fixture.away.id,
+        leagueId: props.fixture.league.id,
+        season: props.fixture.season,
+        limit: 5,
+      },
+      auth.headers,
+    ),
+    enabled: !props.fixture.finished,
+  }));
+
+  const homeCornerSeasonQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: props.fixture.home.id,
+        leagueId: props.fixture.league.id,
+        season: props.fixture.season,
+        venue: "home",
+      },
+      auth.headers,
+    ),
+    enabled: !props.fixture.finished,
+  }));
+
+  const awayCornerSeasonQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: props.fixture.away.id,
+        leagueId: props.fixture.league.id,
+        season: props.fixture.season,
+        venue: "away",
+      },
+      auth.headers,
+    ),
+    enabled: !props.fixture.finished,
+  }));
+
   const cornerProjections = createMemo(() => {
     const home = homeCornerMetricsQuery.data;
     const away = awayCornerMetricsQuery.data;
@@ -116,6 +168,28 @@ function CornerAnalysisSection(props: { fixture: Fixture }) {
       homeFor,
       awayFor,
       total: homeFor + awayFor,
+    };
+  });
+
+  const cornerConfidence = createMemo(() => {
+    const homeForm = homeCornerFormQuery.data;
+    const awayForm = awayCornerFormQuery.data;
+    const homeSeason = homeCornerSeasonQuery.data;
+    const awaySeason = awayCornerSeasonQuery.data;
+    if (!homeForm || !awayForm || !homeSeason || !awaySeason) return undefined;
+
+    const homeFormFor = homeForm.for.perGame.corners;
+    const awayFormFor = awayForm.for.perGame.corners;
+    const homeSeasonFor = homeSeason.for.perGame.corners;
+    const awaySeasonFor = awaySeason.for.perGame.corners;
+
+    return {
+      homeFormFor,
+      awayFormFor,
+      homeSeasonFor,
+      awaySeasonFor,
+      totalFormFor: homeFormFor + awayFormFor,
+      totalSeasonFor: homeSeasonFor + awaySeasonFor,
     };
   });
 
@@ -140,6 +214,7 @@ function CornerAnalysisSection(props: { fixture: Fixture }) {
         homeName={props.fixture.home.name}
         awayName={props.fixture.away.name}
         cornerProjections={cornerProjections()}
+        cornerConfidence={cornerConfidence()}
       />
     </>
   );

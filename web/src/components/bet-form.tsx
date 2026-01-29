@@ -1,10 +1,19 @@
 import { Toast, toaster } from "@kobalte/core/toast";
 import { A } from "@solidjs/router";
+import { useQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show, useContext } from "solid-js";
 import { createStore } from "solid-js/store";
-import { CreateBetData, useCreateBet } from "~/api/bets";
+import {
+  betOverviewQueryOptions,
+  CreateBetData,
+  useCreateBet,
+} from "~/api/bets";
 import { useAuth } from "~/contexts/auth";
-import { calculatePayout, formatOdds } from "~/lib/formatters";
+import {
+  calculatePayout,
+  formatOdds,
+  formatPercentage,
+} from "~/lib/formatters";
 import { BetFormContext } from "./bet-form.context";
 
 export interface BetFormProps {
@@ -16,6 +25,14 @@ export interface BetFormProps {
     description: string;
     odds: number;
     line?: number;
+    confidence?: {
+      tier: number;
+      score: number;
+      edge: number;
+      formDelta: number;
+      projection: number;
+      basis: "home" | "away" | "total";
+    };
   };
 }
 
@@ -29,12 +46,41 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
 
   const auth = useAuth();
   const createBet = useCreateBet();
+  const overviewQuery = useQuery(() => betOverviewQueryOptions());
 
   const payout = createMemo(() => {
     const amt = formData.amount || 0;
     const oddsVal = formData.odds || 0;
     if (oddsVal === 0 || amt === 0) return 0;
     return calculatePayout(amt, oddsVal);
+  });
+
+  const initialOdds = createMemo(() => initialData?.odds ?? 0);
+
+  const confidenceLabel = createMemo(() => {
+    const confidence = formData.confidence;
+    if (!confidence) return undefined;
+    if (confidence.tier >= 5) return "Elite";
+    if (confidence.tier === 4) return "Strong";
+    if (confidence.tier === 3) return "Moderate";
+    if (confidence.tier === 2) return "Cautious";
+    return "Thin";
+  });
+
+  const roiPreview = createMemo(() => {
+    const overview = overviewQuery.data;
+    const amount = formData.amount || 0;
+    if (!overview || amount <= 0) return undefined;
+    const totalWagered = overview.total_wagered ?? 0;
+    const netProfit = overview.net_profit ?? 0;
+    const nextTotal = totalWagered + amount;
+    if (nextTotal <= 0) return undefined;
+    const nextProfit = netProfit - amount;
+    const nextRoi = (nextProfit / nextTotal) * 100;
+    return {
+      current: overview.roi ?? 0,
+      next: nextRoi,
+    };
   });
 
   const validateBet = (betData: CreateBetData): string[] => {
@@ -91,11 +137,21 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
 
   if (auth.isReadOnly()) {
     return (
-      <div class="modal modal-open" onClick={close}>
-        <div class="modal-box" onClick={e => e.stopPropagation()}>
+      <div class="modal modal-open">
+        <div
+          class="modal-box"
+          onClick={e => e.stopPropagation()}
+          onKeyDown={e => e.stopPropagation()}
+          role="dialog"
+          tabIndex={-1}
+        >
           <div class="flex justify-between items-center mb-4">
             <h3 class="font-bold text-lg">API Token Required</h3>
-            <button class="btn btn-sm btn-circle btn-ghost" onClick={close}>
+            <button
+              type="button"
+              class="btn btn-sm btn-circle btn-ghost"
+              onClick={close}
+            >
               ✕
             </button>
           </div>
@@ -108,7 +164,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
               bets.
             </p>
             <div class="space-x-2">
-              <button class="btn btn-ghost" onClick={close}>
+              <button type="button" class="btn btn-ghost" onClick={close}>
                 Cancel
               </button>
               <A href="/settings" class="btn btn-primary">
@@ -117,19 +173,32 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
             </div>
           </div>
         </div>
+        <button
+          type="button"
+          class="modal-backdrop"
+          onClick={close}
+          aria-label="Close"
+        />
       </div>
     );
   }
 
   return (
-    <div class="modal modal-open" onClick={close}>
+    <div class="modal modal-open">
       <div
         class="modal-box w-11/12 max-w-5xl max-h-[95vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
+        role="dialog"
+        tabIndex={-1}
       >
         <div class="flex justify-between items-center mb-4">
           <h3 class="font-bold text-lg">Record New Bet</h3>
-          <button class="btn btn-sm btn-circle btn-ghost" onClick={close}>
+          <button
+            type="button"
+            class="btn btn-sm btn-circle btn-ghost"
+            onClick={close}
+          >
             ✕
           </button>
         </div>
@@ -146,18 +215,47 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
           <div class="mb-4">
             <h4 class="font-semibold text-md">Place Your Bet</h4>
             <p class="text-sm text-base-content/60">
-              {initialData?.description} at {initialData?.odds! > 0 ? "+" : ""}
-              {initialData?.odds}
+              {initialData?.description} at {initialOdds() > 0 ? "+" : ""}
+              {initialOdds()}
             </p>
+          </div>
+        </Show>
+
+        <Show when={formData.confidence}>
+          <div class="mb-4">
+            <div class="flex items-center gap-2">
+              <span
+                class={`badge ${
+                  formData.confidence!.tier >= 4
+                    ? "badge-success"
+                    : formData.confidence!.tier >= 3
+                      ? "badge-warning"
+                      : "badge-ghost"
+                }`}
+              >
+                Confidence {formData.confidence!.tier}
+              </span>
+              <span class="text-sm text-base-content/70">
+                {confidenceLabel()}
+              </span>
+            </div>
+            <div class="text-xs text-base-content/60 mt-1">
+              Edge {formData.confidence!.edge > 0 ? "+" : ""}
+              {formData.confidence!.edge.toFixed(1)} | Form vs season{" "}
+              {formData.confidence!.formDelta > 0 ? "+" : ""}
+              {formData.confidence!.formDelta.toFixed(1)} | Projection{" "}
+              {formData.confidence!.projection.toFixed(1)}
+            </div>
           </div>
         </Show>
 
         <form onSubmit={handleSubmit}>
           <div class="form-control w-full mb-4">
-            <label class="label">
+            <label class="label" for="bet-description">
               <span class="label-text">Description</span>
             </label>
             <input
+              id="bet-description"
               type="text"
               name="description"
               placeholder="e.g., Chelsea to win, Over 2.5 goals"
@@ -170,10 +268,11 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="form-control">
-              <label class="label">
+              <label class="label" for="bet-line">
                 <span class="label-text">Line</span>
               </label>
               <input
+                id="bet-line"
                 name="line"
                 type="number"
                 step="0.5"
@@ -187,10 +286,11 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
             </div>
 
             <div class="form-control">
-              <label class="label">
+              <label class="label" for="bet-odds">
                 <span class="label-text">Odds</span>
               </label>
               <input
+                id="bet-odds"
                 name="odds"
                 type="number"
                 step="1"
@@ -205,7 +305,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
             </div>
 
             <div class="form-control">
-              <label class="label">
+              <label class="label" for="bet-amount">
                 <span class="label-text">Amount ($)</span>
                 <Show
                   when={
@@ -219,6 +319,7 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
               </label>
 
               <input
+                id="bet-amount"
                 name="amount"
                 type="number"
                 step="0.01"
@@ -233,6 +334,15 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
               />
             </div>
           </div>
+
+          <Show when={roiPreview()}>
+            <div class="alert mb-4">
+              <span class="text-sm">
+                If this bet loses, ROI to {formatPercentage(roiPreview()!.next)}
+                (current {formatPercentage(roiPreview()!.current)})
+              </span>
+            </div>
+          </Show>
 
           <div class="modal-action">
             <button
@@ -253,6 +363,12 @@ export function BetForm({ matchId, initialData, ...callbacks }: BetFormProps) {
           </div>
         </form>
       </div>
+      <button
+        type="button"
+        class="modal-backdrop"
+        onClick={close}
+        aria-label="Close"
+      />
     </div>
   );
 }

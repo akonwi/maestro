@@ -19,11 +19,19 @@ import { BetFormContext } from "../bet-form.context";
 // Corner market IDs
 const CORNER_MARKET_IDS = new Set([45, 55, 56, 57, 58, 77, 85]);
 
-
 export interface CornerProjections {
   homeFor: number;
   awayFor: number;
   total: number;
+}
+
+export interface CornerConfidenceInputs {
+  homeFormFor: number;
+  awayFormFor: number;
+  homeSeasonFor: number;
+  awaySeasonFor: number;
+  totalFormFor: number;
+  totalSeasonFor: number;
 }
 
 interface OddsCardProps {
@@ -31,6 +39,16 @@ interface OddsCardProps {
   homeName: string;
   awayName: string;
   cornerProjections?: CornerProjections;
+  cornerConfidence?: CornerConfidenceInputs;
+}
+
+interface ConfidenceData {
+  tier: number;
+  score: number;
+  edge: number;
+  formDelta: number;
+  projection: number;
+  basis: "home" | "away" | "total";
 }
 
 function calculateEdge(
@@ -82,6 +100,81 @@ interface OddsLineWithEdge {
   type: LineType;
   value: number | null;
   edge: number | undefined;
+  confidence?: ConfidenceData;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getConfidenceBasis(marketName: string): ConfidenceData["basis"] {
+  const name = marketName.toLowerCase();
+  if (name.includes("home")) return "home";
+  if (name.includes("away")) return "away";
+  return "total";
+}
+
+function getConfidenceInputs(
+  basis: ConfidenceData["basis"],
+  confidence: CornerConfidenceInputs | undefined,
+) {
+  if (!confidence) return undefined;
+  switch (basis) {
+    case "home":
+      return {
+        formFor: confidence.homeFormFor,
+        seasonFor: confidence.homeSeasonFor,
+      };
+    case "away":
+      return {
+        formFor: confidence.awayFormFor,
+        seasonFor: confidence.awaySeasonFor,
+      };
+    default:
+      return {
+        formFor: confidence.totalFormFor,
+        seasonFor: confidence.totalSeasonFor,
+      };
+  }
+}
+
+function mapConfidenceTier(score: number) {
+  if (score >= 0.35) return 5;
+  if (score >= 0.2) return 4;
+  if (score >= 0.05) return 3;
+  if (score >= -0.1) return 2;
+  return 1;
+}
+
+function calculateConfidence(
+  edge: number | undefined,
+  projection: number | undefined,
+  formFor: number | undefined,
+  seasonFor: number | undefined,
+  basis: ConfidenceData["basis"],
+): ConfidenceData | undefined {
+  if (
+    edge == null ||
+    projection == null ||
+    formFor == null ||
+    seasonFor == null
+  )
+    return undefined;
+
+  const edgeScore = clamp(edge / 2, -1, 1);
+  const formDelta = formFor - seasonFor;
+  const formDeltaScore = clamp(formDelta / Math.max(1, seasonFor), -0.5, 0.5);
+  const strengthScore = clamp(Math.abs(projection) / 10, 0, 1);
+  const score = 0.5 * edgeScore + 0.3 * formDeltaScore + 0.2 * strengthScore;
+
+  return {
+    tier: mapConfidenceTier(score),
+    score,
+    edge,
+    formDelta,
+    projection,
+    basis,
+  };
 }
 
 function OddsMarket(props: {
@@ -91,6 +184,7 @@ function OddsMarket(props: {
   awayName: string;
   projection: number | undefined;
   is3Way: boolean;
+  confidence?: CornerConfidenceInputs;
 }) {
   const [_, { show }] = useContext(BetFormContext);
 
@@ -98,6 +192,7 @@ function OddsMarket(props: {
     lineName: string,
     odd: number,
     value: number | null,
+    confidence: ConfidenceData | undefined,
   ) => {
     // Build description: "Home Corners Over 5.5" or "Total Corners Over 9.5"
     const description = `${props.market.name} ${lineName}`;
@@ -107,6 +202,7 @@ function OddsMarket(props: {
       description,
       odds: odd,
       line: value !== null ? Math.abs(value) : undefined,
+      confidence,
     });
   };
 
@@ -116,7 +212,16 @@ function OddsMarket(props: {
         line.value !== null && props.projection !== undefined
           ? calculateEdge(line.type, line.value, props.projection)
           : undefined;
-      return { ...line, edge };
+      const basis = getConfidenceBasis(props.market.name);
+      const confidenceInputs = getConfidenceInputs(basis, props.confidence);
+      const confidence = calculateConfidence(
+        edge,
+        props.projection,
+        confidenceInputs?.formFor,
+        confidenceInputs?.seasonFor,
+        basis,
+      );
+      return { ...line, edge, confidence };
     });
 
     // Filter out:
@@ -187,7 +292,14 @@ function OddsMarket(props: {
             <button
               type="button"
               class="btn btn-sm btn-outline"
-              onClick={() => handleLineClick(line.name, line.odd, line.value)}
+              onClick={() =>
+                handleLineClick(
+                  line.name,
+                  line.odd,
+                  line.value,
+                  line.confidence,
+                )
+              }
             >
               <span class="text-xs">{line.name}</span>
               <span class="font-mono font-semibold">
@@ -199,6 +311,19 @@ function OddsMarket(props: {
                 >
                   {line.edge! > 0 ? "+" : ""}
                   {line.edge!.toFixed(1)}
+                </span>
+              </Show>
+              <Show when={line.confidence}>
+                <span
+                  class={`badge badge-xs ${
+                    line.confidence!.tier >= 4
+                      ? "badge-success"
+                      : line.confidence!.tier >= 3
+                        ? "badge-warning"
+                        : "badge-ghost"
+                  }`}
+                >
+                  C{line.confidence!.tier}
                 </span>
               </Show>
             </button>
@@ -280,6 +405,7 @@ export function OddsCard(props: OddsCardProps) {
                   props.cornerProjections,
                 )}
                 is3Way={market.name.toLowerCase().includes("3-way")}
+                confidence={props.cornerConfidence}
               />
             )}
           </For>
