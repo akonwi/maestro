@@ -36,6 +36,21 @@ struct Bet {
   type_id: Int
 }
 
+impl Bet {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "id": Dynamic::from(@id),
+      "match_id": Dynamic::from(@match_id),
+      "name": Dynamic::from(@name),
+      "amount": Dynamic::from(@amount),
+      "line": Dynamic::from(@line),
+      "odds": Dynamic::from(@odds),
+      "result": Dynamic::from(@result),
+      "type_id": Dynamic::from(@type_id)
+    ])
+  }
+}
+
 let decode_id = decode::field("id", decode::int)
 let decode_match_id = decode::field("match_id", decode::int)
 let decode_type_id = decode::field("type_id", decode::int)
@@ -87,6 +102,21 @@ struct ResultPage{
   bets: [Bet],
   cursor: Int?,
   has_next: Bool,
+}
+
+impl ResultPage {
+  fn to_dyn() Dynamic {
+    let cursor = match @cursor {
+      c => Dynamic::from(c),
+      _ => Dynamic::from(()),
+    }
+
+    Dynamic::object([
+      "bets": Dynamic::list(@bets, fn(b) { b.to_dyn() }),
+      "cursor": cursor,
+      "has_next": Dynamic::from(@has_next),
+    ])
+  }
 }
 
 let PAGE_SIZE = 10
@@ -144,6 +174,21 @@ struct Overview {
   net_profit: Float,
   gross_loss: Float,
   roi: Float,
+}
+
+impl Overview {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "bets": Dynamic::list(@bets, fn(b) { b.to_dyn() }),
+      "num_pending": Dynamic::from(@num_pending),
+      "total_wagered": Dynamic::from(@total_wagered),
+      "win_rate": Dynamic::from(@win_rate),
+      "gross_payout": Dynamic::from(@gross_payout),
+      "net_profit": Dynamic::from(@net_profit),
+      "gross_loss": Dynamic::from(@gross_loss),
+      "roi": Dynamic::from(@roi),
+    ])
+  }
 }
 
 fn get_overview(db: sql::Database) Overview!Str {
