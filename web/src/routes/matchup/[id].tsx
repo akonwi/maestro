@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: Switch and Match ensure where something can be asserted */
 import { A, useParams } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
 import {
@@ -178,9 +177,7 @@ function Page() {
               {fixture()?.league.name} • {formattedDateTime().date} •{" "}
               {formattedDateTime().time}
             </div>
-            <LeagueMenu league={fixture()!.league} trigger="dropdown">
-              {null}
-            </LeagueMenu>
+            <LeagueMenu league={fixture()!.league} trigger="dropdown" />
           </div>
 
           {/* Teams Header Card */}

@@ -14,7 +14,7 @@ type LeagueState = "followed" | "hidden" | "none";
 
 interface LeagueMenuProps<T extends ValidComponent = "div"> {
   league: { id: number; name: string };
-  children: JSX.Element;
+  children?: JSX.Element;
   trigger: "context" | "dropdown";
   as?: T;
   class?: string;
@@ -30,7 +30,7 @@ export function LeagueMenu<T extends ValidComponent = "div">(
 
   const leagueState = (): LeagueState => {
     const leagues = leaguesQuery.data ?? [];
-    const league = leagues.find(l => l.id === props.league.id);
+    const league = leagues.find((l) => l.id === props.league.id);
     if (!league) return "none";
     return league.hidden ? "hidden" : "followed";
   };
@@ -128,7 +128,7 @@ export function LeagueMenu<T extends ValidComponent = "div">(
     >
       <ContextMenu>
         <ContextMenu.Trigger as={props.as ?? "div"} class={props.class}>
-          {props.children}
+          {props.children ?? null}
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
           <Show when={!auth.isReadOnly()}>
