@@ -89,7 +89,7 @@ fn main() {
   let port = config::port()
   io::print("starting on port {port}")
 
-  http::serve2(port, [
+  http::serve(port, [
     "/health": fn(req: http::Request, mut res: http::Response) {
       send_json(res, Dynamic::object(["status": Dynamic::from("ok")]))
     },
