@@ -262,6 +262,21 @@ fn main() {
       }
     },
 
+    // return stats from the game
+    "/fixtures/:id/stats": fn(req: http::Request, mut res: http::Response) {
+      match req.method {
+        http::Method::Get => {
+          let id = try Int::from_str(req.path_param("id")) -> _ {
+            bad_inputs(res, ["id": Dynamic::from("Invalid ID")])
+          }
+          let fixture_stats = try fixtures::get_stats(conn, id) -> err { unexpected_error(res, err) }
+
+          send_json(res, fixture_stats.to_dyn())
+        },
+        _ => not_found(res)
+      }
+    },
+
     "/fixtures/:id/odds": fn(req: http::Request, mut res: http::Response) {
       match req.method {
         http::Method::Get => {

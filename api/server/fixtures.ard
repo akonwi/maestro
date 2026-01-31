@@ -185,6 +185,30 @@ struct TeamStats {
   red_cards: Int,
 }
 
+impl TeamStats {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "id": Dynamic::from(@id),
+      "shots": Dynamic::from(@shots),
+      "shots_on_goal": Dynamic::from(@shots_on_goal),
+      "shots_off_goal": Dynamic::from(@shots_off_goal),
+      "shots_blocked": Dynamic::from(@shots_blocked),
+      "shots_in_box": Dynamic::from(@shots_in_box),
+      "shots_out_box": Dynamic::from(@shots_out_box),
+      "corners": Dynamic::from(@corners),
+      "offsides": Dynamic::from(@offsides),
+      "possession": Dynamic::from(@possession),
+      "passes": Dynamic::from(@passes),
+      "passes_completed": Dynamic::from(@passes_completed),
+      "xg": Dynamic::from(@xg),
+      "goals_prevented": Dynamic::from(@goals_prevented),
+      "fouls": Dynamic::from(@fouls),
+      "yellow_cards": Dynamic::from(@yellow_cards),
+      "red_cards": Dynamic::from(@red_cards),
+    ])
+  }
+}
+
 // private
 let empty_stats = TeamStats{
   id: 0,
@@ -217,6 +241,17 @@ struct FixtureStats {
   home: TeamStats,
   away: TeamStats,
   teams: [teams::Team]
+}
+
+impl FixtureStats {
+  fn to_dyn() Dynamic {
+    Dynamic::object([
+      "fixture": @fixture.to_dynamic(),
+      "home": @home.to_dyn(),
+      "away": @away.to_dyn(),
+      "teams": Dynamic::list(@teams, fn(t) { t.to_dyn() }),
+    ])
+  }
 }
 
 fn decode_team_stats(entry: Dynamic) TeamStats![decode::Error] {
@@ -747,13 +782,20 @@ fn find_played(db: sql::Database, team_id: Int, league_id: Int, season: Int, cou
   Result::ok(fixtures)
 }
 
-// try db first and fallback to external API
 fn get(db: sql::Database, id: Int) Fixture!Str {
   let data = try fapi::get_fixture(db, id)
   let fixture = try Fixture::from_api_entry(data) -> errs {
     Result::err(decode::flatten(errs))
   }
   Result::ok(fixture)
+}
+
+fn get_stats(db: sql::Database, id: Int) FixtureStats!Str {
+  let data = try fapi::get_fixture(db, id)
+  let stats = try decode_stats(data) -> errs {
+    Result::err(decode::flatten(errs))
+  }
+  Result::ok(stats)
 }
 
 fn get_league_fixtures(db: sql::Database, league_id: Int, date: Str) [Fixture]!Str {
