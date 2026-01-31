@@ -30,6 +30,7 @@ struct Fixture {
   season: Int,
   timestamp: Int,
   finished: Bool,
+  status: Str,
   home: teams::Team,
   away: teams::Team,
   home_goals: Int,
@@ -57,6 +58,7 @@ impl Fixture {
       "season": Dynamic::from(@season),
       "timestamp": Dynamic::from(@timestamp),
       "finished": Dynamic::from(@finished),
+      "status": Dynamic::from(@status),
       "home": @home.to_dyn(),
       "away": @away.to_dyn(),
       "home_goals": Dynamic::from(@home_goals),
@@ -102,6 +104,7 @@ fn from_row(row: Dynamic) Fixture![decode::Error] {
     season: season,
     timestamp: timestamp,
     finished: finished,
+    status: "",
     home: home,
     away: away,
     home_goals: home_goals,
@@ -314,6 +317,7 @@ fn decode_stats(entry: Dynamic) FixtureStats![decode::Error] {
   let league_name = try decode::run(entry, decode::path(["league", "name"], decode::string))
   let season = try decode::run(entry, decode::path(["league", "season"], decode::int))
   let is_finished = try decode::run(entry, decode::path(["fixture", "status", "short"], decode_is_finished))
+  let status = try decode::run(entry, decode::path(["fixture", "status", "short"], decode::string))
   let home = try decode::run(entry, decode::path(["teams", "home"], decode_team))
   let away = try decode::run(entry, decode::path(["teams", "away"], decode_team))
   let home_goals = try decode::run(entry, decode::path(["goals", "home"], decode::nullable(decode::int)))
@@ -325,6 +329,7 @@ fn decode_stats(entry: Dynamic) FixtureStats![decode::Error] {
     season: season,
     timestamp: timestamp * 1000, // API-football returns the seconds, so normalize to milliseconds
     finished: is_finished,
+    status: status,
     home: home,
     away: away,
     home_goals: home_goals.or(0),
@@ -700,6 +705,7 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
   let id = try decode::run(data, decode::path(["fixture", "id"], decode::int))
   let timestamp = try decode::run(data, decode::path(["fixture", "timestamp"], decode::int))
   let finished = try decode::run(data, decode::path(["fixture", "status", "short"], decode_is_finished))
+  let status = try decode::run(data, decode::path(["fixture", "status", "short"], decode::string))
   let league = try decode::run(data, decode::field("league", decode_league))
   let home = try decode::run(data, decode::path(["teams", "home"], decode_team))
   let away = try decode::run(data, decode::path(["teams", "away"], decode_team))
@@ -712,6 +718,7 @@ fn Fixture::from_api_entry(data: Dynamic) Fixture![decode::Error] {
     timestamp: timestamp * 1000, // API-football returns the seconds, so normalize to milliseconds
     league: League{id: league.id, name: league.name},
     finished: finished,
+    status: status,
     home: home,
     away: away,
     home_goals: home_goals.or(0),

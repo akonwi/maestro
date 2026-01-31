@@ -10,6 +10,7 @@ export type Fixture = {
   id: number;
   timestamp: number;
   finished: boolean;
+  status: string;
   winner_id: number | null;
   season: number;
   league: Omit<League, "hidden">;

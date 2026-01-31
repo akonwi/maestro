@@ -1,7 +1,7 @@
 import { A, useSearchParams } from "@solidjs/router";
 import { clientOnly } from "@solidjs/start";
 import { useQuery } from "@tanstack/solid-query";
-import { createMemo, For, Match, Switch } from "solid-js";
+import { createMemo, For, Match, Show, Switch } from "solid-js";
 import { fixturesTodayQueryOptions } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
 import { formatFixtureTime } from "~/lib/formatters";
@@ -41,6 +41,14 @@ function Page() {
   };
 
   const matchupUrl = (fixtureId: number) => `/matchup/${fixtureId}`;
+
+  const fixtureStatusLabel = (fixture: {
+    status: string;
+    timestamp: number;
+  }) =>
+    fixture.status === "NS"
+      ? formatFixtureTime(fixture.timestamp)
+      : fixture.status;
 
   const leagues = () => fixturesQuery.data ?? [];
 
@@ -174,19 +182,12 @@ function Page() {
                                   </span>
                                 </div>
                                 <div class="shrink-0 px-2">
-                                  <Switch>
-                                    <Match when={fixture.finished}>
-                                      <span class="text-sm font-medium">
-                                        {fixture.home_goals} -{" "}
-                                        {fixture.away_goals}
-                                      </span>
-                                    </Match>
-                                    <Match when>
-                                      <span class="text-base-content/50 text-xs">
-                                        vs
-                                      </span>
-                                    </Match>
-                                  </Switch>
+                                  <span class="text-base-content/50 text-xs">
+                                    {fixtureStatusLabel(fixture)}
+                                    <Show when={fixture.finished}>
+                                      {` • ${fixture.home_goals}-${fixture.away_goals}`}
+                                    </Show>
+                                  </span>
                                 </div>
                                 <div class="flex items-center gap-2 min-w-0 flex-1 justify-end">
                                   <span class="text-sm truncate">
@@ -198,11 +199,6 @@ function Page() {
                                     class="w-5 h-5 shrink-0"
                                   />
                                 </div>
-                              </div>
-                              <div class="text-xs text-base-content/50 mt-1 text-center">
-                                {fixture.finished
-                                  ? "FT"
-                                  : formatFixtureTime(fixture.timestamp)}
                               </div>
                             </div>
 
@@ -230,17 +226,10 @@ function Page() {
                                 />
                               </div>
                               <div class="text-sm text-base-content/60 shrink-0 ml-2">
-                                <Switch>
-                                  <Match when={fixture.finished}>
-                                    <span class="font-medium">
-                                      {fixture.home_goals} -{" "}
-                                      {fixture.away_goals}
-                                    </span>
-                                  </Match>
-                                  <Match when>
-                                    {formatFixtureTime(fixture.timestamp)}
-                                  </Match>
-                                </Switch>
+                                {fixtureStatusLabel(fixture)}
+                                <Show when={fixture.finished}>
+                                  {` • ${fixture.home_goals}-${fixture.away_goals}`}
+                                </Show>
                               </div>
                             </div>
                           </A>

@@ -24,10 +24,30 @@ import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
 import { StatsTable } from "~/components/matchup/stats-table";
 import { useAuth } from "~/contexts/auth";
+import { formatFixtureTime } from "~/lib/formatters";
 
 function logoUrl(id: number) {
   return `https://media.api-sports.io/football/teams/${id}.png`;
 }
+
+const LIVE_STATUSES = new Set([
+  "1H",
+  "HT",
+  "2H",
+  "ET",
+  "P",
+  "BT",
+  "INT",
+  "LIVE",
+]);
+
+const fixtureStatusLabel = (fixture: { status: string; timestamp: number }) =>
+  fixture.status === "NS"
+    ? formatFixtureTime(fixture.timestamp)
+    : fixture.status;
+
+const shouldShowScore = (fixture: { finished: boolean; status: string }) =>
+  fixture.finished || LIVE_STATUSES.has(fixture.status);
 
 function MatchupSkeleton() {
   return (
@@ -425,16 +445,18 @@ export default function MatchupPage() {
                 {/* Score / VS */}
                 <div class="text-center shrink-0">
                   <Show
-                    when={fixture().finished}
+                    when={shouldShowScore(fixture())}
                     fallback={
-                      <div class="text-lg md:text-2xl font-bold">VS</div>
+                      <div class="text-lg md:text-2xl font-bold">
+                        {fixtureStatusLabel(fixture())}
+                      </div>
                     }
                   >
                     <div class="text-xl md:text-3xl font-bold">
                       {fixture().home_goals} - {fixture().away_goals}
                     </div>
                     <div class="badge badge-neutral badge-sm md:badge-md mt-1 md:mt-2">
-                      Full Time
+                      {fixtureStatusLabel(fixture())}
                     </div>
                   </Show>
                 </div>
