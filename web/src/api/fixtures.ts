@@ -105,6 +105,33 @@ export type OddsStat = {
   values: OddsLine[];
 };
 
+export type FixtureTeamStats = {
+  id: number;
+  shots: number;
+  shots_on_goal: number;
+  shots_off_goal: number;
+  shots_blocked: number;
+  shots_in_box: number;
+  shots_out_box: number;
+  corners: number;
+  offsides: number;
+  possession: number;
+  passes: number;
+  passes_completed: number;
+  xg: number;
+  goals_prevented: number;
+  fouls: number;
+  yellow_cards: number;
+  red_cards: number;
+};
+
+export type FixtureStats = {
+  fixture: Fixture;
+  home: FixtureTeamStats;
+  away: FixtureTeamStats;
+  teams: Team[];
+};
+
 export const fixtureOddsQueryOptions = (fixtureId: number) => ({
   queryKey: ["fixtures", fixtureId, "odds"] as const,
   queryFn: async (): Promise<OddsStat[]> => {
@@ -114,6 +141,21 @@ export const fixtureOddsQueryOptions = (fixtureId: number) => ({
 
     if (!response.ok) {
       throw new Error(`Failed to fetch odds: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});
+
+export const fixtureStatsQueryOptions = (fixtureId: number) => ({
+  queryKey: ["fixtures", fixtureId, "stats"] as const,
+  queryFn: async (): Promise<FixtureStats> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/fixtures/${fixtureId}/stats`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch fixture stats: ${response.status}`);
     }
 
     return response.json();

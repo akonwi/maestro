@@ -1,6 +1,7 @@
 import { A, useParams } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
 import {
+  createEffect,
   createMemo,
   createSignal,
   Match,
@@ -16,8 +17,10 @@ import {
   Fixture,
   fixtureOddsQueryOptions,
   fixtureQueryOptions,
+  fixtureStatsQueryOptions,
 } from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
+import { ComparisonBar } from "~/components/matchup/comparison-bar";
 import { CornerPickCard } from "~/components/matchup/corner-pick";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
 import { RecentForm } from "~/components/matchup/recent-form";
@@ -94,6 +97,117 @@ function SectionSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+function MatchStatsSection(props: { fixture: Fixture }) {
+  const statsQuery = useQuery(() => fixtureStatsQueryOptions(props.fixture.id));
+
+  const stats = createMemo(() => {
+    const home = statsQuery.data?.home;
+    const away = statsQuery.data?.away;
+    if (!home || !away) return null;
+    return {
+      home,
+      away,
+      homePossession: home.possession * 100,
+      awayPossession: away.possession * 100,
+    };
+  });
+
+  return (
+    <Switch>
+      <Match when={statsQuery.isError}>
+        <div class="alert alert-error">
+          <span>Failed to load match stats.</span>
+        </div>
+      </Match>
+      <Match when={statsQuery.isPending}>
+        <SectionSkeleton />
+      </Match>
+      <Match when={stats()}>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <h3 class="text-lg font-semibold mb-4">Match Stats</h3>
+            <div class="space-y-4">
+              <ComparisonBar
+                label="Shots"
+                homeValue={stats()!.home.shots}
+                awayValue={stats()!.away.shots}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toString()}
+              />
+              <ComparisonBar
+                label="Shots on Target"
+                homeValue={stats()!.home.shots_on_goal}
+                awayValue={stats()!.away.shots_on_goal}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toString()}
+              />
+              <ComparisonBar
+                label="Corners"
+                homeValue={stats()!.home.corners}
+                awayValue={stats()!.away.corners}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toString()}
+              />
+              <ComparisonBar
+                label="Possession"
+                homeValue={stats()!.homePossession}
+                awayValue={stats()!.awayPossession}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => `${Math.round(v)}%`}
+              />
+              <ComparisonBar
+                label="Fouls"
+                homeValue={stats()!.home.fouls}
+                awayValue={stats()!.away.fouls}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toString()}
+              />
+              <ComparisonBar
+                label="Yellow Cards"
+                homeValue={stats()!.home.yellow_cards}
+                awayValue={stats()!.away.yellow_cards}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toString()}
+              />
+              <ComparisonBar
+                label="Red Cards"
+                homeValue={stats()!.home.red_cards}
+                awayValue={stats()!.away.red_cards}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toString()}
+              />
+              <ComparisonBar
+                label="xG"
+                homeValue={stats()!.home.xg}
+                awayValue={stats()!.away.xg}
+                homeName={props.fixture.home.name}
+                awayName={props.fixture.away.name}
+                formatValue={v => v.toFixed(2)}
+              />
+            </div>
+          </div>
+        </div>
+      </Match>
+      <Match when>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <div class="text-sm text-base-content/60">
+              Match stats are not available yet.
+            </div>
+          </div>
+        </div>
+      </Match>
+    </Switch>
   );
 }
 
@@ -378,6 +492,22 @@ function MetricsSection(props: { fixture: Fixture }) {
   );
 }
 
+function PreMatchSection(props: { fixture: Fixture }) {
+  return (
+    <>
+      <Suspense fallback={<SectionSkeleton />}>
+        <MetricsSection fixture={props.fixture} />
+      </Suspense>
+
+      <Show when={!props.fixture.finished}>
+        <Suspense fallback={<SectionSkeleton />}>
+          <CornerPickSection fixture={props.fixture} />
+        </Suspense>
+      </Show>
+    </>
+  );
+}
+
 export default function MatchupPage() {
   const params = useParams();
   const matchId = () => Number(params.id);
@@ -395,6 +525,20 @@ export default function MatchupPage() {
         minute: "2-digit",
       }),
     };
+  });
+
+  const isLive = createMemo(() =>
+    fixtureQuery.data ? shouldShowScore(fixtureQuery.data) : false,
+  );
+  const [activeTab, setActiveTab] = createSignal<"stats" | "prematch">(
+    "prematch",
+  );
+  const [userSetTab, setUserSetTab] = createSignal(false);
+
+  createEffect(() => {
+    if (isLive() && !userSetTab()) {
+      setActiveTab("stats");
+    }
   });
 
   return (
@@ -482,14 +626,41 @@ export default function MatchupPage() {
             </div>
           </div>
 
-          <Suspense fallback={<SectionSkeleton />}>
-            <MetricsSection fixture={fixtureQuery.data!} />
-          </Suspense>
+          <Show
+            when={isLive()}
+            fallback={<PreMatchSection fixture={fixture()} />}
+          >
+            <div class="tabs tabs-boxed w-fit">
+              <button
+                type="button"
+                class="tab"
+                classList={{ "tab-active": activeTab() === "stats" }}
+                onClick={() => {
+                  setActiveTab("stats");
+                  setUserSetTab(true);
+                }}
+              >
+                Match Stats
+              </button>
+              <button
+                type="button"
+                class="tab"
+                classList={{ "tab-active": activeTab() === "prematch" }}
+                onClick={() => {
+                  setActiveTab("prematch");
+                  setUserSetTab(true);
+                }}
+              >
+                Pre-match
+              </button>
+            </div>
 
-          <Show when={!fixture().finished}>
-            <Suspense fallback={<SectionSkeleton />}>
-              <CornerPickSection fixture={fixtureQuery.data!} />
-            </Suspense>
+            <Show when={activeTab() === "stats"}>
+              <MatchStatsSection fixture={fixture()} />
+            </Show>
+            <Show when={activeTab() === "prematch"}>
+              <PreMatchSection fixture={fixture()} />
+            </Show>
           </Show>
         </div>
       </Match>
