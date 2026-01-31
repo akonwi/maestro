@@ -575,7 +575,7 @@ function MatchBetsSection(props: { fixtureId: number }) {
               </Show>
             </div>
             <div class="overflow-x-auto">
-              <table class="table table-zebra w-full">
+              <table class="table table-zebra w-full select-none">
                 <thead>
                   <tr>
                     <th>Bet</th>
