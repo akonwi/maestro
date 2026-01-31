@@ -52,6 +52,24 @@ export const betsQueryOptions = (params: BetsQueryParams) => ({
   },
 });
 
+export const matchBetsQueryOptions = (matchId: number) => ({
+  queryKey: ["bets", { matchId }] as const,
+  queryFn: async (): Promise<Bet[]> => {
+    const response = await fetch(`${baseUrl}/bets?match_id=${matchId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch match bets: ${response.status}`);
+    }
+
+    return response.json();
+  },
+});
+
 export type BetOverview = {
   bets: Bet[];
   num_pending: number;

@@ -1,9 +1,11 @@
+import { ContextMenu } from "@kobalte/core/context-menu";
 import { A, useParams } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
 import {
   createEffect,
   createMemo,
   createSignal,
+  For,
   Match,
   Show,
   Suspense,
@@ -13,6 +15,7 @@ import {
   matchupStatsQueryOptions,
   teamMetricsQueryOptions,
 } from "~/api/analysis";
+import { Bet, matchBetsQueryOptions, useUpdateBet } from "~/api/bets";
 import {
   Fixture,
   fixtureOddsQueryOptions,
@@ -27,7 +30,11 @@ import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
 import { StatsTable } from "~/components/matchup/stats-table";
 import { useAuth } from "~/contexts/auth";
-import { formatFixtureTime } from "~/lib/formatters";
+import {
+  calculateProfit,
+  formatCurrency,
+  formatFixtureTime,
+} from "~/lib/formatters";
 
 function logoUrl(id: number) {
   return `https://media.api-sports.io/football/teams/${id}.png`;
@@ -116,98 +123,101 @@ function MatchStatsSection(props: { fixture: Fixture }) {
   });
 
   return (
-    <Switch>
-      <Match when={statsQuery.isError}>
-        <div class="alert alert-error">
-          <span>Failed to load match stats.</span>
-        </div>
-      </Match>
-      <Match when={statsQuery.isPending}>
-        <SectionSkeleton />
-      </Match>
-      <Match when={stats()}>
-        <div class="card bg-base-100 border border-base-300">
-          <div class="card-body">
-            <h3 class="text-lg font-semibold mb-4">Match Stats</h3>
-            <div class="space-y-4">
-              <ComparisonBar
-                label="Shots"
-                homeValue={stats()!.home.shots}
-                awayValue={stats()!.away.shots}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toString()}
-              />
-              <ComparisonBar
-                label="Shots on Target"
-                homeValue={stats()!.home.shots_on_goal}
-                awayValue={stats()!.away.shots_on_goal}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toString()}
-              />
-              <ComparisonBar
-                label="Corners"
-                homeValue={stats()!.home.corners}
-                awayValue={stats()!.away.corners}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toString()}
-              />
-              <ComparisonBar
-                label="Possession"
-                homeValue={stats()!.homePossession}
-                awayValue={stats()!.awayPossession}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => `${Math.round(v)}%`}
-              />
-              <ComparisonBar
-                label="Fouls"
-                homeValue={stats()!.home.fouls}
-                awayValue={stats()!.away.fouls}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toString()}
-              />
-              <ComparisonBar
-                label="Yellow Cards"
-                homeValue={stats()!.home.yellow_cards}
-                awayValue={stats()!.away.yellow_cards}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toString()}
-              />
-              <ComparisonBar
-                label="Red Cards"
-                homeValue={stats()!.home.red_cards}
-                awayValue={stats()!.away.red_cards}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toString()}
-              />
-              <ComparisonBar
-                label="xG"
-                homeValue={stats()!.home.xg}
-                awayValue={stats()!.away.xg}
-                homeName={props.fixture.home.name}
-                awayName={props.fixture.away.name}
-                formatValue={v => v.toFixed(2)}
-              />
+    <div class="space-y-4">
+      <MatchBetsSection fixtureId={props.fixture.id} />
+      <Switch>
+        <Match when={statsQuery.isError}>
+          <div class="alert alert-error">
+            <span>Failed to load match stats.</span>
+          </div>
+        </Match>
+        <Match when={statsQuery.isPending}>
+          <SectionSkeleton />
+        </Match>
+        <Match when={stats()}>
+          <div class="card bg-base-100 border border-base-300">
+            <div class="card-body">
+              <h3 class="text-lg font-semibold mb-4">Match Stats</h3>
+              <div class="space-y-4">
+                <ComparisonBar
+                  label="Shots"
+                  homeValue={stats()!.home.shots}
+                  awayValue={stats()!.away.shots}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toString()}
+                />
+                <ComparisonBar
+                  label="Shots on Target"
+                  homeValue={stats()!.home.shots_on_goal}
+                  awayValue={stats()!.away.shots_on_goal}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toString()}
+                />
+                <ComparisonBar
+                  label="Corners"
+                  homeValue={stats()!.home.corners}
+                  awayValue={stats()!.away.corners}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toString()}
+                />
+                <ComparisonBar
+                  label="Possession"
+                  homeValue={stats()!.homePossession}
+                  awayValue={stats()!.awayPossession}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => `${Math.round(v)}%`}
+                />
+                <ComparisonBar
+                  label="Fouls"
+                  homeValue={stats()!.home.fouls}
+                  awayValue={stats()!.away.fouls}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toString()}
+                />
+                <ComparisonBar
+                  label="Yellow Cards"
+                  homeValue={stats()!.home.yellow_cards}
+                  awayValue={stats()!.away.yellow_cards}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toString()}
+                />
+                <ComparisonBar
+                  label="Red Cards"
+                  homeValue={stats()!.home.red_cards}
+                  awayValue={stats()!.away.red_cards}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toString()}
+                />
+                <ComparisonBar
+                  label="xG"
+                  homeValue={stats()!.home.xg}
+                  awayValue={stats()!.away.xg}
+                  homeName={props.fixture.home.name}
+                  awayName={props.fixture.away.name}
+                  formatValue={v => v.toFixed(2)}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </Match>
-      <Match when>
-        <div class="card bg-base-100 border border-base-300">
-          <div class="card-body">
-            <div class="text-sm text-base-content/60">
-              Match stats are not available yet.
+        </Match>
+        <Match when>
+          <div class="card bg-base-100 border border-base-300">
+            <div class="card-body">
+              <div class="text-sm text-base-content/60">
+                Match stats are not available yet.
+              </div>
             </div>
           </div>
-        </div>
-      </Match>
-    </Switch>
+        </Match>
+      </Switch>
+    </div>
   );
 }
 
@@ -489,6 +499,183 @@ function MetricsSection(props: { fixture: Fixture }) {
         />
       </Suspense>
     </>
+  );
+}
+
+function MatchBetsSection(props: { fixtureId: number }) {
+  const betsQuery = useQuery(() => matchBetsQueryOptions(props.fixtureId));
+  const updateBet = useUpdateBet();
+  const auth = useAuth();
+
+  const bets = createMemo(() => betsQuery.data ?? []);
+
+  const resultBadge = (result: Bet["result"]) => {
+    switch (result) {
+      case "win":
+        return <span class="badge badge-success">Win</span>;
+      case "lose":
+        return <span class="badge badge-error">Loss</span>;
+      case "push":
+        return <span class="badge badge-warning">Push</span>;
+      default:
+        return <span class="badge badge-warning">Pending</span>;
+    }
+  };
+
+  const pnlValue = (bet: Bet) => {
+    if (bet.result === "win") {
+      return (
+        <span class="text-success">
+          +{formatCurrency(calculateProfit(bet.amount, bet.odds))}
+        </span>
+      );
+    }
+    if (bet.result === "lose") {
+      return <span class="text-error">-{formatCurrency(bet.amount)}</span>;
+    }
+    if (bet.result === "pending") {
+      return (
+        <span class="text-warning">
+          +{formatCurrency(calculateProfit(bet.amount, bet.odds))}
+        </span>
+      );
+    }
+    return <span class="text-base-content/70">{formatCurrency(0)}</span>;
+  };
+
+  return (
+    <Switch>
+      <Match when={betsQuery.isError}>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <div class="text-error text-sm">Failed to load match bets.</div>
+          </div>
+        </div>
+      </Match>
+      <Match when={betsQuery.isPending}>
+        <SectionSkeleton />
+      </Match>
+      <Match when={bets().length === 0}>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <h3 class="text-lg font-semibold mb-2">Match Bets</h3>
+            <div class="text-sm text-base-content/60">No bets recorded.</div>
+          </div>
+        </div>
+      </Match>
+      <Match when>
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">Match Bets</h3>
+              <Show when={auth.isReadOnly()}>
+                <span class="text-xs text-base-content/60">
+                  Add API token to update outcomes
+                </span>
+              </Show>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="table table-zebra w-full">
+                <thead>
+                  <tr>
+                    <th>Bet</th>
+                    <th>Odds</th>
+                    <th>Wager</th>
+                    <th>P&L</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={bets()}>
+                    {bet => (
+                      <ContextMenu>
+                        <ContextMenu.Trigger as="tr">
+                          <td class="font-medium">{bet.name}</td>
+                          <td>{bet.odds > 0 ? `+${bet.odds}` : bet.odds}</td>
+                          <td>{formatCurrency(bet.amount)}</td>
+                          <td>{pnlValue(bet)}</td>
+                          <td>{resultBadge(bet.result)}</td>
+                        </ContextMenu.Trigger>
+                        <ContextMenu.Portal>
+                          <Show when={!auth.isReadOnly()}>
+                            <ContextMenu.Content class="dropdown-content menu shadow bg-base-100 rounded-box w-32">
+                              <ContextMenu.Group>
+                                <ContextMenu.GroupLabel
+                                  as="li"
+                                  class="menu-title"
+                                >
+                                  Set Result
+                                </ContextMenu.GroupLabel>
+                                <ContextMenu.Item
+                                  as="li"
+                                  class="hover:cursor-default"
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "pending",
+                                    })
+                                  }
+                                >
+                                  <ContextMenu.ItemLabel>
+                                    Pending
+                                  </ContextMenu.ItemLabel>
+                                </ContextMenu.Item>
+                                <ContextMenu.Item
+                                  as="li"
+                                  class="hover:cursor-default"
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "win",
+                                    })
+                                  }
+                                >
+                                  <ContextMenu.ItemLabel>
+                                    Win
+                                  </ContextMenu.ItemLabel>
+                                </ContextMenu.Item>
+                                <ContextMenu.Item
+                                  as="li"
+                                  class="hover:cursor-default"
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "lose",
+                                    })
+                                  }
+                                >
+                                  <ContextMenu.ItemLabel>
+                                    Lose
+                                  </ContextMenu.ItemLabel>
+                                </ContextMenu.Item>
+                                <ContextMenu.Item
+                                  as="li"
+                                  class="hover:cursor-default"
+                                  onClick={() =>
+                                    updateBet.mutate({
+                                      id: bet.id,
+                                      result: "push",
+                                    })
+                                  }
+                                >
+                                  <ContextMenu.ItemLabel>
+                                    Push
+                                  </ContextMenu.ItemLabel>
+                                </ContextMenu.Item>
+                              </ContextMenu.Group>
+                            </ContextMenu.Content>
+                          </Show>
+                        </ContextMenu.Portal>
+                      </ContextMenu>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </Match>
+    </Switch>
   );
 }
 
