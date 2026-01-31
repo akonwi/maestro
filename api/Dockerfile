@@ -6,7 +6,7 @@ RUN apk add --no-cache git gcc musl-dev
 
 # Clone and build the Ard language using GitHub token
 WORKDIR /build
-RUN git clone https://github.com/akonwi/ard.git
+RUN git clone https://github.com/akonwi/ard.git --branch v0.5.0
 WORKDIR /build/ard/compiler
 RUN go mod download
 ENV CGO_ENABLED=1
