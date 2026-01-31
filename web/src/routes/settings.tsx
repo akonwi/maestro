@@ -3,6 +3,7 @@ import { useAuth } from "~/contexts/auth";
 export default function Settings() {
   const auth = useAuth();
   let input!: HTMLInputElement;
+  let openAiInput!: HTMLInputElement;
 
   return (
     <div class="space-y-6">
@@ -47,6 +48,49 @@ export default function Settings() {
                   input.value = "";
                 }}
                 disabled={auth.isReadOnly()}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body">
+            <div class="flex items-center justify-between">
+              <h3 class="font-medium">OpenAI</h3>
+              <div
+                class={`badge ${auth.openAiKey() ? "badge-success" : "badge-error"}`}
+              >
+                {auth.openAiKey() ? "Configured" : "Missing"}
+              </div>
+            </div>
+
+            <p class="text-sm text-base-content/60 mb-4">
+              {auth.openAiKey()
+                ? "OpenAI API key is configured for corner picks."
+                : "Add your OpenAI API key to enable AI corner picks."}
+            </p>
+
+            <div class="join">
+              <label class="input input-bordered">
+                <input
+                  type="password"
+                  placeholder="OpenAI API key"
+                  class="join-item"
+                  value={auth.openAiKey()}
+                  ref={openAiInput}
+                  onChange={e => auth.setOpenAiKey(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                class="btn btn-error join-item"
+                onClick={() => {
+                  auth.setOpenAiKey("");
+                  openAiInput.value = "";
+                }}
+                disabled={!auth.openAiKey()}
               >
                 Clear
               </button>

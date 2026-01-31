@@ -74,10 +74,13 @@ function SimpleComparisonBar(props: {
   awayValue: number;
   formatValue?: (v: number) => string;
 }) {
-  const format = () => props.formatValue ?? ((v: number) => `${(v * 100).toFixed(0)}%`);
+  const format = () =>
+    props.formatValue ?? ((v: number) => `${(v * 100).toFixed(0)}%`);
   const total = () => props.homeValue + props.awayValue;
-  const homePercent = () => (total() > 0 ? (props.homeValue / total()) * 100 : 50);
-  const awayPercent = () => (total() > 0 ? (props.awayValue / total()) * 100 : 50);
+  const homePercent = () =>
+    total() > 0 ? (props.homeValue / total()) * 100 : 50;
+  const awayPercent = () =>
+    total() > 0 ? (props.awayValue / total()) * 100 : 50;
   const homeWins = () => props.homeValue > props.awayValue;
 
   return (

@@ -12,11 +12,14 @@ import {
   matchupStatsQueryOptions,
   teamMetricsQueryOptions,
 } from "~/api/analysis";
-import { Fixture, fixtureQueryOptions } from "~/api/fixtures";
+import {
+  Fixture,
+  fixtureOddsQueryOptions,
+  fixtureQueryOptions,
+} from "~/api/fixtures";
 import { LeagueMenu } from "~/components/league-menu";
-import { CornerAnalysis } from "~/components/matchup/corner-analysis";
+import { CornerPickCard } from "~/components/matchup/corner-pick";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
-import { OddsCard } from "~/components/matchup/odds-card";
 import { RecentForm } from "~/components/matchup/recent-form";
 import { StatComparison } from "~/components/matchup/stat-comparison";
 import { StatsTable } from "~/components/matchup/stats-table";
@@ -74,37 +77,8 @@ function SectionSkeleton() {
   );
 }
 
-function CornerAnalysisSection(props: { fixture: Fixture }) {
+function CornerPickSection(props: { fixture: Fixture }) {
   const auth = useAuth();
-  const [cornerView, setCornerView] = createSignal<"form" | "season">("form");
-
-  const homeCornerMetricsQuery = useQuery(() => ({
-    ...teamMetricsQueryOptions(
-      {
-        teamId: props.fixture.home.id,
-        leagueId: props.fixture.league.id,
-        season: props.fixture.season,
-        limit: cornerView() === "form" ? 5 : undefined,
-        venue: cornerView() === "season" ? "home" : undefined,
-      },
-      auth.headers,
-    ),
-    enabled: !props.fixture.finished,
-  }));
-
-  const awayCornerMetricsQuery = useQuery(() => ({
-    ...teamMetricsQueryOptions(
-      {
-        teamId: props.fixture.away.id,
-        leagueId: props.fixture.league.id,
-        season: props.fixture.season,
-        limit: cornerView() === "form" ? 5 : undefined,
-        venue: cornerView() === "season" ? "away" : undefined,
-      },
-      auth.headers,
-    ),
-    enabled: !props.fixture.finished,
-  }));
 
   const homeCornerFormQuery = useQuery(() => ({
     ...teamMetricsQueryOptions(
@@ -138,7 +112,6 @@ function CornerAnalysisSection(props: { fixture: Fixture }) {
         teamId: props.fixture.home.id,
         leagueId: props.fixture.league.id,
         season: props.fixture.season,
-        venue: "home",
       },
       auth.headers,
     ),
@@ -151,6 +124,31 @@ function CornerAnalysisSection(props: { fixture: Fixture }) {
         teamId: props.fixture.away.id,
         leagueId: props.fixture.league.id,
         season: props.fixture.season,
+      },
+      auth.headers,
+    ),
+    enabled: !props.fixture.finished,
+  }));
+
+  const homeCornerVenueQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: props.fixture.home.id,
+        leagueId: props.fixture.league.id,
+        season: props.fixture.season,
+        venue: "home",
+      },
+      auth.headers,
+    ),
+    enabled: !props.fixture.finished,
+  }));
+
+  const awayCornerVenueQuery = useQuery(() => ({
+    ...teamMetricsQueryOptions(
+      {
+        teamId: props.fixture.away.id,
+        leagueId: props.fixture.league.id,
+        season: props.fixture.season,
         venue: "away",
       },
       auth.headers,
@@ -158,63 +156,43 @@ function CornerAnalysisSection(props: { fixture: Fixture }) {
     enabled: !props.fixture.finished,
   }));
 
-  const cornerProjections = createMemo(() => {
-    const home = homeCornerMetricsQuery.data;
-    const away = awayCornerMetricsQuery.data;
-    if (!home || !away) return undefined;
-    const homeFor = home.for.perGame.corners;
-    const awayFor = away.for.perGame.corners;
-    return {
-      homeFor,
-      awayFor,
-      total: homeFor + awayFor,
-    };
-  });
-
-  const cornerConfidence = createMemo(() => {
-    const homeForm = homeCornerFormQuery.data;
-    const awayForm = awayCornerFormQuery.data;
-    const homeSeason = homeCornerSeasonQuery.data;
-    const awaySeason = awayCornerSeasonQuery.data;
-    if (!homeForm || !awayForm || !homeSeason || !awaySeason) return undefined;
-
-    const homeFormFor = homeForm.for.perGame.corners;
-    const awayFormFor = awayForm.for.perGame.corners;
-    const homeSeasonFor = homeSeason.for.perGame.corners;
-    const awaySeasonFor = awaySeason.for.perGame.corners;
-
-    return {
-      homeFormFor,
-      awayFormFor,
-      homeSeasonFor,
-      awaySeasonFor,
-      totalFormFor: homeFormFor + awayFormFor,
-      totalSeasonFor: homeSeasonFor + awaySeasonFor,
-    };
-  });
+  const oddsQuery = useQuery(() => fixtureOddsQueryOptions(props.fixture.id));
 
   return (
     <>
-      <CornerAnalysis
-        homeName={props.fixture.home.name}
-        awayName={props.fixture.away.name}
-        homeMetrics={homeCornerMetricsQuery.data ?? undefined}
-        awayMetrics={awayCornerMetricsQuery.data ?? undefined}
+      <CornerPickCard
+        fixture={props.fixture}
+        odds={oddsQuery.data}
+        form={{
+          home: homeCornerFormQuery.data,
+          away: awayCornerFormQuery.data,
+        }}
+        season={{
+          home: homeCornerSeasonQuery.data,
+          away: awayCornerSeasonQuery.data,
+        }}
+        venue={{
+          home: homeCornerVenueQuery.data,
+          away: awayCornerVenueQuery.data,
+        }}
         isPending={
-          homeCornerMetricsQuery.isPending || awayCornerMetricsQuery.isPending
+          oddsQuery.isPending ||
+          homeCornerFormQuery.isPending ||
+          awayCornerFormQuery.isPending ||
+          homeCornerSeasonQuery.isPending ||
+          awayCornerSeasonQuery.isPending ||
+          homeCornerVenueQuery.isPending ||
+          awayCornerVenueQuery.isPending
         }
         hasError={
-          homeCornerMetricsQuery.isError || awayCornerMetricsQuery.isError
+          oddsQuery.isError ||
+          homeCornerFormQuery.isError ||
+          awayCornerFormQuery.isError ||
+          homeCornerSeasonQuery.isError ||
+          awayCornerSeasonQuery.isError ||
+          homeCornerVenueQuery.isError ||
+          awayCornerVenueQuery.isError
         }
-        view={cornerView()}
-        onViewChange={setCornerView}
-      />
-      <OddsCard
-        fixtureId={props.fixture.id}
-        homeName={props.fixture.home.name}
-        awayName={props.fixture.away.name}
-        cornerProjections={cornerProjections()}
-        cornerConfidence={cornerConfidence()}
       />
     </>
   );
@@ -482,15 +460,15 @@ export default function MatchupPage() {
             </div>
           </div>
 
-          <Show when={!fixture().finished}>
-            <Suspense fallback={<SectionSkeleton />}>
-              <CornerAnalysisSection fixture={fixtureQuery.data!} />
-            </Suspense>
-          </Show>
-
           <Suspense fallback={<SectionSkeleton />}>
             <MetricsSection fixture={fixtureQuery.data!} />
           </Suspense>
+
+          <Show when={!fixture().finished}>
+            <Suspense fallback={<SectionSkeleton />}>
+              <CornerPickSection fixture={fixtureQuery.data!} />
+            </Suspense>
+          </Show>
         </div>
       </Match>
     </Switch>

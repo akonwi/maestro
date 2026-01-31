@@ -5,6 +5,8 @@ type IAuthContext = {
   isReadOnly: Accessor<boolean>;
   headers: Accessor<Record<string, string>>;
   setToken: (token: string) => void;
+  openAiKey: Accessor<string>;
+  setOpenAiKey: (key: string) => void;
 };
 
 export const AuthContext = createContext<IAuthContext>();

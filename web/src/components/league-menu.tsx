@@ -30,7 +30,7 @@ export function LeagueMenu<T extends ValidComponent = "div">(
 
   const leagueState = (): LeagueState => {
     const leagues = leaguesQuery.data ?? [];
-    const league = leagues.find((l) => l.id === props.league.id);
+    const league = leagues.find(l => l.id === props.league.id);
     if (!league) return "none";
     return league.hidden ? "hidden" : "followed";
   };
