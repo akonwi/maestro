@@ -15,12 +15,7 @@ import {
   matchupStatsQueryOptions,
   teamMetricsQueryOptions,
 } from "~/api/analysis";
-import {
-  Bet,
-  matchBetsQueryOptions,
-  useDeleteBet,
-  useUpdateBet,
-} from "~/api/bets";
+import { Bet, betsQueryOptions, useDeleteBet, useUpdateBet } from "~/api/bets";
 import {
   Fixture,
   fixtureOddsQueryOptions,
@@ -150,7 +145,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.shots}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toString()}
+                  formatValue={(v) => v.toString()}
                 />
                 <ComparisonBar
                   label="Shots on Target"
@@ -158,7 +153,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.shots_on_goal}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toString()}
+                  formatValue={(v) => v.toString()}
                 />
                 <ComparisonBar
                   label="Corners"
@@ -166,7 +161,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.corners}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toString()}
+                  formatValue={(v) => v.toString()}
                 />
                 <ComparisonBar
                   label="Possession"
@@ -174,7 +169,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.awayPossession}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => `${Math.round(v)}%`}
+                  formatValue={(v) => `${Math.round(v)}%`}
                 />
                 <ComparisonBar
                   label="Fouls"
@@ -182,7 +177,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.fouls}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toString()}
+                  formatValue={(v) => v.toString()}
                 />
                 <ComparisonBar
                   label="Yellow Cards"
@@ -190,7 +185,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.yellow_cards}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toString()}
+                  formatValue={(v) => v.toString()}
                 />
                 <ComparisonBar
                   label="Red Cards"
@@ -198,7 +193,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.red_cards}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toString()}
+                  formatValue={(v) => v.toString()}
                 />
                 <ComparisonBar
                   label="xG"
@@ -206,7 +201,7 @@ function MatchStatsSection(props: { fixture: Fixture }) {
                   awayValue={stats()!.away.xg}
                   homeName={props.fixture.home.name}
                   awayName={props.fixture.away.name}
-                  formatValue={v => v.toFixed(2)}
+                  formatValue={(v) => v.toFixed(2)}
                 />
               </div>
             </div>
@@ -508,12 +503,14 @@ function MetricsSection(props: { fixture: Fixture }) {
 }
 
 function MatchBetsSection(props: { fixtureId: number }) {
-  const betsQuery = useQuery(() => matchBetsQueryOptions(props.fixtureId));
+  const betsQuery = useQuery(() =>
+    betsQueryOptions({ matchId: props.fixtureId }),
+  );
   const updateBet = useUpdateBet();
   const deleteBet = useDeleteBet();
   const auth = useAuth();
 
-  const bets = createMemo(() => betsQuery.data ?? []);
+  const bets = () => betsQuery.data?.bets ?? [];
 
   const resultBadge = (result: Bet["result"]) => {
     switch (result) {
@@ -599,7 +596,7 @@ function MatchBetsSection(props: { fixtureId: number }) {
                 </thead>
                 <tbody>
                   <For each={bets()}>
-                    {bet => (
+                    {(bet) => (
                       <ContextMenu>
                         <ContextMenu.Trigger as="tr">
                           <td class="font-medium">{bet.name}</td>
