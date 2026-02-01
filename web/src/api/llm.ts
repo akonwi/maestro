@@ -4,7 +4,7 @@ import type { Fixture, OddsLine, OddsStat } from "~/api/fixtures";
 
 const CORNER_MARKET_IDS = new Set([45, 55, 56, 57, 58, 77, 85]);
 const PROMPT_ID = "pmpt_697d87f74c4081909ca5842850e6664e07d90de1172ae337";
-const PROMPT_VERSION = "3";
+const PROMPT_VERSION = "4";
 
 type MetricsBlock = {
   num_games: number;
