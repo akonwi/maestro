@@ -10,7 +10,18 @@ struct MainScreen: View {
         NavigationSplitView {
             sidebar
         } detail: {
-            fixtureList
+            VStack(spacing: 0) {
+                if !appState.openFixtures.isEmpty {
+                    tabBar
+                    Divider()
+                }
+
+                if appState.activeTabId == nil {
+                    fixtureList
+                } else {
+                    fixtureDetailContent
+                }
+            }
         }
         .onAppear {
             appState.refreshLeagues()
@@ -83,6 +94,66 @@ struct MainScreen: View {
                 }
             }
         }
+    }
+
+    private var tabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                // Fixtures list tab (home)
+                Button {
+                    appState.activeTabId = nil
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "list.bullet")
+                        Text("Fixtures")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(appState.activeTabId == nil ? Color.accentColor.opacity(0.2) : Color.clear)
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+
+                ForEach(appState.openFixtures) { tab in
+                    HStack(spacing: 6) {
+                        Button {
+                            appState.activeTabId = tab.id
+                        } label: {
+                            Text("\(tab.fixture.homeName) v \(tab.fixture.awayName)")
+                                .lineLimit(1)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            appState.closeTab(tab.id)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
+                    .cornerRadius(6)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private var fixtureDetailContent: some View {
+        Group {
+            if let tab = appState.openFixtures.first(where: { $0.id == appState.activeTabId }) {
+                FixtureDetailView(fixture: tab.fixture)
+            } else {
+                Text("No fixture selected")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("")
     }
 
     private var fixtureList: some View {

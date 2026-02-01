@@ -34,14 +34,38 @@ final class SyncService: ObservableObject {
             let leagueName = leagueData.league.name
             print("Importing \(leagueName) season \(season)...")
 
-            let fixtures = try await client.getSeasonFixtures(leagueId: id, season: season)
-            print("Fetched \(fixtures.count) fixtures")
+            // Get list of all fixtures
+            let fixtureList = try await client.getSeasonFixtures(leagueId: id, season: season)
 
-            saveFixtures(fixtures, leagueId: id, season: season)
+            let finishedFixtures = fixtureList.filter { $0.isFinished }
+            let upcomingFixtures = fixtureList.filter { !$0.isFinished }
+
+            print("Found \(fixtureList.count) fixtures (\(finishedFixtures.count) finished, \(upcomingFixtures.count) upcoming)")
+
+            ensureTables()
+
+            // Save upcoming fixtures without fetching details (no stats needed)
+            for fixture in upcomingFixtures {
+                saveFixture(fixture, leagueId: id, season: season)
+            }
+            print("Saved \(upcomingFixtures.count) upcoming fixtures")
+
+            // Fetch detailed stats only for finished fixtures
+            var imported = 0
+            for fixture in finishedFixtures {
+                if let detailed = try await client.getFixture(id: fixture.id) {
+                    saveFixture(detailed, leagueId: id, season: season)
+                    imported += 1
+                    if imported % 20 == 0 {
+                        print("Imported \(imported)/\(finishedFixtures.count) finished fixtures...")
+                    }
+                }
+            }
+
             leagueRepository.updateSyncedAt(leagueId: id)
 
-            print("Import complete for \(leagueName)")
-            return SyncResult(leagueName: leagueName, fixtureCount: fixtures.count, error: nil)
+            print("Import complete for \(leagueName): \(fixtureList.count) fixtures (\(imported) with stats)")
+            return SyncResult(leagueName: leagueName, fixtureCount: fixtureList.count, error: nil)
         } catch {
             print("Import failed for league \(id): \(error.localizedDescription)")
             return SyncResult(leagueName: "", fixtureCount: 0, error: error.localizedDescription)
@@ -76,24 +100,24 @@ final class SyncService: ObservableObject {
             let existingCount = fixtureCount(leagueId: id, season: season)
 
             if existingCount == 0 {
-                print("No fixtures for \(leagueName), doing full import...")
-                let fixtures = try await client.getSeasonFixtures(leagueId: id, season: season)
-                saveFixtures(fixtures, leagueId: id, season: season)
-                leagueRepository.updateSyncedAt(leagueId: id)
-                return SyncResult(leagueName: leagueName, fixtureCount: fixtures.count, error: nil)
+                // Full import
+                return await importLeague(id: id, apiKey: apiKey)
             } else {
+                // Incremental sync - only update unfinished fixtures
                 print("Syncing unfinished fixtures for \(leagueName)...")
                 let unfinishedIds = unfinishedFixtureIds(leagueId: id, season: season)
 
+                var synced = 0
                 for fixtureId in unfinishedIds {
                     if let fixture = try await client.getFixture(id: fixtureId) {
-                        updateFixture(fixture)
+                        updateFixture(fixture, leagueId: id, season: season)
+                        synced += 1
                     }
                 }
 
                 leagueRepository.updateSyncedAt(leagueId: id)
-                print("Sync complete for \(leagueName)")
-                return SyncResult(leagueName: leagueName, fixtureCount: unfinishedIds.count, error: nil)
+                print("Sync complete for \(leagueName): \(synced) fixtures updated")
+                return SyncResult(leagueName: leagueName, fixtureCount: synced, error: nil)
             }
         } catch {
             print("Sync failed for league \(id): \(error.localizedDescription)")
@@ -147,45 +171,44 @@ final class SyncService: ObservableObject {
         return ids
     }
 
-    private func saveFixtures(_ fixtures: [APIFixture], leagueId: Int, season: Int) {
+    private func saveFixture(_ fixture: APIFixture, leagueId: Int, season: Int) {
         guard let db = Database.shared.handle else { return }
 
-        ensureTables()
+        saveTeam(id: fixture.teams.home.id, name: fixture.teams.home.name)
+        saveTeam(id: fixture.teams.away.id, name: fixture.teams.away.name)
 
-        for fixture in fixtures {
-            saveTeam(id: fixture.teams.home.id, name: fixture.teams.home.name)
-            saveTeam(id: fixture.teams.away.id, name: fixture.teams.away.name)
+        let sql = """
+        INSERT OR REPLACE INTO fixtures
+            (id, league_id, season, home_id, away_id, timestamp, finished, home_goals, away_goals)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
 
-            let sql = """
-            INSERT OR REPLACE INTO fixtures
-                (id, league_id, season, home_id, away_id, timestamp, finished, home_goals, away_goals)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-            """
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_int64(statement, 1, Int64(fixture.id))
+            sqlite3_bind_int64(statement, 2, Int64(leagueId))
+            sqlite3_bind_int64(statement, 3, Int64(season))
+            sqlite3_bind_int64(statement, 4, Int64(fixture.teams.home.id))
+            sqlite3_bind_int64(statement, 5, Int64(fixture.teams.away.id))
+            sqlite3_bind_int64(statement, 6, fixture.timestampMs)
+            sqlite3_bind_int(statement, 7, fixture.isFinished ? 1 : 0)
+            sqlite3_bind_int64(statement, 8, Int64(fixture.goals.home ?? 0))
+            sqlite3_bind_int64(statement, 9, Int64(fixture.goals.away ?? 0))
+            sqlite3_step(statement)
+            sqlite3_finalize(statement)
+        }
 
-            var statement: OpaquePointer?
-            if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-                sqlite3_bind_int64(statement, 1, Int64(fixture.id))
-                sqlite3_bind_int64(statement, 2, Int64(leagueId))
-                sqlite3_bind_int64(statement, 3, Int64(season))
-                sqlite3_bind_int64(statement, 4, Int64(fixture.teams.home.id))
-                sqlite3_bind_int64(statement, 5, Int64(fixture.teams.away.id))
-                sqlite3_bind_int64(statement, 6, fixture.timestampMs)
-                sqlite3_bind_int(statement, 7, fixture.isFinished ? 1 : 0)
-                sqlite3_bind_int64(statement, 8, Int64(fixture.goals.home ?? 0))
-                sqlite3_bind_int64(statement, 9, Int64(fixture.goals.away ?? 0))
-                sqlite3_step(statement)
-                sqlite3_finalize(statement)
-            }
-
-            if let stats = fixture.statistics, stats.count >= 2 {
-                saveStats(fixtureId: fixture.id, teamId: fixture.teams.home.id, stats: stats[0], leagueId: leagueId, season: season)
-                saveStats(fixtureId: fixture.id, teamId: fixture.teams.away.id, stats: stats[1], leagueId: leagueId, season: season)
-            }
+        if let stats = fixture.statistics, stats.count >= 2 {
+            saveStats(fixtureId: fixture.id, teamId: fixture.teams.home.id, stats: stats[0], leagueId: leagueId, season: season)
+            saveStats(fixtureId: fixture.id, teamId: fixture.teams.away.id, stats: stats[1], leagueId: leagueId, season: season)
         }
     }
 
-    private func updateFixture(_ fixture: APIFixture) {
+    private func updateFixture(_ fixture: APIFixture, leagueId: Int, season: Int) {
         guard let db = Database.shared.handle else { return }
+
+        saveTeam(id: fixture.teams.home.id, name: fixture.teams.home.name)
+        saveTeam(id: fixture.teams.away.id, name: fixture.teams.away.name)
 
         let sql = """
         UPDATE fixtures SET
@@ -205,9 +228,10 @@ final class SyncService: ObservableObject {
             sqlite3_finalize(statement)
         }
 
+        // Save or update stats
         if let stats = fixture.statistics, stats.count >= 2 {
-            updateStats(fixtureId: fixture.id, teamId: fixture.teams.home.id, stats: stats[0])
-            updateStats(fixtureId: fixture.id, teamId: fixture.teams.away.id, stats: stats[1])
+            saveStats(fixtureId: fixture.id, teamId: fixture.teams.home.id, stats: stats[0], leagueId: leagueId, season: season)
+            saveStats(fixtureId: fixture.id, teamId: fixture.teams.away.id, stats: stats[1], leagueId: leagueId, season: season)
         }
     }
 
@@ -260,44 +284,6 @@ final class SyncService: ObservableObject {
             sqlite3_bind_int64(statement, 17, Int64(parsed.redCards))
             sqlite3_bind_double(statement, 18, parsed.xg)
             sqlite3_bind_int64(statement, 19, Int64(parsed.goalsPrevented))
-            sqlite3_step(statement)
-            sqlite3_finalize(statement)
-        }
-    }
-
-    private func updateStats(fixtureId: Int, teamId: Int, stats: APIFixture.TeamStatistics) {
-        guard let db = Database.shared.handle else { return }
-
-        let parsed = parseStats(stats.statistics)
-
-        let sql = """
-        UPDATE fixture_stats SET
-            shots = ?, shots_on_goal = ?, shots_blocked = ?,
-            shots_in_box = ?, shots_out_box = ?, possession = ?,
-            passes = ?, passes_completed = ?, fouls = ?, corners = ?,
-            offsides = ?, yellow_cards = ?, red_cards = ?, xg = ?, goals_prevented = ?
-        WHERE fixture_id = ? AND team_id = ?;
-        """
-
-        var statement: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_int64(statement, 1, Int64(parsed.shots))
-            sqlite3_bind_int64(statement, 2, Int64(parsed.shotsOnGoal))
-            sqlite3_bind_int64(statement, 3, Int64(parsed.shotsBlocked))
-            sqlite3_bind_int64(statement, 4, Int64(parsed.shotsInBox))
-            sqlite3_bind_int64(statement, 5, Int64(parsed.shotsOutBox))
-            sqlite3_bind_double(statement, 6, parsed.possession)
-            sqlite3_bind_int64(statement, 7, Int64(parsed.passes))
-            sqlite3_bind_int64(statement, 8, Int64(parsed.passesCompleted))
-            sqlite3_bind_int64(statement, 9, Int64(parsed.fouls))
-            sqlite3_bind_int64(statement, 10, Int64(parsed.corners))
-            sqlite3_bind_int64(statement, 11, Int64(parsed.offsides))
-            sqlite3_bind_int64(statement, 12, Int64(parsed.yellowCards))
-            sqlite3_bind_int64(statement, 13, Int64(parsed.redCards))
-            sqlite3_bind_double(statement, 14, parsed.xg)
-            sqlite3_bind_int64(statement, 15, Int64(parsed.goalsPrevented))
-            sqlite3_bind_int64(statement, 16, Int64(fixtureId))
-            sqlite3_bind_int64(statement, 17, Int64(teamId))
             sqlite3_step(statement)
             sqlite3_finalize(statement)
         }

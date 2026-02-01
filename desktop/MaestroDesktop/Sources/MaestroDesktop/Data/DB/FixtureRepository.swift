@@ -41,6 +41,8 @@ final class FixtureRepository {
           l.name as league_name,
           f.timestamp,
           f.finished,
+          f.home_id,
+          f.away_id,
           h.name as home_name,
           a.name as away_name,
           f.home_goals,
@@ -70,10 +72,12 @@ final class FixtureRepository {
             let leagueName = String(cString: sqlite3_column_text(statement, 2))
             let timestamp = Int64(sqlite3_column_int64(statement, 3))
             let finished = sqlite3_column_int(statement, 4) == 1
-            let homeName = String(cString: sqlite3_column_text(statement, 5))
-            let awayName = String(cString: sqlite3_column_text(statement, 6))
-            let homeGoals = Int(sqlite3_column_int(statement, 7))
-            let awayGoals = Int(sqlite3_column_int(statement, 8))
+            let homeId = Int(sqlite3_column_int64(statement, 5))
+            let awayId = Int(sqlite3_column_int64(statement, 6))
+            let homeName = String(cString: sqlite3_column_text(statement, 7))
+            let awayName = String(cString: sqlite3_column_text(statement, 8))
+            let homeGoals = Int(sqlite3_column_int(statement, 9))
+            let awayGoals = Int(sqlite3_column_int(statement, 10))
 
             let kickoff = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
             let status = finished ? "FT" : "NS"
@@ -81,6 +85,8 @@ final class FixtureRepository {
             let fixture = FixtureSummary(
                 id: fixtureId,
                 leagueId: leagueId,
+                homeId: homeId,
+                awayId: awayId,
                 homeName: homeName,
                 awayName: awayName,
                 status: status,
@@ -103,5 +109,71 @@ final class FixtureRepository {
             guard let entry = leagueMap[id] else { return nil }
             return LeagueSection(id: id, name: entry.name, fixtures: entry.fixtures)
         }
+    }
+
+    func stats(for fixtureId: Int, homeId: Int, awayId: Int) -> FixtureStats? {
+        guard let db = Database.shared.handle else { return nil }
+
+        let sql = """
+        SELECT
+            team_id, shots, shots_on_goal, possession, passes, passes_completed,
+            fouls, corners, offsides, yellow_cards, red_cards, xg
+        FROM fixture_stats
+        WHERE fixture_id = ?;
+        """
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return nil
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(fixtureId))
+
+        var homeStats: TeamStats?
+        var awayStats: TeamStats?
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let teamId = Int(sqlite3_column_int64(statement, 0))
+            let shots = Int(sqlite3_column_int(statement, 1))
+            let shotsOnGoal = Int(sqlite3_column_int(statement, 2))
+            let possession = sqlite3_column_double(statement, 3)
+            let passes = Int(sqlite3_column_int(statement, 4))
+            let passesCompleted = Int(sqlite3_column_int(statement, 5))
+            let fouls = Int(sqlite3_column_int(statement, 6))
+            let corners = Int(sqlite3_column_int(statement, 7))
+            let offsides = Int(sqlite3_column_int(statement, 8))
+            let yellowCards = Int(sqlite3_column_int(statement, 9))
+            let redCards = Int(sqlite3_column_int(statement, 10))
+            let xg = sqlite3_column_double(statement, 11)
+
+            let stats = TeamStats(
+                teamId: teamId,
+                shots: shots,
+                shotsOnGoal: shotsOnGoal,
+                possession: possession,
+                passes: passes,
+                passesCompleted: passesCompleted,
+                fouls: fouls,
+                corners: corners,
+                offsides: offsides,
+                yellowCards: yellowCards,
+                redCards: redCards,
+                xg: xg
+            )
+
+            if teamId == homeId {
+                homeStats = stats
+            } else if teamId == awayId {
+                awayStats = stats
+            }
+        }
+
+        sqlite3_finalize(statement)
+
+        guard let home = homeStats, let away = awayStats else {
+            return nil
+        }
+
+        return FixtureStats(home: home, away: away)
     }
 }

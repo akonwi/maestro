@@ -3,6 +3,8 @@ import Foundation
 struct FixtureSummary: Identifiable, Equatable {
     let id: Int
     let leagueId: Int
+    let homeId: Int
+    let awayId: Int
     let homeName: String
     let awayName: String
     let status: String
@@ -11,6 +13,14 @@ struct FixtureSummary: Identifiable, Equatable {
     let awayGoals: Int
 
     var isFinished: Bool { status == "FT" }
+
+    var homeLogoURL: URL? {
+        URL(string: "https://media.api-sports.io/football/teams/\(homeId).png")
+    }
+
+    var awayLogoURL: URL? {
+        URL(string: "https://media.api-sports.io/football/teams/\(awayId).png")
+    }
 }
 
 struct FixtureTab: Identifiable, Equatable {
