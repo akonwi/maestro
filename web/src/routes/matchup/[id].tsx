@@ -22,7 +22,6 @@ import {
   fixtureQueryOptions,
   fixtureStatsQueryOptions,
 } from "~/api/fixtures";
-import { LeagueMenu } from "~/components/league-menu";
 import { ComparisonBar } from "~/components/matchup/comparison-bar";
 import { CornerPickCard } from "~/components/matchup/corner-pick";
 import { MetricsMatchup } from "~/components/matchup/metrics-matchup";
@@ -756,7 +755,6 @@ export default function MatchupPage() {
               {fixture().league.name} • {formattedDateTime().date} •{" "}
               {formattedDateTime().time}
             </div>
-            <LeagueMenu league={fixture().league} trigger="dropdown" />
           </div>
 
           {/* Teams Header Card */}
