@@ -23,7 +23,7 @@ export const leaguesQueryOptions = (headers: () => Record<string, string>) => ({
     }
 
     const body = await response.json();
-    return body.leagues;
+    return body;
   },
 });
 
