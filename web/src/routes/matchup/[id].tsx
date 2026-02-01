@@ -15,7 +15,12 @@ import {
   matchupStatsQueryOptions,
   teamMetricsQueryOptions,
 } from "~/api/analysis";
-import { Bet, matchBetsQueryOptions, useUpdateBet } from "~/api/bets";
+import {
+  Bet,
+  matchBetsQueryOptions,
+  useDeleteBet,
+  useUpdateBet,
+} from "~/api/bets";
 import {
   Fixture,
   fixtureOddsQueryOptions,
@@ -505,6 +510,7 @@ function MetricsSection(props: { fixture: Fixture }) {
 function MatchBetsSection(props: { fixtureId: number }) {
   const betsQuery = useQuery(() => matchBetsQueryOptions(props.fixtureId));
   const updateBet = useUpdateBet();
+  const deleteBet = useDeleteBet();
   const auth = useAuth();
 
   const bets = createMemo(() => betsQuery.data ?? []);
@@ -518,7 +524,13 @@ function MatchBetsSection(props: { fixtureId: number }) {
       case "push":
         return <span class="badge badge-warning">Push</span>;
       default:
-        return <span class="badge badge-warning">Pending</span>;
+        return <span class="badge badge-ghost">Pending</span>;
+    }
+  };
+
+  const handleDelete = async (betId: number) => {
+    if (confirm("Are you sure you want to delete this bet?")) {
+      deleteBet.mutate(betId);
     }
   };
 
@@ -612,20 +624,6 @@ function MatchBetsSection(props: { fixtureId: number }) {
                                   onClick={() =>
                                     updateBet.mutate({
                                       id: bet.id,
-                                      result: "pending",
-                                    })
-                                  }
-                                >
-                                  <ContextMenu.ItemLabel>
-                                    Pending
-                                  </ContextMenu.ItemLabel>
-                                </ContextMenu.Item>
-                                <ContextMenu.Item
-                                  as="li"
-                                  class="hover:cursor-default"
-                                  onClick={() =>
-                                    updateBet.mutate({
-                                      id: bet.id,
                                       result: "win",
                                     })
                                   }
@@ -663,6 +661,19 @@ function MatchBetsSection(props: { fixtureId: number }) {
                                   </ContextMenu.ItemLabel>
                                 </ContextMenu.Item>
                               </ContextMenu.Group>
+                              <ContextMenu.Separator
+                                as="div"
+                                class="divider m-0"
+                              />
+                              <ContextMenu.Item
+                                as="li"
+                                class="hover:cursor-default"
+                                onClick={() => handleDelete(bet.id)}
+                              >
+                                <ContextMenu.ItemLabel class="text-error">
+                                  Delete
+                                </ContextMenu.ItemLabel>
+                              </ContextMenu.Item>
                             </ContextMenu.Content>
                           </Show>
                         </ContextMenu.Portal>

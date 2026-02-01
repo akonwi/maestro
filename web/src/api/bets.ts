@@ -52,24 +52,6 @@ export const betsQueryOptions = (params: BetsQueryParams) => ({
   },
 });
 
-export const matchBetsQueryOptions = (matchId: number) => ({
-  queryKey: ["bets", { matchId }] as const,
-  queryFn: async (): Promise<Bet[]> => {
-    const response = await fetch(`${baseUrl}/bets?match_id=${matchId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch match bets: ${response.status}`);
-    }
-
-    return response.json();
-  },
-});
-
 export type BetOverview = {
   bets: Bet[];
   num_pending: number;
@@ -138,13 +120,13 @@ export function useUpdateBet() {
         body: JSON.stringify(body),
       });
 
+      // invalidating from inside the mutationFn is not standard.
+      // i'm doing it because the `onSuccess` and `onSettled` callbacks don't get called
+      queryClient.invalidateQueries({
+        queryKey: ["bets"],
+      });
+
       return response.json();
-    },
-    onSettled: (_data, error) => {
-      if (error == null)
-        queryClient.invalidateQueries({
-          queryKey: ["bets"],
-        });
     },
   }));
 }
