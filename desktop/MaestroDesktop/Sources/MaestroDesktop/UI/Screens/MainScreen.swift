@@ -140,12 +140,20 @@ struct MainScreen: View {
                 .buttonStyle(.plain)
 
                 ForEach(appState.openFixtures) { tab in
+                    let isLive = !tab.fixture.isFinished && tab.fixture.kickoff <= Date()
                     HStack(spacing: 6) {
                         Button {
                             appState.activeTabId = tab.id
                         } label: {
-                            Text("\(tab.fixture.homeName) v \(tab.fixture.awayName)")
-                                .lineLimit(1)
+                            HStack(spacing: 6) {
+                                if isLive {
+                                    Circle()
+                                        .fill(.green)
+                                        .frame(width: 8, height: 8)
+                                }
+                                Text("\(tab.fixture.homeName) v \(tab.fixture.awayName)")
+                                    .lineLimit(1)
+                            }
                         }
                         .buttonStyle(.plain)
 

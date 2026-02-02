@@ -80,6 +80,22 @@ final class SyncService: ObservableObject {
         }
     }
 
+    func syncFixture(id: Int, leagueId: Int, season: Int, apiKey: String) async -> Bool {
+        let client = APIFootballClient(apiKey: apiKey)
+
+        do {
+            if let fixture = try await client.getFixture(id: id) {
+                updateFixture(fixture, leagueId: leagueId, season: season)
+                print("Synced fixture \(id)")
+                return true
+            }
+            return false
+        } catch {
+            print("Failed to sync fixture \(id): \(error.localizedDescription)")
+            return false
+        }
+    }
+
     func syncLeague(id: Int, apiKey: String) async -> SyncResult {
         guard !syncingLeagues.contains(id) else {
             return SyncResult(leagueName: "", fixtureCount: 0, error: "Already syncing")

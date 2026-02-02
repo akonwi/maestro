@@ -1,11 +1,14 @@
 import Foundation
 import SQLite3
 
+struct CachedAnalysis {
+    let analysis: CornerAnalysisResponse
+    let cachedAt: Date
+}
+
 @MainActor
 final class AnalysisCache {
     static let shared = AnalysisCache()
-
-    private let ttlSeconds: Int = 86400 // 24 hours
 
     private init() {
         ensureTable()
@@ -25,15 +28,12 @@ final class AnalysisCache {
         sqlite3_exec(db, sql, nil, nil, nil)
     }
 
-    func get(fixtureId: Int) -> CornerAnalysisResponse? {
+    func get(fixtureId: Int) -> CachedAnalysis? {
         guard let db = Database.shared.handle else { return nil }
 
-        let now = Int(Date().timeIntervalSince1970)
-        let minTime = now - ttlSeconds
-
         let sql = """
-        SELECT data FROM analysis_cache
-        WHERE fixture_id = ? AND cached_at > ?;
+        SELECT data, cached_at FROM analysis_cache
+        WHERE fixture_id = ?;
         """
 
         var statement: OpaquePointer?
@@ -42,15 +42,18 @@ final class AnalysisCache {
         }
 
         sqlite3_bind_int64(statement, 1, Int64(fixtureId))
-        sqlite3_bind_int64(statement, 2, Int64(minTime))
 
-        var result: CornerAnalysisResponse?
+        var result: CachedAnalysis?
 
         if sqlite3_step(statement) == SQLITE_ROW {
             if let dataPtr = sqlite3_column_text(statement, 0) {
                 let jsonString = String(cString: dataPtr)
-                if let jsonData = jsonString.data(using: .utf8) {
-                    result = try? JSONDecoder().decode(CornerAnalysisResponse.self, from: jsonData)
+                let timestamp = sqlite3_column_int64(statement, 1)
+                let cachedAt = Date(timeIntervalSince1970: TimeInterval(timestamp))
+
+                if let jsonData = jsonString.data(using: .utf8),
+                   let analysis = try? JSONDecoder().decode(CornerAnalysisResponse.self, from: jsonData) {
+                    result = CachedAnalysis(analysis: analysis, cachedAt: cachedAt)
                 }
             }
         }
@@ -93,21 +96,6 @@ final class AnalysisCache {
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             sqlite3_bind_int64(statement, 1, Int64(fixtureId))
-            sqlite3_step(statement)
-            sqlite3_finalize(statement)
-        }
-    }
-
-    func clearExpired() {
-        guard let db = Database.shared.handle else { return }
-
-        let minTime = Int(Date().timeIntervalSince1970) - ttlSeconds
-
-        let sql = "DELETE FROM analysis_cache WHERE cached_at < ?;"
-
-        var statement: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_int64(statement, 1, Int64(minTime))
             sqlite3_step(statement)
             sqlite3_finalize(statement)
         }

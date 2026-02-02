@@ -13,14 +13,19 @@ struct FixtureDetailView: View {
     @State private var isLoadingOdds = false
     @State private var selectedBetLine: SelectedBetLine?
     @State private var aiAnalysis: CornerAnalysisResponse?
+    @State private var analysisTimestamp: Date?
     @State private var isLoadingAnalysis = false
     @State private var analysisError: String?
     @State private var expandedMarkets: Set<Int> = []
+    @State private var syncTimer: Timer?
+    @State private var fixtureBets: [Bet] = []
 
     private let fixtureRepository = FixtureRepository()
     private let preMatchRepository = PreMatchRepository()
     private let analysisRepository = AnalysisRepository.shared
     private let analysisCache = AnalysisCache.shared
+    private let syncService = SyncService()
+    private let betRepository = BetRepository.shared
 
     struct SelectedBetLine: Identifiable {
         let id = UUID()
@@ -33,7 +38,8 @@ struct FixtureDetailView: View {
 
     init(fixture: FixtureSummary) {
         self.fixture = fixture
-        self._activeTab = State(initialValue: fixture.isFinished ? .matchStats : .betting)
+        let isInPlay = !fixture.isFinished && fixture.kickoff <= Date()
+        self._activeTab = State(initialValue: (fixture.isFinished || isInPlay) ? .matchStats : .betting)
     }
 
     enum Tab: String, Identifiable {
@@ -44,9 +50,15 @@ struct FixtureDetailView: View {
         var id: String { rawValue }
     }
 
+    private var isInPlay: Bool {
+        !fixture.isFinished && fixture.kickoff <= Date()
+    }
+
     private var availableTabs: [Tab] {
         if fixture.isFinished {
             return [.matchStats, .preMatch]
+        } else if isInPlay {
+            return [.matchStats, .preMatch, .betting]
         } else {
             return [.preMatch, .betting]
         }
@@ -92,9 +104,15 @@ struct FixtureDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             loadStats()
+            startSyncTimerIfNeeded()
+        }
+        .onDisappear {
+            stopSyncTimer()
         }
         .onChange(of: fixture) {
             loadStats()
+            stopSyncTimer()
+            startSyncTimerIfNeeded()
         }
         .onChange(of: formScope) {
             preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
@@ -127,13 +145,61 @@ struct FixtureDetailView: View {
         )
         preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
         matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
+        fixtureBets = betRepository.bets(for: fixture.id)
         loadCornerOdds()
         loadCachedAnalysis()
     }
 
     private func loadCachedAnalysis() {
         if let cached = analysisCache.get(fixtureId: fixture.id) {
-            aiAnalysis = cached
+            aiAnalysis = cached.analysis
+            analysisTimestamp = cached.cachedAt
+        }
+    }
+
+    private var isWithinSyncWindow: Bool {
+        guard !fixture.isFinished else { return false }
+        let now = Date()
+        let twoHoursFromNow = now.addingTimeInterval(2 * 60 * 60)
+        // Sync if kickoff is within 2 hours OR if the match has already started (kickoff is in the past)
+        return fixture.kickoff <= twoHoursFromNow
+    }
+
+    private func startSyncTimerIfNeeded() {
+        guard isWithinSyncWindow, !appState.apiToken.isEmpty else { return }
+
+        // Sync immediately
+        syncFixtureStats()
+
+        // Then sync every 10 minutes
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 10 * 60, repeats: true) { _ in
+            Task { @MainActor in
+                syncFixtureStats()
+            }
+        }
+    }
+
+    private func stopSyncTimer() {
+        syncTimer?.invalidate()
+        syncTimer = nil
+    }
+
+    private func syncFixtureStats() {
+        guard !appState.apiToken.isEmpty else { return }
+
+        Task {
+            let success = await syncService.syncFixture(
+                id: fixture.id,
+                leagueId: fixture.leagueId,
+                season: fixture.season,
+                apiKey: appState.apiToken
+            )
+            if success {
+                // Reload stats from database
+                await MainActor.run {
+                    loadStats()
+                }
+            }
         }
     }
 
@@ -219,6 +285,13 @@ struct FixtureDetailView: View {
                         Text("FT")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    } else if isInPlay {
+                        Text("\(fixture.homeGoals) - \(fixture.awayGoals)")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("LIVE")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.green)
                     } else {
                         Text("vs")
                             .font(.system(size: 24, weight: .medium, design: .rounded))
@@ -337,33 +410,158 @@ struct FixtureDetailView: View {
     private var bettingContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Stats header
-                VStack(alignment: .leading, spacing: 16) {
-                    Picker("", selection: $formScope) {
-                        ForEach(FormScope.allCases) { scope in
-                            Text(scope.rawValue).tag(scope)
+                if isInPlay {
+                    // Show bets for in-play fixtures
+                    fixtureBetsSection
+                        .padding(.vertical, 16)
+
+                    // Show AI analysis if one was saved pre-match
+                    if aiAnalysis != nil {
+                        Divider()
+                        aiAnalysisSection
+                            .padding(.vertical, 16)
+                    }
+                } else {
+                    // Stats header for pre-match
+                    VStack(alignment: .leading, spacing: 16) {
+                        Picker("", selection: $formScope) {
+                            ForEach(FormScope.allCases) { scope in
+                                Text(scope.rawValue).tag(scope)
+                            }
                         }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 200)
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 200)
 
-                    // Corner Stats
-                    if let matchup = matchupData {
-                        cornerStatsSection(data: matchup)
-                    }
+                        // Corner Stats
+                        if let matchup = matchupData {
+                            cornerStatsSection(data: matchup)
+                        }
 
-                    // AI Analysis Section
-                    aiAnalysisSection
+                        // AI Analysis Section
+                        aiAnalysisSection
+                    }
+                    .padding(.bottom, 16)
+
+                    Divider()
+
+                    // Odds
+                    cornerOddsSection
+                        .padding(.vertical, 16)
                 }
-                .padding(.bottom, 16)
-
-                Divider()
-
-                // Odds
-                cornerOddsSection
-                    .padding(.vertical, 16)
             }
         }
+    }
+
+    @ViewBuilder
+    private var fixtureBetsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Your Bets")
+                .font(.headline)
+
+            if fixtureBets.isEmpty {
+                Text("No bets recorded for this fixture")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 20)
+            } else {
+                ForEach(fixtureBets) { bet in
+                    fixtureBetRow(bet: bet)
+                }
+            }
+        }
+    }
+
+    private func fixtureBetRow(bet: Bet) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(marketName(for: bet.marketId))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    if let line = bet.line {
+                        Text(String(format: "Line: %.1f", line))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(bet.odds > 0 ? "+\(bet.odds)" : "\(bet.odds)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(String(format: "$%.0f stake", bet.stake))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Settle buttons
+            if bet.result == .pending {
+                HStack(spacing: 12) {
+                    Button {
+                        settleBet(bet, result: .won)
+                    } label: {
+                        Text("Won")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .controlSize(.small)
+
+                    Button {
+                        settleBet(bet, result: .lost)
+                    } label: {
+                        Text("Lost")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .controlSize(.small)
+
+                    Button {
+                        settleBet(bet, result: .push)
+                    } label: {
+                        Text("Push")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            } else {
+                HStack {
+                    Text("Settled:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(bet.result.rawValue.capitalized)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(bet.result == .won ? .green : bet.result == .lost ? .red : .secondary)
+                }
+            }
+        }
+        .padding()
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func marketName(for marketId: Int) -> String {
+        switch marketId {
+        case 45: return "Total Corners"
+        case 55: return "Most Corners"
+        case 56: return "Asian Corners"
+        case 57: return "Home Corners"
+        case 58: return "Away Corners"
+        case 85: return "Total Corners (3-Way)"
+        default: return "Corner Market"
+        }
+    }
+
+    private func settleBet(_ bet: Bet, result: BetResult) {
+        betRepository.update(id: bet.id, result: result)
+        fixtureBets = betRepository.bets(for: fixture.id)
+        appState.refreshBets()
     }
 
     private func cornerStatsSection(data: MatchupData) -> some View {
@@ -562,6 +760,10 @@ struct FixtureDetailView: View {
         }
     }
 
+    private var canModifyAnalysis: Bool {
+        !isInPlay && !fixture.isFinished
+    }
+
     @ViewBuilder
     private var aiAnalysisSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -569,7 +771,7 @@ struct FixtureDetailView: View {
                 Text("AI Analysis")
                     .font(.headline)
                 Spacer()
-                if aiAnalysis == nil && !isLoadingAnalysis {
+                if aiAnalysis == nil && !isLoadingAnalysis && canModifyAnalysis {
                     Button(action: runAnalysis) {
                         Label("Analyze", systemImage: "sparkles")
                     }
@@ -579,7 +781,7 @@ struct FixtureDetailView: View {
                 }
             }
 
-            if appState.openAIKey.isEmpty {
+            if appState.openAIKey.isEmpty && canModifyAnalysis {
                 Text("Add OpenAI API key in Settings to enable AI analysis")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -599,12 +801,18 @@ struct FixtureDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Retry") { runAnalysis() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                    if canModifyAnalysis {
+                        Button("Retry") { runAnalysis() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
                 }
             } else if let analysis = aiAnalysis {
                 aiAnalysisResultView(analysis: analysis)
+            } else if !canModifyAnalysis {
+                Text("No analysis available")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding()
@@ -614,6 +822,13 @@ struct FixtureDetailView: View {
 
     private func aiAnalysisResultView(analysis: CornerAnalysisResponse) -> some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Timestamp
+            if let timestamp = analysisTimestamp {
+                Text("Analyzed \(formattedTimestamp(timestamp))")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
             // Summary
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: analysis.recommendation == "BET" ? "checkmark.circle.fill" : "minus.circle.fill")
@@ -661,16 +876,24 @@ struct FixtureDetailView: View {
                 }
             }
 
-            // Refresh button
-            HStack {
-                Spacer()
-                Button(action: clearAnalysis) {
-                    Label("Clear", systemImage: "arrow.counterclockwise")
+            // Refresh button - only show for fixtures that haven't started
+            if canModifyAnalysis {
+                HStack {
+                    Spacer()
+                    Button(action: clearAnalysis) {
+                        Label("Clear", systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
         }
+    }
+
+    private func formattedTimestamp(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     private func aiPickView(pick: CornerAnalysisResponse.Pick) -> some View {
@@ -737,6 +960,7 @@ struct FixtureDetailView: View {
 
                 await MainActor.run {
                     aiAnalysis = response
+                    analysisTimestamp = Date()
                     analysisCache.set(fixtureId: fixture.id, data: response)
                     isLoadingAnalysis = false
                 }
@@ -751,6 +975,7 @@ struct FixtureDetailView: View {
 
     private func clearAnalysis() {
         aiAnalysis = nil
+        analysisTimestamp = nil
         analysisCache.clear(fixtureId: fixture.id)
     }
 
