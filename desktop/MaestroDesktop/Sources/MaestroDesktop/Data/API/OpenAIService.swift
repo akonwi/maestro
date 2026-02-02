@@ -4,7 +4,7 @@ struct OpenAIService {
   let apiKey: String
 
   private let promptId = "pmpt_69801f43970c8195bbfcd5c516a884c1023c91ebbcd4a4c4"
-  private let promptVersion = "3"
+  private let promptVersion = "4"
 
   private func debugLog(_ msg: String) {
     let path = NSHomeDirectory() + "/maestro_debug.log"

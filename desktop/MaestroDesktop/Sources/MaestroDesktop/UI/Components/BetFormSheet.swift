@@ -13,7 +13,7 @@ struct BetFormSheet: View {
     let onCancel: () -> Void
 
     @State private var odds: String
-    @State private var stake: String = ""
+    @State private var stake: Double = 10
     @State private var notes: String = ""
 
     init(
@@ -42,7 +42,7 @@ struct BetFormSheet: View {
     }
 
     private var parsedStake: Double? {
-        Double(stake)
+        stake > 0 ? stake : nil
     }
 
     private var potentialPayout: Double? {
@@ -116,11 +116,12 @@ struct BetFormSheet: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         HStack {
-                            Text("$")
-                                .foregroundStyle(.secondary)
-                            TextField("0.00", text: $stake)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 100)
+                            Text(String(format: "$%.0f", stake))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .frame(width: 50, alignment: .leading)
+                            Stepper("", value: $stake, in: 5...1000, step: 5)
+                                .labelsHidden()
                         }
                     }
 
@@ -209,7 +210,7 @@ struct BetFormSheet: View {
     }
 
     private func saveBet() {
-        guard let odds = parsedOdds, let stake = parsedStake else {
+        guard let odds = parsedOdds, stake > 0 else {
             debugLog("Invalid odds or stake: odds=\(self.odds), stake=\(self.stake)")
             return
         }
