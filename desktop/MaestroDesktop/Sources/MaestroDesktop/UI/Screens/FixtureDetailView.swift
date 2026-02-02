@@ -4,20 +4,46 @@ struct FixtureDetailView: View {
     let fixture: FixtureSummary
 
     @EnvironmentObject private var appState: AppState
-    @State private var activeTab: Tab = .matchStats
+    @State private var activeTab: Tab
     @State private var formScope: FormScope = .last5
     @State private var stats: FixtureStats?
     @State private var preMatchData: PreMatchData?
     @State private var matchupData: MatchupData?
+    @State private var cornerOdds: CornerOddsData?
+    @State private var isLoadingOdds = false
+    @State private var selectedBetLine: SelectedBetLine?
 
     private let fixtureRepository = FixtureRepository()
     private let preMatchRepository = PreMatchRepository()
 
-    enum Tab: String, CaseIterable, Identifiable {
+    struct SelectedBetLine: Identifiable {
+        let id = UUID()
+        let marketId: Int
+        let marketName: String
+        let lineName: String
+        let odds: Int
+        let lineValue: Double?
+    }
+
+    init(fixture: FixtureSummary) {
+        self.fixture = fixture
+        self._activeTab = State(initialValue: fixture.isFinished ? .matchStats : .betting)
+    }
+
+    enum Tab: String, Identifiable {
         case matchStats = "Match Stats"
         case preMatch = "Pre-match"
+        case betting = "Betting"
 
         var id: String { rawValue }
+    }
+
+    private var availableTabs: [Tab] {
+        if fixture.isFinished {
+            return [.matchStats, .preMatch]
+        } else {
+            return [.preMatch, .betting]
+        }
     }
 
     var body: some View {
@@ -29,7 +55,7 @@ struct FixtureDetailView: View {
             Divider()
 
             Picker("", selection: $activeTab) {
-                ForEach(Tab.allCases) { tab in
+                ForEach(availableTabs) { tab in
                     Text(tab.rawValue).tag(tab)
                 }
             }
@@ -38,15 +64,23 @@ struct FixtureDetailView: View {
 
             Divider()
 
-            ScrollView {
-                Group {
-                    if activeTab == .matchStats {
-                        matchStatsContent
-                    } else {
-                        preMatchContent
+            if activeTab == .betting {
+                bettingContent
+                    .padding(.horizontal)
+            } else {
+                ScrollView {
+                    Group {
+                        switch activeTab {
+                        case .matchStats:
+                            matchStatsContent
+                        case .preMatch:
+                            preMatchContent
+                        case .betting:
+                            EmptyView()
+                        }
                     }
+                    .padding()
                 }
-                .padding()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -60,6 +94,23 @@ struct FixtureDetailView: View {
             preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
             matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
         }
+        .sheet(item: $selectedBetLine) { line in
+            BetFormSheet(
+                fixture: fixture,
+                marketId: line.marketId,
+                marketName: line.marketName,
+                lineName: line.lineName,
+                initialOdds: line.odds,
+                lineValue: line.lineValue,
+                onSave: { bet in
+                    selectedBetLine = nil
+                    appState.refreshBets()
+                },
+                onCancel: {
+                    selectedBetLine = nil
+                }
+            )
+        }
     }
 
     private func loadStats() {
@@ -70,6 +121,65 @@ struct FixtureDetailView: View {
         )
         preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
         matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
+        loadCornerOdds()
+    }
+
+    private func loadCornerOdds() {
+        guard !fixture.isFinished else {
+            cornerOdds = nil
+            return
+        }
+
+        // Check cache first
+        if let cached = OddsCache.shared.get(fixtureId: fixture.id) {
+            cornerOdds = cached
+            isLoadingOdds = false
+            return
+        }
+
+        guard !appState.apiToken.isEmpty else {
+            cornerOdds = nil
+            return
+        }
+
+        isLoadingOdds = true
+        let client = APIFootballClient(apiKey: appState.apiToken)
+        let fixtureId = fixture.id
+
+        Task {
+            do {
+                let markets = try await client.getOdds(fixtureId: fixtureId)
+                let cornerMarkets = markets.filter { $0.isCornerMarket }
+
+                let converted = cornerMarkets.map { market in
+                    CornerMarket(
+                        id: market.id,
+                        name: market.displayName,
+                        lines: market.values.map { line in
+                            CornerLine(
+                                id: line.id,
+                                name: line.lineName,
+                                americanOdd: line.americanOdd,
+                                value: line.lineValue
+                            )
+                        }
+                    )
+                }
+
+                let oddsData = CornerOddsData(markets: converted)
+
+                await MainActor.run {
+                    OddsCache.shared.set(fixtureId: fixtureId, data: oddsData)
+                    cornerOdds = oddsData
+                    isLoadingOdds = false
+                }
+            } catch {
+                await MainActor.run {
+                    cornerOdds = nil
+                    isLoadingOdds = false
+                }
+            }
+        }
     }
 
     private var header: some View {
@@ -211,6 +321,108 @@ struct FixtureDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var bettingContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Sticky header with stats
+            VStack(alignment: .leading, spacing: 16) {
+                Picker("", selection: $formScope) {
+                    ForEach(FormScope.allCases) { scope in
+                        Text(scope.rawValue).tag(scope)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 200)
+
+                // Corner Stats
+                if let matchup = matchupData {
+                    cornerStatsSection(data: matchup)
+                }
+            }
+            .padding(.top)
+            .padding(.bottom, 16)
+
+            Divider()
+
+            // Scrollable odds
+            ScrollView {
+                cornerOddsSection
+                    .padding(.vertical, 16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func cornerStatsSection(data: MatchupData) -> some View {
+        let expectedHome = (data.home.forStats.cornersPerGame + data.away.againstStats.cornersPerGame) / 2
+        let expectedAway = (data.away.forStats.cornersPerGame + data.home.againstStats.cornersPerGame) / 2
+        let expectedTotal = expectedHome + expectedAway
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Corner Stats")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                // Home corners
+                cornerStatBox(
+                    team: data.home.teamName,
+                    won: data.home.forStats.cornersPerGame,
+                    conceded: data.away.againstStats.cornersPerGame
+                )
+
+                // Expected total
+                VStack(spacing: 2) {
+                    Text(String(format: "%.1f", expectedTotal))
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Text("expected")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 70)
+
+                // Away corners
+                cornerStatBox(
+                    team: data.away.teamName,
+                    won: data.away.forStats.cornersPerGame,
+                    conceded: data.home.againstStats.cornersPerGame
+                )
+            }
+        }
+    }
+
+    private func cornerStatBox(team: String, won: Double, conceded: Double) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(team)
+                .font(.caption)
+                .fontWeight(.medium)
+                .lineLimit(1)
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(String(format: "%.1f", won))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("won")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(String(format: "%.1f", conceded))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("vs conceded")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(6)
+    }
+
     private func formSection(data: PreMatchData) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Form")
@@ -332,6 +544,87 @@ struct FixtureDetailView: View {
                     attackStats: data.away.forStats,
                     defenseStats: data.home.againstStats
                 )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var cornerOddsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Corner Odds")
+                .font(.headline)
+
+            if isLoadingOdds {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Loading odds...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let odds = cornerOdds, !odds.markets.isEmpty {
+                ForEach(odds.markets) { market in
+                    cornerMarketView(market: market)
+                }
+            } else {
+                Text("No corner odds available")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func cornerMarketView(market: CornerMarket) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(market.name)
+                .font(.subheadline)
+                .fontWeight(.medium)
+
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 8) {
+                ForEach(market.lines) { line in
+                    cornerLineView(market: market, line: line)
+                }
+            }
+        }
+        .padding()
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func cornerLineView(market: CornerMarket, line: CornerLine) -> some View {
+        VStack(spacing: 4) {
+            Text(line.name)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(line.formattedOdd)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(line.americanOdd > 0 ? .green : .primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .textBackgroundColor))
+        .cornerRadius(6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedBetLine = SelectedBetLine(
+                marketId: market.id,
+                marketName: market.name,
+                lineName: line.name,
+                odds: line.americanOdd,
+                lineValue: line.value
+            )
+        }
+        .onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
             }
         }
     }

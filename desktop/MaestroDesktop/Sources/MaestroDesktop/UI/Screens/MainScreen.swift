@@ -5,6 +5,7 @@ struct MainScreen: View {
     @State private var showingSettings = false
     @State private var showingLeagueSearch = false
     @State private var showingDatePicker = false
+    @State private var showingBets = false
 
     var body: some View {
         NavigationSplitView {
@@ -38,11 +39,35 @@ struct MainScreen: View {
             LeagueSearchView()
                 .environmentObject(appState)
         }
+        .sheet(isPresented: $showingBets) {
+            BetsListView()
+                .environmentObject(appState)
+        }
         .toast($appState.toast)
     }
 
     private var sidebar: some View {
         List {
+            Section {
+                Button {
+                    showingBets = true
+                } label: {
+                    HStack {
+                        Label("Bets", systemImage: "dollarsign.circle")
+                        Spacer()
+                        if appState.betStats.pendingBets > 0 {
+                            Text("\(appState.betStats.pendingBets)")
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.2))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+
             Section {
                 ForEach(appState.followedLeagues) { league in
                     HStack {

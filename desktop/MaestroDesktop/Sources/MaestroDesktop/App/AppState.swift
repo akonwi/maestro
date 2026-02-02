@@ -11,6 +11,8 @@ final class AppState: ObservableObject {
     @Published var apiToken: String = ""
     @Published var followedLeagues: [FollowedLeague] = []
     @Published var toast: Toast?
+    @Published var betStats: BetStats = .empty
+    @Published var pendingBets: [Bet] = []
 
     let syncService = SyncService()
 
@@ -22,6 +24,7 @@ final class AppState: ObservableObject {
     init() {
         apiToken = settingsRepository.getApiToken()
         refreshLeagues()
+        refreshBets()
 
         syncService.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -75,6 +78,11 @@ final class AppState: ObservableObject {
 
     func refreshLeagues() {
         followedLeagues = leagueRepository.followedLeagues()
+    }
+
+    func refreshBets() {
+        betStats = BetRepository.shared.stats()
+        pendingBets = BetRepository.shared.pendingBets()
     }
 
     func followAndSync(league: LeagueSearchResult) {

@@ -52,6 +52,14 @@ struct APIFootballClient {
         return response.response.first
     }
 
+    func getOdds(fixtureId: Int) async throws -> [APIOddsMarket] {
+        let response: OddsResponse = try await request(path: "/odds?fixture=\(fixtureId)&bookmaker=8")
+        guard let bookmaker = response.response.first?.bookmakers.first else {
+            return []
+        }
+        return bookmaker.bets
+    }
+
     enum APIError: LocalizedError {
         case missingApiKey
         case invalidURL
@@ -208,5 +216,119 @@ struct APIFixture: Decodable, Identifiable {
 
     var timestampMs: Int64 {
         Int64(fixture.timestamp) * 1000
+    }
+}
+
+// MARK: - Odds
+
+struct OddsResponse: Decodable {
+    let response: [OddsFixture]
+
+    struct OddsFixture: Decodable {
+        let bookmakers: [Bookmaker]
+    }
+
+    struct Bookmaker: Decodable {
+        let id: Int
+        let name: String
+        let bets: [APIOddsMarket]
+    }
+}
+
+struct APIOddsMarket: Decodable, Identifiable {
+    let id: Int
+    let name: String
+    let values: [APIOddsLine]
+
+    static let cornersTotal = 45
+    static let cornersMoneyline = 55
+    static let cornersAsian = 56
+    static let cornersHome = 57
+    static let cornersAway = 58
+    static let cornersTotal3Way = 85
+
+    var isCornerMarket: Bool {
+        [Self.cornersTotal, Self.cornersMoneyline, Self.cornersAsian,
+         Self.cornersHome, Self.cornersAway, Self.cornersTotal3Way].contains(id)
+    }
+
+    var displayName: String {
+        switch id {
+        case Self.cornersTotal: return "Total Corners"
+        case Self.cornersMoneyline: return "Most Corners"
+        case Self.cornersAsian: return "Asian Corners"
+        case Self.cornersHome: return "Home Corners"
+        case Self.cornersAway: return "Away Corners"
+        case Self.cornersTotal3Way: return "Total Corners (3-Way)"
+        default: return name
+        }
+    }
+}
+
+struct APIOddsLine: Decodable, Identifiable {
+    let value: OddsValue
+    let odd: String
+
+    var id: String { value.stringValue }
+
+    enum OddsValue: Decodable {
+        case string(String)
+        case int(Int)
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let str = try? container.decode(String.self) {
+                self = .string(str)
+            } else if let num = try? container.decode(Int.self) {
+                self = .int(num)
+            } else {
+                self = .string("")
+            }
+        }
+
+        var stringValue: String {
+            switch self {
+            case .string(let s): return s
+            case .int(let i): return String(i)
+            }
+        }
+    }
+
+    var lineName: String {
+        value.stringValue
+    }
+
+    var decimalOdd: Double {
+        Double(odd) ?? 0
+    }
+
+    var americanOdd: Int {
+        let dec = decimalOdd
+        if dec < 2.0 {
+            return Int(-100.0 / (dec - 1.0))
+        } else {
+            return Int((dec - 1.0) * 100.0)
+        }
+    }
+
+    var lineType: LineType {
+        let name = lineName
+        if name.hasPrefix("Over") { return .over }
+        if name.hasPrefix("Under") { return .under }
+        if name.hasPrefix("Home") { return .home }
+        if name.hasPrefix("Away") { return .away }
+        if name.hasPrefix("Exactly") { return .exactly }
+        if name == "Draw" { return .draw }
+        return .other
+    }
+
+    var lineValue: Double? {
+        let parts = lineName.split(separator: " ")
+        guard parts.count == 2 else { return nil }
+        return Double(parts[1])
+    }
+
+    enum LineType {
+        case over, under, home, away, exactly, draw, other
     }
 }

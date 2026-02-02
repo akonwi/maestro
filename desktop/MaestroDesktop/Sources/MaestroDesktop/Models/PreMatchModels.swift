@@ -1,5 +1,35 @@
 import Foundation
 
+// MARK: - Corner Odds
+
+struct CornerOddsData: Equatable, Codable {
+    let markets: [CornerMarket]
+
+    static let empty = CornerOddsData(markets: [])
+}
+
+struct CornerMarket: Identifiable, Equatable, Codable {
+    let id: Int
+    let name: String
+    let lines: [CornerLine]
+}
+
+struct CornerLine: Identifiable, Equatable, Codable {
+    let id: String
+    let name: String
+    let americanOdd: Int
+    let value: Double?
+
+    var formattedOdd: String {
+        if americanOdd > 0 {
+            return "+\(americanOdd)"
+        }
+        return "\(americanOdd)"
+    }
+}
+
+// MARK: - Form Scope
+
 enum FormScope: String, CaseIterable, Identifiable {
     case last5 = "Last 5"
     case season = "Season"
