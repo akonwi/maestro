@@ -63,6 +63,7 @@ final class SyncService: ObservableObject {
             }
 
             leagueRepository.updateSyncedAt(leagueId: id)
+            leagueRepository.updateCurrentSeason(leagueId: id, season: season)
 
             print("Import complete for \(leagueName): \(fixtureList.count) fixtures (\(imported) with stats)")
             return SyncResult(leagueName: leagueName, fixtureCount: fixtureList.count, error: nil)
@@ -132,6 +133,7 @@ final class SyncService: ObservableObject {
                 }
 
                 leagueRepository.updateSyncedAt(leagueId: id)
+                leagueRepository.updateCurrentSeason(leagueId: id, season: season)
                 print("Sync complete for \(leagueName): \(synced) fixtures updated")
                 return SyncResult(leagueName: leagueName, fixtureCount: synced, error: nil)
             }

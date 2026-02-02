@@ -5,6 +5,7 @@ import Combine
 final class AppState: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var openFixtures: [FixtureTab] = []
+    @Published var openLeagues: [LeagueTab] = []
     @Published var activeTabId: UUID?
     @Published var leagueSections: [LeagueSection] = []
     @Published var didAutoSelectDate = false
@@ -47,14 +48,32 @@ final class AppState: ObservableObject {
         activeTabId = tab.id
     }
 
-    func closeTab(_ tabId: UUID) {
-        guard let index = openFixtures.firstIndex(where: { $0.id == tabId }) else {
+    func openLeague(_ league: FollowedLeague) {
+        if let existing = openLeagues.first(where: { $0.league.id == league.id }) {
+            activeTabId = existing.id
             return
         }
 
-        openFixtures.remove(at: index)
-        if activeTabId == tabId {
-            activeTabId = openFixtures.last?.id
+        let tab = LeagueTab(league: league)
+        openLeagues.append(tab)
+        activeTabId = tab.id
+    }
+
+    func closeTab(_ tabId: UUID) {
+        if let index = openFixtures.firstIndex(where: { $0.id == tabId }) {
+            openFixtures.remove(at: index)
+            if activeTabId == tabId {
+                activeTabId = openFixtures.last?.id ?? openLeagues.last?.id
+            }
+            return
+        }
+
+        if let index = openLeagues.firstIndex(where: { $0.id == tabId }) {
+            openLeagues.remove(at: index)
+            if activeTabId == tabId {
+                activeTabId = openLeagues.last?.id ?? openFixtures.last?.id
+            }
+            return
         }
     }
 

@@ -12,16 +12,12 @@ struct MainScreen: View {
             sidebar
         } detail: {
             VStack(spacing: 0) {
-                if !appState.openFixtures.isEmpty {
+                if !appState.openFixtures.isEmpty || !appState.openLeagues.isEmpty {
                     tabBar
                     Divider()
                 }
 
-                if appState.activeTabId == nil {
-                    fixtureList
-                } else {
-                    fixtureDetailContent
-                }
+                detailContent
             }
         }
         .onAppear {
@@ -70,15 +66,20 @@ struct MainScreen: View {
 
             Section {
                 ForEach(appState.followedLeagues) { league in
-                    HStack {
-                        Text(league.name)
-                        Spacer()
-                        if appState.isSyncing(leagueId: league.id) {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                                .frame(width: 16, height: 16)
+                    Button {
+                        appState.openLeague(league)
+                    } label: {
+                        HStack {
+                            Text(league.name)
+                            Spacer()
+                            if appState.isSyncing(leagueId: league.id) {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 16, height: 16)
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
                     .contextMenu {
                         Button {
                             appState.syncLeague(id: league.id)
@@ -171,22 +172,55 @@ struct MainScreen: View {
                     .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
                     .cornerRadius(6)
                 }
+
+                ForEach(appState.openLeagues) { tab in
+                    HStack(spacing: 6) {
+                        Button {
+                            appState.activeTabId = tab.id
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "trophy")
+                                    .font(.caption)
+                                Text(tab.league.name)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            appState.closeTab(tab.id)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
+                    .cornerRadius(6)
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
         }
     }
 
-    private var fixtureDetailContent: some View {
-        Group {
-            if let tab = appState.openFixtures.first(where: { $0.id == appState.activeTabId }) {
-                FixtureDetailView(fixture: tab.fixture)
-            } else {
-                Text("No fixture selected")
-                    .foregroundStyle(.secondary)
-            }
+    @ViewBuilder
+    private var detailContent: some View {
+        if appState.activeTabId == nil {
+            fixtureList
+        } else if let fixtureTab = appState.openFixtures.first(where: { $0.id == appState.activeTabId }) {
+            FixtureDetailView(fixture: fixtureTab.fixture)
+                .navigationTitle("")
+        } else if let leagueTab = appState.openLeagues.first(where: { $0.id == appState.activeTabId }) {
+            LeagueDetailView(league: leagueTab.league)
+                .navigationTitle("")
+        } else {
+            Text("No content selected")
+                .foregroundStyle(.secondary)
         }
-        .navigationTitle("")
     }
 
     private var fixtureList: some View {
