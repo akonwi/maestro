@@ -24,7 +24,7 @@ final class Database {
     private func resolveDatabaseURL() -> URL {
         let fileManager = FileManager.default
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let appDirectory = appSupport?.appendingPathComponent("MaestroDesktop", isDirectory: true)
+        let appDirectory = appSupport?.appendingPathComponent("com.akonwi.maestro", isDirectory: true)
         let targetURL = appDirectory?.appendingPathComponent("maestro.sqlite")
 
         if let appDirectory, let targetURL {

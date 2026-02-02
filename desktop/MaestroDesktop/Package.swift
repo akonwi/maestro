@@ -4,13 +4,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "MaestroDesktop",
+    name: "Maestro",
     platforms: [
         .macOS(.v14)
     ],
     targets: [
         .executableTarget(
-            name: "MaestroDesktop",
+            name: "Maestro",
+            path: "Sources/MaestroDesktop",
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]
