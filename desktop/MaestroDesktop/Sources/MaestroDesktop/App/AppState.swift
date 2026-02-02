@@ -137,6 +137,23 @@ final class AppState: ObservableObject {
         }
     }
 
+    func syncFixture(_ fixture: FixtureSummary) {
+        Task {
+            let success = await syncService.syncFixture(
+                id: fixture.id,
+                leagueId: fixture.leagueId,
+                season: fixture.season,
+                apiKey: apiToken
+            )
+            if success {
+                refreshFixtures()
+                toast = .success("Fixture synced")
+            } else {
+                toast = .error("Failed to sync fixture")
+            }
+        }
+    }
+
     private func showSyncToast(_ result: SyncResult) {
         if let error = result.error {
             toast = .error("Sync failed: \(error)")

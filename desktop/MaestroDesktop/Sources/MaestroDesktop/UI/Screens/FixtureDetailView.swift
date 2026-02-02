@@ -308,6 +308,16 @@ struct FixtureDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
+
+            if !fixture.isFinished {
+                Button {
+                    syncFixtureStats()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.trianglehead.2.clockwise")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
         }
     }
 

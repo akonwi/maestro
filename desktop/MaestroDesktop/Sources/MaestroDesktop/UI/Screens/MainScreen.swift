@@ -247,6 +247,15 @@ struct MainScreen: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                if !fixture.isFinished {
+                                    Button {
+                                        appState.syncFixture(fixture)
+                                    } label: {
+                                        Label("Sync", systemImage: "arrow.trianglehead.2.clockwise")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
