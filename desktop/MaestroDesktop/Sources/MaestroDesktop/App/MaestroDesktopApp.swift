@@ -10,6 +10,15 @@ struct MaestroDesktopApp: App {
         NSApplication.shared.setActivationPolicy(.regular)
         DispatchQueue.main.async {
             NSApplication.shared.activate(ignoringOtherApps: true)
+
+            // Set app icon from resources (since we're not in an app bundle)
+            if let iconURL = Bundle.module.url(
+                forResource: "icon_512",
+                withExtension: "png",
+                subdirectory: "Assets.xcassets/AppIcon.appiconset"
+            ), let icon = NSImage(contentsOf: iconURL) {
+                NSApplication.shared.applicationIconImage = icon
+            }
         }
     }
 

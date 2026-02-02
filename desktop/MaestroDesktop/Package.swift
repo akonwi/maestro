@@ -12,10 +12,12 @@ let package = Package(
         .executableTarget(
             name: "Maestro",
             path: "Sources/MaestroDesktop",
+            resources: [
+                .process("Resources")
+            ],
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]
         )
     ]
 )
-
