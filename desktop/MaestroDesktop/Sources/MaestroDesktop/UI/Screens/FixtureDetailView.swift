@@ -12,9 +12,15 @@ struct FixtureDetailView: View {
     @State private var cornerOdds: CornerOddsData?
     @State private var isLoadingOdds = false
     @State private var selectedBetLine: SelectedBetLine?
+    @State private var aiAnalysis: CornerAnalysisResponse?
+    @State private var isLoadingAnalysis = false
+    @State private var analysisError: String?
+    @State private var expandedMarkets: Set<Int> = []
 
     private let fixtureRepository = FixtureRepository()
     private let preMatchRepository = PreMatchRepository()
+    private let analysisRepository = AnalysisRepository.shared
+    private let analysisCache = AnalysisCache.shared
 
     struct SelectedBetLine: Identifiable {
         let id = UUID()
@@ -122,6 +128,13 @@ struct FixtureDetailView: View {
         preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
         matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
         loadCornerOdds()
+        loadCachedAnalysis()
+    }
+
+    private func loadCachedAnalysis() {
+        if let cached = analysisCache.get(fixtureId: fixture.id) {
+            aiAnalysis = cached
+        }
     }
 
     private func loadCornerOdds() {
@@ -322,34 +335,35 @@ struct FixtureDetailView: View {
     }
 
     private var bettingContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Sticky header with stats
-            VStack(alignment: .leading, spacing: 16) {
-                Picker("", selection: $formScope) {
-                    ForEach(FormScope.allCases) { scope in
-                        Text(scope.rawValue).tag(scope)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Stats header
+                VStack(alignment: .leading, spacing: 16) {
+                    Picker("", selection: $formScope) {
+                        ForEach(FormScope.allCases) { scope in
+                            Text(scope.rawValue).tag(scope)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 200)
+
+                    // Corner Stats
+                    if let matchup = matchupData {
+                        cornerStatsSection(data: matchup)
+                    }
+
+                    // AI Analysis Section
+                    aiAnalysisSection
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 200)
+                .padding(.bottom, 16)
 
-                // Corner Stats
-                if let matchup = matchupData {
-                    cornerStatsSection(data: matchup)
-                }
-            }
-            .padding(.top)
-            .padding(.bottom, 16)
+                Divider()
 
-            Divider()
-
-            // Scrollable odds
-            ScrollView {
+                // Odds
                 cornerOddsSection
                     .padding(.vertical, 16)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func cornerStatsSection(data: MatchupData) -> some View {
@@ -549,6 +563,198 @@ struct FixtureDetailView: View {
     }
 
     @ViewBuilder
+    private var aiAnalysisSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("AI Analysis")
+                    .font(.headline)
+                Spacer()
+                if aiAnalysis == nil && !isLoadingAnalysis {
+                    Button(action: runAnalysis) {
+                        Label("Analyze", systemImage: "sparkles")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(appState.openAIKey.isEmpty || cornerOdds == nil)
+                }
+            }
+
+            if appState.openAIKey.isEmpty {
+                Text("Add OpenAI API key in Settings to enable AI analysis")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if isLoadingAnalysis {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Analyzing corners...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let error = analysisError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Retry") { runAnalysis() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            } else if let analysis = aiAnalysis {
+                aiAnalysisResultView(analysis: analysis)
+            }
+        }
+        .padding()
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func aiAnalysisResultView(analysis: CornerAnalysisResponse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Summary
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: analysis.recommendation == "BET" ? "checkmark.circle.fill" : "minus.circle.fill")
+                    .foregroundStyle(analysis.recommendation == "BET" ? .green : .secondary)
+                Text(analysis.summary)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Expected corners
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Expected Total")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.1f", analysis.analysis.expectedTotalCorners))
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Home")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.1f", analysis.analysis.expectedHomeCorners))
+                        .font(.subheadline)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Away")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.1f", analysis.analysis.expectedAwayCorners))
+                        .font(.subheadline)
+                }
+            }
+
+            // Picks
+            if !analysis.picks.isEmpty {
+                Divider()
+                Text("Recommendations")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                ForEach(analysis.picks) { pick in
+                    aiPickView(pick: pick)
+                }
+            }
+
+            // Refresh button
+            HStack {
+                Spacer()
+                Button(action: clearAnalysis) {
+                    Label("Clear", systemImage: "arrow.counterclockwise")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+    }
+
+    private func aiPickView(pick: CornerAnalysisResponse.Pick) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(pick.market): \(pick.line)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Text(pick.edge)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(pick.odds > 0 ? "+\(pick.odds)" : "\(pick.odds)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(pick.odds > 0 ? .green : .primary)
+                    Text("+\(String(format: "%.1f", pick.expectedValuePct))% EV")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+            }
+
+            HStack(spacing: 12) {
+                Label("\(Int(pick.confidence * 100))%", systemImage: "target")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Label("\(Int(pick.estimatedProbability * 100))% est.", systemImage: "percent")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !pick.risks.isEmpty {
+                Text("Risks: \(pick.risks.joined(separator: "; "))")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .textBackgroundColor))
+        .cornerRadius(6)
+    }
+
+    private func runAnalysis() {
+        guard !appState.openAIKey.isEmpty else { return }
+
+        isLoadingAnalysis = true
+        analysisError = nil
+
+        Task {
+            do {
+                guard let payload = analysisRepository.buildAnalysisPayload(for: fixture, odds: cornerOdds) else {
+                    await MainActor.run {
+                        analysisError = "Not enough data for analysis"
+                        isLoadingAnalysis = false
+                    }
+                    return
+                }
+
+                let service = OpenAIService(apiKey: appState.openAIKey)
+                let response = try await service.analyzeCorners(payload: payload)
+
+                await MainActor.run {
+                    aiAnalysis = response
+                    analysisCache.set(fixtureId: fixture.id, data: response)
+                    isLoadingAnalysis = false
+                }
+            } catch {
+                await MainActor.run {
+                    analysisError = error.localizedDescription
+                    isLoadingAnalysis = false
+                }
+            }
+        }
+    }
+
+    private func clearAnalysis() {
+        aiAnalysis = nil
+        analysisCache.clear(fixtureId: fixture.id)
+    }
+
+    @ViewBuilder
     private var cornerOddsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Corner Odds")
@@ -575,17 +781,45 @@ struct FixtureDetailView: View {
     }
 
     private func cornerMarketView(market: CornerMarket) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(market.name)
-                .font(.subheadline)
-                .fontWeight(.medium)
+        let maxVisibleLines = 6 // 2 rows × 3 columns
+        let isExpanded = expandedMarkets.contains(market.id)
+        let visibleLines = isExpanded ? market.lines : Array(market.lines.prefix(maxVisibleLines))
+        let hasMore = market.lines.count > maxVisibleLines
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(market.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Spacer()
+                if hasMore {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if isExpanded {
+                                expandedMarkets.remove(market.id)
+                            } else {
+                                expandedMarkets.insert(market.id)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(isExpanded ? "Show less" : "+\(market.lines.count - maxVisibleLines) more")
+                                .font(.caption2)
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: 8) {
-                ForEach(market.lines) { line in
+                ForEach(visibleLines) { line in
                     cornerLineView(market: market, line: line)
                 }
             }

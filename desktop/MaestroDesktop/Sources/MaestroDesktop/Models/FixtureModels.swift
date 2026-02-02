@@ -3,6 +3,7 @@ import Foundation
 struct FixtureSummary: Identifiable, Equatable {
     let id: Int
     let leagueId: Int
+    let season: Int
     let homeId: Int
     let awayId: Int
     let homeName: String
