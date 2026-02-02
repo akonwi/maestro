@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "theme": "system",
+  "autoupdate": true,
+  "experimental": {
+    "primary_tools": ["prune"]
+  },
+  "mcp": {
+    "XcodeBuildMCP": {
+      "enabled": true,
+      "type": "local",
+      "command": ["npx", "-y", "xcodebuildmcp@latest"]
+    },
+    "apple-docs": {
+      "type": "local",
+      "enabled": true,
+      "command": ["npx", "apple-doc-mcp-server@latest"]
+    }
+  },
+  "plugin": []
+}

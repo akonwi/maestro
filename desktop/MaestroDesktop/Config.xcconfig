@@ -1,0 +1,3 @@
+// Maestro App Configuration
+PRODUCT_BUNDLE_IDENTIFIER = com.akonwi.maestro
+PRODUCT_NAME = Maestro
