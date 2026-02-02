@@ -40,6 +40,40 @@ struct FormResult: Identifiable, Equatable {
     }
 }
 
+// MARK: - Matchup Metrics
+
+struct MatchupData: Equatable {
+    let home: TeamMatchupMetrics
+    let away: TeamMatchupMetrics
+}
+
+struct TeamMatchupMetrics: Equatable {
+    let teamId: Int
+    let teamName: String
+    let forStats: MatchupStats      // What this team produces
+    let againstStats: MatchupStats  // What opponents produce against this team
+}
+
+struct MatchupStats: Equatable {
+    let gamesPlayed: Int
+    let shotsPerGame: Double
+    let shotsOnTargetPerGame: Double
+    let xgPerGame: Double
+    let cornersPerGame: Double
+    let possessionAvg: Double
+
+    static let empty = MatchupStats(
+        gamesPlayed: 0,
+        shotsPerGame: 0,
+        shotsOnTargetPerGame: 0,
+        xgPerGame: 0,
+        cornersPerGame: 0,
+        possessionAvg: 0
+    )
+}
+
+// MARK: - Season Stats
+
 struct SeasonStats: Equatable {
     let played: Int
     let wins: Int

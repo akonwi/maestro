@@ -4,6 +4,150 @@ import SQLite3
 @MainActor
 final class PreMatchRepository {
 
+    func matchupData(for fixture: FixtureSummary, scope: FormScope) -> MatchupData? {
+        let limit: Int? = scope == .last5 ? 5 : nil
+
+        let homeFixtureIds = fixtureIds(teamId: fixture.homeId, leagueId: fixture.leagueId, excludeFixtureId: fixture.id, limit: limit)
+        let awayFixtureIds = fixtureIds(teamId: fixture.awayId, leagueId: fixture.leagueId, excludeFixtureId: fixture.id, limit: limit)
+
+        let homeMetrics = teamMatchupMetrics(
+            teamId: fixture.homeId,
+            teamName: fixture.homeName,
+            fixtureIds: homeFixtureIds
+        )
+        let awayMetrics = teamMatchupMetrics(
+            teamId: fixture.awayId,
+            teamName: fixture.awayName,
+            fixtureIds: awayFixtureIds
+        )
+
+        return MatchupData(home: homeMetrics, away: awayMetrics)
+    }
+
+    private func fixtureIds(teamId: Int, leagueId: Int, excludeFixtureId: Int, limit: Int?) -> [Int] {
+        guard let db = Database.shared.handle else { return [] }
+
+        let limitClause = limit != nil ? "LIMIT ?" : ""
+        let sql = """
+        SELECT f.id
+        FROM fixtures f
+        WHERE f.league_id = ?
+          AND (f.home_id = ? OR f.away_id = ?)
+          AND f.finished = 1
+          AND f.id != ?
+        ORDER BY f.timestamp DESC
+        \(limitClause);
+        """
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return []
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(leagueId))
+        sqlite3_bind_int64(statement, 2, Int64(teamId))
+        sqlite3_bind_int64(statement, 3, Int64(teamId))
+        sqlite3_bind_int64(statement, 4, Int64(excludeFixtureId))
+        if let limit = limit {
+            sqlite3_bind_int64(statement, 5, Int64(limit))
+        }
+
+        var ids: [Int] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            ids.append(Int(sqlite3_column_int64(statement, 0)))
+        }
+
+        sqlite3_finalize(statement)
+        return ids
+    }
+
+    private func teamMatchupMetrics(teamId: Int, teamName: String, fixtureIds: [Int]) -> TeamMatchupMetrics {
+        let forStats = matchupStats(teamId: teamId, fixtureIds: fixtureIds, isFor: true)
+        let againstStats = matchupStats(teamId: teamId, fixtureIds: fixtureIds, isFor: false)
+
+        return TeamMatchupMetrics(
+            teamId: teamId,
+            teamName: teamName,
+            forStats: forStats,
+            againstStats: againstStats
+        )
+    }
+
+    private func matchupStats(teamId: Int, fixtureIds: [Int], isFor: Bool) -> MatchupStats {
+        guard let db = Database.shared.handle, !fixtureIds.isEmpty else { return .empty }
+
+        let placeholders = fixtureIds.map { _ in "?" }.joined(separator: ", ")
+
+        // For "for" stats: get this team's stats
+        // For "against" stats: get opponent's stats in same fixtures
+        let sql: String
+        if isFor {
+            sql = """
+            SELECT
+                SUM(shots) as total_shots,
+                SUM(shots_on_goal) as total_sog,
+                SUM(xg) as total_xg,
+                SUM(corners) as total_corners,
+                SUM(possession) as total_possession,
+                COUNT(*) as count
+            FROM fixture_stats
+            WHERE team_id = ? AND fixture_id IN (\(placeholders));
+            """
+        } else {
+            sql = """
+            SELECT
+                SUM(fs2.shots) as total_shots,
+                SUM(fs2.shots_on_goal) as total_sog,
+                SUM(fs2.xg) as total_xg,
+                SUM(fs2.corners) as total_corners,
+                SUM(fs2.possession) as total_possession,
+                COUNT(*) as count
+            FROM fixture_stats fs1
+            INNER JOIN fixture_stats fs2 ON fs1.fixture_id = fs2.fixture_id AND fs1.team_id != fs2.team_id
+            WHERE fs1.team_id = ? AND fs1.fixture_id IN (\(placeholders));
+            """
+        }
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return .empty
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(teamId))
+        for (index, fixtureId) in fixtureIds.enumerated() {
+            sqlite3_bind_int64(statement, Int32(index + 2), Int64(fixtureId))
+        }
+
+        var totalShots = 0
+        var totalSog = 0
+        var totalXg = 0.0
+        var totalCorners = 0
+        var totalPossession = 0.0
+        var count = 0
+
+        if sqlite3_step(statement) == SQLITE_ROW {
+            totalShots = Int(sqlite3_column_int(statement, 0))
+            totalSog = Int(sqlite3_column_int(statement, 1))
+            totalXg = sqlite3_column_double(statement, 2)
+            totalCorners = Int(sqlite3_column_int(statement, 3))
+            totalPossession = sqlite3_column_double(statement, 4)
+            count = Int(sqlite3_column_int(statement, 5))
+        }
+
+        sqlite3_finalize(statement)
+
+        let gamesPlayed = max(count, 1)
+
+        return MatchupStats(
+            gamesPlayed: count,
+            shotsPerGame: Double(totalShots) / Double(gamesPlayed),
+            shotsOnTargetPerGame: Double(totalSog) / Double(gamesPlayed),
+            xgPerGame: totalXg / Double(gamesPlayed),
+            cornersPerGame: Double(totalCorners) / Double(gamesPlayed),
+            possessionAvg: totalPossession / Double(gamesPlayed)
+        )
+    }
+
     func preMatchData(for fixture: FixtureSummary, scope: FormScope) -> PreMatchData? {
         let homeStats = teamStats(teamId: fixture.homeId, teamName: fixture.homeName, leagueId: fixture.leagueId, excludeFixtureId: fixture.id, scope: scope)
         let awayStats = teamStats(teamId: fixture.awayId, teamName: fixture.awayName, leagueId: fixture.leagueId, excludeFixtureId: fixture.id, scope: scope)

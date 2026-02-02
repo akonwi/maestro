@@ -8,6 +8,7 @@ struct FixtureDetailView: View {
     @State private var formScope: FormScope = .last5
     @State private var stats: FixtureStats?
     @State private var preMatchData: PreMatchData?
+    @State private var matchupData: MatchupData?
 
     private let fixtureRepository = FixtureRepository()
     private let preMatchRepository = PreMatchRepository()
@@ -57,6 +58,7 @@ struct FixtureDetailView: View {
         }
         .onChange(of: formScope) {
             preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
+            matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
         }
     }
 
@@ -67,6 +69,7 @@ struct FixtureDetailView: View {
             awayId: fixture.awayId
         )
         preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
+        matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
     }
 
     private var header: some View {
@@ -190,6 +193,13 @@ struct FixtureDetailView: View {
 
                 // Stats Comparison
                 statsSection(data: data)
+
+                if let matchup = matchupData {
+                    Divider()
+
+                    // Attack vs Defense
+                    matchupSection(data: matchup)
+                }
             } else {
                 ContentUnavailableView(
                     "No Data Available",
@@ -297,6 +307,54 @@ struct FixtureDetailView: View {
                 StatComparisonRow(stat: stat)
             }
         }
+    }
+
+    private func matchupSection(data: MatchupData) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Attack vs Defense")
+                .font(.headline)
+
+            HStack(alignment: .top, spacing: 24) {
+                // Home Attack vs Away Defense
+                matchupColumn(
+                    title: "\(data.home.teamName) ATK",
+                    subtitle: "vs \(data.away.teamName) DEF",
+                    attackStats: data.home.forStats,
+                    defenseStats: data.away.againstStats
+                )
+
+                Divider()
+
+                // Away Attack vs Home Defense
+                matchupColumn(
+                    title: "\(data.away.teamName) ATK",
+                    subtitle: "vs \(data.home.teamName) DEF",
+                    attackStats: data.away.forStats,
+                    defenseStats: data.home.againstStats
+                )
+            }
+        }
+    }
+
+    private func matchupColumn(title: String, subtitle: String, attackStats: MatchupStats, defenseStats: MatchupStats) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 8) {
+                MatchupBar(label: "Shots/Game", attackValue: attackStats.shotsPerGame, defenseValue: defenseStats.shotsPerGame)
+                MatchupBar(label: "On Target/Game", attackValue: attackStats.shotsOnTargetPerGame, defenseValue: defenseStats.shotsOnTargetPerGame)
+                MatchupBar(label: "xG/Game", attackValue: attackStats.xgPerGame, defenseValue: defenseStats.xgPerGame)
+                MatchupBar(label: "Corners/Game", attackValue: attackStats.cornersPerGame, defenseValue: defenseStats.cornersPerGame)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func buildSeasonComparisons(home: SeasonStats, away: SeasonStats) -> [StatComparison] {
