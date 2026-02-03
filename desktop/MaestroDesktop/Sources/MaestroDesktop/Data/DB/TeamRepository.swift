@@ -190,6 +190,7 @@ final class TeamRepository {
             return TeamFormResult(
                 id: f.id,
                 result: result,
+                opponentId: isHome ? f.awayId : f.homeId,
                 opponent: opponent,
                 goalsFor: gf,
                 goalsAgainst: ga,
@@ -208,6 +209,7 @@ final class TeamRepository {
 
             return TeamFixtureResult(
                 id: f.id,
+                opponentId: isHome ? f.awayId : f.homeId,
                 opponent: opponent,
                 goalsFor: gf,
                 goalsAgainst: ga,

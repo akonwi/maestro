@@ -264,15 +264,28 @@ struct FixtureDetailView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 12) {
+        let leagueName = appState.followedLeagues.first { $0.id == fixture.leagueId }?.name ?? ""
+
+        return VStack(spacing: 12) {
             HStack(alignment: .center, spacing: 24) {
                 // Home team
-                VStack(spacing: 8) {
-                    teamLogo(url: fixture.homeLogoURL)
-                    Text(fixture.homeName)
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
+                Button {
+                    appState.openTeam(
+                        teamId: fixture.homeId,
+                        teamName: fixture.homeName,
+                        leagueId: fixture.leagueId,
+                        leagueName: leagueName,
+                        season: fixture.season
+                    )
+                } label: {
+                    VStack(spacing: 8) {
+                        teamLogo(url: fixture.homeLogoURL)
+                        Text(fixture.homeName)
+                            .font(.headline)
+                            .multilineTextAlignment(.center)
+                    }
                 }
+                .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
 
                 // Score or time
@@ -302,12 +315,23 @@ struct FixtureDetailView: View {
                 }
 
                 // Away team
-                VStack(spacing: 8) {
-                    teamLogo(url: fixture.awayLogoURL)
-                    Text(fixture.awayName)
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
+                Button {
+                    appState.openTeam(
+                        teamId: fixture.awayId,
+                        teamName: fixture.awayName,
+                        leagueId: fixture.leagueId,
+                        leagueName: leagueName,
+                        season: fixture.season
+                    )
+                } label: {
+                    VStack(spacing: 8) {
+                        teamLogo(url: fixture.awayLogoURL)
+                        Text(fixture.awayName)
+                            .font(.headline)
+                            .multilineTextAlignment(.center)
+                    }
                 }
+                .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
             }
 

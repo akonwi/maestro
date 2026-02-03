@@ -273,9 +273,9 @@ struct MainScreen: View {
                     description: Text("No fixtures for \(formattedDate(appState.selectedDate)).")
                 )
             } else {
-                ForEach(appState.leagueSections) { league in
-                    Section(league.name) {
-                        ForEach(league.fixtures) { fixture in
+                ForEach(appState.leagueSections) { section in
+                    Section {
+                        ForEach(section.fixtures) { fixture in
                             Button(action: { appState.openFixture(fixture) }) {
                                 HStack {
                                     Text(timeOnly(fixture.kickoff))
@@ -298,6 +298,15 @@ struct MainScreen: View {
                                 }
                             }
                         }
+                    } header: {
+                        Button {
+                            if let league = appState.followedLeagues.first(where: { $0.id == section.id }) {
+                                appState.openLeague(league)
+                            }
+                        } label: {
+                            Text(section.name)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }

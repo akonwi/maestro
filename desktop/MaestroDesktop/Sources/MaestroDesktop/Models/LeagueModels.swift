@@ -103,6 +103,7 @@ struct TeamRecord {
 struct TeamFormResult: Identifiable {
     let id: Int
     let result: MatchResult
+    let opponentId: Int
     let opponent: String
     let goalsFor: Int
     let goalsAgainst: Int
@@ -118,6 +119,7 @@ struct TeamFormResult: Identifiable {
 
 struct TeamFixtureResult: Identifiable {
     let id: Int
+    let opponentId: Int
     let opponent: String
     let goalsFor: Int
     let goalsAgainst: Int
