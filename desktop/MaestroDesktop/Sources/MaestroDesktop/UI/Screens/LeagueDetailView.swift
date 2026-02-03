@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct LeagueDetailView: View {
-    let league: FollowedLeague
+    @Binding var tab: LeagueTab
 
     @EnvironmentObject private var appState: AppState
     @State private var sortOrder = [KeyPathComparator(\StandingRow.position)]
 
     private let leagueRepository = LeagueRepository()
+
+    private var league: FollowedLeague { tab.league }
 
     var body: some View {
         let standings = leagueRepository.standings(leagueId: league.id, season: league.currentSeason)

@@ -240,14 +240,14 @@ struct MainScreen: View {
     private var detailContent: some View {
         if appState.activeTabId == nil {
             fixtureList
-        } else if let fixtureTab = appState.openFixtures.first(where: { $0.id == appState.activeTabId }) {
-            FixtureDetailView(fixture: fixtureTab.fixture)
+        } else if let fixtureTabBinding = appState.fixtureTabBinding(appState.activeTabId!) {
+            FixtureDetailView(tab: fixtureTabBinding)
                 .navigationTitle("")
-        } else if let leagueTab = appState.openLeagues.first(where: { $0.id == appState.activeTabId }) {
-            LeagueDetailView(league: leagueTab.league)
+        } else if let leagueTabBinding = appState.leagueTabBinding(appState.activeTabId!) {
+            LeagueDetailView(tab: leagueTabBinding)
                 .navigationTitle("")
-        } else if let teamTab = appState.openTeams.first(where: { $0.id == appState.activeTabId }) {
-            TeamDetailView(tab: teamTab)
+        } else if let teamTabBinding = appState.teamTabBinding(appState.activeTabId!) {
+            TeamDetailView(tab: teamTabBinding)
                 .navigationTitle("")
         } else {
             Text("No content selected")

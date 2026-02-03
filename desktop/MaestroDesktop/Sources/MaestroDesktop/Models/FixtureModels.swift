@@ -27,6 +27,21 @@ struct FixtureSummary: Identifiable, Equatable {
 struct FixtureTab: Identifiable, Equatable {
     let id = UUID()
     let fixture: FixtureSummary
+
+    // Display state
+    var activeTab: FixtureTabView?
+    var formScope: FormScope = .last5
+
+    enum FixtureTabView: String, Identifiable, Equatable {
+        case matchStats = "Match Stats"
+        case preMatch = "Pre-match"
+        case betting = "Betting"
+        var id: String { rawValue }
+    }
+
+    static func == (lhs: FixtureTab, rhs: FixtureTab) -> Bool {
+        lhs.fixture.id == rhs.fixture.id
+    }
 }
 
 struct LeagueSection: Identifiable, Equatable {

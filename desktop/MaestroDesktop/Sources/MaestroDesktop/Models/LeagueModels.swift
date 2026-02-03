@@ -3,6 +3,18 @@ import Foundation
 struct LeagueTab: Identifiable, Equatable {
     let id = UUID()
     let league: FollowedLeague
+
+    // Display state
+    var sortColumn: LeagueSortColumn = .position
+    var sortAscending: Bool = true
+
+    enum LeagueSortColumn: String, Equatable {
+        case position, teamName, played, won, drawn, lost, goalsFor, goalsAgainst, goalDifference, points
+    }
+
+    static func == (lhs: LeagueTab, rhs: LeagueTab) -> Bool {
+        lhs.league.id == rhs.league.id
+    }
 }
 
 struct StandingRow: Identifiable {
@@ -28,6 +40,22 @@ struct TeamTab: Identifiable, Equatable {
     let leagueId: Int
     let leagueName: String
     let season: Int
+
+    // Display state
+    var activeTab: TeamTabView = .stats
+    var statsScope: TeamStatsScope = .form
+
+    enum TeamTabView: String, CaseIterable, Identifiable {
+        case stats = "Stats"
+        case fixtures = "Fixtures"
+        var id: String { rawValue }
+    }
+
+    enum TeamStatsScope: String, CaseIterable, Identifiable {
+        case form = "Form"
+        case season = "Season"
+        var id: String { rawValue }
+    }
 
     static func == (lhs: TeamTab, rhs: TeamTab) -> Bool {
         lhs.teamId == rhs.teamId && lhs.leagueId == rhs.leagueId && lhs.season == rhs.season

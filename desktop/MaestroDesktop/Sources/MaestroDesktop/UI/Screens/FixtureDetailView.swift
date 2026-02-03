@@ -1,11 +1,9 @@
 import SwiftUI
 
 struct FixtureDetailView: View {
-    let fixture: FixtureSummary
+    @Binding var tab: FixtureTab
 
     @EnvironmentObject private var appState: AppState
-    @State private var activeTab: Tab
-    @State private var formScope: FormScope = .last5
     @State private var stats: FixtureStats?
     @State private var preMatchData: PreMatchData?
     @State private var matchupData: MatchupData?
@@ -36,25 +34,13 @@ struct FixtureDetailView: View {
         let lineValue: Double?
     }
 
-    init(fixture: FixtureSummary) {
-        self.fixture = fixture
-        let isInPlay = !fixture.isFinished && fixture.kickoff <= Date()
-        self._activeTab = State(initialValue: (fixture.isFinished || isInPlay) ? .matchStats : .betting)
-    }
-
-    enum Tab: String, Identifiable {
-        case matchStats = "Match Stats"
-        case preMatch = "Pre-match"
-        case betting = "Betting"
-
-        var id: String { rawValue }
-    }
+    private var fixture: FixtureSummary { tab.fixture }
 
     private var isInPlay: Bool {
         !fixture.isFinished && fixture.kickoff <= Date()
     }
 
-    private var availableTabs: [Tab] {
+    private var availableTabs: [FixtureTab.FixtureTabView] {
         if fixture.isFinished {
             return [.matchStats, .preMatch]
         } else if isInPlay {
@@ -62,6 +48,22 @@ struct FixtureDetailView: View {
         } else {
             return [.preMatch, .betting]
         }
+    }
+
+    private var activeTabBinding: Binding<FixtureTab.FixtureTabView> {
+        Binding(
+            get: {
+                if let current = tab.activeTab, availableTabs.contains(current) {
+                    return current
+                }
+                return (fixture.isFinished || isInPlay) ? .matchStats : .betting
+            },
+            set: { tab.activeTab = $0 }
+        )
+    }
+
+    private var activeTab: FixtureTab.FixtureTabView {
+        activeTabBinding.wrappedValue
     }
 
     var body: some View {
@@ -72,9 +74,9 @@ struct FixtureDetailView: View {
 
             Divider()
 
-            Picker("", selection: $activeTab) {
-                ForEach(availableTabs) { tab in
-                    Text(tab.rawValue).tag(tab)
+            Picker("", selection: activeTabBinding) {
+                ForEach(availableTabs) { tabView in
+                    Text(tabView.rawValue).tag(tabView)
                 }
             }
             .pickerStyle(.segmented)
@@ -114,9 +116,9 @@ struct FixtureDetailView: View {
             stopSyncTimer()
             startSyncTimerIfNeeded()
         }
-        .onChange(of: formScope) {
-            preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
-            matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
+        .onChange(of: tab.formScope) {
+            preMatchData = preMatchRepository.preMatchData(for: fixture, scope: tab.formScope)
+            matchupData = preMatchRepository.matchupData(for: fixture, scope: tab.formScope)
         }
         .sheet(item: $selectedBetLine) { line in
             BetFormSheet(
@@ -143,8 +145,8 @@ struct FixtureDetailView: View {
             homeId: fixture.homeId,
             awayId: fixture.awayId
         )
-        preMatchData = preMatchRepository.preMatchData(for: fixture, scope: formScope)
-        matchupData = preMatchRepository.matchupData(for: fixture, scope: formScope)
+        preMatchData = preMatchRepository.preMatchData(for: fixture, scope: tab.formScope)
+        matchupData = preMatchRepository.matchupData(for: fixture, scope: tab.formScope)
         fixtureBets = betRepository.bets(for: fixture.id)
         loadCornerOdds()
         loadCachedAnalysis()
@@ -383,7 +385,7 @@ struct FixtureDetailView: View {
 
     private var preMatchContent: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Picker("", selection: $formScope) {
+            Picker("", selection: $tab.formScope) {
                 ForEach(FormScope.allCases) { scope in
                     Text(scope.rawValue).tag(scope)
                 }
@@ -434,7 +436,7 @@ struct FixtureDetailView: View {
                 } else {
                     // Stats header for pre-match
                     VStack(alignment: .leading, spacing: 16) {
-                        Picker("", selection: $formScope) {
+                        Picker("", selection: $tab.formScope) {
                             ForEach(FormScope.allCases) { scope in
                                 Text(scope.rawValue).tag(scope)
                             }

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 @MainActor
 final class AppState: ObservableObject {
@@ -189,5 +190,31 @@ final class AppState: ObservableObject {
 
     func isSyncing(leagueId: Int) -> Bool {
         syncService.syncingLeagues.contains(leagueId)
+    }
+
+    // MARK: - Tab State Bindings
+
+    func fixtureTabBinding(_ tabId: UUID) -> Binding<FixtureTab>? {
+        guard let index = openFixtures.firstIndex(where: { $0.id == tabId }) else { return nil }
+        return Binding(
+            get: { self.openFixtures[index] },
+            set: { self.openFixtures[index] = $0 }
+        )
+    }
+
+    func leagueTabBinding(_ tabId: UUID) -> Binding<LeagueTab>? {
+        guard let index = openLeagues.firstIndex(where: { $0.id == tabId }) else { return nil }
+        return Binding(
+            get: { self.openLeagues[index] },
+            set: { self.openLeagues[index] = $0 }
+        )
+    }
+
+    func teamTabBinding(_ tabId: UUID) -> Binding<TeamTab>? {
+        guard let index = openTeams.firstIndex(where: { $0.id == tabId }) else { return nil }
+        return Binding(
+            get: { self.openTeams[index] },
+            set: { self.openTeams[index] = $0 }
+        )
     }
 }

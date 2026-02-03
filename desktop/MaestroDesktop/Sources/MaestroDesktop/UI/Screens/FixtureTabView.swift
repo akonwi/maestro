@@ -5,8 +5,8 @@ struct FixtureTabView: View {
 
     var body: some View {
         Group {
-            if let active = appState.openFixtures.first(where: { $0.id == appState.activeTabId }) {
-                FixtureDetailView(fixture: active.fixture)
+            if let tabId = appState.activeTabId, let binding = appState.fixtureTabBinding(tabId) {
+                FixtureDetailView(tab: binding)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("No Fixture Selected")

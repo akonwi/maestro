@@ -1,25 +1,11 @@
 import SwiftUI
 
 struct TeamDetailView: View {
-    let tab: TeamTab
+    @Binding var tab: TeamTab
 
     @EnvironmentObject private var appState: AppState
-    @State private var activeTab: Tab = .stats
-    @State private var statsScope: StatsScope = .form
 
     private let teamRepository = TeamRepository()
-
-    enum Tab: String, CaseIterable, Identifiable {
-        case stats = "Stats"
-        case fixtures = "Fixtures"
-        var id: String { rawValue }
-    }
-
-    enum StatsScope: String, CaseIterable, Identifiable {
-        case form = "Form"
-        case season = "Season"
-        var id: String { rawValue }
-    }
 
     var body: some View {
         let details = teamRepository.teamDetails(
@@ -37,9 +23,9 @@ struct TeamDetailView: View {
 
                 Divider()
 
-                Picker("", selection: $activeTab) {
-                    ForEach(Tab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
+                Picker("", selection: $tab.activeTab) {
+                    ForEach(TeamTab.TeamTabView.allCases) { tabView in
+                        Text(tabView.rawValue).tag(tabView)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -47,7 +33,7 @@ struct TeamDetailView: View {
 
                 Divider()
 
-                switch activeTab {
+                switch tab.activeTab {
                 case .stats:
                     statsContent(details)
                 case .fixtures:
@@ -124,8 +110,8 @@ struct TeamDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
-                    Picker("", selection: $statsScope) {
-                        ForEach(StatsScope.allCases) { scope in
+                    Picker("", selection: $tab.statsScope) {
+                        ForEach(TeamTab.TeamStatsScope.allCases) { scope in
                             Text(scope.rawValue).tag(scope)
                         }
                     }
@@ -194,7 +180,7 @@ struct TeamDetailView: View {
     }
 
     private func recordSection(_ details: TeamDetails) -> some View {
-        let record = statsScope == .form ? details.formRecord : details.seasonRecord
+        let record = tab.statsScope == .form ? details.formRecord : details.seasonRecord
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Record")
@@ -239,7 +225,7 @@ struct TeamDetailView: View {
     }
 
     private func metricsSection(_ details: TeamDetails) -> some View {
-        let comparison = statsScope == .form ? details.formMetrics : details.seasonMetrics
+        let comparison = tab.statsScope == .form ? details.formMetrics : details.seasonMetrics
         let team = comparison.team
         let opp = comparison.opponents
 
