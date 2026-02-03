@@ -311,7 +311,7 @@ struct FixtureDetailView: View {
                 .frame(maxWidth: .infinity)
             }
 
-            if !fixture.isFinished {
+            if isInPlay {
                 Button {
                     syncFixtureStats()
                 } label: {
