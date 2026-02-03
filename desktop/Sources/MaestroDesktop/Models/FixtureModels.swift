@@ -26,7 +26,7 @@ struct FixtureSummary: Identifiable, Equatable {
 
 struct FixtureTab: Identifiable, Equatable {
     let id = UUID()
-    let fixture: FixtureSummary
+    var fixture: FixtureSummary
 
     // Display state
     var activeTab: FixtureTabView?

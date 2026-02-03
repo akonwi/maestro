@@ -120,6 +120,9 @@ struct FixtureDetailView: View {
             preMatchData = preMatchRepository.preMatchData(for: fixture, scope: tab.formScope)
             matchupData = preMatchRepository.matchupData(for: fixture, scope: tab.formScope)
         }
+        .onChange(of: appState.betStats) {
+            fixtureBets = betRepository.bets(for: fixture.id)
+        }
         .sheet(item: $selectedBetLine) { line in
             BetFormSheet(
                 fixture: fixture,
@@ -140,6 +143,11 @@ struct FixtureDetailView: View {
     }
 
     private func loadStats() {
+        // Refresh the fixture summary from DB (status, score, etc.)
+        if let fresh = fixtureRepository.fixture(id: fixture.id) {
+            tab.fixture = fresh
+        }
+
         stats = fixtureRepository.stats(
             for: fixture.id,
             homeId: fixture.homeId,
@@ -197,9 +205,9 @@ struct FixtureDetailView: View {
                 apiKey: appState.apiToken
             )
             if success {
-                // Reload stats from database
                 await MainActor.run {
                     loadStats()
+                    appState.refreshFixtures()
                 }
             }
         }
