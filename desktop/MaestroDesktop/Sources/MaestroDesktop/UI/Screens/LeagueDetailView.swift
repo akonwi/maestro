@@ -3,6 +3,7 @@ import SwiftUI
 struct LeagueDetailView: View {
     let league: FollowedLeague
 
+    @EnvironmentObject private var appState: AppState
     @State private var sortOrder = [KeyPathComparator(\StandingRow.position)]
 
     private let leagueRepository = LeagueRepository()
@@ -48,7 +49,19 @@ struct LeagueDetailView: View {
             .width(min: 30, ideal: 40, max: 50)
 
             TableColumn("Team", value: \.teamName) { row in
-                Text(row.teamName)
+                Button {
+                    appState.openTeam(
+                        teamId: row.teamId,
+                        teamName: row.teamName,
+                        leagueId: league.id,
+                        leagueName: league.name,
+                        season: league.currentSeason
+                    )
+                } label: {
+                    Text(row.teamName)
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
             }
             .width(min: 120, ideal: 200)
 

@@ -12,7 +12,7 @@ struct MainScreen: View {
             sidebar
         } detail: {
             VStack(spacing: 0) {
-                if !appState.openFixtures.isEmpty || !appState.openLeagues.isEmpty {
+                if !appState.openFixtures.isEmpty || !appState.openLeagues.isEmpty || !appState.openTeams.isEmpty {
                     tabBar
                     Divider()
                 }
@@ -201,6 +201,35 @@ struct MainScreen: View {
                     .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
                     .cornerRadius(6)
                 }
+
+                ForEach(appState.openTeams) { tab in
+                    HStack(spacing: 6) {
+                        Button {
+                            appState.activeTabId = tab.id
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.3")
+                                    .font(.caption)
+                                Text(tab.teamName)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            appState.closeTab(tab.id)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
+                    .cornerRadius(6)
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -216,6 +245,9 @@ struct MainScreen: View {
                 .navigationTitle("")
         } else if let leagueTab = appState.openLeagues.first(where: { $0.id == appState.activeTabId }) {
             LeagueDetailView(league: leagueTab.league)
+                .navigationTitle("")
+        } else if let teamTab = appState.openTeams.first(where: { $0.id == appState.activeTabId }) {
+            TeamDetailView(tab: teamTab)
                 .navigationTitle("")
         } else {
             Text("No content selected")

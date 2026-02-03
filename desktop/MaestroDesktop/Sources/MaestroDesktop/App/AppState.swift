@@ -6,6 +6,7 @@ final class AppState: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var openFixtures: [FixtureTab] = []
     @Published var openLeagues: [LeagueTab] = []
+    @Published var openTeams: [TeamTab] = []
     @Published var activeTabId: UUID?
     @Published var leagueSections: [LeagueSection] = []
     @Published var didAutoSelectDate = false
@@ -59,11 +60,22 @@ final class AppState: ObservableObject {
         activeTabId = tab.id
     }
 
+    func openTeam(teamId: Int, teamName: String, leagueId: Int, leagueName: String, season: Int) {
+        if let existing = openTeams.first(where: { $0.teamId == teamId && $0.leagueId == leagueId }) {
+            activeTabId = existing.id
+            return
+        }
+
+        let tab = TeamTab(teamId: teamId, teamName: teamName, leagueId: leagueId, leagueName: leagueName, season: season)
+        openTeams.append(tab)
+        activeTabId = tab.id
+    }
+
     func closeTab(_ tabId: UUID) {
         if let index = openFixtures.firstIndex(where: { $0.id == tabId }) {
             openFixtures.remove(at: index)
             if activeTabId == tabId {
-                activeTabId = openFixtures.last?.id ?? openLeagues.last?.id
+                activeTabId = openFixtures.last?.id ?? openLeagues.last?.id ?? openTeams.last?.id
             }
             return
         }
@@ -71,7 +83,15 @@ final class AppState: ObservableObject {
         if let index = openLeagues.firstIndex(where: { $0.id == tabId }) {
             openLeagues.remove(at: index)
             if activeTabId == tabId {
-                activeTabId = openLeagues.last?.id ?? openFixtures.last?.id
+                activeTabId = openLeagues.last?.id ?? openFixtures.last?.id ?? openTeams.last?.id
+            }
+            return
+        }
+
+        if let index = openTeams.firstIndex(where: { $0.id == tabId }) {
+            openTeams.remove(at: index)
+            if activeTabId == tabId {
+                activeTabId = openTeams.last?.id ?? openFixtures.last?.id ?? openLeagues.last?.id
             }
             return
         }
