@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainScreen: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingSettings = false
     @State private var showingLeagueSearch = false
     @State private var showingDatePicker = false
@@ -69,7 +70,8 @@ struct MainScreen: View {
                     Button {
                         appState.openLeague(league)
                     } label: {
-                        HStack {
+                        HStack(spacing: 8) {
+                            leagueLogo(id: league.id, size: 20)
                             Text(league.name)
                             Spacer()
                             if appState.isSyncing(leagueId: league.id) {
@@ -179,8 +181,7 @@ struct MainScreen: View {
                             appState.activeTabId = tab.id
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: "trophy")
-                                    .font(.caption)
+                                leagueLogo(id: tab.league.id, size: 16)
                                 Text(tab.league.name)
                                     .lineLimit(1)
                             }
@@ -208,8 +209,16 @@ struct MainScreen: View {
                             appState.activeTabId = tab.id
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: "person.3")
-                                    .font(.caption)
+                                AsyncImage(url: URL(string: "https://media.api-sports.io/football/teams/\(tab.teamId).png")) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image.resizable().aspectRatio(contentMode: .fit)
+                                    default:
+                                        Image(systemName: "person.3").font(.caption)
+                                    }
+                                }
+                                .frame(width: 16, height: 16)
+
                                 Text(tab.teamName)
                                     .lineLimit(1)
                             }
@@ -355,5 +364,25 @@ struct MainScreen: View {
         }
         if fixture.status == "NS" { return "" }
         return fixture.status
+    }
+
+    private func leagueLogo(id: Int, size: CGFloat) -> some View {
+        AsyncImage(url: URL(string: "https://media.api-sports.io/football/leagues/\(id).png")) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().aspectRatio(contentMode: .fit)
+            default:
+                Image(systemName: "trophy")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: size, height: size)
+        .background(
+            colorScheme == .dark
+                ? Circle().fill(Color.white)
+                : nil
+        )
+        .clipShape(Circle())
     }
 }
