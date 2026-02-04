@@ -40,8 +40,15 @@ struct FixtureDetailView: View {
         !fixture.isFinished && !fixture.isPostponed && fixture.kickoff <= Date()
     }
 
+    private var hasBettingData: Bool {
+        !fixtureBets.isEmpty || aiAnalysis != nil
+    }
+
     private var availableTabs: [FixtureTab.FixtureTabView] {
         if fixture.isFinished {
+            if hasBettingData {
+                return [.matchStats, .preMatch, .betting]
+            }
             return [.matchStats, .preMatch]
         } else if isInPlay {
             return [.matchStats, .preMatch, .betting]
