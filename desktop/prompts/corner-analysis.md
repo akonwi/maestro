@@ -62,6 +62,7 @@ Return valid JSON matching this structure:
   },
   "picks": [
     {
+      "market_id": <market id from input>,
       "market": "<market name>",
       "line": "<line name>",
       "odds": <american odds>,

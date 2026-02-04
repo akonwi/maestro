@@ -941,12 +941,21 @@ struct FixtureDetailView: View {
     }
 
     private func aiPickView(pick: CornerAnalysisResponse.Pick) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let canBet = !fixture.isFinished
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(pick.market): \(pick.line)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                    HStack(spacing: 4) {
+                        Text("\(pick.market): \(pick.line)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        if canBet {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
                     Text(pick.edge)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -981,6 +990,37 @@ struct FixtureDetailView: View {
         .padding(10)
         .background(Color(nsColor: .textBackgroundColor))
         .cornerRadius(6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if canBet {
+                openBetForm(for: pick)
+            }
+        }
+        .onHover { hovering in
+            if canBet {
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+        }
+    }
+
+    private func openBetForm(for pick: CornerAnalysisResponse.Pick) {
+        // Try to find matching line in loaded odds for the line value
+        let lineValue: Double? = cornerOdds?.markets
+            .first(where: { $0.id == pick.marketId })?
+            .lines.first(where: { $0.name == pick.line })?
+            .value
+
+        selectedBetLine = SelectedBetLine(
+            marketId: pick.marketId,
+            marketName: pick.market,
+            lineName: pick.line,
+            odds: pick.odds,
+            lineValue: lineValue
+        )
     }
 
     private func runAnalysis() {

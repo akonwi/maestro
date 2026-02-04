@@ -66,6 +66,7 @@ struct OpenAIService {
     },
     "picks": [
       {
+        "market_id": <market id from input>,
         "market": "<market name>",
         "line": "<line name>",
         "odds": <american odds>,
@@ -261,6 +262,7 @@ struct CornerAnalysisResponse: Codable {
 
   struct Pick: Codable, Identifiable {
     var id: String { "\(market)-\(line)" }
+    let marketId: Int
     let market: String
     let line: String
     let odds: Int
@@ -273,6 +275,7 @@ struct CornerAnalysisResponse: Codable {
 
     enum CodingKeys: String, CodingKey {
       case market, line, odds, edge, risks
+      case marketId = "market_id"
       case impliedProbability = "implied_probability"
       case estimatedProbability = "estimated_probability"
       case confidence
