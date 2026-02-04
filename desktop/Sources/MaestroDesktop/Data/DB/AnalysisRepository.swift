@@ -36,6 +36,30 @@ final class AnalysisRepository {
             )
         }
 
+        let betStats = BetRepository.shared.stats()
+        let profile: CornerAnalysisPayload.BettingProfile? = betStats.totalBets > 0
+            ? CornerAnalysisPayload.BettingProfile(
+                totalBets: betStats.totalBets,
+                wins: betStats.wins,
+                losses: betStats.losses,
+                pushes: betStats.pushes,
+                winRate: betStats.winRate,
+                roi: betStats.roi,
+                totalStaked: betStats.totalStaked,
+                netProfit: betStats.netProfit
+            )
+            : nil
+
+        let pending = BetRepository.shared.pendingBets()
+        let pendingBets: [CornerAnalysisPayload.PendingBet]? = pending.isEmpty ? nil : pending.map { bet in
+            CornerAnalysisPayload.PendingBet(
+                market: bet.displayDescription,
+                odds: bet.odds,
+                stake: bet.stake,
+                potentialPayout: bet.potentialPayout
+            )
+        }
+
         return CornerAnalysisPayload(
             fixture: CornerAnalysisPayload.FixtureInfo(
                 home: fixture.homeName,
@@ -43,7 +67,9 @@ final class AnalysisRepository {
             ),
             homeTeam: homeData,
             awayTeam: awayData,
-            markets: markets
+            markets: markets,
+            bettingProfile: profile,
+            pendingBets: pendingBets
         )
     }
 
