@@ -1,4 +1,60 @@
 import SwiftUI
+import AppKit
+
+struct VoiceControlTextView: NSViewRepresentable {
+    @Binding var text: String
+    var placeholder: String = ""
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        let textView = scrollView.documentView as! NSTextView
+
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        textView.textColor = .textColor
+        textView.backgroundColor = .textBackgroundColor
+        textView.isAutomaticSpellingCorrectionEnabled = true
+        textView.isAutomaticTextCompletionEnabled = true
+        textView.isEditable = true
+        textView.isSelectable = true
+
+        // Accessibility for Voice Control
+        textView.setAccessibilityLabel("Notes")
+        textView.setAccessibilityRole(.textArea)
+
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.borderType = .bezelBorder
+
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        let textView = scrollView.documentView as! NSTextView
+        if textView.string != text {
+            textView.string = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: VoiceControlTextView
+
+        init(_ parent: VoiceControlTextView) {
+            self.parent = parent
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.text = textView.string
+        }
+    }
+}
 
 struct BetFormSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -162,13 +218,8 @@ struct BetFormSheet: View {
                     Text("Notes (optional)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextEditor(text: $notes)
-                        .font(.body)
+                    VoiceControlTextView(text: $notes, placeholder: "Add notes about this bet...")
                         .frame(height: 80)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                        )
                 }
             }
             .padding()
