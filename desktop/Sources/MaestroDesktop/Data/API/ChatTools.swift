@@ -72,6 +72,16 @@ struct ChatTools {
                     "required": ["league_id", "season"],
                 ]
             ),
+            makeTool(
+                name: "get_corner_analysis",
+                description: "Get the saved AI corner betting analysis for a fixture. Includes expected corners, recommended picks with confidence/EV, and risks.",
+                parameters: [
+                    "properties": [
+                        "fixture_id": ["type": "integer", "description": "The fixture ID"],
+                    ] as [String: Any],
+                    "required": ["fixture_id"],
+                ]
+            ),
         ]
     }
 
@@ -121,6 +131,14 @@ struct ChatTools {
             }
             let repo = LeagueRepository()
             return serializeStandings(repo.standings(leagueId: leagueId, season: season))
+        case "get_corner_analysis":
+            guard let fixtureId = intArg(arguments, "fixture_id") else {
+                return errorJSON("Missing fixture_id")
+            }
+            guard let cached = AnalysisCache.shared.get(fixtureId: fixtureId) else {
+                return errorJSON("No saved analysis for fixture \(fixtureId)")
+            }
+            return serializeAnalysis(cached)
         default:
             return errorJSON("Unknown tool: \(name)")
         }
@@ -281,5 +299,14 @@ struct ChatTools {
             ] as [String: Any]
         }
         return toJSON(items)
+    }
+
+    private static func serializeAnalysis(_ cached: CachedAnalysis) -> String {
+        guard let data = try? JSONEncoder().encode(cached.analysis),
+              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return errorJSON("Failed to serialize analysis")
+        }
+        dict["cachedAt"] = ISO8601DateFormatter().string(from: cached.cachedAt)
+        return toJSON(dict)
     }
 }

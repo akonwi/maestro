@@ -109,12 +109,12 @@ final class AppState: ObservableObject {
 
         if sections.isEmpty && !didAutoSelectDate {
             if let latestDate = fixtureRepository.latestFixtureDate() {
-                didAutoSelectDate = true
                 selectedDate = latestDate
                 print("Auto-selected latest fixture date: \(latestDate)")
                 leagueSections = fixtureRepository.fixturesGroupedByLeague(for: latestDate)
             }
         }
+        didAutoSelectDate = true
     }
 
     func updateApiToken(_ token: String) {
