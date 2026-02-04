@@ -162,7 +162,7 @@ struct MainScreen: View {
                 .buttonStyle(.plain)
 
                 ForEach(appState.openFixtures) { tab in
-                    let isLive = !tab.fixture.isFinished && tab.fixture.kickoff <= Date()
+                    let isLive = !tab.fixture.isFinished && !tab.fixture.isPostponed && tab.fixture.kickoff <= Date()
                     HStack(spacing: 6) {
                         Button {
                             appState.activeTabId = tab.id

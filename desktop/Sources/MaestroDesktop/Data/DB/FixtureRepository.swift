@@ -3,6 +3,30 @@ import SQLite3
 
 @MainActor
 final class FixtureRepository {
+    init() {
+        ensureSchema()
+    }
+
+    private func ensureSchema() {
+        guard let db = Database.shared.handle else { return }
+
+        var hasStatus = false
+        var pragmaStmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "PRAGMA table_info(fixtures);", -1, &pragmaStmt, nil) == SQLITE_OK {
+            while sqlite3_step(pragmaStmt) == SQLITE_ROW {
+                if let name = sqlite3_column_text(pragmaStmt, 1), String(cString: name) == "status" {
+                    hasStatus = true
+                    break
+                }
+            }
+            sqlite3_finalize(pragmaStmt)
+        }
+        if !hasStatus {
+            sqlite3_exec(db, "ALTER TABLE fixtures ADD COLUMN status TEXT DEFAULT 'NS';", nil, nil, nil)
+            sqlite3_exec(db, "UPDATE fixtures SET status = 'FT' WHERE finished = 1;", nil, nil, nil)
+        }
+    }
+
     func latestFixtureDate() -> Date? {
         guard let db = Database.shared.handle else { return nil }
 
@@ -47,7 +71,8 @@ final class FixtureRepository {
           h.name as home_name,
           a.name as away_name,
           f.home_goals,
-          f.away_goals
+          f.away_goals,
+          f.status
         FROM fixtures f
         INNER JOIN leagues l ON l.id = f.league_id
         INNER JOIN teams h ON h.id = f.home_id
@@ -80,9 +105,14 @@ final class FixtureRepository {
             let awayName = String(cString: sqlite3_column_text(statement, 9))
             let homeGoals = Int(sqlite3_column_int(statement, 10))
             let awayGoals = Int(sqlite3_column_int(statement, 11))
+            let status: String
+            if let statusPtr = sqlite3_column_text(statement, 12) {
+                status = String(cString: statusPtr)
+            } else {
+                status = finished ? "FT" : "NS"
+            }
 
             let kickoff = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
-            let status = finished ? "FT" : "NS"
 
             let fixture = FixtureSummary(
                 id: fixtureId,
@@ -129,7 +159,8 @@ final class FixtureRepository {
           h.name as home_name,
           a.name as away_name,
           f.home_goals,
-          f.away_goals
+          f.away_goals,
+          f.status
         FROM fixtures f
         INNER JOIN teams h ON h.id = f.home_id
         INNER JOIN teams a ON a.id = f.away_id
@@ -157,9 +188,14 @@ final class FixtureRepository {
             let awayName = String(cString: sqlite3_column_text(statement, 8))
             let homeGoals = Int(sqlite3_column_int(statement, 9))
             let awayGoals = Int(sqlite3_column_int(statement, 10))
+            let status: String
+            if let statusPtr = sqlite3_column_text(statement, 11) {
+                status = String(cString: statusPtr)
+            } else {
+                status = finished ? "FT" : "NS"
+            }
 
             let kickoff = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
-            let status = finished ? "FT" : "NS"
 
             result = FixtureSummary(
                 id: fixtureId,

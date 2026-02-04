@@ -20,8 +20,20 @@ final class LeagueRepository {
         sqlite3_exec(db, sql, nil, nil, nil)
 
         // Add current_season column if it doesn't exist (migration for existing databases)
-        let alterSql = "ALTER TABLE leagues ADD COLUMN current_season INTEGER DEFAULT 2025;"
-        sqlite3_exec(db, alterSql, nil, nil, nil)
+        var hasCurrentSeason = false
+        var pragmaStmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "PRAGMA table_info(leagues);", -1, &pragmaStmt, nil) == SQLITE_OK {
+            while sqlite3_step(pragmaStmt) == SQLITE_ROW {
+                if let name = sqlite3_column_text(pragmaStmt, 1), String(cString: name) == "current_season" {
+                    hasCurrentSeason = true
+                    break
+                }
+            }
+            sqlite3_finalize(pragmaStmt)
+        }
+        if !hasCurrentSeason {
+            sqlite3_exec(db, "ALTER TABLE leagues ADD COLUMN current_season INTEGER DEFAULT 2025;", nil, nil, nil)
+        }
     }
 
     func followedLeagues() -> [FollowedLeague] {

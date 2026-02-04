@@ -13,7 +13,13 @@ struct FixtureSummary: Identifiable, Equatable {
     let homeGoals: Int
     let awayGoals: Int
 
-    var isFinished: Bool { status == "FT" }
+    var isFinished: Bool {
+        status == "FT" || status == "AET" || status == "PEN" || status == "WO" || status == "AWD"
+    }
+
+    var isPostponed: Bool {
+        status == "PST" || status == "CANC" || status == "ABD" || status == "SUSP" || status == "INT" || status == "WO"
+    }
 
     var homeLogoURL: URL? {
         URL(string: "https://media.api-sports.io/football/teams/\(homeId).png")

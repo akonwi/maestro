@@ -37,7 +37,7 @@ struct FixtureDetailView: View {
     private var fixture: FixtureSummary { tab.fixture }
 
     private var isInPlay: Bool {
-        !fixture.isFinished && fixture.kickoff <= Date()
+        !fixture.isFinished && !fixture.isPostponed && fixture.kickoff <= Date()
     }
 
     private var availableTabs: [FixtureTab.FixtureTabView] {

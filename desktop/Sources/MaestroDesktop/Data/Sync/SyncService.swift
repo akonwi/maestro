@@ -197,12 +197,13 @@ final class SyncService: ObservableObject {
 
         let sql = """
         INSERT OR REPLACE INTO fixtures
-            (id, league_id, season, home_id, away_id, timestamp, finished, home_goals, away_goals)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            (id, league_id, season, home_id, away_id, timestamp, finished, home_goals, away_goals, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
             sqlite3_bind_int64(statement, 1, Int64(fixture.id))
             sqlite3_bind_int64(statement, 2, Int64(leagueId))
             sqlite3_bind_int64(statement, 3, Int64(season))
@@ -212,6 +213,7 @@ final class SyncService: ObservableObject {
             sqlite3_bind_int(statement, 7, fixture.isFinished ? 1 : 0)
             sqlite3_bind_int64(statement, 8, Int64(fixture.goals.home ?? 0))
             sqlite3_bind_int64(statement, 9, Int64(fixture.goals.away ?? 0))
+            sqlite3_bind_text(statement, 10, fixture.fixture.status.short, -1, transient)
             sqlite3_step(statement)
             sqlite3_finalize(statement)
         }
@@ -232,16 +234,19 @@ final class SyncService: ObservableObject {
         UPDATE fixtures SET
             finished = ?,
             home_goals = ?,
-            away_goals = ?
+            away_goals = ?,
+            status = ?
         WHERE id = ?;
         """
 
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
             sqlite3_bind_int(statement, 1, fixture.isFinished ? 1 : 0)
             sqlite3_bind_int64(statement, 2, Int64(fixture.goals.home ?? 0))
             sqlite3_bind_int64(statement, 3, Int64(fixture.goals.away ?? 0))
-            sqlite3_bind_int64(statement, 4, Int64(fixture.id))
+            sqlite3_bind_text(statement, 4, fixture.fixture.status.short, -1, transient)
+            sqlite3_bind_int64(statement, 5, Int64(fixture.id))
             sqlite3_step(statement)
             sqlite3_finalize(statement)
         }
@@ -367,9 +372,28 @@ final class SyncService: ObservableObject {
             timestamp INTEGER,
             finished BOOLEAN,
             home_goals INTEGER,
-            away_goals INTEGER
+            away_goals INTEGER,
+            status TEXT DEFAULT 'NS'
         );
         """
+
+        // Add status column for existing databases
+        var hasStatus = false
+        var pragmaStmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "PRAGMA table_info(fixtures);", -1, &pragmaStmt, nil) == SQLITE_OK {
+            while sqlite3_step(pragmaStmt) == SQLITE_ROW {
+                if let name = sqlite3_column_text(pragmaStmt, 1), String(cString: name) == "status" {
+                    hasStatus = true
+                    break
+                }
+            }
+            sqlite3_finalize(pragmaStmt)
+        }
+        if !hasStatus {
+            sqlite3_exec(db, "ALTER TABLE fixtures ADD COLUMN status TEXT DEFAULT 'NS';", nil, nil, nil)
+            // Backfill existing rows
+            sqlite3_exec(db, "UPDATE fixtures SET status = 'FT' WHERE finished = 1;", nil, nil, nil)
+        }
 
         let teams = """
         CREATE TABLE IF NOT EXISTS teams (
