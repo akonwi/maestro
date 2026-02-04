@@ -7,6 +7,8 @@ struct MainScreen: View {
     @State private var showingLeagueSearch = false
     @State private var showingDatePicker = false
     @State private var showingBets = false
+    @State private var showingChat = false
+    @StateObject private var chatViewModel = ChatViewModel()
 
     var body: some View {
         NavigationSplitView {
@@ -24,6 +26,7 @@ struct MainScreen: View {
         .onAppear {
             appState.refreshLeagues()
             appState.refreshFixtures()
+            chatViewModel.configure(apiKey: appState.openAIKey)
         }
         .onChange(of: appState.selectedDate) {
             appState.refreshFixtures()
@@ -41,6 +44,22 @@ struct MainScreen: View {
                 .environmentObject(appState)
         }
         .toast($appState.toast)
+        .overlay(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottomTrailing) {
+                if showingChat {
+                    ChatPanelView(viewModel: chatViewModel)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 64)
+                        .transition(.scale(scale: 0.8, anchor: .bottomTrailing).combined(with: .opacity))
+                }
+
+                ChatFloatingButton(isChatOpen: $showingChat)
+                    .padding(16)
+            }
+        }
+        .onChange(of: appState.openAIKey) {
+            chatViewModel.configure(apiKey: appState.openAIKey)
+        }
     }
 
     private var sidebar: some View {
