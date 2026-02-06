@@ -33,7 +33,6 @@ struct FixtureDetailView: View {
         let lineName: String
         let odds: Int
         let lineValue: Double?
-        let recommendedStake: Double?
     }
 
     private var fixture: FixtureSummary { tab.fixture }
@@ -140,7 +139,6 @@ struct FixtureDetailView: View {
                 lineName: line.lineName,
                 initialOdds: line.odds,
                 lineValue: line.lineValue,
-                recommendedStake: line.recommendedStake,
                 onSave: { bet in
                     selectedBetLine = nil
                     appState.refreshBets()
@@ -1045,7 +1043,7 @@ struct FixtureDetailView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if canBet {
-                openBetForm(for: pick)
+                saveBetFromPick(pick)
             }
         }
         .onHover { hovering in
@@ -1059,21 +1057,36 @@ struct FixtureDetailView: View {
         }
     }
 
-    private func openBetForm(for pick: CornerAnalysisResponse.Pick) {
+    private func saveBetFromPick(_ pick: CornerAnalysisResponse.Pick) {
         // Try to find matching line in loaded odds for the line value
         let lineValue: Double? = cornerOdds?.markets
             .first(where: { $0.id == pick.marketId })?
             .lines.first(where: { $0.name == pick.line })?
             .value
 
-        selectedBetLine = SelectedBetLine(
+        // Build notes from AI reasoning
+        var noteParts: [String] = []
+        noteParts.append("Edge: \(pick.edge)")
+        noteParts.append(String(format: "EV: +%.1f%%", pick.expectedValuePct))
+        noteParts.append(String(format: "Confidence: %d%%", Int(pick.confidence * 100)))
+        if !pick.risks.isEmpty {
+            noteParts.append("Risks: \(pick.risks.joined(separator: "; "))")
+        }
+        let notes = noteParts.joined(separator: "\n")
+
+        let stake = pick.recommendedStake ?? 10
+
+        if betRepository.create(
+            fixtureId: fixture.id,
             marketId: pick.marketId,
-            marketName: pick.market,
-            lineName: pick.line,
+            line: lineValue,
             odds: pick.odds,
-            lineValue: lineValue,
-            recommendedStake: pick.recommendedStake
-        )
+            stake: stake,
+            notes: notes
+        ) != nil {
+            appState.refreshBets()
+            appState.toast = .success("Bet saved: \(pick.market) \(pick.line) @ \(pick.odds > 0 ? "+" : "")\(pick.odds)")
+        }
     }
 
     private func runAnalysis() {
@@ -1226,8 +1239,7 @@ struct FixtureDetailView: View {
                 marketName: market.name,
                 lineName: line.name,
                 odds: line.americanOdd,
-                lineValue: line.value,
-                recommendedStake: nil
+                lineValue: line.value
             )
         }
         .onHover { hovering in
