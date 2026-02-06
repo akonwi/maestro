@@ -498,14 +498,16 @@ struct FixtureDetailView: View {
     private var bettingContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if isInPlay {
-                    // Show bets for in-play fixtures
+                // Always show bets if there are any
+                if !fixtureBets.isEmpty {
                     fixtureBetsSection
                         .padding(.vertical, 16)
+                    Divider()
+                }
 
+                if isInPlay || fixture.isFinished {
                     // Show AI analysis if one was saved pre-match
                     if aiAnalysis != nil {
-                        Divider()
                         aiAnalysisSection
                             .padding(.vertical, 16)
                     }
@@ -585,37 +587,48 @@ struct FixtureDetailView: View {
                 }
             }
 
-            // Settle buttons
+            // Settle buttons - only show after fixture has started
             if bet.result == .pending {
-                HStack(spacing: 12) {
-                    Button {
-                        settleBet(bet, result: .won)
-                    } label: {
-                        Text("Won")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .controlSize(.small)
+                if fixture.kickoff <= Date() {
+                    HStack(spacing: 12) {
+                        Button {
+                            settleBet(bet, result: .won)
+                        } label: {
+                            Text("Won")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .controlSize(.small)
 
-                    Button {
-                        settleBet(bet, result: .lost)
-                    } label: {
-                        Text("Lost")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .controlSize(.small)
+                        Button {
+                            settleBet(bet, result: .lost)
+                        } label: {
+                            Text("Lost")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                        .controlSize(.small)
 
-                    Button {
-                        settleBet(bet, result: .push)
-                    } label: {
-                        Text("Push")
-                            .frame(maxWidth: .infinity)
+                        Button {
+                            settleBet(bet, result: .push)
+                        } label: {
+                            Text("Push")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                } else {
+                    Text("Pending")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondary.opacity(0.2))
+                        .foregroundStyle(.secondary)
+                        .cornerRadius(4)
                 }
             } else {
                 HStack {
