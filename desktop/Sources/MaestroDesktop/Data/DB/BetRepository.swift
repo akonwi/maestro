@@ -54,6 +54,7 @@ final class BetRepository {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fixture_id INTEGER NOT NULL,
             market_id INTEGER NOT NULL,
+            line_name TEXT,
             line REAL,
             odds INTEGER NOT NULL,
             stake REAL NOT NULL,
@@ -64,11 +65,15 @@ final class BetRepository {
         """
 
         sqlite3_exec(db, sql, nil, nil, nil)
+
+        // Add line_name column to existing tables (will silently fail if already exists)
+        sqlite3_exec(db, "ALTER TABLE bets ADD COLUMN line_name TEXT;", nil, nil, nil)
     }
 
     func create(
         fixtureId: Int,
         marketId: Int,
+        lineName: String?,
         line: Double?,
         odds: Int,
         stake: Double,
@@ -80,8 +85,8 @@ final class BetRepository {
         }
 
         let sql = """
-        INSERT INTO bets (fixture_id, market_id, line, odds, stake, result, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', ?, ?);
+        INSERT INTO bets (fixture_id, market_id, line_name, line, odds, stake, result, notes, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?);
         """
 
         var statement: OpaquePointer?
@@ -96,19 +101,24 @@ final class BetRepository {
 
         sqlite3_bind_int64(statement, 1, Int64(fixtureId))
         sqlite3_bind_int64(statement, 2, Int64(marketId))
-        if let line = line {
-            sqlite3_bind_double(statement, 3, line)
+        if let lineName = lineName, !lineName.isEmpty {
+            sqlite3_bind_text(statement, 3, lineName, -1, transient)
         } else {
             sqlite3_bind_null(statement, 3)
         }
-        sqlite3_bind_int(statement, 4, Int32(odds))
-        sqlite3_bind_double(statement, 5, stake)
-        if let notes = notes, !notes.isEmpty {
-            sqlite3_bind_text(statement, 6, notes, -1, transient)
+        if let line = line {
+            sqlite3_bind_double(statement, 4, line)
         } else {
-            sqlite3_bind_null(statement, 6)
+            sqlite3_bind_null(statement, 4)
         }
-        sqlite3_bind_int64(statement, 7, now)
+        sqlite3_bind_int(statement, 5, Int32(odds))
+        sqlite3_bind_double(statement, 6, stake)
+        if let notes = notes, !notes.isEmpty {
+            sqlite3_bind_text(statement, 7, notes, -1, transient)
+        } else {
+            sqlite3_bind_null(statement, 7)
+        }
+        sqlite3_bind_int64(statement, 8, now)
 
         let stepResult = sqlite3_step(statement)
         guard stepResult == SQLITE_DONE else {
@@ -126,6 +136,7 @@ final class BetRepository {
             id: id,
             fixtureId: fixtureId,
             marketId: marketId,
+            lineName: lineName,
             line: line,
             odds: odds,
             stake: stake,
@@ -167,7 +178,7 @@ final class BetRepository {
         guard let db = Database.shared.handle else { return [] }
 
         let sql = """
-        SELECT id, fixture_id, market_id, line, odds, stake, result, notes, created_at
+        SELECT id, fixture_id, market_id, line_name, line, odds, stake, result, notes, created_at
         FROM bets
         ORDER BY created_at DESC;
         """
@@ -179,7 +190,7 @@ final class BetRepository {
         guard let db = Database.shared.handle else { return [] }
 
         let sql = """
-        SELECT id, fixture_id, market_id, line, odds, stake, result, notes, created_at
+        SELECT id, fixture_id, market_id, line_name, line, odds, stake, result, notes, created_at
         FROM bets
         WHERE result = 'pending'
         ORDER BY created_at DESC;
@@ -192,7 +203,7 @@ final class BetRepository {
         guard let db = Database.shared.handle else { return [] }
 
         let sql = """
-        SELECT id, fixture_id, market_id, line, odds, stake, result, notes, created_at
+        SELECT id, fixture_id, market_id, line_name, line, odds, stake, result, notes, created_at
         FROM bets
         WHERE fixture_id = ?
         ORDER BY created_at DESC;
@@ -284,23 +295,27 @@ final class BetRepository {
         let id = Int(sqlite3_column_int64(statement, 0))
         let fixtureId = Int(sqlite3_column_int64(statement, 1))
         let marketId = Int(sqlite3_column_int64(statement, 2))
-        let line: Double? = sqlite3_column_type(statement, 3) != SQLITE_NULL
-            ? sqlite3_column_double(statement, 3)
+        let lineName: String? = sqlite3_column_type(statement, 3) != SQLITE_NULL
+            ? String(cString: sqlite3_column_text(statement, 3))
             : nil
-        let odds = Int(sqlite3_column_int(statement, 4))
-        let stake = sqlite3_column_double(statement, 5)
-        let resultStr = String(cString: sqlite3_column_text(statement, 6))
+        let line: Double? = sqlite3_column_type(statement, 4) != SQLITE_NULL
+            ? sqlite3_column_double(statement, 4)
+            : nil
+        let odds = Int(sqlite3_column_int(statement, 5))
+        let stake = sqlite3_column_double(statement, 6)
+        let resultStr = String(cString: sqlite3_column_text(statement, 7))
         let result = BetResult(rawValue: resultStr) ?? .pending
-        let notes: String? = sqlite3_column_type(statement, 7) != SQLITE_NULL
-            ? String(cString: sqlite3_column_text(statement, 7))
+        let notes: String? = sqlite3_column_type(statement, 8) != SQLITE_NULL
+            ? String(cString: sqlite3_column_text(statement, 8))
             : nil
-        let timestamp = sqlite3_column_int64(statement, 8)
+        let timestamp = sqlite3_column_int64(statement, 9)
         let createdAt = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
 
         return Bet(
             id: id,
             fixtureId: fixtureId,
             marketId: marketId,
+            lineName: lineName,
             line: line,
             odds: odds,
             stake: stake,

@@ -568,8 +568,13 @@ struct FixtureDetailView: View {
                     Text(marketName(for: bet.marketId))
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    if let line = bet.line {
-                        Text(String(format: "Line: %.1f", line))
+                    if let lineName = bet.lineName {
+                        Text(lineName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if let line = bet.line {
+                        let lineStr = line >= 0 ? "+\(String(format: "%.1f", line))" : String(format: "%.1f", line)
+                        Text("Line: \(lineStr)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1092,6 +1097,7 @@ struct FixtureDetailView: View {
         if betRepository.create(
             fixtureId: fixture.id,
             marketId: pick.marketId,
+            lineName: pick.line,
             line: lineValue,
             odds: pick.odds,
             stake: stake,

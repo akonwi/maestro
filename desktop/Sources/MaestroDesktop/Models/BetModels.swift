@@ -11,6 +11,7 @@ struct Bet: Identifiable, Equatable {
     let id: Int
     let fixtureId: Int
     let marketId: Int
+    let lineName: String?
     let line: Double?
     let odds: Int
     let stake: Double
@@ -43,9 +44,12 @@ struct Bet: Identifiable, Equatable {
     }
 
     var displayDescription: String {
+        if let lineName = lineName {
+            return "\(marketName): \(lineName)"
+        }
         if let line = line {
-            let direction = odds > 0 ? "Over" : "Under"
-            return "\(marketName) \(direction) \(String(format: "%.1f", line))"
+            let lineStr = line >= 0 ? "+\(String(format: "%.1f", line))" : String(format: "%.1f", line)
+            return "\(marketName) \(lineStr)"
         }
         return marketName
     }

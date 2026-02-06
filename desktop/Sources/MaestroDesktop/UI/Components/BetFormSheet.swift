@@ -270,6 +270,7 @@ struct BetFormSheet: View {
         if let bet = BetRepository.shared.create(
             fixtureId: fixture.id,
             marketId: marketId,
+            lineName: lineName,
             line: lineValue,
             odds: odds,
             stake: stake,
