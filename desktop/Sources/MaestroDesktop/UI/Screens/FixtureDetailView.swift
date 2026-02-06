@@ -9,6 +9,7 @@ struct FixtureDetailView: View {
     @State private var matchupData: MatchupData?
     @State private var cornerOdds: CornerOddsData?
     @State private var isLoadingOdds = false
+    @State private var selectedBookmaker: BookmakerInfo = .defaultBookmaker
     @State private var selectedBetLine: SelectedBetLine?
     @State private var aiAnalysis: CornerAnalysisResponse?
     @State private var analysisTimestamp: Date?
@@ -228,13 +229,22 @@ struct FixtureDetailView: View {
             return
         }
 
-        // Check cache first
-        if let cached = OddsCache.shared.get(fixtureId: fixture.id) {
+        // Check cache first (only if using default bookmaker)
+        if selectedBookmaker.id == BookmakerInfo.defaultBookmaker.id,
+           let cached = OddsCache.shared.get(fixtureId: fixture.id) {
             cornerOdds = cached
+            // Update selected bookmaker to match cached data
+            if let cachedBookmaker = cached.bookmaker {
+                selectedBookmaker = cachedBookmaker
+            }
             isLoadingOdds = false
             return
         }
 
+        fetchOdds(bookmakerId: selectedBookmaker.id)
+    }
+
+    private func fetchOdds(bookmakerId: Int) {
         guard !appState.apiToken.isEmpty else {
             cornerOdds = nil
             return
@@ -246,8 +256,8 @@ struct FixtureDetailView: View {
 
         Task {
             do {
-                let markets = try await client.getOdds(fixtureId: fixtureId)
-                let cornerMarkets = markets.filter { $0.isCornerMarket }
+                let result = try await client.getOdds(fixtureId: fixtureId, bookmakerId: bookmakerId)
+                let cornerMarkets = result.markets.filter { $0.isCornerMarket }
 
                 let converted = cornerMarkets.map { market in
                     CornerMarket(
@@ -264,10 +274,13 @@ struct FixtureDetailView: View {
                     )
                 }
 
-                let oddsData = CornerOddsData(markets: converted)
+                let oddsData = CornerOddsData(markets: converted, bookmaker: result.bookmaker)
 
                 await MainActor.run {
-                    OddsCache.shared.set(fixtureId: fixtureId, data: oddsData)
+                    // Only cache if using default bookmaker
+                    if bookmakerId == BookmakerInfo.defaultBookmaker.id {
+                        OddsCache.shared.set(fixtureId: fixtureId, data: oddsData)
+                    }
                     cornerOdds = oddsData
                     isLoadingOdds = false
                 }
@@ -1106,8 +1119,21 @@ struct FixtureDetailView: View {
     @ViewBuilder
     private var cornerOddsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Corner Odds")
-                .font(.headline)
+            HStack {
+                Text("Corner Odds")
+                    .font(.headline)
+                Spacer()
+                Picker("Bookmaker", selection: $selectedBookmaker) {
+                    ForEach(BookmakerInfo.available) { bookmaker in
+                        Text(bookmaker.name).tag(bookmaker)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 120)
+                .onChange(of: selectedBookmaker) {
+                    fetchOdds(bookmakerId: selectedBookmaker.id)
+                }
+            }
 
             if isLoadingOdds {
                 HStack {

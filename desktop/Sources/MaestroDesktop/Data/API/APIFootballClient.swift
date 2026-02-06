@@ -52,12 +52,20 @@ struct APIFootballClient {
         return response.response.first
     }
 
-    func getOdds(fixtureId: Int) async throws -> [APIOddsMarket] {
-        let response: OddsResponse = try await request(path: "/odds?fixture=\(fixtureId)&bookmaker=8")
+    struct OddsResult {
+        let markets: [APIOddsMarket]
+        let bookmaker: BookmakerInfo?
+    }
+
+    func getOdds(fixtureId: Int, bookmakerId: Int = 8) async throws -> OddsResult {
+        let response: OddsResponse = try await request(path: "/odds?fixture=\(fixtureId)&bookmaker=\(bookmakerId)")
         guard let bookmaker = response.response.first?.bookmakers.first else {
-            return []
+            return OddsResult(markets: [], bookmaker: nil)
         }
-        return bookmaker.bets
+        return OddsResult(
+            markets: bookmaker.bets,
+            bookmaker: BookmakerInfo(id: bookmaker.id, name: bookmaker.name)
+        )
     }
 
     enum APIError: LocalizedError {
