@@ -40,6 +40,17 @@ final class SettingsRepository {
         setValue(key, forKey: "openai_key")
     }
 
+    func getBankroll() -> Double {
+        guard let str = getValue(forKey: "bankroll"), let value = Double(str) else {
+            return 100
+        }
+        return value
+    }
+
+    func setBankroll(_ amount: Double) {
+        setValue(String(amount), forKey: "bankroll")
+    }
+
     private func getValue(forKey key: String) -> String? {
         guard let db = Database.shared.handle else { return nil }
 

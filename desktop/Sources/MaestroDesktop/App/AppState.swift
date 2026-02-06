@@ -15,6 +15,7 @@ final class AppState: ObservableObject {
     @Published var didAutoSelectDate = false
     @Published var apiToken: String = ""
     @Published var openAIKey: String = ""
+    @Published var bankroll: Double = 0
     @Published var followedLeagues: [FollowedLeague] = []
     @Published var toast: Toast?
     @Published var betStats: BetStats = .empty
@@ -30,6 +31,7 @@ final class AppState: ObservableObject {
     init() {
         apiToken = settingsRepository.getApiToken()
         openAIKey = settingsRepository.getOpenAIKey()
+        bankroll = settingsRepository.getBankroll()
         refreshLeagues()
         refreshBets()
         restoreSession()
@@ -125,6 +127,11 @@ final class AppState: ObservableObject {
     func updateOpenAIKey(_ key: String) {
         openAIKey = key
         settingsRepository.setOpenAIKey(key)
+    }
+
+    func updateBankroll(_ amount: Double) {
+        bankroll = amount
+        settingsRepository.setBankroll(amount)
     }
 
     func refreshLeagues() {

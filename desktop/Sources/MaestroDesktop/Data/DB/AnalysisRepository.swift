@@ -7,7 +7,7 @@ final class AnalysisRepository {
 
     private init() {}
 
-    func buildAnalysisPayload(for fixture: FixtureSummary, odds: CornerOddsData?) -> CornerAnalysisPayload? {
+    func buildAnalysisPayload(for fixture: FixtureSummary, odds: CornerOddsData?, bankroll: Double) -> CornerAnalysisPayload? {
         guard let homeData = getTeamAnalysisData(
             teamId: fixture.homeId,
             teamName: fixture.homeName,
@@ -37,8 +37,10 @@ final class AnalysisRepository {
         }
 
         let betStats = BetRepository.shared.stats()
-        let profile: CornerAnalysisPayload.BettingProfile? = betStats.totalBets > 0
+        let effectiveBankroll = bankroll + betStats.netProfit
+        let profile: CornerAnalysisPayload.BettingProfile? = bankroll > 0
             ? CornerAnalysisPayload.BettingProfile(
+                bankroll: effectiveBankroll,
                 totalBets: betStats.totalBets,
                 wins: betStats.wins,
                 losses: betStats.losses,

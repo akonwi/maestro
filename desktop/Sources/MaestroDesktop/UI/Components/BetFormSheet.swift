@@ -65,11 +65,12 @@ struct BetFormSheet: View {
     let lineName: String
     let initialOdds: Int
     let lineValue: Double?
+    let recommendedStake: Double?
     let onSave: (Bet) -> Void
     let onCancel: () -> Void
 
     @State private var odds: String
-    @State private var stake: Double = 10
+    @State private var stake: Double
     @State private var notes: String = ""
 
     init(
@@ -79,6 +80,7 @@ struct BetFormSheet: View {
         lineName: String,
         initialOdds: Int,
         lineValue: Double?,
+        recommendedStake: Double? = nil,
         onSave: @escaping (Bet) -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -88,9 +90,11 @@ struct BetFormSheet: View {
         self.lineName = lineName
         self.initialOdds = initialOdds
         self.lineValue = lineValue
+        self.recommendedStake = recommendedStake
         self.onSave = onSave
         self.onCancel = onCancel
         self._odds = State(initialValue: initialOdds > 0 ? "+\(initialOdds)" : "\(initialOdds)")
+        self._stake = State(initialValue: recommendedStake ?? 10)
     }
 
     private var parsedOdds: Int? {

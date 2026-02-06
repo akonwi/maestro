@@ -32,6 +32,7 @@ struct FixtureDetailView: View {
         let lineName: String
         let odds: Int
         let lineValue: Double?
+        let recommendedStake: Double?
     }
 
     private var fixture: FixtureSummary { tab.fixture }
@@ -138,6 +139,7 @@ struct FixtureDetailView: View {
                 lineName: line.lineName,
                 initialOdds: line.odds,
                 lineValue: line.lineValue,
+                recommendedStake: line.recommendedStake,
                 onSave: { bet in
                     selectedBetLine = nil
                     appState.refreshBets()
@@ -302,6 +304,14 @@ struct FixtureDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
+                .contextMenu {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("\(fixture.homeId)", forType: .string)
+                    } label: {
+                        Label("Copy Team ID", systemImage: "doc.on.doc")
+                    }
+                }
 
                 // Score or time
                 VStack(spacing: 4) {
@@ -328,6 +338,14 @@ struct FixtureDetailView: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
+                .contextMenu {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("\(fixture.id)", forType: .string)
+                    } label: {
+                        Label("Copy Fixture ID", systemImage: "doc.on.doc")
+                    }
+                }
 
                 // Away team
                 Button {
@@ -348,6 +366,14 @@ struct FixtureDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
+                .contextMenu {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("\(fixture.awayId)", forType: .string)
+                    } label: {
+                        Label("Copy Team ID", systemImage: "doc.on.doc")
+                    }
+                }
             }
 
             if isInPlay {
@@ -986,6 +1012,12 @@ struct FixtureDetailView: View {
                 Label("\(Int(pick.estimatedProbability * 100))% est.", systemImage: "percent")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let stake = pick.recommendedStake {
+                    Label(String(format: "$%.0f", stake), systemImage: "dollarsign.circle")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.blue)
+                }
             }
 
             if !pick.risks.isEmpty {
@@ -1026,7 +1058,8 @@ struct FixtureDetailView: View {
             marketName: pick.market,
             lineName: pick.line,
             odds: pick.odds,
-            lineValue: lineValue
+            lineValue: lineValue,
+            recommendedStake: pick.recommendedStake
         )
     }
 
@@ -1038,7 +1071,7 @@ struct FixtureDetailView: View {
 
         Task {
             do {
-                guard let payload = analysisRepository.buildAnalysisPayload(for: fixture, odds: cornerOdds) else {
+                guard let payload = analysisRepository.buildAnalysisPayload(for: fixture, odds: cornerOdds, bankroll: appState.bankroll) else {
                     await MainActor.run {
                         analysisError = "Not enough data for analysis"
                         isLoadingAnalysis = false
@@ -1167,7 +1200,8 @@ struct FixtureDetailView: View {
                 marketName: market.name,
                 lineName: line.name,
                 odds: line.americanOdd,
-                lineValue: line.value
+                lineValue: line.value,
+                recommendedStake: nil
             )
         }
         .onHover { hovering in

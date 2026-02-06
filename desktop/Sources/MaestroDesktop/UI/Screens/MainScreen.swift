@@ -108,6 +108,13 @@ struct MainScreen: View {
                             Label("Sync", systemImage: "arrow.trianglehead.2.clockwise")
                         }
 
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("\(league.id)", forType: .string)
+                        } label: {
+                            Label("Copy League ID", systemImage: "doc.on.doc")
+                        }
+
                         Divider()
 
                         Button(role: .destructive) {
@@ -192,6 +199,14 @@ struct MainScreen: View {
                     .padding(.vertical, 8)
                     .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
                     .cornerRadius(6)
+                    .contextMenu {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("\(tab.fixture.id)", forType: .string)
+                        } label: {
+                            Label("Copy Fixture ID", systemImage: "doc.on.doc")
+                        }
+                    }
                 }
 
                 ForEach(appState.openLeagues) { tab in
@@ -220,6 +235,14 @@ struct MainScreen: View {
                     .padding(.vertical, 8)
                     .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
                     .cornerRadius(6)
+                    .contextMenu {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("\(tab.league.id)", forType: .string)
+                        } label: {
+                            Label("Copy League ID", systemImage: "doc.on.doc")
+                        }
+                    }
                 }
 
                 ForEach(appState.openTeams) { tab in
@@ -257,6 +280,14 @@ struct MainScreen: View {
                     .padding(.vertical, 8)
                     .background(appState.activeTabId == tab.id ? Color.accentColor.opacity(0.2) : Color.clear)
                     .cornerRadius(6)
+                    .contextMenu {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("\(tab.teamId)", forType: .string)
+                        } label: {
+                            Label("Copy Team ID", systemImage: "doc.on.doc")
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 8)
@@ -314,6 +345,13 @@ struct MainScreen: View {
                                     } label: {
                                         Label("Sync", systemImage: "arrow.trianglehead.2.clockwise")
                                     }
+                                }
+
+                                Button {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString("\(fixture.id)", forType: .string)
+                                } label: {
+                                    Label("Copy Fixture ID", systemImage: "doc.on.doc")
                                 }
                             }
                         }

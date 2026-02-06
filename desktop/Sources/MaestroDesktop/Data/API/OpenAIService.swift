@@ -41,16 +41,25 @@ struct OpenAIService {
      - But do not pass on lines where the data supports an edge just because the edge is small. Small edges at high confidence are profitable long-term.
 
   5. Use bankroll context (if provided):
-     - The input may include a bettingProfile with the user's track record (total bets, win rate, ROI, net profit, total staked)
-     - Use this to calibrate recommendations:
-       - A profitable bettor (positive ROI) can act on smaller edges
-       - A bettor on a losing streak may benefit from more conservative sizing advice
-     - Reference the user's track record in your summary when relevant
+     - The input may include a bettingProfile with:
+       - bankroll: total betting capital available
+       - Track record: total bets, win rate, ROI, net profit, total staked
      - The input may also include pendingBets—unsettled bets currently at risk
      - Factor pending exposure into recommendations:
        - If there's already significant stake in flight, be more selective
        - If a pending bet overlaps with a market you're analyzing, note the existing exposure and avoid recommending correlated bets that compound risk
-       - Mention pending exposure in your summary when it affects your recommendation
+
+  6. Stake sizing (when bankroll is provided):
+     - Use a conservative fractional Kelly Criterion approach:
+       - Kelly fraction = (edge * confidence) / (odds_decimal - 1)
+       - Apply a 0.25x Kelly multiplier for safety (quarter Kelly)
+       - Never recommend more than 5% of bankroll on a single bet
+       - Minimum stake: $10 (1 unit) — if Kelly suggests less, still recommend $10 for qualifying picks
+     - Adjust for pending exposure:
+       - Calculate total pending stake from pendingBets
+       - Reduce recommended stake if pending exposure exceeds 10% of bankroll
+     - Round stakes to nearest $10 for practical betting
+     - If no bankroll provided, omit recommended_stake from picks
 
   ## OUTPUT FORMAT
 
@@ -75,7 +84,8 @@ struct OpenAIService {
         "confidence": <0-1>,
         "expected_value_pct": <number>,
         "edge": "<why this is value>",
-        "risks": ["<risk 1>", "<risk 2>"]
+        "risks": ["<risk 1>", "<risk 2>"],
+        "recommended_stake": <dollar amount or null if no bankroll>
       }
     ],
     "pass": ["<lines considered but rejected with brief reason>"],
@@ -224,6 +234,7 @@ struct CornerAnalysisPayload: Encodable {
   }
 
   struct BettingProfile: Encodable {
+    let bankroll: Double
     let totalBets: Int
     let wins: Int
     let losses: Int
@@ -272,6 +283,7 @@ struct CornerAnalysisResponse: Codable {
     let expectedValuePct: Double
     let edge: String
     let risks: [String]
+    let recommendedStake: Double?
 
     enum CodingKeys: String, CodingKey {
       case market, line, odds, edge, risks
@@ -280,6 +292,7 @@ struct CornerAnalysisResponse: Codable {
       case estimatedProbability = "estimated_probability"
       case confidence
       case expectedValuePct = "expected_value_pct"
+      case recommendedStake = "recommended_stake"
     }
   }
 }
