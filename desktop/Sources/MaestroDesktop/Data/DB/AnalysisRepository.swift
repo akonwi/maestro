@@ -37,7 +37,9 @@ final class AnalysisRepository {
         }
 
         let betStats = BetRepository.shared.stats()
-        let effectiveBankroll = bankroll + betStats.netProfit
+        let pending = BetRepository.shared.pendingBets()
+        let pendingStakes = pending.reduce(0) { $0 + $1.stake }
+        let effectiveBankroll = bankroll + betStats.netProfit - pendingStakes
         let profile: CornerAnalysisPayload.BettingProfile? = bankroll > 0
             ? CornerAnalysisPayload.BettingProfile(
                 bankroll: effectiveBankroll,
@@ -52,7 +54,6 @@ final class AnalysisRepository {
             )
             : nil
 
-        let pending = BetRepository.shared.pendingBets()
         let pendingBets: [CornerAnalysisPayload.PendingBet]? = pending.isEmpty ? nil : pending.map { bet in
             CornerAnalysisPayload.PendingBet(
                 market: bet.displayDescription,

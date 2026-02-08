@@ -27,6 +27,7 @@ final class AppState: ObservableObject {
     private let settingsRepository = SettingsRepository()
     private let leagueRepository = LeagueRepository()
     private var cancellables = Set<AnyCancellable>()
+    private var settleTimer: Timer?
 
     init() {
         apiToken = settingsRepository.getApiToken()
@@ -36,6 +37,7 @@ final class AppState: ObservableObject {
         refreshBets()
         restoreSession()
         setupSessionPersistence()
+        startSettleTimer()
 
         syncService.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -43,6 +45,28 @@ final class AppState: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+    }
+
+    private func startSettleTimer() {
+        // Try to settle immediately on launch
+        trySettlePendingBets()
+
+        // Then check every 5 minutes
+        settleTimer = Timer.scheduledTimer(withTimeInterval: 5 * 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.trySettlePendingBets()
+            }
+        }
+    }
+
+    private func trySettlePendingBets() {
+        guard !pendingBets.isEmpty else { return }
+
+        let settledCount = BetRepository.shared.trySettlePendingBets()
+        if settledCount > 0 {
+            refreshBets()
+            toast = .success("Auto-settled \(settledCount) bet\(settledCount == 1 ? "" : "s")")
+        }
     }
 
     func openFixture(_ fixture: FixtureSummary) {

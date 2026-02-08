@@ -237,7 +237,7 @@ final class BetRepository {
             SUM(CASE WHEN result = 'won' THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN result = 'lost' THEN 1 ELSE 0 END) as losses,
             SUM(CASE WHEN result = 'push' THEN 1 ELSE 0 END) as pushes,
-            SUM(CASE WHEN result != 'push' THEN stake ELSE 0 END) as total_staked,
+            SUM(CASE WHEN result IN ('won', 'lost') THEN stake ELSE 0 END) as total_staked,
             SUM(CASE
                 WHEN result = 'won' AND odds > 0 THEN stake + (stake * odds / 100.0)
                 WHEN result = 'won' AND odds < 0 THEN stake + (stake * 100.0 / ABS(odds))
@@ -323,5 +323,180 @@ final class BetRepository {
             notes: notes,
             createdAt: createdAt
         )
+    }
+
+    // MARK: - Auto-Settle
+
+    struct FixtureCornerData {
+        let isFinished: Bool
+        let homeCorners: Int
+        let awayCorners: Int
+    }
+
+    func trySettlePendingBets() -> Int {
+        let pending = pendingBets()
+        var settledCount = 0
+
+        for bet in pending {
+            guard let cornerData = getFixtureCornerData(fixtureId: bet.fixtureId) else {
+                continue
+            }
+
+            guard cornerData.isFinished else {
+                continue
+            }
+
+            if let result = determineBetResult(bet: bet, homeCorners: cornerData.homeCorners, awayCorners: cornerData.awayCorners) {
+                update(id: bet.id, result: result)
+                settledCount += 1
+                debugLog("Auto-settled bet \(bet.id): \(result.rawValue)")
+            }
+        }
+
+        return settledCount
+    }
+
+    private func getFixtureCornerData(fixtureId: Int) -> FixtureCornerData? {
+        guard let db = Database.shared.handle else { return nil }
+
+        // First get fixture info to check if finished and get team IDs
+        let fixtureSql = """
+        SELECT finished, home_id, away_id FROM fixtures WHERE id = ?;
+        """
+
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, fixtureSql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        sqlite3_bind_int64(stmt, 1, Int64(fixtureId))
+
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            sqlite3_finalize(stmt)
+            return nil
+        }
+
+        let finished = sqlite3_column_int(stmt, 0) == 1
+        let homeId = Int(sqlite3_column_int64(stmt, 1))
+        let awayId = Int(sqlite3_column_int64(stmt, 2))
+        sqlite3_finalize(stmt)
+
+        guard finished else {
+            return FixtureCornerData(isFinished: false, homeCorners: 0, awayCorners: 0)
+        }
+
+        // Get corner stats
+        let statsSql = """
+        SELECT team_id, corners FROM fixture_stats WHERE fixture_id = ?;
+        """
+
+        guard sqlite3_prepare_v2(db, statsSql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        sqlite3_bind_int64(stmt, 1, Int64(fixtureId))
+
+        var homeCorners = 0
+        var awayCorners = 0
+
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            let teamId = Int(sqlite3_column_int64(stmt, 0))
+            let corners = Int(sqlite3_column_int(stmt, 1))
+
+            if teamId == homeId {
+                homeCorners = corners
+            } else if teamId == awayId {
+                awayCorners = corners
+            }
+        }
+
+        sqlite3_finalize(stmt)
+
+        return FixtureCornerData(isFinished: true, homeCorners: homeCorners, awayCorners: awayCorners)
+    }
+
+    private func determineBetResult(bet: Bet, homeCorners: Int, awayCorners: Int) -> BetResult? {
+        let totalCorners = homeCorners + awayCorners
+        let lineName = bet.lineName?.lowercased() ?? ""
+        let lineValue = bet.line ?? 0
+
+        switch bet.marketId {
+        case Bet.marketCornersTotal:
+            // Total Corners: Over/Under
+            if lineName.contains("over") {
+                if Double(totalCorners) > lineValue { return .won }
+                if Double(totalCorners) < lineValue { return .lost }
+                return .push
+            } else if lineName.contains("under") {
+                if Double(totalCorners) < lineValue { return .won }
+                if Double(totalCorners) > lineValue { return .lost }
+                return .push
+            }
+
+        case Bet.marketCornersHome:
+            // Home Team Corners: Over/Under
+            if lineName.contains("over") {
+                if Double(homeCorners) > lineValue { return .won }
+                if Double(homeCorners) < lineValue { return .lost }
+                return .push
+            } else if lineName.contains("under") {
+                if Double(homeCorners) < lineValue { return .won }
+                if Double(homeCorners) > lineValue { return .lost }
+                return .push
+            }
+
+        case Bet.marketCornersAway:
+            // Away Team Corners: Over/Under
+            if lineName.contains("over") {
+                if Double(awayCorners) > lineValue { return .won }
+                if Double(awayCorners) < lineValue { return .lost }
+                return .push
+            } else if lineName.contains("under") {
+                if Double(awayCorners) < lineValue { return .won }
+                if Double(awayCorners) > lineValue { return .lost }
+                return .push
+            }
+
+        case Bet.marketCornersAsian:
+            // Asian Corners: Home/Away handicap
+            // Line name like "Home -0.5", "Away +0.5"
+            // lineValue is the handicap (e.g., -0.5, +0.5)
+            if lineName.contains("home") {
+                let adjustedHome = Double(homeCorners) + lineValue
+                if adjustedHome > Double(awayCorners) { return .won }
+                if adjustedHome < Double(awayCorners) { return .lost }
+                return .push
+            } else if lineName.contains("away") {
+                let adjustedAway = Double(awayCorners) + lineValue
+                if adjustedAway > Double(homeCorners) { return .won }
+                if adjustedAway < Double(homeCorners) { return .lost }
+                return .push
+            }
+
+        case Bet.marketCornersMoneyline:
+            // Most Corners: Home/Away/Draw
+            if lineName.contains("home") || lineName == "1" {
+                if homeCorners > awayCorners { return .won }
+                return .lost
+            } else if lineName.contains("away") || lineName == "2" {
+                if awayCorners > homeCorners { return .won }
+                return .lost
+            } else if lineName.contains("draw") || lineName.contains("tie") || lineName == "x" {
+                if homeCorners == awayCorners { return .won }
+                return .lost
+            }
+
+        case Bet.marketCornersTotal3Way:
+            // Total Corners 3-Way: Over/Under/Exactly
+            if lineName.contains("over") {
+                if Double(totalCorners) > lineValue { return .won }
+                return .lost
+            } else if lineName.contains("under") {
+                if Double(totalCorners) < lineValue { return .won }
+                return .lost
+            } else if lineName.contains("exactly") {
+                if Double(totalCorners) == lineValue { return .won }
+                return .lost
+            }
+
+        default:
+            break
+        }
+
+        return nil
     }
 }

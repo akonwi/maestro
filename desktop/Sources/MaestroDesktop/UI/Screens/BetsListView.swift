@@ -86,7 +86,8 @@ struct BetsListView: View {
 
     private var statsBar: some View {
         let stats = appState.betStats
-        let netBankroll = appState.bankroll + stats.netProfit
+        let pendingStakes = appState.pendingBets.reduce(0) { $0 + $1.stake }
+        let netBankroll = appState.bankroll + stats.netProfit - pendingStakes
         return HStack(spacing: 24) {
             statItem(label: "Bankroll", value: String(format: "$%.0f", netBankroll), color: netBankroll >= appState.bankroll ? .green : .red)
             statItem(label: "Pending", value: "\(stats.pendingBets)")
