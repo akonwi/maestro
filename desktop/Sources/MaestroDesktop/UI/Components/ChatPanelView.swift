@@ -2,7 +2,10 @@ import SwiftUI
 
 struct ChatPanelView: View {
     @ObservedObject var viewModel: ChatViewModel
+    var focusRequestID: UUID
+
     @State private var inputText = ""
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,6 +24,12 @@ struct ChatPanelView: View {
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
+        .onAppear {
+            focusInput()
+        }
+        .onChange(of: focusRequestID) {
+            focusInput()
+        }
     }
 
     private var headerBar: some View {
@@ -104,6 +113,7 @@ struct ChatPanelView: View {
         HStack(spacing: 8) {
             TextField("Ask about your data...", text: $inputText)
                 .textFieldStyle(.plain)
+                .focused($isInputFocused)
                 .onSubmit { sendMessage() }
 
             Button {
@@ -143,6 +153,13 @@ struct ChatPanelView: View {
         inputText = ""
         Task {
             await viewModel.send(text)
+        }
+    }
+
+    private func focusInput() {
+        guard viewModel.isConfigured else { return }
+        DispatchQueue.main.async {
+            isInputFocused = true
         }
     }
 }

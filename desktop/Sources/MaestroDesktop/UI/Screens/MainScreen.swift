@@ -8,6 +8,7 @@ struct MainScreen: View {
     @State private var showingDatePicker = false
     @State private var showingBets = false
     @State private var showingChat = false
+    @State private var chatFocusRequest = UUID()
     @StateObject private var chatViewModel = ChatViewModel()
 
     var body: some View {
@@ -49,7 +50,7 @@ struct MainScreen: View {
         .overlay(alignment: .bottomTrailing) {
             ZStack(alignment: .bottomTrailing) {
                 if showingChat {
-                    ChatPanelView(viewModel: chatViewModel)
+                    ChatPanelView(viewModel: chatViewModel, focusRequestID: chatFocusRequest)
                         .padding(.trailing, 16)
                         .padding(.bottom, 64)
                         .transition(.scale(scale: 0.8, anchor: .bottomTrailing).combined(with: .opacity))
@@ -61,6 +62,17 @@ struct MainScreen: View {
         }
         .onChange(of: appState.openAIKey) {
             chatViewModel.configure(apiKey: appState.openAIKey)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .maestroOpenSettings)) { _ in
+            showingSettings = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .maestroOpenChat)) { _ in
+            if showingChat {
+                showingChat = false
+            } else {
+                showingChat = true
+                chatFocusRequest = UUID()
+            }
         }
     }
 

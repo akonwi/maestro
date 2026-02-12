@@ -208,6 +208,38 @@ final class AppState: ObservableObject {
         }
     }
 
+    func refreshActiveContext() {
+        guard !apiToken.isEmpty else {
+            refreshFixtures()
+            toast = .error("API token required for sync")
+            return
+        }
+
+        if let tabId = activeTabId {
+            if let fixtureTab = openFixtures.first(where: { $0.id == tabId }) {
+                syncFixture(fixtureTab.fixture)
+                return
+            }
+
+            if let leagueTab = openLeagues.first(where: { $0.id == tabId }) {
+                syncLeague(id: leagueTab.league.id)
+                return
+            }
+
+            if let teamTab = openTeams.first(where: { $0.id == tabId }) {
+                syncLeague(id: teamTab.leagueId)
+                return
+            }
+        }
+
+        syncAllLeagues()
+    }
+
+    func closeActiveTab() {
+        guard let tabId = activeTabId else { return }
+        closeTab(tabId)
+    }
+
     private func showSyncToast(_ result: SyncResult) {
         if let error = result.error {
             toast = .error("Sync failed: \(error)")

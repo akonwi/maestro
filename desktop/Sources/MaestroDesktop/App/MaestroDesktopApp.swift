@@ -28,5 +28,42 @@ struct MaestroDesktopApp: App {
                 .environmentObject(appState)
                 .preferredColorScheme(nil)
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    NotificationCenter.default.post(name: .maestroOpenSettings, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+
+            CommandMenu("Maestro") {
+                Button("Refresh Active Screen") {
+                    appState.refreshActiveContext()
+                }
+                .keyboardShortcut("r", modifiers: .command)
+
+                Button("Open Chat") {
+                    NotificationCenter.default.post(name: .maestroOpenChat, object: nil)
+                }
+                .keyboardShortcut("/", modifiers: .command)
+            }
+
+            CommandGroup(replacing: .saveItem) {
+                Button("Close Tab") {
+                    appState.closeActiveTab()
+                }
+                .keyboardShortcut("w", modifiers: .command)
+
+                Button("Close Window") {
+                    NSApplication.shared.keyWindow?.performClose(nil)
+                }
+                .keyboardShortcut("w", modifiers: [.command, .shift])
+
+                Button("Minimize") {
+                    NSApplication.shared.keyWindow?.miniaturize(nil)
+                }
+                .keyboardShortcut("m", modifiers: .command)
+            }
+        }
     }
 }
