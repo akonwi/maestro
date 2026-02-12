@@ -1,0 +1,71 @@
+Database: /Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite
+Generated (UTC): 2026-02-12T00:21:49.619140+00:00
+Overall
+  bets=30 wl=30 wins=12 losses=18 win_rate=40.0% roi=-20.7%
+  staked=$320.00 net=$-66.15 implied_break_even=54.1% gap=-14.1%
+
+By Prompt Version
+- legacy-v1
+  bets=30 wl=30 wins=12 losses=18 win_rate=40.0% roi=-20.7%
+  staked=$320.00 net=$-66.15 implied_break_even=54.1% gap=-14.1%
+
+By Market
+- Asian Corners
+  bets=3 wl=3 wins=1 losses=2 win_rate=33.3% roi=-35.8%
+  staked=$30.00 net=$-10.74 implied_break_even=52.8% gap=-19.5%
+- Away Corners
+  bets=5 wl=5 wins=1 losses=4 win_rate=20.0% roi=-66.6%
+  staked=$50.00 net=$-33.29 implied_break_even=54.2% gap=-34.2%
+- Home Corners
+  bets=8 wl=8 wins=4 losses=4 win_rate=50.0% roi=3.9%
+  staked=$90.00 net=$3.51 implied_break_even=53.2% gap=-3.2%
+- Most Corners
+  bets=1 wl=1 wins=1 losses=0 win_rate=100.0% roi=53.2%
+  staked=$20.00 net=$10.64 implied_break_even=65.3% gap=34.7%
+- Total Corners
+  bets=12 wl=12 wins=5 losses=7 win_rate=41.7% roi=-21.9%
+  staked=$120.00 net=$-26.27 implied_break_even=52.5% gap=-10.8%
+- Total Corners (3-Way)
+  bets=1 wl=1 wins=0 losses=1 win_rate=0.0% roi=-100.0%
+  staked=$10.00 net=$-10.00 implied_break_even=63.6% gap=-63.6%
+
+By Confidence Band
+- 70-79%
+  bets=6 wl=6 wins=2 losses=4 win_rate=33.3% roi=-38.6%
+  staked=$60.00 net=$-23.15 implied_break_even=52.4% gap=-19.1%
+- 80-84%
+  bets=7 wl=7 wins=3 losses=4 win_rate=42.9% roi=-16.4%
+  staked=$70.00 net=$-11.45 implied_break_even=53.8% gap=-10.9%
+- 85%+
+  bets=8 wl=8 wins=2 losses=6 win_rate=25.0% roi=-41.4%
+  staked=$90.00 net=$-37.29 implied_break_even=54.6% gap=-29.6%
+
+By League (min 2 bets)
+- Premier League
+  bets=12 wl=12 wins=6 losses=6 win_rate=50.0% roi=-5.7%
+  staked=$130.00 net=$-7.47 implied_break_even=55.4% gap=-5.4%
+- Championship
+  bets=5 wl=5 wins=1 losses=4 win_rate=20.0% roi=-61.5%
+  staked=$50.00 net=$-30.74 implied_break_even=53.4% gap=-33.4%
+- La Liga
+  bets=4 wl=4 wins=2 losses=2 win_rate=50.0% roi=12.0%
+  staked=$50.00 net=$6.00 implied_break_even=54.9% gap=-4.9%
+- Serie A
+  bets=2 wl=2 wins=0 losses=2 win_rate=0.0% roi=-100.0%
+  staked=$20.00 net=$-20.00 implied_break_even=54.9% gap=-54.9%
+- Pro League
+  bets=2 wl=2 wins=1 losses=1 win_rate=50.0% roi=-4.1%
+  staked=$20.00 net=$-0.83 implied_break_even=51.1% gap=-1.1%
+- Bundesliga
+  bets=2 wl=2 wins=1 losses=1 win_rate=50.0% roi=-7.3%
+  staked=$20.00 net=$-1.45 implied_break_even=53.9% gap=-3.9%
+- Ligue 1
+  bets=2 wl=2 wins=0 losses=2 win_rate=0.0% roi=-100.0%
+  staked=$20.00 net=$-20.00 implied_break_even=47.7% gap=-47.7%
+
+Previous 10 Bets
+  bets=10 wl=10 wins=3 losses=7 win_rate=30.0% roi=-45.3%
+  staked=$100.00 net=$-45.29 implied_break_even=54.7% gap=-24.7%
+Recent 10 Bets
+  bets=10 wl=10 wins=3 losses=7 win_rate=30.0% roi=-32.0%
+  staked=$110.00 net=$-35.15 implied_break_even=52.8% gap=-22.8%

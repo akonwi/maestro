@@ -1084,9 +1084,18 @@ struct FixtureDetailView: View {
 
         // Build notes from AI reasoning
         var noteParts: [String] = []
+        noteParts.append("Prompt: \(OpenAIService.promptVersion)")
         noteParts.append("Edge: \(pick.edge)")
+        if let edgePoints = pick.edgePoints {
+            noteParts.append(String(format: "Edge (pp): +%.1f", edgePoints))
+        }
+        noteParts.append(String(format: "Implied Prob: %.1f%%", pick.impliedProbability * 100))
+        noteParts.append(String(format: "Estimated Prob: %.1f%%", pick.estimatedProbability * 100))
         noteParts.append(String(format: "EV: +%.1f%%", pick.expectedValuePct))
         noteParts.append(String(format: "Confidence: %d%%", Int(pick.confidence * 100)))
+        if let riskFlags = pick.riskFlags, !riskFlags.isEmpty {
+            noteParts.append("Risk Flags: \(riskFlags.joined(separator: "; "))")
+        }
         if !pick.risks.isEmpty {
             noteParts.append("Risks: \(pick.risks.joined(separator: "; "))")
         }
