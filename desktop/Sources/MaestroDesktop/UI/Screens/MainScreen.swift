@@ -24,8 +24,10 @@ struct MainScreen: View {
             }
         }
         .onAppear {
-            appState.refreshLeagues()
-            appState.refreshFixtures()
+            // Defer to avoid reentrant NSTableView operations
+            DispatchQueue.main.async {
+                appState.refreshFixtures()
+            }
             chatViewModel.configure(apiKey: appState.openAIKey)
         }
         .onChange(of: appState.selectedDate) {
