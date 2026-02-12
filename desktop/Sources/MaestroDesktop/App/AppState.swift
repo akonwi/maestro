@@ -48,10 +48,9 @@ final class AppState: ObservableObject {
     }
 
     private func startSettleTimer() {
-        // Try to settle immediately on launch
         trySettlePendingBets()
 
-        // Then check every 5 minutes
+        // Check every 5 minutes
         settleTimer = Timer.scheduledTimer(withTimeInterval: 5 * 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.trySettlePendingBets()
@@ -60,8 +59,7 @@ final class AppState: ObservableObject {
     }
 
     private func trySettlePendingBets() {
-        guard !pendingBets.isEmpty else { return }
-
+        // Always check the database directly, don't rely on cached pendingBets
         let settledCount = BetRepository.shared.trySettlePendingBets()
         if settledCount > 0 {
             refreshBets()

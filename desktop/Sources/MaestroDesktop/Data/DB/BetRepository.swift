@@ -335,24 +335,34 @@ final class BetRepository {
 
     func trySettlePendingBets() -> Int {
         let pending = pendingBets()
+        debugLog("=== Auto-settle check: \(pending.count) pending bets ===")
         var settledCount = 0
 
         for bet in pending {
+            debugLog("Checking bet \(bet.id): fixtureId=\(bet.fixtureId), marketId=\(bet.marketId), lineName=\(bet.lineName ?? "nil"), line=\(bet.line ?? 0)")
+
             guard let cornerData = getFixtureCornerData(fixtureId: bet.fixtureId) else {
+                debugLog("  -> No fixture data found for fixtureId=\(bet.fixtureId)")
                 continue
             }
 
             guard cornerData.isFinished else {
+                debugLog("  -> Fixture not finished yet")
                 continue
             }
+
+            debugLog("  -> Fixture finished: homeCorners=\(cornerData.homeCorners), awayCorners=\(cornerData.awayCorners), total=\(cornerData.homeCorners + cornerData.awayCorners)")
 
             if let result = determineBetResult(bet: bet, homeCorners: cornerData.homeCorners, awayCorners: cornerData.awayCorners) {
                 update(id: bet.id, result: result)
                 settledCount += 1
-                debugLog("Auto-settled bet \(bet.id): \(result.rawValue)")
+                debugLog("  -> SETTLED: \(result.rawValue)")
+            } else {
+                debugLog("  -> Could not determine result (lineName may not match expected patterns)")
             }
         }
 
+        debugLog("=== Auto-settle complete: \(settledCount) bets settled ===")
         return settledCount
     }
 
@@ -414,9 +424,12 @@ final class BetRepository {
         let lineName = bet.lineName?.lowercased() ?? ""
         let lineValue = bet.line ?? 0
 
+        debugLog("  -> Evaluating: marketId=\(bet.marketId), lineName='\(lineName)', lineValue=\(lineValue)")
+
         switch bet.marketId {
         case Bet.marketCornersTotal:
             // Total Corners: Over/Under
+            debugLog("  -> Market: Total Corners, total=\(totalCorners) vs line=\(lineValue)")
             if lineName.contains("over") {
                 if Double(totalCorners) > lineValue { return .won }
                 if Double(totalCorners) < lineValue { return .lost }
@@ -426,9 +439,11 @@ final class BetRepository {
                 if Double(totalCorners) > lineValue { return .lost }
                 return .push
             }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over' or 'under'")
 
         case Bet.marketCornersHome:
             // Home Team Corners: Over/Under
+            debugLog("  -> Market: Home Corners, home=\(homeCorners) vs line=\(lineValue)")
             if lineName.contains("over") {
                 if Double(homeCorners) > lineValue { return .won }
                 if Double(homeCorners) < lineValue { return .lost }
@@ -438,9 +453,11 @@ final class BetRepository {
                 if Double(homeCorners) > lineValue { return .lost }
                 return .push
             }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over' or 'under'")
 
         case Bet.marketCornersAway:
             // Away Team Corners: Over/Under
+            debugLog("  -> Market: Away Corners, away=\(awayCorners) vs line=\(lineValue)")
             if lineName.contains("over") {
                 if Double(awayCorners) > lineValue { return .won }
                 if Double(awayCorners) < lineValue { return .lost }
@@ -450,25 +467,29 @@ final class BetRepository {
                 if Double(awayCorners) > lineValue { return .lost }
                 return .push
             }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over' or 'under'")
 
         case Bet.marketCornersAsian:
             // Asian Corners: Home/Away handicap
-            // Line name like "Home -0.5", "Away +0.5"
-            // lineValue is the handicap (e.g., -0.5, +0.5)
+            debugLog("  -> Market: Asian Corners, home=\(homeCorners), away=\(awayCorners), handicap=\(lineValue)")
             if lineName.contains("home") {
                 let adjustedHome = Double(homeCorners) + lineValue
+                debugLog("  -> Home bet: adjustedHome=\(adjustedHome) vs away=\(awayCorners)")
                 if adjustedHome > Double(awayCorners) { return .won }
                 if adjustedHome < Double(awayCorners) { return .lost }
                 return .push
             } else if lineName.contains("away") {
                 let adjustedAway = Double(awayCorners) + lineValue
+                debugLog("  -> Away bet: adjustedAway=\(adjustedAway) vs home=\(homeCorners)")
                 if adjustedAway > Double(homeCorners) { return .won }
                 if adjustedAway < Double(homeCorners) { return .lost }
                 return .push
             }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'home' or 'away'")
 
         case Bet.marketCornersMoneyline:
             // Most Corners: Home/Away/Draw
+            debugLog("  -> Market: Most Corners, home=\(homeCorners) vs away=\(awayCorners)")
             if lineName.contains("home") || lineName == "1" {
                 if homeCorners > awayCorners { return .won }
                 return .lost
@@ -479,9 +500,11 @@ final class BetRepository {
                 if homeCorners == awayCorners { return .won }
                 return .lost
             }
+            debugLog("  -> lineName '\(lineName)' doesn't match expected patterns")
 
         case Bet.marketCornersTotal3Way:
             // Total Corners 3-Way: Over/Under/Exactly
+            debugLog("  -> Market: Total Corners 3-Way, total=\(totalCorners) vs line=\(lineValue)")
             if lineName.contains("over") {
                 if Double(totalCorners) > lineValue { return .won }
                 return .lost
@@ -492,9 +515,10 @@ final class BetRepository {
                 if Double(totalCorners) == lineValue { return .won }
                 return .lost
             }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over', 'under', or 'exactly'")
 
         default:
-            break
+            debugLog("  -> Unknown marketId: \(bet.marketId)")
         }
 
         return nil
