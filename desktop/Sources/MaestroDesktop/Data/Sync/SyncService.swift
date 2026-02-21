@@ -232,6 +232,7 @@ final class SyncService: ObservableObject {
 
         let sql = """
         UPDATE fixtures SET
+            timestamp = ?,
             finished = ?,
             home_goals = ?,
             away_goals = ?,
@@ -242,11 +243,12 @@ final class SyncService: ObservableObject {
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
             let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-            sqlite3_bind_int(statement, 1, fixture.isFinished ? 1 : 0)
-            sqlite3_bind_int64(statement, 2, Int64(fixture.goals.home ?? 0))
-            sqlite3_bind_int64(statement, 3, Int64(fixture.goals.away ?? 0))
-            sqlite3_bind_text(statement, 4, fixture.fixture.status.short, -1, transient)
-            sqlite3_bind_int64(statement, 5, Int64(fixture.id))
+            sqlite3_bind_int64(statement, 1, fixture.timestampMs)
+            sqlite3_bind_int(statement, 2, fixture.isFinished ? 1 : 0)
+            sqlite3_bind_int64(statement, 3, Int64(fixture.goals.home ?? 0))
+            sqlite3_bind_int64(statement, 4, Int64(fixture.goals.away ?? 0))
+            sqlite3_bind_text(statement, 5, fixture.fixture.status.short, -1, transient)
+            sqlite3_bind_int64(statement, 6, Int64(fixture.id))
             sqlite3_step(statement)
             sqlite3_finalize(statement)
         }
