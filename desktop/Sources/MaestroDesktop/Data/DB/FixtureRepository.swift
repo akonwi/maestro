@@ -281,4 +281,78 @@ final class FixtureRepository {
 
         return FixtureStats(home: home, away: away)
     }
+
+    func hasCompleteStats(for fixtureId: Int) -> Bool {
+        guard let db = Database.shared.handle else { return false }
+
+        let sql = "SELECT COUNT(*) FROM fixture_stats WHERE fixture_id = ?;"
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return false
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(fixtureId))
+
+        var rowCount = 0
+        if sqlite3_step(statement) == SQLITE_ROW {
+            rowCount = Int(sqlite3_column_int(statement, 0))
+        }
+
+        sqlite3_finalize(statement)
+        return rowCount >= 2
+    }
+
+    func missingFinishedFixtureIds(leagueId: Int, season: Int, teamIds: [Int], limit: Int = 20) -> [Int] {
+        guard let db = Database.shared.handle else { return [] }
+        guard !teamIds.isEmpty else { return [] }
+
+        let placeholders = teamIds.map { _ in "?" }.joined(separator: ",")
+        let sql = """
+        SELECT f.id
+        FROM fixtures f
+        LEFT JOIN fixture_stats fs ON fs.fixture_id = f.id
+        WHERE f.league_id = ?
+          AND f.season = ?
+          AND f.finished = 1
+          AND (f.home_id IN (
+            \(placeholders)
+          ) OR f.away_id IN (
+            \(placeholders)
+          ))
+        GROUP BY f.id
+        HAVING COUNT(fs.team_id) < 2
+        ORDER BY f.timestamp DESC
+        LIMIT ?;
+        """
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+
+        var bindIndex: Int32 = 1
+        sqlite3_bind_int64(statement, bindIndex, Int64(leagueId))
+        bindIndex += 1
+        sqlite3_bind_int64(statement, bindIndex, Int64(season))
+        bindIndex += 1
+
+        for teamId in teamIds {
+            sqlite3_bind_int64(statement, bindIndex, Int64(teamId))
+            bindIndex += 1
+        }
+        for teamId in teamIds {
+            sqlite3_bind_int64(statement, bindIndex, Int64(teamId))
+            bindIndex += 1
+        }
+
+        sqlite3_bind_int64(statement, bindIndex, Int64(limit))
+
+        var ids: [Int] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            ids.append(Int(sqlite3_column_int64(statement, 0)))
+        }
+
+        sqlite3_finalize(statement)
+        return ids
+    }
 }

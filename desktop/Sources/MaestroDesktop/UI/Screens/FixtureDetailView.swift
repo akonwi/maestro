@@ -15,6 +15,8 @@ struct FixtureDetailView: View {
     @State private var analysisTimestamp: Date?
     @State private var isLoadingAnalysis = false
     @State private var analysisError: String?
+    @State private var analysisStatusMessage: String?
+    @State private var hasAutoProjectionAttempted = false
     @State private var expandedMarkets: Set<Int> = []
     @State private var syncTimer: Timer?
     @State private var fixtureBets: [Bet] = []
@@ -120,6 +122,7 @@ struct FixtureDetailView: View {
             stopSyncTimer()
         }
         .onChange(of: fixture) {
+            hasAutoProjectionAttempted = false
             loadStats()
             stopSyncTimer()
             startSyncTimerIfNeeded()
@@ -166,13 +169,26 @@ struct FixtureDetailView: View {
         fixtureBets = betRepository.bets(for: fixture.id)
         loadCornerOdds()
         loadCachedAnalysis()
+        maybeAutoRunProjection()
     }
 
     private func loadCachedAnalysis() {
         if let cached = analysisCache.get(fixtureId: fixture.id) {
             aiAnalysis = cached.analysis
             analysisTimestamp = cached.cachedAt
+            hasAutoProjectionAttempted = true
         }
+    }
+
+    private func maybeAutoRunProjection() {
+        guard canModifyAnalysis else { return }
+        guard aiAnalysis == nil else { return }
+        guard !isLoadingAnalysis else { return }
+        guard !hasAutoProjectionAttempted else { return }
+        guard matchupData != nil else { return }
+
+        hasAutoProjectionAttempted = true
+        runAnalysis()
     }
 
     private var isWithinSyncWindow: Bool {
@@ -874,28 +890,24 @@ struct FixtureDetailView: View {
     private var aiAnalysisSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("AI Analysis")
+                Text("Corner Projection")
                     .font(.headline)
                 Spacer()
                 if aiAnalysis == nil && !isLoadingAnalysis && canModifyAnalysis {
                     Button(action: runAnalysis) {
-                        Label("Analyze", systemImage: "sparkles")
+                        Label("Project", systemImage: "chart.line.uptrend.xyaxis")
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .disabled(appState.openAIKey.isEmpty || cornerOdds == nil)
+                    .disabled(matchupData == nil)
                 }
             }
 
-            if appState.openAIKey.isEmpty && canModifyAnalysis {
-                Text("Add OpenAI API key in Settings to enable AI analysis")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if isLoadingAnalysis {
+            if isLoadingAnalysis {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.7)
-                    Text("Analyzing corners...")
+                    Text(analysisStatusMessage ?? "Computing corner projection...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -935,38 +947,31 @@ struct FixtureDetailView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // Summary
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: analysis.recommendation == "BET" ? "checkmark.circle.fill" : "minus.circle.fill")
-                    .foregroundStyle(analysis.recommendation == "BET" ? .green : .secondary)
-                Text(analysis.summary)
-                    .font(.subheadline)
-                    .fixedSize(horizontal: false, vertical: true)
+            // Team-first expected corners
+            HStack(spacing: 10) {
+                projectionTeamCard(
+                    label: "Home",
+                    value: analysis.analysis.expectedHomeCorners,
+                    confidence: analysis.analysis.homeConfidence
+                )
+                projectionTeamCard(
+                    label: "Away",
+                    value: analysis.analysis.expectedAwayCorners,
+                    confidence: analysis.analysis.awayConfidence
+                )
             }
 
-            // Expected corners
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Expected Total")
+            HStack(spacing: 8) {
+                Label("Total", systemImage: "sum")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(String(format: "%.1f", analysis.analysis.expectedTotalCorners))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                if let totalConfidence = analysis.analysis.totalConfidence {
+                    Text("· \(Int(totalConfidence * 100))% conf")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(String(format: "%.1f", analysis.analysis.expectedTotalCorners))
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Home")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(String(format: "%.1f", analysis.analysis.expectedHomeCorners))
-                        .font(.subheadline)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Away")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(String(format: "%.1f", analysis.analysis.expectedAwayCorners))
-                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
                 }
             }
 
@@ -1000,6 +1005,26 @@ struct FixtureDetailView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private func projectionTeamCard(label: String, value: Double, confidence: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(String(format: "%.1f", value))
+                .font(.title2)
+                .fontWeight(.bold)
+            if let confidence {
+                Text("\(Int(confidence * 100))% confidence")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(nsColor: .textBackgroundColor))
+        .cornerRadius(6)
     }
 
     private func aiPickView(pick: CornerAnalysisResponse.Pick) -> some View {
@@ -1084,7 +1109,7 @@ struct FixtureDetailView: View {
 
         // Build notes from AI reasoning
         var noteParts: [String] = []
-        noteParts.append("Prompt: \(OpenAIService.promptVersion)")
+        noteParts.append("Prompt: \(LocalCornerProjectionService.modelVersion)")
         noteParts.append("Edge: \(pick.edge)")
         if let edgePoints = pick.edgePoints {
             noteParts.append(String(format: "Edge (pp): +%.1f", edgePoints))
@@ -1118,35 +1143,91 @@ struct FixtureDetailView: View {
     }
 
     private func runAnalysis() {
-        guard !appState.openAIKey.isEmpty else { return }
-
         isLoadingAnalysis = true
         analysisError = nil
+        analysisStatusMessage = "Loading model features..."
 
         Task {
             do {
+                try await importMissingFixtureStatsIfNeeded()
+
                 guard let payload = analysisRepository.buildAnalysisPayload(for: fixture, odds: cornerOdds, bankroll: appState.bankroll) else {
                     await MainActor.run {
                         analysisError = "Not enough data for analysis"
                         isLoadingAnalysis = false
+                        analysisStatusMessage = nil
                     }
                     return
                 }
 
-                let service = OpenAIService(apiKey: appState.openAIKey)
-                let response = try await service.analyzeCorners(payload: payload)
+                let service = LocalCornerProjectionService()
+                let response = service.projectCorners(payload: payload)
 
                 await MainActor.run {
                     aiAnalysis = response
                     analysisTimestamp = Date()
                     analysisCache.set(fixtureId: fixture.id, data: response)
                     isLoadingAnalysis = false
+                    analysisStatusMessage = nil
                 }
             } catch {
                 await MainActor.run {
                     analysisError = error.localizedDescription
                     isLoadingAnalysis = false
+                    analysisStatusMessage = nil
                 }
+            }
+        }
+    }
+
+    private func importMissingFixtureStatsIfNeeded() async throws {
+        let missingFixtureIds = fixtureRepository.missingFinishedFixtureIds(
+            leagueId: fixture.leagueId,
+            season: fixture.season,
+            teamIds: [fixture.homeId, fixture.awayId],
+            limit: 20
+        )
+
+        if missingFixtureIds.isEmpty {
+            return
+        }
+
+        guard !appState.apiToken.isEmpty else {
+            throw ProjectionError.missingAPITokenForBackfill
+        }
+
+        await MainActor.run {
+            analysisStatusMessage = "Importing fixture stats..."
+        }
+
+        for missingFixtureId in missingFixtureIds {
+            let _ = await syncService.syncFixture(
+                id: missingFixtureId,
+                leagueId: fixture.leagueId,
+                season: fixture.season,
+                apiKey: appState.apiToken
+            )
+        }
+
+        await MainActor.run {
+            loadStats()
+        }
+
+        if fixture.isFinished && !fixtureRepository.hasCompleteStats(for: fixture.id) {
+            throw ProjectionError.finishedFixtureStillMissingStats
+        }
+    }
+
+    private enum ProjectionError: LocalizedError {
+        case missingAPITokenForBackfill
+        case finishedFixtureStillMissingStats
+
+        var errorDescription: String? {
+            switch self {
+            case .missingAPITokenForBackfill:
+                return "Finished fixtures are missing stats. Add an API-Football key in Settings so Maestro can import them."
+            case .finishedFixtureStillMissingStats:
+                return "Some required fixture stats could not be imported. Try again in a moment."
             }
         }
     }
@@ -1155,6 +1236,7 @@ struct FixtureDetailView: View {
         aiAnalysis = nil
         analysisTimestamp = nil
         analysisCache.clear(fixtureId: fixture.id)
+        hasAutoProjectionAttempted = false
     }
 
     @ViewBuilder

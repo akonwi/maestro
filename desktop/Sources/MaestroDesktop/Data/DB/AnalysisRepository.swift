@@ -65,6 +65,8 @@ final class AnalysisRepository {
 
         return CornerAnalysisPayload(
             fixture: CornerAnalysisPayload.FixtureInfo(
+                leagueId: fixture.leagueId,
+                season: fixture.season,
                 home: fixture.homeName,
                 away: fixture.awayName
             ),
@@ -104,6 +106,11 @@ final class AnalysisRepository {
             venueCornersAgainst: venueStats.cornersAgainst,
             venueGames: venueStats.games,
             shotsPerGame: seasonStats.shotsPerGame,
+            shotsOnGoalPerGame: seasonStats.shotsOnGoalPerGame,
+            shotsInBoxShare: seasonStats.shotsInBoxShare,
+            passesPerGame: seasonStats.passesPerGame,
+            passCompletionRate: seasonStats.passCompletionRate,
+            xgPerGame: seasonStats.xgPerGame,
             possessionAvg: seasonStats.possessionAvg,
             recentForm: recentForm
         )
@@ -114,6 +121,11 @@ final class AnalysisRepository {
         let cornersFor: Double
         let cornersAgainst: Double
         let shotsPerGame: Double
+        let shotsOnGoalPerGame: Double
+        let shotsInBoxShare: Double
+        let passesPerGame: Double
+        let passCompletionRate: Double
+        let xgPerGame: Double
         let possessionAvg: Double
     }
 
@@ -124,6 +136,11 @@ final class AnalysisRepository {
             AVG(fs.corners) as corners_for,
             AVG(opp.corners) as corners_against,
             AVG(fs.shots) as shots,
+            AVG(fs.shots_on_goal) as shots_on_goal,
+            (SUM(fs.shots_in_box) * 1.0 / NULLIF(SUM(fs.shots), 0)) as shots_in_box_share,
+            AVG(fs.passes) as passes,
+            (SUM(fs.passes_completed) * 1.0 / NULLIF(SUM(fs.passes), 0)) as pass_completion_rate,
+            AVG(fs.xg) as xg,
             AVG(fs.possession) as possession
         FROM fixture_stats fs
         JOIN fixtures f ON f.id = fs.fixture_id
@@ -137,7 +154,18 @@ final class AnalysisRepository {
 
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
-            return SeasonStatsResult(games: 0, cornersFor: 0, cornersAgainst: 0, shotsPerGame: 0, possessionAvg: 0)
+            return SeasonStatsResult(
+                games: 0,
+                cornersFor: 0,
+                cornersAgainst: 0,
+                shotsPerGame: 0,
+                shotsOnGoalPerGame: 0,
+                shotsInBoxShare: 0,
+                passesPerGame: 0,
+                passCompletionRate: 0,
+                xgPerGame: 0,
+                possessionAvg: 0
+            )
         }
 
         sqlite3_bind_int64(statement, 1, Int64(teamId))
@@ -145,7 +173,18 @@ final class AnalysisRepository {
         sqlite3_bind_int64(statement, 3, Int64(season))
         sqlite3_bind_int64(statement, 4, Int64(excludeFixtureId))
 
-        var result = SeasonStatsResult(games: 0, cornersFor: 0, cornersAgainst: 0, shotsPerGame: 0, possessionAvg: 0)
+        var result = SeasonStatsResult(
+            games: 0,
+            cornersFor: 0,
+            cornersAgainst: 0,
+            shotsPerGame: 0,
+            shotsOnGoalPerGame: 0,
+            shotsInBoxShare: 0,
+            passesPerGame: 0,
+            passCompletionRate: 0,
+            xgPerGame: 0,
+            possessionAvg: 0
+        )
 
         if sqlite3_step(statement) == SQLITE_ROW {
             result = SeasonStatsResult(
@@ -153,7 +192,12 @@ final class AnalysisRepository {
                 cornersFor: sqlite3_column_double(statement, 1),
                 cornersAgainst: sqlite3_column_double(statement, 2),
                 shotsPerGame: sqlite3_column_double(statement, 3),
-                possessionAvg: sqlite3_column_double(statement, 4)
+                shotsOnGoalPerGame: sqlite3_column_double(statement, 4),
+                shotsInBoxShare: sqlite3_column_double(statement, 5),
+                passesPerGame: sqlite3_column_double(statement, 6),
+                passCompletionRate: sqlite3_column_double(statement, 7),
+                xgPerGame: sqlite3_column_double(statement, 8),
+                possessionAvg: sqlite3_column_double(statement, 9)
             )
         }
 

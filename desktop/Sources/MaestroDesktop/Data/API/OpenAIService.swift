@@ -196,6 +196,8 @@ struct CornerAnalysisPayload: Encodable {
   let pendingBets: [PendingBet]?
 
   struct FixtureInfo: Encodable {
+    let leagueId: Int
+    let season: Int
     let home: String
     let away: String
   }
@@ -209,6 +211,11 @@ struct CornerAnalysisPayload: Encodable {
     let venueCornersAgainst: Double
     let venueGames: Int
     let shotsPerGame: Double
+    let shotsOnGoalPerGame: Double
+    let shotsInBoxShare: Double
+    let passesPerGame: Double
+    let passCompletionRate: Double
+    let xgPerGame: Double
     let possessionAvg: Double
     let recentForm: [RecentFixture]
   }
@@ -264,6 +271,9 @@ struct CornerAnalysisResponse: Codable {
     let expectedTotalCorners: Double
     let expectedHomeCorners: Double
     let expectedAwayCorners: Double
+    let totalConfidence: Double?
+    let homeConfidence: Double?
+    let awayConfidence: Double?
     let method: String
     let keyFactors: [String]
 
@@ -271,6 +281,9 @@ struct CornerAnalysisResponse: Codable {
       case expectedTotalCorners = "expected_total_corners"
       case expectedHomeCorners = "expected_home_corners"
       case expectedAwayCorners = "expected_away_corners"
+      case totalConfidence = "total_confidence"
+      case homeConfidence = "home_confidence"
+      case awayConfidence = "away_confidence"
       case method
       case keyFactors = "key_factors"
     }
