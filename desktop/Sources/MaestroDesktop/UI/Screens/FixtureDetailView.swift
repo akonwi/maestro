@@ -612,50 +612,49 @@ struct FixtureDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Menu {
+                    betActionMenuItems(for: bet)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
 
-            // Settle buttons - only show after fixture has started
+            // Resolve controls
             if bet.result == .pending {
-                if fixture.kickoff <= Date() {
-                    HStack(spacing: 12) {
-                        Button {
-                            settleBet(bet, result: .won)
-                        } label: {
-                            Text("Won")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
-                        .controlSize(.small)
-
-                        Button {
-                            settleBet(bet, result: .lost)
-                        } label: {
-                            Text("Lost")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
-                        .controlSize(.small)
-
-                        Button {
-                            settleBet(bet, result: .push)
-                        } label: {
-                            Text("Push")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                HStack(spacing: 12) {
+                    Button {
+                        settleBet(bet, result: .won)
+                    } label: {
+                        Text("Won")
+                            .frame(maxWidth: .infinity)
                     }
-                } else {
-                    Text("Pending")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.secondary.opacity(0.2))
-                        .foregroundStyle(.secondary)
-                        .cornerRadius(4)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .controlSize(.small)
+
+                    Button {
+                        settleBet(bet, result: .lost)
+                    } label: {
+                        Text("Lost")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .controlSize(.small)
+
+                    Button {
+                        settleBet(bet, result: .push)
+                    } label: {
+                        Text("Push")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
             } else {
                 HStack {
@@ -672,6 +671,40 @@ struct FixtureDetailView: View {
         .padding()
         .background(Color(nsColor: .controlBackgroundColor))
         .cornerRadius(8)
+        .contextMenu {
+            betActionMenuItems(for: bet)
+        }
+    }
+
+    @ViewBuilder
+    private func betActionMenuItems(for bet: Bet) -> some View {
+        if bet.result == .pending {
+            Button {
+                settleBet(bet, result: .won)
+            } label: {
+                Label("Mark Won", systemImage: "checkmark.circle")
+            }
+
+            Button {
+                settleBet(bet, result: .lost)
+            } label: {
+                Label("Mark Lost", systemImage: "xmark.circle")
+            }
+
+            Button {
+                settleBet(bet, result: .push)
+            } label: {
+                Label("Mark Push", systemImage: "minus.circle")
+            }
+
+            Divider()
+        }
+
+        Button(role: .destructive) {
+            deleteBet(bet)
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
     }
 
     private func marketName(for marketId: Int) -> String {
@@ -688,6 +721,12 @@ struct FixtureDetailView: View {
 
     private func settleBet(_ bet: Bet, result: BetResult) {
         betRepository.update(id: bet.id, result: result)
+        fixtureBets = betRepository.bets(for: fixture.id)
+        appState.refreshBets()
+    }
+
+    private func deleteBet(_ bet: Bet) {
+        betRepository.delete(id: bet.id)
         fixtureBets = betRepository.bets(for: fixture.id)
         appState.refreshBets()
     }
