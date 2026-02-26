@@ -473,9 +473,18 @@ private struct OddsDecisionEngine {
         let summary: String?
     }
 
+    private struct CandidatePick {
+        let pick: CornerAnalysisResponse.Pick
+        let groupKey: String
+        let descriptor: String
+    }
+
     private let minConfidence = 0.66
     private let minEdgePoints = 3.0
     private let minEVPct = 2.0
+    private let shortestAllowedFavoriteOdds = -200
+    private let maxPicksPerFixture = 3
+    private let maxFixtureExposurePct = 0.035
 
     func selectBets(
         projection: ProjectionInput,
@@ -483,7 +492,7 @@ private struct OddsDecisionEngine {
         bankroll: Double?,
         probabilityEngine: MarketProbabilityEngine
     ) -> DecisionResult {
-        var picks: [CornerAnalysisResponse.Pick] = []
+        var candidates: [CandidatePick] = []
         var passReasons: [String] = []
 
         if markets.isEmpty {
@@ -521,6 +530,11 @@ private struct OddsDecisionEngine {
                 let evPerUnit = (probability.winProbability * (decimalOdds - 1.0)) - loseProbability
                 let evPct = evPerUnit * 100
 
+                if line.odds < shortestAllowedFavoriteOdds {
+                    passReasons.append("\(market.marketName) \(line.name): odds \(line.odds) too short for target return.")
+                    continue
+                }
+
                 guard confidence >= minConfidence else {
                     passReasons.append("\(market.marketName) \(line.name): confidence \(Int(confidence * 100))% below threshold.")
                     continue
@@ -534,7 +548,13 @@ private struct OddsDecisionEngine {
                     continue
                 }
 
-                let stake = recommendedStake(bankroll: bankroll, decimalOdds: decimalOdds, winProbability: probability.winProbability)
+                let stake = recommendedStake(
+                    bankroll: bankroll,
+                    decimalOdds: decimalOdds,
+                    winProbability: probability.winProbability,
+                    confidence: confidence,
+                    edgePoints: edge
+                )
                 let edgeText = String(
                     format: "Model %.1f%% vs implied %.1f%% (+%.1fpp)",
                     probability.winProbability * 100,
@@ -542,8 +562,7 @@ private struct OddsDecisionEngine {
                     edge
                 )
 
-                picks.append(
-                    CornerAnalysisResponse.Pick(
+                let pick = CornerAnalysisResponse.Pick(
                         marketId: market.marketId,
                         market: market.marketName,
                         line: line.name,
@@ -568,11 +587,60 @@ private struct OddsDecisionEngine {
                         noBetReason: nil,
                         recommendedStake: stake
                     )
+
+                candidates.append(
+                    CandidatePick(
+                        pick: pick,
+                        groupKey: correlationGroupKey(marketId: market.marketId),
+                        descriptor: "\(market.marketName) \(line.name)"
+                    )
                 )
             }
         }
 
-        picks.sort { $0.expectedValuePct > $1.expectedValuePct }
+        candidates.sort {
+            if $0.pick.expectedValuePct != $1.pick.expectedValuePct {
+                return $0.pick.expectedValuePct > $1.pick.expectedValuePct
+            }
+            if $0.pick.confidence != $1.pick.confidence {
+                return $0.pick.confidence > $1.pick.confidence
+            }
+            return ($0.pick.edgePoints ?? 0) > ($1.pick.edgePoints ?? 0)
+        }
+
+        var picks: [CornerAnalysisResponse.Pick] = []
+        var usedGroups = Set<String>()
+        let exposureCap = (bankroll ?? 0) * maxFixtureExposurePct
+        var currentExposure = 0.0
+
+        for candidate in candidates {
+            if picks.count >= maxPicksPerFixture {
+                passReasons.append("\(candidate.descriptor): omitted to keep fixture recommendations focused.")
+                continue
+            }
+
+            if usedGroups.contains(candidate.groupKey) {
+                passReasons.append("\(candidate.descriptor): omitted due to correlated market exposure.")
+                continue
+            }
+
+            if let bankroll,
+               bankroll > 0,
+               exposureCap > 0,
+               let stake = candidate.pick.recommendedStake,
+               !picks.isEmpty,
+               currentExposure + stake > exposureCap {
+                passReasons.append("\(candidate.descriptor): omitted due to fixture exposure cap.")
+                continue
+            }
+
+            picks.append(candidate.pick)
+            usedGroups.insert(candidate.groupKey)
+            if let stake = candidate.pick.recommendedStake {
+                currentExposure += stake
+            }
+        }
+
         if passReasons.count > 16 {
             passReasons = Array(passReasons.prefix(16))
         }
@@ -585,6 +653,21 @@ private struct OddsDecisionEngine {
         }
 
         return .init(picks: picks, passReasons: passReasons, summary: summary)
+    }
+
+    private func correlationGroupKey(marketId: Int) -> String {
+        switch marketId {
+        case 45, 56, 85:
+            return "total-corners"
+        case 57:
+            return "home-corners"
+        case 58:
+            return "away-corners"
+        case 55:
+            return "most-corners"
+        default:
+            return "market-\(marketId)"
+        }
     }
 
     private func confidenceForLine(
@@ -619,7 +702,13 @@ private struct OddsDecisionEngine {
         return 1.0 + (100.0 / absOdds)
     }
 
-    private func recommendedStake(bankroll: Double?, decimalOdds: Double, winProbability: Double) -> Double? {
+    private func recommendedStake(
+        bankroll: Double?,
+        decimalOdds: Double,
+        winProbability: Double,
+        confidence: Double,
+        edgePoints: Double
+    ) -> Double? {
         guard let bankroll, bankroll > 0 else { return nil }
         let b = decimalOdds - 1.0
         guard b > 0 else { return nil }
@@ -627,12 +716,26 @@ private struct OddsDecisionEngine {
         let p = winProbability
         let q = 1.0 - p
         let kelly = max(0, ((b * p) - q) / b)
-        let rawStake = bankroll * 0.25 * kelly
+        let confidenceMultiplier: Double
+        let maxPctCap: Double
 
-        let minStake = 5.0
-        let maxStake = bankroll * 0.02
-        if maxStake < minStake { return maxStake }
-        return min(max(rawStake, minStake), maxStake)
+        if confidence >= 0.75 {
+            confidenceMultiplier = 1.2
+            maxPctCap = 0.03
+        } else if confidence >= 0.70 {
+            confidenceMultiplier = 0.9
+            maxPctCap = 0.02
+        } else {
+            confidenceMultiplier = 0.6
+            maxPctCap = 0.01
+        }
+
+        let edgeMultiplier = clamp(edgePoints / 8.0, min: 0.65, max: 1.35)
+        let rawStake = bankroll * 0.25 * kelly * confidenceMultiplier * edgeMultiplier
+
+        let maxStake = bankroll * maxPctCap
+        let floorStake = min(max(1.0, bankroll * 0.0025), maxStake)
+        return min(max(rawStake, floorStake), maxStake)
     }
 
     private func riskNotes(pushProbability: Double, confidence: Double, winProbability: Double) -> [String] {
@@ -661,5 +764,9 @@ private struct OddsDecisionEngine {
             flags.append("stake_capped")
         }
         return flags
+    }
+
+    private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
+        Swift.max(minValue, Swift.min(maxValue, value))
     }
 }
