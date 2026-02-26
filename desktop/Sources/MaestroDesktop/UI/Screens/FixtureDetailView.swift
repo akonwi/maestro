@@ -1034,7 +1034,10 @@ struct FixtureDetailView: View {
     }
 
     private func aiPickView(pick: CornerAnalysisResponse.Pick) -> some View {
-        let canBet = !fixture.isFinished
+        let alreadyTaken = fixtureBets.contains { bet in
+            bet.marketId == pick.marketId && bet.lineName == pick.line
+        }
+        let canBet = !fixture.isFinished && !alreadyTaken
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -1043,7 +1046,11 @@ struct FixtureDetailView: View {
                         Text("\(pick.market): \(pick.line)")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        if canBet {
+                        if alreadyTaken {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        } else if canBet {
                             Image(systemName: "plus.circle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.blue)
@@ -1088,6 +1095,7 @@ struct FixtureDetailView: View {
         }
         .padding(10)
         .background(Color(nsColor: .textBackgroundColor))
+        .opacity(alreadyTaken ? 0.65 : 1.0)
         .cornerRadius(6)
         .contentShape(Rectangle())
         .onTapGesture {
