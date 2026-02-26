@@ -141,6 +141,10 @@ struct MainScreen: View {
             } header: {
                 HStack {
                     Text("Leagues")
+                    if appState.isSyncingAnyLeagues {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
                     Spacer()
                     Button {
                         showingLeagueSearch = true
@@ -149,6 +153,14 @@ struct MainScreen: View {
                     }
                     .buttonStyle(.plain)
                     .help("Add league")
+                }
+                .contextMenu {
+                    Button {
+                        appState.syncAllLeagues()
+                    } label: {
+                        Label("Sync", systemImage: "arrow.trianglehead.2.clockwise")
+                    }
+                    .disabled(appState.isSyncingAnyLeagues)
                 }
             }
         }

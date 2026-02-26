@@ -185,6 +185,7 @@ final class AppState: ObservableObject {
     }
 
     func syncAllLeagues() {
+        guard syncService.syncingLeagues.isEmpty else { return }
         Task {
             await syncService.syncAllLeagues(apiKey: apiToken)
             refreshFixtures()
@@ -255,6 +256,10 @@ final class AppState: ObservableObject {
 
     func isSyncing(leagueId: Int) -> Bool {
         syncService.syncingLeagues.contains(leagueId)
+    }
+
+    var isSyncingAnyLeagues: Bool {
+        !syncService.syncingLeagues.isEmpty
     }
 
     // MARK: - Session Persistence
