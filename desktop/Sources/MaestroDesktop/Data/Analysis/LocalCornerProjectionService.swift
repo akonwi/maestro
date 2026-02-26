@@ -81,6 +81,33 @@ struct LocalCornerProjectionService {
             "Model version \(Self.modelVersion)",
         ]
 
+        let probabilityEngine = MarketProbabilityEngine()
+        let decisionEngine = OddsDecisionEngine()
+        let marketInputs = payload.markets.map { market in
+            OddsDecisionEngine.MarketInput(
+                marketId: market.id,
+                marketName: market.name,
+                lines: market.lines.map {
+                    OddsDecisionEngine.LineInput(name: $0.name, odds: $0.odds)
+                }
+            )
+        }
+
+        let projected = OddsDecisionEngine.ProjectionInput(
+            expectedHomeCorners: expectedHome,
+            expectedAwayCorners: expectedAway,
+            expectedTotalCorners: total,
+            homeConfidence: homeConfidence,
+            awayConfidence: awayConfidence,
+            totalConfidence: confidence
+        )
+        let decision = decisionEngine.selectBets(
+            projection: projected,
+            markets: marketInputs,
+            bankroll: payload.bettingProfile?.bankroll,
+            probabilityEngine: probabilityEngine
+        )
+
         return CornerAnalysisResponse(
             analysis: .init(
                 expectedTotalCorners: total,
@@ -92,10 +119,10 @@ struct LocalCornerProjectionService {
                 method: "Deterministic Poisson-style baseline (performance-only)",
                 keyFactors: factors
             ),
-            picks: [],
-            pass: ["Odds and market edge analysis disabled in performance-only mode."],
-            recommendation: "PASS",
-            summary: summary
+            picks: decision.picks,
+            pass: decision.passReasons,
+            recommendation: decision.picks.isEmpty ? "PASS" : "BET",
+            summary: decision.summary ?? summary
         )
     }
 
@@ -234,5 +261,405 @@ struct LocalCornerProjectionService {
 
     private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
         Swift.max(minValue, Swift.min(maxValue, value))
+    }
+}
+
+private struct MarketProbabilityEngine {
+    enum Side {
+        case over
+        case under
+        case home
+        case away
+        case draw
+        case exactly
+    }
+
+    struct LineProbability {
+        let winProbability: Double
+        let pushProbability: Double
+    }
+
+    func probability(
+        marketId: Int,
+        lineName: String,
+        expectedHomeCorners: Double,
+        expectedAwayCorners: Double,
+        expectedTotalCorners: Double
+    ) -> LineProbability? {
+        guard let side = parseSide(lineName: lineName) else { return nil }
+
+        switch marketId {
+        case 45, 56:
+            guard let lineValue = extractLineValue(from: lineName) else { return nil }
+            return probabilityForTotal(side: side, lineValue: lineValue, lambdaTotal: expectedTotalCorners)
+        case 57:
+            guard let lineValue = extractLineValue(from: lineName) else { return nil }
+            return probabilityForTeam(side: side, lineValue: lineValue, lambda: expectedHomeCorners)
+        case 58:
+            guard let lineValue = extractLineValue(from: lineName) else { return nil }
+            return probabilityForTeam(side: side, lineValue: lineValue, lambda: expectedAwayCorners)
+        case 55:
+            return probabilityMostCorners(side: side, lambdaHome: expectedHomeCorners, lambdaAway: expectedAwayCorners)
+        case 85:
+            guard let lineValue = extractLineValue(from: lineName) else { return nil }
+            return probabilityForThreeWayTotal(side: side, lineValue: lineValue, lambdaTotal: expectedTotalCorners)
+        default:
+            return nil
+        }
+    }
+
+    private func probabilityForTotal(side: Side, lineValue: Double, lambdaTotal: Double) -> LineProbability {
+        probabilityForCount(side: side, lineValue: lineValue, lambda: lambdaTotal)
+    }
+
+    private func probabilityForTeam(side: Side, lineValue: Double, lambda: Double) -> LineProbability {
+        probabilityForCount(side: side, lineValue: lineValue, lambda: lambda)
+    }
+
+    private func probabilityForCount(side: Side, lineValue: Double, lambda: Double) -> LineProbability {
+        let integerLine = abs(lineValue - lineValue.rounded()) < 0.0001
+        let floorValue = Int(floor(lineValue))
+
+        switch side {
+        case .over:
+            if integerLine {
+                let win = 1.0 - poissonCDF(k: floorValue, lambda: lambda)
+                let push = poissonPMF(k: floorValue, lambda: lambda)
+                return .init(winProbability: win, pushProbability: push)
+            }
+            let win = 1.0 - poissonCDF(k: floorValue, lambda: lambda)
+            return .init(winProbability: win, pushProbability: 0)
+        case .under:
+            if integerLine {
+                let win = poissonCDF(k: floorValue - 1, lambda: lambda)
+                let push = poissonPMF(k: floorValue, lambda: lambda)
+                return .init(winProbability: win, pushProbability: push)
+            }
+            let win = poissonCDF(k: floorValue, lambda: lambda)
+            return .init(winProbability: win, pushProbability: 0)
+        case .exactly:
+            let exact = poissonPMF(k: Int(round(lineValue)), lambda: lambda)
+            return .init(winProbability: exact, pushProbability: 0)
+        default:
+            return .init(winProbability: 0, pushProbability: 0)
+        }
+    }
+
+    private func probabilityMostCorners(side: Side, lambdaHome: Double, lambdaAway: Double) -> LineProbability {
+        let maxK = max(30, Int((lambdaHome + lambdaAway) + 20))
+        var pHome = [Double](repeating: 0, count: maxK + 1)
+        var pAway = [Double](repeating: 0, count: maxK + 1)
+
+        for k in 0...maxK {
+            pHome[k] = poissonPMF(k: k, lambda: lambdaHome)
+            pAway[k] = poissonPMF(k: k, lambda: lambdaAway)
+        }
+
+        var homeGreater = 0.0
+        var awayGreater = 0.0
+        var draw = 0.0
+
+        for h in 0...maxK {
+            for a in 0...maxK {
+                let p = pHome[h] * pAway[a]
+                if h > a {
+                    homeGreater += p
+                } else if h < a {
+                    awayGreater += p
+                } else {
+                    draw += p
+                }
+            }
+        }
+
+        switch side {
+        case .home:
+            return .init(winProbability: homeGreater, pushProbability: 0)
+        case .away:
+            return .init(winProbability: awayGreater, pushProbability: 0)
+        case .draw:
+            return .init(winProbability: draw, pushProbability: 0)
+        default:
+            return .init(winProbability: 0, pushProbability: 0)
+        }
+    }
+
+    private func probabilityForThreeWayTotal(side: Side, lineValue: Double, lambdaTotal: Double) -> LineProbability {
+        let n = Int(round(lineValue))
+        switch side {
+        case .over:
+            let win = 1.0 - poissonCDF(k: n, lambda: lambdaTotal)
+            return .init(winProbability: win, pushProbability: 0)
+        case .under:
+            let win = poissonCDF(k: n - 1, lambda: lambdaTotal)
+            return .init(winProbability: win, pushProbability: 0)
+        case .exactly, .draw:
+            return .init(winProbability: poissonPMF(k: n, lambda: lambdaTotal), pushProbability: 0)
+        default:
+            return .init(winProbability: 0, pushProbability: 0)
+        }
+    }
+
+    private func parseSide(lineName: String) -> Side? {
+        let lower = lineName.lowercased()
+        if lower.hasPrefix("over") { return .over }
+        if lower.hasPrefix("under") { return .under }
+        if lower.hasPrefix("home") { return .home }
+        if lower.hasPrefix("away") { return .away }
+        if lower.hasPrefix("exactly") { return .exactly }
+        if lower == "draw" { return .draw }
+        return nil
+    }
+
+    private func extractLineValue(from lineName: String) -> Double? {
+        let parts = lineName.split(separator: " ")
+        guard let tail = parts.last else { return nil }
+        return Double(tail)
+    }
+
+    private func poissonCDF(k: Int, lambda: Double) -> Double {
+        if k < 0 { return 0 }
+        if lambda <= 0 { return 1 }
+
+        let upper = max(0, k)
+        var pmf = exp(-lambda)
+        var sum = pmf
+
+        if upper == 0 { return min(max(sum, 0), 1) }
+        for i in 1...upper {
+            pmf *= lambda / Double(i)
+            sum += pmf
+        }
+        return min(max(sum, 0), 1)
+    }
+
+    private func poissonPMF(k: Int, lambda: Double) -> Double {
+        if k < 0 { return 0 }
+        if lambda <= 0 { return k == 0 ? 1 : 0 }
+        if k == 0 { return exp(-lambda) }
+
+        var pmf = exp(-lambda)
+        for i in 1...k {
+            pmf *= lambda / Double(i)
+        }
+        return pmf
+    }
+}
+
+private struct OddsDecisionEngine {
+    struct LineInput {
+        let name: String
+        let odds: Int
+    }
+
+    struct MarketInput {
+        let marketId: Int
+        let marketName: String
+        let lines: [LineInput]
+    }
+
+    struct ProjectionInput {
+        let expectedHomeCorners: Double
+        let expectedAwayCorners: Double
+        let expectedTotalCorners: Double
+        let homeConfidence: Double
+        let awayConfidence: Double
+        let totalConfidence: Double
+    }
+
+    struct DecisionResult {
+        let picks: [CornerAnalysisResponse.Pick]
+        let passReasons: [String]
+        let summary: String?
+    }
+
+    private let minConfidence = 0.66
+    private let minEdgePoints = 3.0
+    private let minEVPct = 2.0
+
+    func selectBets(
+        projection: ProjectionInput,
+        markets: [MarketInput],
+        bankroll: Double?,
+        probabilityEngine: MarketProbabilityEngine
+    ) -> DecisionResult {
+        var picks: [CornerAnalysisResponse.Pick] = []
+        var passReasons: [String] = []
+
+        if markets.isEmpty {
+            return .init(
+                picks: [],
+                passReasons: ["No corner markets available for this fixture."],
+                summary: nil
+            )
+        }
+
+        for market in markets {
+            for line in market.lines {
+                guard let probability = probabilityEngine.probability(
+                    marketId: market.marketId,
+                    lineName: line.name,
+                    expectedHomeCorners: projection.expectedHomeCorners,
+                    expectedAwayCorners: projection.expectedAwayCorners,
+                    expectedTotalCorners: projection.expectedTotalCorners
+                ) else {
+                    passReasons.append("\(market.marketName) \(line.name): unsupported line format.")
+                    continue
+                }
+
+                let implied = impliedProbability(fromAmericanOdds: line.odds)
+                let edge = (probability.winProbability - implied) * 100
+                let confidence = confidenceForLine(
+                    marketId: market.marketId,
+                    lineName: line.name,
+                    projection: projection,
+                    probabilityEngine: probabilityEngine
+                )
+
+                let decimalOdds = decimalOdds(fromAmericanOdds: line.odds)
+                let loseProbability = max(0, 1.0 - probability.winProbability - probability.pushProbability)
+                let evPerUnit = (probability.winProbability * (decimalOdds - 1.0)) - loseProbability
+                let evPct = evPerUnit * 100
+
+                guard confidence >= minConfidence else {
+                    passReasons.append("\(market.marketName) \(line.name): confidence \(Int(confidence * 100))% below threshold.")
+                    continue
+                }
+                guard edge >= minEdgePoints else {
+                    passReasons.append("\(market.marketName) \(line.name): edge \(String(format: "%.1f", edge))pp below threshold.")
+                    continue
+                }
+                guard evPct >= minEVPct else {
+                    passReasons.append("\(market.marketName) \(line.name): EV \(String(format: "%.1f", evPct))% below threshold.")
+                    continue
+                }
+
+                let stake = recommendedStake(bankroll: bankroll, decimalOdds: decimalOdds, winProbability: probability.winProbability)
+                let edgeText = String(
+                    format: "Model %.1f%% vs implied %.1f%% (+%.1fpp)",
+                    probability.winProbability * 100,
+                    implied * 100,
+                    edge
+                )
+
+                picks.append(
+                    CornerAnalysisResponse.Pick(
+                        marketId: market.marketId,
+                        market: market.marketName,
+                        line: line.name,
+                        odds: line.odds,
+                        impliedProbability: implied,
+                        estimatedProbability: probability.winProbability,
+                        edgePoints: edge,
+                        confidence: confidence,
+                        expectedValuePct: evPct,
+                        edge: edgeText,
+                        risks: riskNotes(
+                            pushProbability: probability.pushProbability,
+                            confidence: confidence,
+                            winProbability: probability.winProbability
+                        ),
+                        riskFlags: riskFlags(
+                            pushProbability: probability.pushProbability,
+                            confidence: confidence,
+                            stake: stake,
+                            bankroll: bankroll
+                        ),
+                        noBetReason: nil,
+                        recommendedStake: stake
+                    )
+                )
+            }
+        }
+
+        picks.sort { $0.expectedValuePct > $1.expectedValuePct }
+        if passReasons.count > 16 {
+            passReasons = Array(passReasons.prefix(16))
+        }
+
+        let summary: String?
+        if let best = picks.first {
+            summary = "\(picks.count) value line\(picks.count == 1 ? "" : "s") found. Best: \(best.market) \(best.line) at \(best.odds > 0 ? "+\(best.odds)" : "\(best.odds)") with +\(String(format: "%.1f", best.expectedValuePct))% EV."
+        } else {
+            summary = "No lines met confidence, edge, and EV thresholds for this fixture."
+        }
+
+        return .init(picks: picks, passReasons: passReasons, summary: summary)
+    }
+
+    private func confidenceForLine(
+        marketId: Int,
+        lineName: String,
+        projection: ProjectionInput,
+        probabilityEngine: MarketProbabilityEngine
+    ) -> Double {
+        switch marketId {
+        case 57:
+            return projection.homeConfidence
+        case 58:
+            return projection.awayConfidence
+        default:
+            return projection.totalConfidence
+        }
+    }
+
+    private func impliedProbability(fromAmericanOdds odds: Int) -> Double {
+        if odds > 0 {
+            return 100.0 / (Double(odds) + 100.0)
+        }
+        let absOdds = Double(abs(odds))
+        return absOdds / (absOdds + 100.0)
+    }
+
+    private func decimalOdds(fromAmericanOdds odds: Int) -> Double {
+        if odds > 0 {
+            return 1.0 + (Double(odds) / 100.0)
+        }
+        let absOdds = Double(abs(odds))
+        return 1.0 + (100.0 / absOdds)
+    }
+
+    private func recommendedStake(bankroll: Double?, decimalOdds: Double, winProbability: Double) -> Double? {
+        guard let bankroll, bankroll > 0 else { return nil }
+        let b = decimalOdds - 1.0
+        guard b > 0 else { return nil }
+
+        let p = winProbability
+        let q = 1.0 - p
+        let kelly = max(0, ((b * p) - q) / b)
+        let rawStake = bankroll * 0.25 * kelly
+
+        let minStake = 5.0
+        let maxStake = bankroll * 0.02
+        if maxStake < minStake { return maxStake }
+        return min(max(rawStake, minStake), maxStake)
+    }
+
+    private func riskNotes(pushProbability: Double, confidence: Double, winProbability: Double) -> [String] {
+        var notes: [String] = []
+        if pushProbability >= 0.08 {
+            notes.append("Meaningful push probability around the line")
+        }
+        if confidence < 0.7 {
+            notes.append("Moderate model confidence")
+        }
+        if winProbability < 0.5 {
+            notes.append("Outcome remains high variance")
+        }
+        return notes
+    }
+
+    private func riskFlags(pushProbability: Double, confidence: Double, stake: Double?, bankroll: Double?) -> [String] {
+        var flags: [String] = []
+        if pushProbability >= 0.08 {
+            flags.append("push_risk")
+        }
+        if confidence < 0.7 {
+            flags.append("mid_confidence")
+        }
+        if let stake, let bankroll, bankroll > 0, stake >= bankroll * 0.0199 {
+            flags.append("stake_capped")
+        }
+        return flags
     }
 }

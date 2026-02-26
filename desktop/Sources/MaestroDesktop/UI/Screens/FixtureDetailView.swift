@@ -134,6 +134,12 @@ struct FixtureDetailView: View {
         .onChange(of: appState.betStats) {
             fixtureBets = betRepository.bets(for: fixture.id)
         }
+        .onChange(of: cornerOdds) {
+            guard canModifyAnalysis else { return }
+            guard matchupData != nil else { return }
+            guard !isLoadingAnalysis else { return }
+            runAnalysis()
+        }
         .sheet(item: $selectedBetLine) { line in
             BetFormSheet(
                 fixture: fixture,
