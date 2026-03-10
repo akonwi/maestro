@@ -86,7 +86,7 @@ final class SyncService: ObservableObject {
 
         do {
             if let fixture = try await client.getFixture(id: id) {
-                updateFixture(fixture, leagueId: leagueId, season: season)
+                saveFixture(fixture, leagueId: leagueId, season: season)
                 print("Synced fixture \(id)")
                 return true
             }
@@ -120,22 +120,42 @@ final class SyncService: ObservableObject {
                 // Full import
                 return await importLeague(id: id, apiKey: apiKey)
             } else {
-                // Incremental sync - only update unfinished fixtures
-                print("Syncing unfinished fixtures for \(leagueName)...")
-                let unfinishedIds = unfinishedFixtureIds(leagueId: id, season: season)
+                ensureTables()
 
-                var synced = 0
-                for fixtureId in unfinishedIds {
-                    if let fixture = try await client.getFixture(id: fixtureId) {
-                        updateFixture(fixture, leagueId: id, season: season)
-                        synced += 1
+                // Incremental sync - update unfinished fixtures and import any new season fixtures
+                print("Syncing fixtures for \(leagueName)...")
+
+                let fixtureList = try await client.getSeasonFixtures(leagueId: id, season: season)
+                let existingIds = existingFixtureIds(leagueId: id, season: season)
+                let unfinishedIds = Set(unfinishedFixtureIds(leagueId: id, season: season))
+
+                var updated = 0
+                var inserted = 0
+
+                for fixture in fixtureList {
+                    if !existingIds.contains(fixture.id) {
+                        if fixture.isFinished {
+                            if let detailed = try await client.getFixture(id: fixture.id) {
+                                saveFixture(detailed, leagueId: id, season: season)
+                                inserted += 1
+                            }
+                        } else {
+                            saveFixture(fixture, leagueId: id, season: season)
+                            inserted += 1
+                        }
+                        continue
+                    }
+
+                    if unfinishedIds.contains(fixture.id), let detailed = try await client.getFixture(id: fixture.id) {
+                        saveFixture(detailed, leagueId: id, season: season)
+                        updated += 1
                     }
                 }
 
                 leagueRepository.updateSyncedAt(leagueId: id)
                 leagueRepository.updateCurrentSeason(leagueId: id, season: season)
-                print("Sync complete for \(leagueName): \(synced) fixtures updated")
-                return SyncResult(leagueName: leagueName, fixtureCount: synced, error: nil)
+                print("Sync complete for \(leagueName): \(updated) updated, \(inserted) inserted")
+                return SyncResult(leagueName: leagueName, fixtureCount: updated + inserted, error: nil)
             }
         } catch {
             print("Sync failed for league \(id): \(error.localizedDescription)")
@@ -165,6 +185,28 @@ final class SyncService: ObservableObject {
 
         sqlite3_finalize(statement)
         return count
+    }
+
+    private func existingFixtureIds(leagueId: Int, season: Int) -> Set<Int> {
+        guard let db = Database.shared.handle else { return [] }
+
+        let sql = "SELECT id FROM fixtures WHERE league_id = ? AND season = ?;"
+        var statement: OpaquePointer?
+
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return []
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(leagueId))
+        sqlite3_bind_int64(statement, 2, Int64(season))
+
+        var ids = Set<Int>()
+        while sqlite3_step(statement) == SQLITE_ROW {
+            ids.insert(Int(sqlite3_column_int64(statement, 0)))
+        }
+
+        sqlite3_finalize(statement)
+        return ids
     }
 
     private func unfinishedFixtureIds(leagueId: Int, season: Int) -> [Int] {
@@ -218,42 +260,6 @@ final class SyncService: ObservableObject {
             sqlite3_finalize(statement)
         }
 
-        if let stats = fixture.statistics, stats.count >= 2 {
-            saveStats(fixtureId: fixture.id, teamId: fixture.teams.home.id, stats: stats[0], leagueId: leagueId, season: season)
-            saveStats(fixtureId: fixture.id, teamId: fixture.teams.away.id, stats: stats[1], leagueId: leagueId, season: season)
-        }
-    }
-
-    private func updateFixture(_ fixture: APIFixture, leagueId: Int, season: Int) {
-        guard let db = Database.shared.handle else { return }
-
-        saveTeam(id: fixture.teams.home.id, name: fixture.teams.home.name)
-        saveTeam(id: fixture.teams.away.id, name: fixture.teams.away.name)
-
-        let sql = """
-        UPDATE fixtures SET
-            timestamp = ?,
-            finished = ?,
-            home_goals = ?,
-            away_goals = ?,
-            status = ?
-        WHERE id = ?;
-        """
-
-        var statement: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-            sqlite3_bind_int64(statement, 1, fixture.timestampMs)
-            sqlite3_bind_int(statement, 2, fixture.isFinished ? 1 : 0)
-            sqlite3_bind_int64(statement, 3, Int64(fixture.goals.home ?? 0))
-            sqlite3_bind_int64(statement, 4, Int64(fixture.goals.away ?? 0))
-            sqlite3_bind_text(statement, 5, fixture.fixture.status.short, -1, transient)
-            sqlite3_bind_int64(statement, 6, Int64(fixture.id))
-            sqlite3_step(statement)
-            sqlite3_finalize(statement)
-        }
-
-        // Save or update stats
         if let stats = fixture.statistics, stats.count >= 2 {
             saveStats(fixtureId: fixture.id, teamId: fixture.teams.home.id, stats: stats[0], leagueId: leagueId, season: season)
             saveStats(fixtureId: fixture.id, teamId: fixture.teams.away.id, stats: stats[1], leagueId: leagueId, season: season)
