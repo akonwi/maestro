@@ -1,41 +1,40 @@
 # Maestro Desktop App Plan
 
 ## Overview
-Maestro Desktop is a macOS-only SwiftUI application for viewing fixtures, stats, and tracking bets. It is a local-first app that reads and writes to a local SQLite database using the same schema as the hosted API server. The app fetches updates directly from API-Football and never depends on the hosted API.
+Maestro Desktop is a macOS-only SwiftUI application for viewing fixtures, stats, and tracking bets. It is a local-first app that reads and writes to a local SQLite database and syncs directly from API-Football.
 
 ## Goals
 - Provide a fast, desktop-optimized interface for fixtures and stats.
 - Support recording bets and updating outcomes locally.
-- Use a local SQLite database (same schema as the API server) for continuity.
+- Use a local SQLite database for continuity and offline access.
 - Work offline with cached data and graceful degraded behavior.
 
 ## Non-Goals (for now)
 - Distribution or auto-updates.
-- Odds ingestion or AI betting.
+- Multi-platform support.
 
 ## Data Model and Storage
-- SQLite database uses the same schema as the hosted API server.
+- SQLite is the source of truth for the app UI.
 - The app ships with a baseline SQLite file or creates one on first run.
-- API-Football key is stored in the local database (settings table).
+- API-Football and OpenAI keys are stored locally in the settings table.
 
-## Sync Model (mirrors api/server/fixtures.ard)
-Fixtures are not fetched for display. All fixture listings come from the local database.
+## Sync Model
+Fixtures are not fetched directly for display. The UI reads from the local database.
 
-Sync only updates existing unfinished fixtures:
-- Every 1 hour (same interval as fixtures.ard).
-- For each followed league, get current season from API-Football.
-- If league needs sync (synced_at + needs_sync logic), run sync_season.
-- sync_season:
-  - If fixtures exist for league+season: run sync_fixtures.
-  - If fixtures do not exist: skip import for now (fixtures are expected to be preloaded).
-- sync_fixtures:
-  - Query all fixtures where finished = false for league+season.
-  - For each fixture:
-    - Fetch fixture details from API-Football by ID.
-    - Decode stats and update fixtures + fixture_stats + teams.
-  - Update leagues.synced_at.
+League sync:
+- Determine the league's current season from API-Football.
+- If no fixtures exist locally for that league and season, perform a full import.
+- If fixtures already exist locally:
+  - refresh unfinished fixtures already in the database
+  - reconcile the season fixture list and insert newly published fixtures that are missing locally
+- Update the league sync timestamp and current season after a successful sync.
 
-Live fixtures (status in-play) refresh every 5 minutes, but only while the fixture tab is open.
+Fixture sync:
+- Fetch a single fixture by ID from API-Football.
+- Save it into the local database, inserting or updating as needed.
+- If full statistics are present, persist them to `fixture_stats`.
+
+Live fixtures can refresh periodically while the fixture tab is open.
 
 ## Offline Behavior
 - Offline mode displays cached fixtures and stats.
@@ -43,7 +42,7 @@ Live fixtures (status in-play) refresh every 5 minutes, but only while the fixtu
 - Bets remain usable locally.
 
 ## UI and UX
-### Visual Language (Paper Terminal)
+### Visual Language
 - Light-first, system light/dark support.
 - Monospaced typography, compact spacing.
 - High-contrast borders, minimal decoration.
@@ -54,29 +53,22 @@ Live fixtures (status in-play) refresh every 5 minutes, but only while the fixtu
 - Center column: fixture list for selected date.
 - Global tab bar: open fixture detail tabs.
 
-### Fixture Detail (Tabbed)
+### Fixture Detail
 - Header: status, score (live/finished), kickoff time.
-- Tabs:
-  - Match Stats (default when live or finished).
-  - Pre-match (when match not in play, or as a secondary tab).
-- Bets card appears above match stats when in the Match Stats tab.
-
-### Match Stats
-- Comparison bars for key stats:
-  - Shots, shots on target, corners, possession, fouls, yellow/red, xG.
+- Tabs surface pre-match and match stats depending on fixture state.
+- Betting tools and recorded bets are available in fixture context.
 
 ### Bets
 - Local CRUD for bets.
-- Context menu for result updates (Win/Lose/Push/Delete).
-- P&L shown using the same rules as the web app.
+- Result updates and local P&L tracking.
 
-## Implementation Notes (SwiftUI)
-- Custom tab bar (global) for fixture tabs.
+## Implementation Notes
+- SwiftUI app with `AppState` as the main shared state container.
 - Repository layer for DB operations (leagues, fixtures, stats, bets).
-- API client that mirrors the parsing logic from api/server/fixtures.ard.
-- Connectivity monitor to toggle online/offline behavior.
+- Direct API-Football client for fixture, league, standings, and odds data.
+- Connectivity-aware sync behavior where practical.
 
 ## Open Items
-- Decide baseline DB bootstrapping strategy (bundle vs empty + import).
-- Define needs_sync logic in Swift to match the server behavior.
-- Add settings screen for API-Football key (stored in DB).
+- Decide long-term app distribution strategy.
+- Continue tightening sync behavior and failure recovery.
+- Improve packaged starter database strategy.

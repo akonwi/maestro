@@ -1,4 +1,0 @@
-CREATE TABLE IF NOT EXISTS juice (
-  id TEXT PRIMARY KEY,
-  raw_data TEXT
-);

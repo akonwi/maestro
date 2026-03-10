@@ -4,7 +4,7 @@ This file provides guidance to coding agents when working in the desktop app.
 
 ## Overview
 
-Maestro Desktop is a native macOS app for viewing soccer fixtures, tracking stats, and managing bets. It's a companion to the web app, using its own local SQLite database synced from the API-Football.com API.
+Maestro Desktop is a native macOS app for viewing soccer fixtures, tracking stats, and managing bets. It uses a local SQLite database synced directly from the API-Football.com API.
 
 ## Technology Stack
 
@@ -19,7 +19,7 @@ Maestro Desktop is a native macOS app for viewing soccer fixtures, tracking stat
 ## Development Commands
 
 ```bash
-cd desktop/MaestroDesktop
+cd desktop
 
 # Build debug
 swift build
