@@ -77,7 +77,7 @@ final class SyncService: ObservableObject {
         let leagues = leagueRepository.followedLeagues()
 
         for league in leagues {
-            await syncLeague(id: league.id, apiKey: apiKey)
+            _ = await syncLeague(id: league.id, apiKey: apiKey)
         }
     }
 

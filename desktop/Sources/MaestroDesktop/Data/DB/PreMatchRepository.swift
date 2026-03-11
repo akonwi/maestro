@@ -213,7 +213,6 @@ final class PreMatchRepository {
             let fixtureId = Int(sqlite3_column_int64(statement, 0))
             let timestamp = sqlite3_column_int64(statement, 1)
             let homeId = Int(sqlite3_column_int64(statement, 2))
-            let awayId = Int(sqlite3_column_int64(statement, 3))
             let homeGoals = Int(sqlite3_column_int(statement, 4))
             let awayGoals = Int(sqlite3_column_int(statement, 5))
             let homeName = String(cString: sqlite3_column_text(statement, 6))
