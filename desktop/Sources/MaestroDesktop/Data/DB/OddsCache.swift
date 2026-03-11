@@ -1,6 +1,11 @@
 import Foundation
 import SQLite3
 
+struct CachedOddsBundle: Codable {
+    let cornerOdds: CornerOddsData
+    let goalMarkets: [APIOddsMarket]
+}
+
 @MainActor
 final class OddsCache {
     static let shared = OddsCache()
@@ -26,6 +31,10 @@ final class OddsCache {
     }
 
     func get(fixtureId: Int) -> CornerOddsData? {
+        getBundle(fixtureId: fixtureId)?.cornerOdds
+    }
+
+    func getBundle(fixtureId: Int) -> CachedOddsBundle? {
         guard let db = Database.shared.handle else { return nil }
 
         let now = Int(Date().timeIntervalSince1970)
@@ -44,13 +53,16 @@ final class OddsCache {
         sqlite3_bind_int64(statement, 1, Int64(fixtureId))
         sqlite3_bind_int64(statement, 2, Int64(minTime))
 
-        var result: CornerOddsData?
+        var result: CachedOddsBundle?
 
-        if sqlite3_step(statement) == SQLITE_ROW {
-            if let dataPtr = sqlite3_column_text(statement, 0) {
-                let jsonString = String(cString: dataPtr)
-                if let jsonData = jsonString.data(using: .utf8) {
-                    result = try? JSONDecoder().decode(CornerOddsData.self, from: jsonData)
+        if sqlite3_step(statement) == SQLITE_ROW,
+           let dataPtr = sqlite3_column_text(statement, 0) {
+            let jsonString = String(cString: dataPtr)
+            if let jsonData = jsonString.data(using: .utf8) {
+                if let bundle = try? JSONDecoder().decode(CachedOddsBundle.self, from: jsonData) {
+                    result = bundle
+                } else if let legacyCornerOdds = try? JSONDecoder().decode(CornerOddsData.self, from: jsonData) {
+                    result = CachedOddsBundle(cornerOdds: legacyCornerOdds, goalMarkets: [])
                 }
             }
         }
@@ -59,10 +71,11 @@ final class OddsCache {
         return result
     }
 
-    func set(fixtureId: Int, data: CornerOddsData) {
+    func set(fixtureId: Int, data: CornerOddsData, goalMarkets: [APIOddsMarket] = []) {
         guard let db = Database.shared.handle else { return }
 
-        guard let jsonData = try? JSONEncoder().encode(data),
+        let bundle = CachedOddsBundle(cornerOdds: data, goalMarkets: goalMarkets)
+        guard let jsonData = try? JSONEncoder().encode(bundle),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             return
         }

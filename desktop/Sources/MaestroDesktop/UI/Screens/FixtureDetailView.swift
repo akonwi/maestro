@@ -8,6 +8,7 @@ struct FixtureDetailView: View {
     @State private var preMatchData: PreMatchData?
     @State private var matchupData: MatchupData?
     @State private var cornerOdds: CornerOddsData?
+    @State private var goalOddsMarkets: [APIOddsMarket] = []
     @State private var isLoadingOdds = false
     @State private var selectedBookmaker: BookmakerInfo = .defaultBookmaker
     @State private var selectedBetLine: SelectedBetLine?
@@ -17,6 +18,16 @@ struct FixtureDetailView: View {
     @State private var analysisError: String?
     @State private var analysisStatusMessage: String?
     @State private var hasAutoProjectionAttempted = false
+    @State private var lastAnalysisBookmakerId: Int?
+    @State private var lastAnalysisMarketCount = 0
+    @State private var goalAnalysis: GoalAnalysisResponse?
+    @State private var goalAnalysisTimestamp: Date?
+    @State private var isLoadingGoalAnalysis = false
+    @State private var goalAnalysisError: String?
+    @State private var goalAnalysisStatusMessage: String?
+    @State private var hasAutoGoalProjectionAttempted = false
+    @State private var lastGoalAnalysisBookmakerId: Int?
+    @State private var lastGoalAnalysisMarketCount = 0
     @State private var expandedMarkets: Set<Int> = []
     @State private var syncTimer: Timer?
     @State private var fixtureBets: [Bet] = []
@@ -24,7 +35,9 @@ struct FixtureDetailView: View {
     private let fixtureRepository = FixtureRepository()
     private let preMatchRepository = PreMatchRepository()
     private let analysisRepository = AnalysisRepository.shared
+    private let goalAnalysisRepository = GoalAnalysisRepository.shared
     private let analysisCache = AnalysisCache.shared
+    private let goalAnalysisCache = GoalAnalysisCache.shared
     private let syncService = SyncService()
     private let betRepository = BetRepository.shared
 
@@ -123,6 +136,16 @@ struct FixtureDetailView: View {
         }
         .onChange(of: fixture) {
             hasAutoProjectionAttempted = false
+            hasAutoGoalProjectionAttempted = false
+            lastAnalysisBookmakerId = nil
+            lastAnalysisMarketCount = 0
+            lastGoalAnalysisBookmakerId = nil
+            lastGoalAnalysisMarketCount = 0
+            goalAnalysis = nil
+            goalAnalysisTimestamp = nil
+            goalAnalysisError = nil
+            goalAnalysisStatusMessage = nil
+            goalOddsMarkets = []
             loadStats()
             stopSyncTimer()
             startSyncTimerIfNeeded()
@@ -138,6 +161,12 @@ struct FixtureDetailView: View {
             guard canModifyAnalysis else { return }
             guard matchupData != nil else { return }
             guard !isLoadingAnalysis else { return }
+
+            let currentMarketCount = cornerOdds?.markets.reduce(0) { $0 + $1.lines.count } ?? 0
+            let bookmakerChanged = lastAnalysisBookmakerId != nil && lastAnalysisBookmakerId != selectedBookmaker.id
+            let gainedPricedMarkets = lastAnalysisMarketCount == 0 && currentMarketCount > 0
+            guard aiAnalysis == nil || bookmakerChanged || gainedPricedMarkets else { return }
+
             runAnalysis()
         }
         .sheet(item: $selectedBetLine) { line in
@@ -175,14 +204,28 @@ struct FixtureDetailView: View {
         fixtureBets = betRepository.bets(for: fixture.id)
         loadCornerOdds()
         loadCachedAnalysis()
+        loadCachedGoalAnalysis()
         maybeAutoRunProjection()
+        maybeAutoRunGoalProjection()
     }
 
     private func loadCachedAnalysis() {
         if let cached = analysisCache.get(fixtureId: fixture.id) {
             aiAnalysis = cached.analysis
             analysisTimestamp = cached.cachedAt
+            lastAnalysisBookmakerId = selectedBookmaker.id
+            lastAnalysisMarketCount = cornerOdds?.markets.reduce(0) { $0 + $1.lines.count } ?? 0
             hasAutoProjectionAttempted = true
+        }
+    }
+
+    private func loadCachedGoalAnalysis() {
+        if let cached = goalAnalysisCache.get(fixtureId: fixture.id) {
+            goalAnalysis = cached.analysis
+            goalAnalysisTimestamp = cached.cachedAt
+            lastGoalAnalysisBookmakerId = selectedBookmaker.id
+            lastGoalAnalysisMarketCount = goalOddsMarkets.count
+            hasAutoGoalProjectionAttempted = true
         }
     }
 
@@ -195,6 +238,16 @@ struct FixtureDetailView: View {
 
         hasAutoProjectionAttempted = true
         runAnalysis()
+    }
+
+    private func maybeAutoRunGoalProjection() {
+        guard canModifyAnalysis else { return }
+        guard goalAnalysis == nil else { return }
+        guard !isLoadingGoalAnalysis else { return }
+        guard !hasAutoGoalProjectionAttempted else { return }
+
+        hasAutoGoalProjectionAttempted = true
+        runGoalAnalysis()
     }
 
     private var isWithinSyncWindow: Bool {
@@ -246,31 +299,37 @@ struct FixtureDetailView: View {
     private func loadCornerOdds() {
         guard !fixture.isFinished else {
             cornerOdds = nil
+            goalOddsMarkets = []
             return
         }
 
         // Check cache first (only if using default bookmaker)
         if selectedBookmaker.id == BookmakerInfo.defaultBookmaker.id,
-           let cached = OddsCache.shared.get(fixtureId: fixture.id) {
-            cornerOdds = cached
+           let cached = OddsCache.shared.getBundle(fixtureId: fixture.id) {
+            cornerOdds = cached.cornerOdds
+            goalOddsMarkets = cached.goalMarkets
             // Update selected bookmaker to match cached data
-            if let cachedBookmaker = cached.bookmaker {
+            if let cachedBookmaker = cached.cornerOdds.bookmaker {
                 selectedBookmaker = cachedBookmaker
             }
             isLoadingOdds = false
+            fetchOdds(bookmakerId: selectedBookmaker.id, showLoadingState: false)
             return
         }
 
         fetchOdds(bookmakerId: selectedBookmaker.id)
     }
 
-    private func fetchOdds(bookmakerId: Int) {
+    private func fetchOdds(bookmakerId: Int, showLoadingState: Bool = true) {
         guard !appState.apiToken.isEmpty else {
             cornerOdds = nil
+            goalOddsMarkets = []
             return
         }
 
-        isLoadingOdds = true
+        if showLoadingState {
+            isLoadingOdds = true
+        }
         let client = APIFootballClient(apiKey: appState.apiToken)
         let fixtureId = fixture.id
 
@@ -278,19 +337,23 @@ struct FixtureDetailView: View {
             do {
                 let result = try await client.getOdds(fixtureId: fixtureId, bookmakerId: bookmakerId)
                 let cornerMarkets = result.markets.filter { $0.isCornerMarket }
+                let supportedGoalMarkets = result.markets.filter { $0.isGoalMarket }
 
-                let converted = cornerMarkets.map { market in
-                    CornerMarket(
+                let converted: [CornerMarket] = cornerMarkets.compactMap { market -> CornerMarket? in
+                    let lines: [CornerLine] = market.values.compactMap { line -> CornerLine? in
+                        guard let americanOdd = line.americanOddValue else { return nil }
+                        return CornerLine(
+                            id: line.id,
+                            name: line.lineName,
+                            americanOdd: americanOdd,
+                            value: line.lineValue
+                        )
+                    }
+                    guard !lines.isEmpty else { return nil }
+                    return CornerMarket(
                         id: market.id,
                         name: market.displayName,
-                        lines: market.values.map { line in
-                            CornerLine(
-                                id: line.id,
-                                name: line.lineName,
-                                americanOdd: line.americanOdd,
-                                value: line.lineValue
-                            )
-                        }
+                        lines: lines
                     )
                 }
 
@@ -299,14 +362,26 @@ struct FixtureDetailView: View {
                 await MainActor.run {
                     // Only cache if using default bookmaker
                     if bookmakerId == BookmakerInfo.defaultBookmaker.id {
-                        OddsCache.shared.set(fixtureId: fixtureId, data: oddsData)
+                        OddsCache.shared.set(fixtureId: fixtureId, data: oddsData, goalMarkets: supportedGoalMarkets)
                     }
                     cornerOdds = oddsData
+                    goalOddsMarkets = supportedGoalMarkets
                     isLoadingOdds = false
+
+                    let bookmakerChanged = lastGoalAnalysisBookmakerId != nil && lastGoalAnalysisBookmakerId != bookmakerId
+                    let gainedGoalMarkets = lastGoalAnalysisMarketCount == 0 && !supportedGoalMarkets.isEmpty
+                    if canModifyAnalysis,
+                       !isLoadingGoalAnalysis,
+                       goalAnalysis == nil || bookmakerChanged || gainedGoalMarkets {
+                        runGoalAnalysis()
+                    }
                 }
             } catch {
                 await MainActor.run {
-                    cornerOdds = nil
+                    if showLoadingState {
+                        cornerOdds = nil
+                        goalOddsMarkets = []
+                    }
                     isLoadingOdds = false
                 }
             }
@@ -544,6 +619,8 @@ struct FixtureDetailView: View {
                         .pickerStyle(.segmented)
                         .frame(maxWidth: 200)
 
+                        goalProjectionSection
+
                         // Corner Stats
                         if let matchup = matchupData {
                             cornerStatsSection(data: matchup)
@@ -708,15 +785,7 @@ struct FixtureDetailView: View {
     }
 
     private func marketName(for marketId: Int) -> String {
-        switch marketId {
-        case 45: return "Total Corners"
-        case 55: return "Most Corners"
-        case 56: return "Asian Corners"
-        case 57: return "Home Corners"
-        case 58: return "Away Corners"
-        case 85: return "Total Corners (3-Way)"
-        default: return "Corner Market"
-        }
+        Bet.marketName(for: marketId)
     }
 
     private func settleBet(_ bet: Bet, result: BetResult) {
@@ -800,6 +869,249 @@ struct FixtureDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor))
         .cornerRadius(6)
+    }
+
+    @ViewBuilder
+    private var goalProjectionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Goal Projection")
+                    .font(.headline)
+                Spacer()
+                if canModifyAnalysis {
+                    Button(action: runGoalAnalysis) {
+                        Label(goalAnalysis == nil ? "Project" : "Refresh", systemImage: "soccerball")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(isLoadingGoalAnalysis)
+                }
+            }
+
+            if isLoadingGoalAnalysis {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text(goalAnalysisStatusMessage ?? "Computing goal projection...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let error = goalAnalysisError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if canModifyAnalysis {
+                        Button("Retry") { runGoalAnalysis() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
+                }
+            } else if let analysis = goalAnalysis {
+                goalAnalysisResultView(analysis: analysis)
+            } else {
+                Text(canModifyAnalysis ? "No goal projection available yet." : "Goal projection unavailable after kickoff.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func goalAnalysisResultView(analysis: GoalAnalysisResponse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let timestamp = goalAnalysisTimestamp {
+                Text("Projected \(formattedTimestamp(timestamp))")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            HStack(spacing: 10) {
+                projectionTeamCard(
+                    label: "Home",
+                    value: analysis.analysis.expectedHomeGoals,
+                    confidence: analysis.analysis.homeConfidence
+                )
+                projectionTeamCard(
+                    label: "Away",
+                    value: analysis.analysis.expectedAwayGoals,
+                    confidence: analysis.analysis.awayConfidence
+                )
+            }
+
+            HStack(spacing: 10) {
+                goalMetricCard(
+                    title: "Total",
+                    value: String(format: "%.2f", analysis.analysis.expectedTotalGoals),
+                    subtitle: analysis.analysis.totalConfidence.map { "\(Int($0 * 100))% conf" }
+                )
+                goalMetricCard(
+                    title: "Over 2.5",
+                    value: "\(Int((analysis.analysis.over2_5Probability * 100).rounded()))%",
+                    subtitle: "model"
+                )
+                goalMetricCard(
+                    title: "BTTS",
+                    value: "\(Int((analysis.analysis.bttsProbability * 100).rounded()))%",
+                    subtitle: "yes"
+                )
+            }
+
+            if !analysis.summary.isEmpty {
+                Text(analysis.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !analysis.picks.isEmpty {
+                Divider()
+                Text("Goal Value Signals")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                ForEach(analysis.picks) { pick in
+                    goalPickView(pick: pick)
+                }
+            } else if !goalOddsMarkets.isEmpty {
+                Text("No supported goal lines cleared the confidence and EV thresholds.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("No supported goal markets available from the selected bookmaker.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !analysis.analysis.keyFactors.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Model factors")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(Array(analysis.analysis.keyFactors.prefix(3)), id: \.self) { factor in
+                        Text("• \(factor)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+
+            if canModifyAnalysis {
+                HStack {
+                    Spacer()
+                    Button(action: clearGoalAnalysis) {
+                        Label("Clear", systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+    }
+
+    private func goalMetricCard(title: String, value: String, subtitle: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(nsColor: .textBackgroundColor))
+        .cornerRadius(6)
+    }
+
+    private func goalPickView(pick: GoalAnalysisResponse.Pick) -> some View {
+        let alreadyTaken = fixtureBets.contains { bet in
+            bet.marketId == pick.marketId && bet.lineName == pick.line
+        }
+        let canBet = !fixture.isFinished && !alreadyTaken
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text("\(pick.market): \(pick.line)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        if alreadyTaken {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        } else if canBet {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                    Text(pick.edge)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(pick.odds > 0 ? "+\(pick.odds)" : "\(pick.odds)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(pick.odds > 0 ? .green : .primary)
+                    Text("+\(String(format: "%.1f", pick.expectedValuePct))% EV")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+            }
+
+            HStack(spacing: 12) {
+                Label("\(Int(pick.confidence * 100))%", systemImage: "target")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Label("\(Int(pick.estimatedProbability * 100))% est.", systemImage: "percent")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let stake = pick.recommendedStake {
+                    Label(String(format: "$%.0f", stake), systemImage: "dollarsign.circle")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.blue)
+                }
+            }
+
+            if !pick.risks.isEmpty {
+                Text("Risks: \(pick.risks.joined(separator: "; "))")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .textBackgroundColor))
+        .opacity(alreadyTaken ? 0.65 : 1.0)
+        .cornerRadius(6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if canBet {
+                saveBetFromGoalPick(pick)
+            }
+        }
+        .onHover { hovering in
+            if canBet {
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+        }
     }
 
     private func formSection(data: PreMatchData) -> some View {
@@ -1195,6 +1507,86 @@ struct FixtureDetailView: View {
         }
     }
 
+    private func saveBetFromGoalPick(_ pick: GoalAnalysisResponse.Pick) {
+        let lineValue: Double? = goalOddsMarkets
+            .first(where: { $0.id == pick.marketId })?
+            .values.first(where: { $0.lineName == pick.line })?
+            .lineValue
+
+        var noteParts: [String] = []
+        noteParts.append("Prompt: \(LocalGoalProjectionService.modelVersion)")
+        noteParts.append("Edge: \(pick.edge)")
+        if let edgePoints = pick.edgePoints {
+            noteParts.append(String(format: "Edge (pp): +%.1f", edgePoints))
+        }
+        noteParts.append(String(format: "Implied Prob: %.1f%%", pick.impliedProbability * 100))
+        noteParts.append(String(format: "Estimated Prob: %.1f%%", pick.estimatedProbability * 100))
+        noteParts.append(String(format: "EV: +%.1f%%", pick.expectedValuePct))
+        noteParts.append(String(format: "Confidence: %d%%", Int(pick.confidence * 100)))
+        if let riskFlags = pick.riskFlags, !riskFlags.isEmpty {
+            noteParts.append("Risk Flags: \(riskFlags.joined(separator: "; "))")
+        }
+        if !pick.risks.isEmpty {
+            noteParts.append("Risks: \(pick.risks.joined(separator: "; "))")
+        }
+        let notes = noteParts.joined(separator: "\n")
+
+        let stake = pick.recommendedStake ?? 10
+
+        if betRepository.create(
+            fixtureId: fixture.id,
+            marketId: pick.marketId,
+            lineName: pick.line,
+            line: lineValue,
+            odds: pick.odds,
+            stake: stake,
+            notes: notes
+        ) != nil {
+            appState.refreshBets()
+            appState.toast = .success("Bet saved: \(pick.market) \(pick.line) @ \(pick.odds > 0 ? "+" : "")\(pick.odds)")
+        }
+    }
+
+    private func runGoalAnalysis() {
+        isLoadingGoalAnalysis = true
+        goalAnalysisError = nil
+        goalAnalysisStatusMessage = "Loading goal model features..."
+
+        Task {
+            do {
+                try await importMissingFixtureStatsIfNeeded(statusTarget: .goals)
+
+                guard let payload = goalAnalysisRepository.buildAnalysisPayload(for: fixture, markets: goalOddsMarkets, bankroll: appState.bankroll) else {
+                    await MainActor.run {
+                        goalAnalysisError = "Not enough data for goal projection"
+                        isLoadingGoalAnalysis = false
+                        goalAnalysisStatusMessage = nil
+                    }
+                    return
+                }
+
+                let service = LocalGoalProjectionService()
+                let response = service.projectGoals(payload: payload)
+
+                await MainActor.run {
+                    goalAnalysis = response
+                    goalAnalysisTimestamp = Date()
+                    lastGoalAnalysisBookmakerId = selectedBookmaker.id
+                    lastGoalAnalysisMarketCount = goalOddsMarkets.count
+                    goalAnalysisCache.set(fixtureId: fixture.id, data: response)
+                    isLoadingGoalAnalysis = false
+                    goalAnalysisStatusMessage = nil
+                }
+            } catch {
+                await MainActor.run {
+                    goalAnalysisError = error.localizedDescription
+                    isLoadingGoalAnalysis = false
+                    goalAnalysisStatusMessage = nil
+                }
+            }
+        }
+    }
+
     private func runAnalysis() {
         isLoadingAnalysis = true
         analysisError = nil
@@ -1202,7 +1594,7 @@ struct FixtureDetailView: View {
 
         Task {
             do {
-                try await importMissingFixtureStatsIfNeeded()
+                try await importMissingFixtureStatsIfNeeded(statusTarget: .corners)
 
                 guard let payload = analysisRepository.buildAnalysisPayload(for: fixture, odds: cornerOdds, bankroll: appState.bankroll) else {
                     await MainActor.run {
@@ -1219,6 +1611,8 @@ struct FixtureDetailView: View {
                 await MainActor.run {
                     aiAnalysis = response
                     analysisTimestamp = Date()
+                    lastAnalysisBookmakerId = selectedBookmaker.id
+                    lastAnalysisMarketCount = cornerOdds?.markets.reduce(0) { $0 + $1.lines.count } ?? 0
                     analysisCache.set(fixtureId: fixture.id, data: response)
                     isLoadingAnalysis = false
                     analysisStatusMessage = nil
@@ -1233,7 +1627,12 @@ struct FixtureDetailView: View {
         }
     }
 
-    private func importMissingFixtureStatsIfNeeded() async throws {
+    private enum ProjectionStatusTarget {
+        case corners
+        case goals
+    }
+
+    private func importMissingFixtureStatsIfNeeded(statusTarget: ProjectionStatusTarget? = nil) async throws {
         let missingFixtureIds = fixtureRepository.missingFinishedFixtureIds(
             leagueId: fixture.leagueId,
             season: fixture.season,
@@ -1250,7 +1649,14 @@ struct FixtureDetailView: View {
         }
 
         await MainActor.run {
-            analysisStatusMessage = "Importing fixture stats..."
+            switch statusTarget {
+            case .corners:
+                analysisStatusMessage = "Importing fixture stats..."
+            case .goals:
+                goalAnalysisStatusMessage = "Importing fixture stats..."
+            case nil:
+                break
+            }
         }
 
         for missingFixtureId in missingFixtureIds {
@@ -1288,8 +1694,21 @@ struct FixtureDetailView: View {
     private func clearAnalysis() {
         aiAnalysis = nil
         analysisTimestamp = nil
+        lastAnalysisBookmakerId = nil
+        lastAnalysisMarketCount = 0
         analysisCache.clear(fixtureId: fixture.id)
         hasAutoProjectionAttempted = false
+    }
+
+    private func clearGoalAnalysis() {
+        goalAnalysis = nil
+        goalAnalysisTimestamp = nil
+        goalAnalysisError = nil
+        goalAnalysisStatusMessage = nil
+        lastGoalAnalysisBookmakerId = nil
+        lastGoalAnalysisMarketCount = 0
+        goalAnalysisCache.clear(fixtureId: fixture.id)
+        hasAutoGoalProjectionAttempted = false
     }
 
     @ViewBuilder

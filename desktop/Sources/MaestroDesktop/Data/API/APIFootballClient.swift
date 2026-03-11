@@ -243,10 +243,15 @@ struct OddsResponse: Decodable {
     }
 }
 
-struct APIOddsMarket: Decodable, Identifiable {
+struct APIOddsMarket: Codable, Equatable, Identifiable {
     let id: Int
     let name: String
     let values: [APIOddsLine]
+
+    static let goalsTotal = 5
+    static let bothTeamsScore = 8
+    static let goalsHome = 16
+    static let goalsAway = 17
 
     static let cornersTotal = 45
     static let cornersMoneyline = 55
@@ -255,6 +260,10 @@ struct APIOddsMarket: Decodable, Identifiable {
     static let cornersAway = 58
     static let cornersTotal3Way = 85
 
+    var isGoalMarket: Bool {
+        [Self.goalsTotal, Self.bothTeamsScore, Self.goalsHome, Self.goalsAway].contains(id)
+    }
+
     var isCornerMarket: Bool {
         [Self.cornersTotal, Self.cornersMoneyline, Self.cornersAsian,
          Self.cornersHome, Self.cornersAway, Self.cornersTotal3Way].contains(id)
@@ -262,6 +271,10 @@ struct APIOddsMarket: Decodable, Identifiable {
 
     var displayName: String {
         switch id {
+        case Self.goalsTotal: return "Goals Over/Under"
+        case Self.bothTeamsScore: return "Both Teams Score"
+        case Self.goalsHome: return "Total - Home"
+        case Self.goalsAway: return "Total - Away"
         case Self.cornersTotal: return "Total Corners"
         case Self.cornersMoneyline: return "Most Corners"
         case Self.cornersAsian: return "Asian Corners"
@@ -273,13 +286,13 @@ struct APIOddsMarket: Decodable, Identifiable {
     }
 }
 
-struct APIOddsLine: Decodable, Identifiable {
+struct APIOddsLine: Codable, Equatable, Identifiable {
     let value: OddsValue
     let odd: String
 
     var id: String { value.stringValue }
 
-    enum OddsValue: Decodable {
+    enum OddsValue: Codable, Equatable {
         case string(String)
         case int(Int)
 
@@ -291,6 +304,16 @@ struct APIOddsLine: Decodable, Identifiable {
                 self = .int(num)
             } else {
                 self = .string("")
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .string(let value):
+                try container.encode(value)
+            case .int(let value):
+                try container.encode(value)
             }
         }
 
@@ -310,13 +333,25 @@ struct APIOddsLine: Decodable, Identifiable {
         Double(odd) ?? 0
     }
 
-    var americanOdd: Int {
+    var americanOddValue: Int? {
         let dec = decimalOdd
+        guard dec.isFinite, dec > 1.0 else { return nil }
+
         if dec < 2.0 {
-            return Int(-100.0 / (dec - 1.0))
+            let denominator = dec - 1.0
+            guard denominator.isFinite, abs(denominator) > 0.0001 else { return nil }
+            let american = -100.0 / denominator
+            guard american.isFinite else { return nil }
+            return Int(american.rounded())
         } else {
-            return Int((dec - 1.0) * 100.0)
+            let american = (dec - 1.0) * 100.0
+            guard american.isFinite else { return nil }
+            return Int(american.rounded())
         }
+    }
+
+    var americanOdd: Int {
+        americanOddValue ?? 0
     }
 
     var lineType: LineType {

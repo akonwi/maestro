@@ -20,6 +20,11 @@ struct Bet: Identifiable, Equatable {
     let createdAt: Date
 
     // Market ID constants (matching API-Football)
+    static let marketGoalsTotal = 5
+    static let marketBothTeamsScore = 8
+    static let marketGoalsHome = 16
+    static let marketGoalsAway = 17
+
     static let marketCornersTotal = 45
     static let marketCornersMoneyline = 55
     static let marketCornersAsian = 56
@@ -29,6 +34,10 @@ struct Bet: Identifiable, Equatable {
 
     static func marketName(for id: Int) -> String {
         switch id {
+        case marketGoalsTotal: return "Goals Over/Under"
+        case marketBothTeamsScore: return "Both Teams Score"
+        case marketGoalsHome: return "Total - Home"
+        case marketGoalsAway: return "Total - Away"
         case marketCornersTotal: return "Total Corners"
         case marketCornersMoneyline: return "Most Corners"
         case marketCornersAsian: return "Asian Corners"

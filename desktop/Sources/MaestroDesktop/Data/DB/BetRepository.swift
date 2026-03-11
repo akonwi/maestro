@@ -327,8 +327,10 @@ final class BetRepository {
 
     // MARK: - Auto-Settle
 
-    struct FixtureCornerData {
+    struct FixtureBetData {
         let isFinished: Bool
+        let homeGoals: Int
+        let awayGoals: Int
         let homeCorners: Int
         let awayCorners: Int
     }
@@ -341,19 +343,25 @@ final class BetRepository {
         for bet in pending {
             debugLog("Checking bet \(bet.id): fixtureId=\(bet.fixtureId), marketId=\(bet.marketId), lineName=\(bet.lineName ?? "nil"), line=\(bet.line ?? 0)")
 
-            guard let cornerData = getFixtureCornerData(fixtureId: bet.fixtureId) else {
+            guard let fixtureData = getFixtureBetData(fixtureId: bet.fixtureId) else {
                 debugLog("  -> No fixture data found for fixtureId=\(bet.fixtureId)")
                 continue
             }
 
-            guard cornerData.isFinished else {
+            guard fixtureData.isFinished else {
                 debugLog("  -> Fixture not finished yet")
                 continue
             }
 
-            debugLog("  -> Fixture finished: homeCorners=\(cornerData.homeCorners), awayCorners=\(cornerData.awayCorners), total=\(cornerData.homeCorners + cornerData.awayCorners)")
+            debugLog("  -> Fixture finished: homeGoals=\(fixtureData.homeGoals), awayGoals=\(fixtureData.awayGoals), totalGoals=\(fixtureData.homeGoals + fixtureData.awayGoals), homeCorners=\(fixtureData.homeCorners), awayCorners=\(fixtureData.awayCorners), totalCorners=\(fixtureData.homeCorners + fixtureData.awayCorners)")
 
-            if let result = determineBetResult(bet: bet, homeCorners: cornerData.homeCorners, awayCorners: cornerData.awayCorners) {
+            if let result = determineBetResult(
+                bet: bet,
+                homeGoals: fixtureData.homeGoals,
+                awayGoals: fixtureData.awayGoals,
+                homeCorners: fixtureData.homeCorners,
+                awayCorners: fixtureData.awayCorners
+            ) {
                 update(id: bet.id, result: result)
                 settledCount += 1
                 debugLog("  -> SETTLED: \(result.rawValue)")
@@ -366,12 +374,11 @@ final class BetRepository {
         return settledCount
     }
 
-    private func getFixtureCornerData(fixtureId: Int) -> FixtureCornerData? {
+    private func getFixtureBetData(fixtureId: Int) -> FixtureBetData? {
         guard let db = Database.shared.handle else { return nil }
 
-        // First get fixture info to check if finished and get team IDs
         let fixtureSql = """
-        SELECT finished, home_id, away_id FROM fixtures WHERE id = ?;
+        SELECT finished, home_id, away_id, home_goals, away_goals FROM fixtures WHERE id = ?;
         """
 
         var stmt: OpaquePointer?
@@ -386,13 +393,14 @@ final class BetRepository {
         let finished = sqlite3_column_int(stmt, 0) == 1
         let homeId = Int(sqlite3_column_int64(stmt, 1))
         let awayId = Int(sqlite3_column_int64(stmt, 2))
+        let homeGoals = Int(sqlite3_column_int(stmt, 3))
+        let awayGoals = Int(sqlite3_column_int(stmt, 4))
         sqlite3_finalize(stmt)
 
         guard finished else {
-            return FixtureCornerData(isFinished: false, homeCorners: 0, awayCorners: 0)
+            return FixtureBetData(isFinished: false, homeGoals: homeGoals, awayGoals: awayGoals, homeCorners: 0, awayCorners: 0)
         }
 
-        // Get corner stats
         let statsSql = """
         SELECT team_id, corners FROM fixture_stats WHERE fixture_id = ?;
         """
@@ -416,10 +424,17 @@ final class BetRepository {
 
         sqlite3_finalize(stmt)
 
-        return FixtureCornerData(isFinished: true, homeCorners: homeCorners, awayCorners: awayCorners)
+        return FixtureBetData(
+            isFinished: true,
+            homeGoals: homeGoals,
+            awayGoals: awayGoals,
+            homeCorners: homeCorners,
+            awayCorners: awayCorners
+        )
     }
 
-    private func determineBetResult(bet: Bet, homeCorners: Int, awayCorners: Int) -> BetResult? {
+    private func determineBetResult(bet: Bet, homeGoals: Int, awayGoals: Int, homeCorners: Int, awayCorners: Int) -> BetResult? {
+        let totalGoals = homeGoals + awayGoals
         let totalCorners = homeCorners + awayCorners
         let lineName = bet.lineName?.lowercased() ?? ""
         let lineValue = bet.line ?? 0
@@ -427,6 +442,55 @@ final class BetRepository {
         debugLog("  -> Evaluating: marketId=\(bet.marketId), lineName='\(lineName)', lineValue=\(lineValue)")
 
         switch bet.marketId {
+        case Bet.marketGoalsTotal:
+            debugLog("  -> Market: Goals Over/Under, total=\(totalGoals) vs line=\(lineValue)")
+            if lineName.contains("over") {
+                if Double(totalGoals) > lineValue { return .won }
+                if Double(totalGoals) < lineValue { return .lost }
+                return .push
+            } else if lineName.contains("under") {
+                if Double(totalGoals) < lineValue { return .won }
+                if Double(totalGoals) > lineValue { return .lost }
+                return .push
+            }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over' or 'under'")
+
+        case Bet.marketBothTeamsScore:
+            debugLog("  -> Market: Both Teams Score, homeGoals=\(homeGoals), awayGoals=\(awayGoals)")
+            let bothTeamsScored = homeGoals > 0 && awayGoals > 0
+            if lineName.contains("yes") {
+                return bothTeamsScored ? .won : .lost
+            } else if lineName.contains("no") {
+                return bothTeamsScored ? .lost : .won
+            }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'yes' or 'no'")
+
+        case Bet.marketGoalsHome:
+            debugLog("  -> Market: Total - Home, homeGoals=\(homeGoals) vs line=\(lineValue)")
+            if lineName.contains("over") {
+                if Double(homeGoals) > lineValue { return .won }
+                if Double(homeGoals) < lineValue { return .lost }
+                return .push
+            } else if lineName.contains("under") {
+                if Double(homeGoals) < lineValue { return .won }
+                if Double(homeGoals) > lineValue { return .lost }
+                return .push
+            }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over' or 'under'")
+
+        case Bet.marketGoalsAway:
+            debugLog("  -> Market: Total - Away, awayGoals=\(awayGoals) vs line=\(lineValue)")
+            if lineName.contains("over") {
+                if Double(awayGoals) > lineValue { return .won }
+                if Double(awayGoals) < lineValue { return .lost }
+                return .push
+            } else if lineName.contains("under") {
+                if Double(awayGoals) < lineValue { return .won }
+                if Double(awayGoals) > lineValue { return .lost }
+                return .push
+            }
+            debugLog("  -> lineName '\(lineName)' doesn't contain 'over' or 'under'")
+
         case Bet.marketCornersTotal:
             // Total Corners: Over/Under
             debugLog("  -> Market: Total Corners, total=\(totalCorners) vs line=\(lineValue)")
