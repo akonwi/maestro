@@ -1,0 +1,50 @@
+Decision threshold: 0.57
+
+Overall Market Ranking (actionable accuracy)
+- home_over_0_5: all_n=1259 brier=0.168 acc=77.4% actual=77.4% avg_pred=78.1%
+  actionable: decisions=1246 acc=77.6% yes=1246 no=0 edge=28.4%
+- away_over_0_5: all_n=1259 brier=0.199 acc=71.0% actual=70.8% avg_pred=71.7%
+  actionable: decisions=1148 acc=72.0% yes=1143 no=5 edge=23.7%
+- away_over_1_5: all_n=1259 brier=0.218 acc=64.9% actual=34.7% avg_pred=38.0%
+  actionable: decisions=943 acc=69.0% yes=119 no=824 edge=19.2%
+- home_over_1_5: all_n=1259 brier=0.236 acc=59.7% actual=44.2% avg_pred=46.6%
+  actionable: decisions=815 acc=62.3% yes=284 no=531 edge=15.3%
+- btts: all_n=1259 brier=0.251 acc=54.0% actual=54.4% avg_pred=55.7%
+  actionable: decisions=599 acc=57.3% yes=527 no=72 edge=13.2%
+
+Best League Fits (actionable accuracy, min sample filter applied)
+- away_over_0_5
+  Pro League: decisions=111 acc=77.5% brier=0.171 avg_pred=67.5% actual=72.2%
+  Premier League: decisions=183 acc=76.0% brier=0.182 avg_pred=74.1% actual=75.4%
+  Championship: decisions=289 acc=72.7% brier=0.195 avg_pred=70.1% actual=72.3%
+  La Liga: decisions=151 acc=71.5% brier=0.201 avg_pred=70.7% actual=70.6%
+  Bundesliga: decisions=129 acc=71.3% brier=0.208 avg_pred=79.5% actual=72.6%
+  Serie A: decisions=154 acc=70.1% brier=0.206 avg_pred=67.5% actual=67.2%
+- away_over_1_5
+  Pro League: decisions=105 acc=76.2% brier=0.198 avg_pred=33.2% actual=35.3%
+  Championship: decisions=250 acc=70.8% brier=0.210 avg_pred=35.3% actual=32.8%
+  La Liga: decisions=127 acc=70.1% brier=0.215 avg_pred=36.7% actual=30.6%
+  Premier League: decisions=131 acc=68.7% brier=0.227 avg_pred=40.7% actual=37.7%
+  Ligue 1: decisions=89 acc=67.4% brier=0.220 avg_pred=42.3% actual=28.1%
+  Bundesliga: decisions=88 acc=64.8% brier=0.236 avg_pred=49.4% actual=40.0%
+- btts
+  La Liga: decisions=79 acc=65.8% brier=0.244 avg_pred=54.7% actual=54.7%
+  Bundesliga: decisions=126 acc=60.3% brier=0.252 avg_pred=66.6% actual=61.5%
+  Premier League: decisions=123 acc=59.3% brier=0.244 avg_pred=59.0% actual=59.2%
+  Championship: decisions=92 acc=57.6% brier=0.248 avg_pred=53.3% actual=56.7%
+  Pro League: decisions=39 acc=56.4% brier=0.249 avg_pred=48.9% actual=55.6%
+  Serie A: decisions=42 acc=52.4% brier=0.250 avg_pred=50.1% actual=46.1%
+- home_over_0_5
+  Bundesliga: decisions=135 acc=83.7% brier=0.126 avg_pred=84.4% actual=83.7%
+  Pro League: decisions=124 acc=81.5% brier=0.158 avg_pred=73.6% actual=79.7%
+  La Liga: decisions=170 acc=78.8% brier=0.158 avg_pred=77.9% actual=78.8%
+  Championship: decisions=314 acc=78.7% brier=0.169 avg_pred=76.3% actual=78.7%
+  Premier League: decisions=190 acc=76.3% brier=0.175 avg_pred=80.2% actual=76.4%
+  Ligue 1: decisions=135 acc=73.3% brier=0.194 avg_pred=82.0% actual=73.3%
+- home_over_1_5
+  La Liga: decisions=113 acc=74.3% brier=0.212 avg_pred=46.3% actual=47.6%
+  Serie A: decisions=118 acc=67.8% brier=0.220 avg_pred=42.0% actual=39.4%
+  Pro League: decisions=90 acc=62.2% brier=0.230 avg_pred=40.3% actual=44.4%
+  Bundesliga: decisions=90 acc=61.1% brier=0.240 avg_pred=57.0% actual=51.9%
+  Premier League: decisions=113 acc=61.1% brier=0.244 avg_pred=49.6% actual=47.6%
+  Championship: decisions=204 acc=57.8% brier=0.242 avg_pred=43.1% actual=40.4%

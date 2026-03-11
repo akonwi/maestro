@@ -1,0 +1,126 @@
+{
+  "database": "/Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite",
+  "generated_at_utc": "2026-02-24T01:46:32.410334+00:00",
+  "settings": {
+    "min_history": 10,
+    "recent_limit": 5,
+    "league_ids": [
+      40
+    ],
+    "use_league_specific_models": true
+  },
+  "model_version": "corner-local-v1.0",
+  "model_params": {
+    "attack_weight": 0.5,
+    "defense_weight": 0.5,
+    "venue_weight": 0.2,
+    "recent_weight": 0.28,
+    "pace_weight_shots": 0.0,
+    "pace_weight_possession": 1.0,
+    "confidence_base": 0.52,
+    "confidence_scale": 0.3
+  },
+  "league_model_overrides": {
+    "40": {
+      "attack_weight": 0.5,
+      "defense_weight": 0.5,
+      "venue_weight": 0.2,
+      "recent_weight": 0.12,
+      "pace_weight_shots": 0.0,
+      "pace_weight_possession": 1.0,
+      "confidence_base": 0.52,
+      "confidence_scale": 0.3
+    }
+  },
+  "coverage": {
+    "finished_with_stats": 379,
+    "eligible_for_projection": 258,
+    "coverage_rate": 0.6807387862796834,
+    "skipped_for_insufficient_history": 121
+  },
+  "accuracy": {
+    "home": {
+      "n": 258,
+      "mae": 2.232757565909447,
+      "rmse": 2.8337735114107874,
+      "bias": -0.6050787769393643,
+      "within_1": 0.2751937984496124,
+      "within_2": 0.5271317829457365
+    },
+    "away": {
+      "n": 258,
+      "mae": 1.9680582553326973,
+      "rmse": 2.4600666450024296,
+      "bias": 0.44921873806481843,
+      "within_1": 0.29069767441860467,
+      "within_2": 0.5930232558139535
+    },
+    "total": {
+      "n": 258,
+      "mae": 2.6469972798613264,
+      "rmse": 3.2841534054493007,
+      "bias": -0.15586003887454652,
+      "within_1": 0.20930232558139536,
+      "within_2": 0.44573643410852715
+    }
+  },
+  "baseline_accuracy": {
+    "home": {
+      "n": 258,
+      "mae": 2.322667553376864,
+      "rmse": 2.861244676591996,
+      "bias": -0.20848698088377107,
+      "within_1": 0.2558139534883721,
+      "within_2": 0.5077519379844961
+    },
+    "away": {
+      "n": 258,
+      "mae": 1.9834520476780806,
+      "rmse": 2.5117376649994174,
+      "bias": 0.0684110646916619,
+      "within_1": 0.29844961240310075,
+      "within_2": 0.5891472868217055
+    },
+    "total": {
+      "n": 258,
+      "mae": 2.637746721518792,
+      "rmse": 3.26451995179621,
+      "bias": -0.1400759161921093,
+      "within_1": 0.22093023255813954,
+      "within_2": 0.4728682170542636
+    }
+  },
+  "improvement_vs_baseline_mae": {
+    "home": 0.038709796129325104,
+    "away": 0.007761111423593008,
+    "total": -0.0035069926415102486
+  },
+  "by_league_total_mae": {
+    "Championship": {
+      "n": 258,
+      "mae": 2.6469972798613264,
+      "rmse": 3.2841534054493007,
+      "bias": -0.15586003887454652,
+      "within_1": 0.20930232558139536,
+      "within_2": 0.44573643410852715
+    }
+  },
+  "by_confidence_band_total": {
+    "60-69%": {
+      "n": 90,
+      "mae": 2.65929456797029,
+      "rmse": 3.3346828912849467,
+      "bias": -0.3175587380019071,
+      "within_1": 0.24444444444444444,
+      "within_2": 0.4444444444444444
+    },
+    "70-79%": {
+      "n": 168,
+      "mae": 2.640409446945808,
+      "rmse": 3.2567615631127134,
+      "bias": -0.06923573577060325,
+      "within_1": 0.19047619047619047,
+      "within_2": 0.44642857142857145
+    }
+  }
+}

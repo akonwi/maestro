@@ -1,0 +1,34 @@
+Database: /Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite
+Model: goal-local-v1.0
+Coverage
+  finished_with_stats=2591 eligible=1259 skipped=1332 coverage=48.6%
+
+Accuracy (MAE / RMSE / Bias)
+- home: mae=0.962 rmse=1.180 bias=0.102 within1=57.5% within2=93.1%
+- away: mae=0.882 rmse=1.109 bias=0.093 within1=62.7% within2=94.5%
+- total: mae=1.317 rmse=1.637 bias=0.195 within1=44.3% within2=78.7%
+
+Baseline Comparison (MAE improvement)
+- home: 5.1%
+- away: 2.2%
+- total: -2.7%
+
+Betting Market Accuracy
+- Over 2.5: acc=53.1% brier=0.256 avg_pred=55.6% actual=53.4% pick_rate=67.9%
+  baseline: acc=52.0% brier=0.256 avg_pred=52.8%
+- BTTS: acc=54.0% brier=0.251 avg_pred=55.7% actual=54.4% pick_rate=73.2%
+  baseline: acc=54.9% brier=0.254 avg_pred=51.9%
+
+By League Total Goals MAE (min 30 fixtures)
+- Championship: n=314 mae=1.179 rmse=1.468 bias=0.097
+- Premier League: n=191 mae=1.389 rmse=1.736 bias=0.290
+- Serie A: n=180 mae=1.209 rmse=1.499 bias=0.097
+- La Liga: n=170 mae=1.197 rmse=1.466 bias=0.204
+- Ligue 1: n=135 mae=1.577 rmse=1.887 bias=0.698
+- Bundesliga: n=135 mae=1.435 rmse=1.800 bias=0.505
+- Pro League: n=133 mae=1.436 rmse=1.771 bias=-0.381
+
+By Confidence Band (total goals)
+- 50-59%: n=12 mae=1.711 rmse=2.042
+- 60-69%: n=681 mae=1.367 rmse=1.693
+- 70-79%: n=566 mae=1.249 rmse=1.557
