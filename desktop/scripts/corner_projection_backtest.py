@@ -8,7 +8,7 @@ import sqlite3
 from bisect import bisect_left
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from local_corner_model import (
@@ -319,7 +319,7 @@ def evaluate(
                 fixture_id=fixture.fixture_id,
                 league_name=fixture.league_name,
                 season=fixture.season,
-                date_utc=datetime.fromtimestamp(fixture.timestamp / 1000, UTC).strftime("%Y-%m-%d"),
+                date_utc=datetime.fromtimestamp(fixture.timestamp / 1000, timezone.utc).strftime("%Y-%m-%d"),
                 expected_home=projection.expected_home_corners,
                 expected_away=projection.expected_away_corners,
                 expected_total=projection.expected_total_corners,
@@ -403,6 +403,8 @@ def evaluate(
             "pace_weight_tempo_quality": model_params.pace_weight_tempo_quality,
             "pace_weight_xg": model_params.pace_weight_xg,
             "pace_weight_possession": model_params.pace_weight_possession,
+            "home_bias_shift": model_params.home_bias_shift,
+            "away_bias_shift": model_params.away_bias_shift,
         },
         "league_model_overrides": {
             str(league_id): {
@@ -415,6 +417,8 @@ def evaluate(
                 "pace_weight_tempo_quality": params.pace_weight_tempo_quality,
                 "pace_weight_xg": params.pace_weight_xg,
                 "pace_weight_possession": params.pace_weight_possession,
+                "home_bias_shift": params.home_bias_shift,
+                "away_bias_shift": params.away_bias_shift,
             }
             for league_id, params in sorted(LEAGUE_MODEL_PARAMS.items())
         },
@@ -583,7 +587,7 @@ def main() -> None:
 
     summary_payload = {
         "database": str(db_path),
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "settings": {
             "min_history": max(0, args.min_history),
             "recent_limit": max(1, args.recent_limit),
@@ -608,7 +612,7 @@ def main() -> None:
         pred_out = Path(args.predictions_out).expanduser().resolve()
         prediction_payload = {
             "database": str(db_path),
-            "generated_at_utc": datetime.now(UTC).isoformat(),
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "model_version": MODEL_VERSION,
             "predictions": [
                 {

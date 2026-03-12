@@ -6,7 +6,7 @@ import argparse
 import json
 import sqlite3
 from dataclasses import asdict
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from itertools import product
 from pathlib import Path
 
@@ -167,7 +167,7 @@ def main() -> None:
 
     payload = {
         "database": str(db_path),
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "model_version": MODEL_VERSION,
         "settings": {
             "min_history": min_history,

@@ -29,6 +29,26 @@ Custom DB path:
 python3 scripts/bet_performance_report.py --db-path "~/Library/Application Support/com.akonwi.maestro/maestro.sqlite"
 ```
 
+## Corner-only market report
+
+Use this when you want a cleaner breakdown of corner bet performance only.
+
+```bash
+python3 scripts/corner_market_report.py
+python3 scripts/corner_market_report.py --json
+python3 scripts/corner_market_report.py --prompt-version corner-local-v1.0
+python3 scripts/corner_market_report.py --out ./reports/corner-market-report-latest.txt
+python3 scripts/corner_market_report.py --json --out ./reports/corner-market-report-latest.json
+```
+
+This report includes:
+- overall corner-only ROI and win rate
+- breakdown by corner market
+- breakdown by side (`Over` / `Under`)
+- breakdown by numeric line value (`3.5`, `4.5`, `5.5`, etc.)
+- breakdown by exact selection and by market + selection
+- breakdown by league
+
 ## What gets tracked
 
 - Overall win rate, ROI, net profit, and implied break-even hit rate from odds.

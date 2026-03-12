@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from math import sqrt
 
 
-MODEL_VERSION = "corner-local-v3.0"
+MODEL_VERSION = "corner-local-v1.0"
 
 
 @dataclass(frozen=True)
@@ -14,14 +14,12 @@ class ModelParams:
     attack_weight: float = 0.50
     defense_weight: float = 0.50
     venue_weight: float = 0.20
-    recent_weight: float = 0.18
+    recent_weight: float = 0.28
     pace_weight_shots: float = 0.0
     pace_weight_shot_quality: float = 0.0
     pace_weight_tempo_quality: float = 0.0
     pace_weight_xg: float = 0.0
     pace_weight_possession: float = 1.0
-    home_bias_shift: float = 0.25
-    away_bias_shift: float = -0.25
 
 
 DEFAULT_PARAMS = ModelParams()
@@ -31,15 +29,13 @@ LEAGUE_MODEL_PARAMS: dict[int, ModelParams] = {
     40: ModelParams(
         attack_weight=0.50,
         defense_weight=0.50,
-        venue_weight=0.40,
-        recent_weight=0.12,
+        venue_weight=0.60,
+        recent_weight=0.06,
         pace_weight_shots=0.0,
-        pace_weight_shot_quality=0.20,
-        pace_weight_tempo_quality=0.15,
+        pace_weight_shot_quality=0.0,
+        pace_weight_tempo_quality=0.0,
         pace_weight_xg=0.0,
-        pace_weight_possession=0.65,
-        home_bias_shift=0.25,
-        away_bias_shift=-0.25,
+        pace_weight_possession=1.0,
     ),
 }
 
@@ -104,8 +100,8 @@ def project(home: TeamModelInput, away: TeamModelInput, params: ModelParams | No
     expected_home *= pace_factor
     expected_away *= pace_factor
 
-    expected_home = _clamp(expected_home + p.home_bias_shift, 1.5, 9.5)
-    expected_away = _clamp(expected_away + p.away_bias_shift, 1.0, 8.5)
+    expected_home = _clamp(expected_home, 1.5, 9.5)
+    expected_away = _clamp(expected_away, 1.0, 8.5)
     confidence = _projection_confidence(home, away)
 
     return ProjectionResult(
@@ -243,27 +239,8 @@ def _projection_confidence(home: TeamModelInput, away: TeamModelInput) -> float:
     avg_variance = (home_variance + away_variance) / 2
     stability = 1.0 - min(avg_variance / 5.0, 1.0)
 
-    alignment = (_team_signal_alignment(home) + _team_signal_alignment(away)) / 2
-
-    score = (season_depth * 0.4) + (venue_depth * 0.2) + (stability * 0.2) + (alignment * 0.2)
-    return _clamp(0.50 + (score * 0.28), 0.50, 0.78)
-
-
-def _team_signal_alignment(team: TeamModelInput) -> float:
-    attack_signals = [team.season_corners_for, team.venue_corners_for]
-    defense_signals = [team.season_corners_against, team.venue_corners_against]
-
-    recent_attack = _mean([float(x.corners_won) for x in team.recent_form])
-    recent_defense = _mean([float(x.corners_conceded) for x in team.recent_form])
-    if recent_attack is not None:
-        attack_signals.append(recent_attack)
-    if recent_defense is not None:
-        defense_signals.append(recent_defense)
-
-    attack_dispersion = _sample_stddev(attack_signals)
-    defense_dispersion = _sample_stddev(defense_signals)
-    average_dispersion = (attack_dispersion + defense_dispersion) / 2
-    return 1.0 - min(average_dispersion / 2.5, 1.0)
+    score = (season_depth * 0.5) + (venue_depth * 0.3) + (stability * 0.2)
+    return _clamp(0.52 + (score * 0.3), 0.52, 0.82)
 
 
 def _weighted_mean(values: list[float], weights: list[float]) -> float | None:

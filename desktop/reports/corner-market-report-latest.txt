@@ -1,0 +1,137 @@
+Database: /Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite
+Generated (UTC): 2026-03-11T23:01:47.000113+00:00
+Corner bets analyzed: 62
+Prompt filter: corner-local-v1.0
+
+Overall
+  bets=62 wl=62 wins=27 losses=35 win_rate=43.5% roi=-11.4%
+  staked=$119.88 net=$-13.69 implied_break_even=50.9% gap=-7.3%
+
+By Market
+- Away Corners
+  bets=28 wl=28 wins=13 losses=15 win_rate=46.4% roi=-16.8%
+  staked=$63.98 net=$-10.78 implied_break_even=53.6% gap=-7.1%
+- Home Corners
+  bets=19 wl=19 wins=10 losses=9 win_rate=52.6% roi=-5.3%
+  staked=$38.44 net=$-2.04 implied_break_even=55.2% gap=-2.6%
+- Total Corners (3-Way)
+  bets=12 wl=12 wins=4 losses=8 win_rate=33.3% roi=19.1%
+  staked=$13.94 net=$2.66 implied_break_even=26.6% gap=6.8%
+- Total Corners
+  bets=3 wl=3 wins=0 losses=3 win_rate=0.0% roi=-100.0%
+  staked=$3.53 net=$-3.53 implied_break_even=51.4% gap=-51.4%
+
+By Side
+- Over
+  bets=39 wl=39 wins=16 losses=23 win_rate=41.0% roi=-23.2%
+  staked=$80.89 net=$-18.76 implied_break_even=51.9% gap=-10.9%
+- Under
+  bets=23 wl=23 wins=11 losses=12 win_rate=47.8% roi=13.0%
+  staked=$39.00 net=$5.08 implied_break_even=48.8% gap=-1.0%
+
+By Line Value (min 2 bets)
+- 3.5
+  bets=15 wl=15 wins=4 losses=11 win_rate=26.7% roi=-53.1%
+  staked=$33.80 net=$-17.95 implied_break_even=53.8% gap=-27.2%
+- 4.5
+  bets=13 wl=13 wins=10 losses=3 win_rate=76.9% roi=41.3%
+  staked=$27.42 net=$11.31 implied_break_even=53.5% gap=23.4%
+- 5.5
+  bets=10 wl=10 wins=4 losses=6 win_rate=40.0% roi=-28.4%
+  staked=$20.43 net=$-5.81 implied_break_even=54.7% gap=-14.7%
+- 2.5
+  bets=6 wl=6 wins=3 losses=3 win_rate=50.0% roi=-10.9%
+  staked=$13.87 net=$-1.51 implied_break_even=53.9% gap=-3.9%
+- 8
+  bets=4 wl=4 wins=2 losses=2 win_rate=50.0% roi=56.8%
+  staked=$5.74 net=$3.26 implied_break_even=31.3% gap=18.7%
+- 6.5
+  bets=3 wl=3 wins=2 losses=1 win_rate=66.7% roi=16.5%
+  staked=$6.90 net=$1.14 implied_break_even=57.6% gap=9.0%
+- 10
+  bets=2 wl=2 wins=1 losses=1 win_rate=50.0% roi=-5.2%
+  staked=$2.21 net=$-0.11 implied_break_even=48.9% gap=1.1%
+
+By Selection (min 2 bets)
+- Over 3.5
+  bets=15 wl=15 wins=4 losses=11 win_rate=26.7% roi=-53.1%
+  staked=$33.80 net=$-17.95 implied_break_even=53.8% gap=-27.2%
+- Over 4.5
+  bets=9 wl=9 wins=7 losses=2 win_rate=77.8% roi=40.3%
+  staked=$19.92 net=$8.02 implied_break_even=53.9% gap=23.9%
+- Over 2.5
+  bets=6 wl=6 wins=3 losses=3 win_rate=50.0% roi=-10.9%
+  staked=$13.87 net=$-1.51 implied_break_even=53.9% gap=-3.9%
+- Over 5.5
+  bets=5 wl=5 wins=2 losses=3 win_rate=40.0% roi=-34.4%
+  staked=$9.10 net=$-3.13 implied_break_even=52.9% gap=-12.9%
+- Under 5.5
+  bets=5 wl=5 wins=2 losses=3 win_rate=40.0% roi=-23.6%
+  staked=$11.33 net=$-2.68 implied_break_even=56.1% gap=-16.1%
+- Under 4.5
+  bets=4 wl=4 wins=3 losses=1 win_rate=75.0% roi=43.9%
+  staked=$7.50 net=$3.29 implied_break_even=52.4% gap=22.6%
+- Under 8
+  bets=4 wl=4 wins=2 losses=2 win_rate=50.0% roi=56.8%
+  staked=$5.74 net=$3.26 implied_break_even=31.3% gap=18.7%
+- Under 6.5
+  bets=3 wl=3 wins=2 losses=1 win_rate=66.7% roi=16.5%
+  staked=$6.90 net=$1.14 implied_break_even=57.6% gap=9.0%
+- Under 10
+  bets=2 wl=2 wins=1 losses=1 win_rate=50.0% roi=-5.2%
+  staked=$2.21 net=$-0.11 implied_break_even=48.9% gap=1.1%
+
+By Market + Selection (min 2 bets)
+- Away Corners | Over 3.5
+  bets=11 wl=11 wins=3 losses=8 win_rate=27.3% roi=-54.6%
+  staked=$25.94 net=$-14.17 implied_break_even=54.2% gap=-26.9%
+- Away Corners | Over 4.5
+  bets=7 wl=7 wins=6 losses=1 win_rate=85.7% roi=55.0%
+  staked=$16.66 net=$9.16 implied_break_even=53.0% gap=32.7%
+- Away Corners | Over 2.5
+  bets=5 wl=5 wins=2 losses=3 win_rate=40.0% roi=-27.5%
+  staked=$11.59 net=$-3.19 implied_break_even=53.2% gap=-13.2%
+- Home Corners | Under 5.5
+  bets=5 wl=5 wins=2 losses=3 win_rate=40.0% roi=-23.6%
+  staked=$11.33 net=$-2.68 implied_break_even=56.1% gap=-16.1%
+- Away Corners | Over 5.5
+  bets=4 wl=4 wins=1 losses=3 win_rate=25.0% roi=-62.4%
+  staked=$7.31 net=$-4.56 implied_break_even=52.3% gap=-27.3%
+- Home Corners | Over 3.5
+  bets=4 wl=4 wins=1 losses=3 win_rate=25.0% roi=-48.1%
+  staked=$7.85 net=$-3.78 implied_break_even=52.5% gap=-27.5%
+- Home Corners | Under 4.5
+  bets=4 wl=4 wins=3 losses=1 win_rate=75.0% roi=43.9%
+  staked=$7.50 net=$3.29 implied_break_even=52.4% gap=22.6%
+- Total Corners (3-Way) | Under 8
+  bets=4 wl=4 wins=2 losses=2 win_rate=50.0% roi=56.8%
+  staked=$5.74 net=$3.26 implied_break_even=31.3% gap=18.7%
+- Home Corners | Over 4.5
+  bets=2 wl=2 wins=1 losses=1 win_rate=50.0% roi=-35.0%
+  staked=$3.26 net=$-1.14 implied_break_even=58.5% gap=-8.5%
+- Home Corners | Under 6.5
+  bets=2 wl=2 wins=1 losses=1 win_rate=50.0% roi=-19.1%
+  staked=$4.42 net=$-0.85 implied_break_even=58.8% gap=-8.8%
+
+By League (min 2 bets)
+- Championship
+  bets=15 wl=15 wins=8 losses=7 win_rate=53.3% roi=-8.1%
+  staked=$34.01 net=$-2.76 implied_break_even=53.3% gap=0.1%
+- Pro League
+  bets=11 wl=11 wins=4 losses=7 win_rate=36.4% roi=-34.1%
+  staked=$17.74 net=$-6.05 implied_break_even=45.3% gap=-8.9%
+- Bundesliga
+  bets=9 wl=9 wins=4 losses=5 win_rate=44.4% roi=10.5%
+  staked=$14.76 net=$1.55 implied_break_even=48.0% gap=-3.6%
+- La Liga
+  bets=9 wl=9 wins=1 losses=8 win_rate=11.1% roi=-76.7%
+  staked=$17.01 net=$-13.04 implied_break_even=52.3% gap=-41.2%
+- Ligue 1
+  bets=8 wl=8 wins=4 losses=4 win_rate=50.0% roi=-0.1%
+  staked=$17.49 net=$-0.02 implied_break_even=52.1% gap=-2.1%
+- Premier League
+  bets=5 wl=5 wins=3 losses=2 win_rate=60.0% roi=16.5%
+  staked=$11.15 net=$1.84 implied_break_even=53.6% gap=6.4%
+- Serie A
+  bets=4 wl=4 wins=3 losses=1 win_rate=75.0% roi=80.7%
+  staked=$6.93 net=$5.59 implied_break_even=48.2% gap=26.8%

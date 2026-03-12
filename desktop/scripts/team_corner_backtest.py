@@ -7,7 +7,7 @@ import json
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from corner_projection_backtest import (
@@ -234,7 +234,7 @@ def main() -> None:
 
     payload = {
         "database": str(db_path),
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "summary": summary,
         "teams": team_rows,
     }

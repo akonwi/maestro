@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import json
 import re
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -162,7 +164,7 @@ def load_bets(db_path: Path) -> list[BetRow]:
                 stake=float(row["stake"]),
                 result=str(row["result"]),
                 created_at=int(row["created_at"]),
-                created_at_iso=datetime.fromtimestamp(int(row["created_at"]) / 1000, UTC).strftime("%Y-%m-%d"),
+                created_at_iso=datetime.fromtimestamp(int(row["created_at"]) / 1000, timezone.utc).strftime("%Y-%m-%d"),
                 league_name=row["league_name"],
                 prompt_version=prompt_version,
                 confidence_pct=confidence,
@@ -209,7 +211,7 @@ def run_report(db_path: Path, output_json: bool, out_path: Path | None) -> None:
 
     report = {
         "database": str(db_path),
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "overall": summary,
         "prompt_versions": {k: summarize_group(v) for k, v in sorted(by_prompt.items())},
         "markets": {k: summarize_group(v) for k, v in sorted(by_market.items())},

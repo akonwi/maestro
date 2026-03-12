@@ -1,0 +1,522 @@
+{
+  "database": "/Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite",
+  "settings": {
+    "prompt_version": "corner-local-v1.0",
+    "min_group_bets": 2,
+    "corner_market_ids": [
+      45,
+      55,
+      56,
+      57,
+      58,
+      85
+    ]
+  },
+  "generated_at_utc": "2026-03-11T23:01:46.951153+00:00",
+  "overall": {
+    "total": 62,
+    "resolved_wl": 62,
+    "wins": 27,
+    "losses": 35,
+    "win_rate": 0.43548387096774194,
+    "total_staked": 119.88460715133895,
+    "net_profit": -13.685770866931128,
+    "roi": -0.11415786556863464,
+    "implied_break_even": 0.5089219102385101,
+    "edge_gap": -0.07343803927076814
+  },
+  "prompt_versions": {
+    "corner-local-v1.0": {
+      "total": 62,
+      "resolved_wl": 62,
+      "wins": 27,
+      "losses": 35,
+      "win_rate": 0.43548387096774194,
+      "total_staked": 119.88460715133895,
+      "net_profit": -13.685770866931128,
+      "roi": -0.11415786556863464,
+      "implied_break_even": 0.5089219102385101,
+      "edge_gap": -0.07343803927076814
+    }
+  },
+  "markets": {
+    "Away Corners": {
+      "total": 28,
+      "resolved_wl": 28,
+      "wins": 13,
+      "losses": 15,
+      "win_rate": 0.4642857142857143,
+      "total_staked": 63.97950550956288,
+      "net_profit": -10.77838523813012,
+      "roi": -0.16846621667807513,
+      "implied_break_even": 0.5355599277117085,
+      "edge_gap": -0.07127421342599416
+    },
+    "Home Corners": {
+      "total": 19,
+      "resolved_wl": 19,
+      "wins": 10,
+      "losses": 9,
+      "win_rate": 0.5263157894736842,
+      "total_staked": 38.43687923033812,
+      "net_profit": -2.041723352464456,
+      "roi": -0.053118863793003505,
+      "implied_break_even": 0.5523416492421522,
+      "edge_gap": -0.02602585976846805
+    },
+    "Total Corners (3-Way)": {
+      "total": 12,
+      "resolved_wl": 12,
+      "wins": 4,
+      "losses": 8,
+      "win_rate": 0.3333333333333333,
+      "total_staked": 13.93769798927514,
+      "net_profit": 2.6648621458262958,
+      "roi": 0.19119815538239307,
+      "implied_break_even": 0.26559635502221524,
+      "edge_gap": 0.06773697831111808
+    },
+    "Total Corners": {
+      "total": 3,
+      "resolved_wl": 3,
+      "wins": 0,
+      "losses": 3,
+      "win_rate": 0.0,
+      "total_staked": 3.5305244221628507,
+      "net_profit": -3.5305244221628507,
+      "roi": -1.0,
+      "implied_break_even": 0.5140745871544654,
+      "edge_gap": -0.5140745871544654
+    }
+  },
+  "sides": {
+    "Over": {
+      "total": 39,
+      "resolved_wl": 39,
+      "wins": 16,
+      "losses": 23,
+      "win_rate": 0.41025641025641024,
+      "total_staked": 80.88820923204662,
+      "net_profit": -18.764957925345566,
+      "roi": -0.2319863191866929,
+      "implied_break_even": 0.5190538381391264,
+      "edge_gap": -0.10879742788271618
+    },
+    "Under": {
+      "total": 23,
+      "resolved_wl": 23,
+      "wins": 11,
+      "losses": 12,
+      "win_rate": 0.4782608695652174,
+      "total_staked": 38.996397919292335,
+      "net_profit": 5.079187058414435,
+      "roi": 0.13024759540423234,
+      "implied_break_even": 0.4879057767575354,
+      "edge_gap": -0.009644907192317975
+    }
+  },
+  "line_values": {
+    "3.5": {
+      "total": 15,
+      "resolved_wl": 15,
+      "wins": 4,
+      "losses": 11,
+      "win_rate": 0.26666666666666666,
+      "total_staked": 33.796606908123344,
+      "net_profit": -17.945661288705338,
+      "roi": -0.5309900291911235,
+      "implied_break_even": 0.5382628697698679,
+      "edge_gap": -0.27159620310320126
+    },
+    "4.5": {
+      "total": 13,
+      "resolved_wl": 13,
+      "wins": 10,
+      "losses": 3,
+      "win_rate": 0.7692307692307693,
+      "total_staked": 27.41556433193343,
+      "net_profit": 11.309376938161122,
+      "roi": 0.41251665664193715,
+      "implied_break_even": 0.5349936344588944,
+      "edge_gap": 0.2342371347718749
+    },
+    "5.5": {
+      "total": 10,
+      "resolved_wl": 10,
+      "wins": 4,
+      "losses": 6,
+      "win_rate": 0.4,
+      "total_staked": 20.430994625843567,
+      "net_profit": -5.812134461247104,
+      "roi": -0.28447633449500404,
+      "implied_break_even": 0.5469901644566058,
+      "edge_gap": -0.14699016445660573
+    },
+    "2.5": {
+      "total": 6,
+      "resolved_wl": 6,
+      "wins": 3,
+      "losses": 3,
+      "win_rate": 0.5,
+      "total_staked": 13.874069220913531,
+      "net_profit": -1.508260800860521,
+      "roi": -0.10871077380722555,
+      "implied_break_even": 0.5394742667648444,
+      "edge_gap": -0.039474266764844446
+    },
+    "8": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 2,
+      "losses": 2,
+      "win_rate": 0.5,
+      "total_staked": 5.740051500066647,
+      "net_profit": 3.2625086350347887,
+      "roi": 0.5683761957531057,
+      "implied_break_even": 0.3134829753278381,
+      "edge_gap": 0.1865170246721619
+    },
+    "6.5": {
+      "total": 3,
+      "resolved_wl": 3,
+      "wins": 2,
+      "losses": 1,
+      "win_rate": 0.6666666666666666,
+      "total_staked": 6.8991496530871075,
+      "net_profit": 1.1365710220572605,
+      "roi": 0.16474074041120243,
+      "implied_break_even": 0.5763436590807897,
+      "edge_gap": 0.09032300758587697
+    },
+    "10": {
+      "total": 2,
+      "resolved_wl": 2,
+      "wins": 1,
+      "losses": 1,
+      "win_rate": 0.5,
+      "total_staked": 2.2146195350075004,
+      "net_profit": -0.1146195350075001,
+      "roi": -0.05175585837461328,
+      "implied_break_even": 0.4891629240957099,
+      "edge_gap": 0.010837075904290117
+    }
+  },
+  "selections": {
+    "Over 3.5": {
+      "total": 15,
+      "resolved_wl": 15,
+      "wins": 4,
+      "losses": 11,
+      "win_rate": 0.26666666666666666,
+      "total_staked": 33.796606908123344,
+      "net_profit": -17.945661288705338,
+      "roi": -0.5309900291911235,
+      "implied_break_even": 0.5382628697698679,
+      "edge_gap": -0.27159620310320126
+    },
+    "Over 4.5": {
+      "total": 9,
+      "resolved_wl": 9,
+      "wins": 7,
+      "losses": 2,
+      "win_rate": 0.7777777777777778,
+      "total_staked": 19.918179235995893,
+      "net_profit": 8.01986322387635,
+      "roi": 0.40264037836264416,
+      "implied_break_even": 0.5390362292476593,
+      "edge_gap": 0.23874154853011853
+    },
+    "Over 2.5": {
+      "total": 6,
+      "resolved_wl": 6,
+      "wins": 3,
+      "losses": 3,
+      "win_rate": 0.5,
+      "total_staked": 13.874069220913531,
+      "net_profit": -1.508260800860521,
+      "roi": -0.10871077380722555,
+      "implied_break_even": 0.5394742667648444,
+      "edge_gap": -0.039474266764844446
+    },
+    "Over 5.5": {
+      "total": 5,
+      "resolved_wl": 5,
+      "wins": 2,
+      "losses": 3,
+      "win_rate": 0.4,
+      "total_staked": 9.10170737780537,
+      "net_profit": -3.1332525704475698,
+      "roi": -0.34424887995059544,
+      "implied_break_even": 0.5292589324028717,
+      "edge_gap": -0.12925893240287167
+    },
+    "Under 5.5": {
+      "total": 5,
+      "resolved_wl": 5,
+      "wins": 2,
+      "losses": 3,
+      "win_rate": 0.4,
+      "total_staked": 11.329287248038199,
+      "net_profit": -2.678881890799535,
+      "roi": -0.23645634823703632,
+      "implied_break_even": 0.5612350575436794,
+      "edge_gap": -0.1612350575436794
+    },
+    "Under 4.5": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 3,
+      "losses": 1,
+      "win_rate": 0.75,
+      "total_staked": 7.49738509593754,
+      "net_profit": 3.289513714284773,
+      "roi": 0.4387548021332393,
+      "implied_break_even": 0.5242537396087882,
+      "edge_gap": 0.22574626039121182
+    },
+    "Under 8": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 2,
+      "losses": 2,
+      "win_rate": 0.5,
+      "total_staked": 5.740051500066647,
+      "net_profit": 3.2625086350347887,
+      "roi": 0.5683761957531057,
+      "implied_break_even": 0.3134829753278381,
+      "edge_gap": 0.1865170246721619
+    },
+    "Under 6.5": {
+      "total": 3,
+      "resolved_wl": 3,
+      "wins": 2,
+      "losses": 1,
+      "win_rate": 0.6666666666666666,
+      "total_staked": 6.8991496530871075,
+      "net_profit": 1.1365710220572605,
+      "roi": 0.16474074041120243,
+      "implied_break_even": 0.5763436590807897,
+      "edge_gap": 0.09032300758587697
+    },
+    "Under 10": {
+      "total": 2,
+      "resolved_wl": 2,
+      "wins": 1,
+      "losses": 1,
+      "win_rate": 0.5,
+      "total_staked": 2.2146195350075004,
+      "net_profit": -0.1146195350075001,
+      "roi": -0.05175585837461328,
+      "implied_break_even": 0.4891629240957099,
+      "edge_gap": 0.010837075904290117
+    }
+  },
+  "market_selections": {
+    "Away Corners | Over 3.5": {
+      "total": 11,
+      "resolved_wl": 11,
+      "wins": 3,
+      "losses": 8,
+      "win_rate": 0.2727272727272727,
+      "total_staked": 25.94468981451943,
+      "net_profit": -14.166098795865535,
+      "roi": -0.5460114920293925,
+      "implied_break_even": 0.5422184559761156,
+      "edge_gap": -0.2694911832488429
+    },
+    "Away Corners | Over 4.5": {
+      "total": 7,
+      "resolved_wl": 7,
+      "wins": 6,
+      "losses": 1,
+      "win_rate": 0.8571428571428571,
+      "total_staked": 16.658583925586793,
+      "net_profit": 9.160793872606497,
+      "roi": 0.5499143212608818,
+      "implied_break_even": 0.5300822786297583,
+      "edge_gap": 0.3270605785130988
+    },
+    "Away Corners | Over 2.5": {
+      "total": 5,
+      "resolved_wl": 5,
+      "wins": 2,
+      "losses": 3,
+      "win_rate": 0.4,
+      "total_staked": 11.585731368735377,
+      "net_profit": -3.1908621627562233,
+      "roi": -0.27541309747323417,
+      "implied_break_even": 0.5322599429314676,
+      "edge_gap": -0.1322599429314676
+    },
+    "Home Corners | Under 5.5": {
+      "total": 5,
+      "resolved_wl": 5,
+      "wins": 2,
+      "losses": 3,
+      "win_rate": 0.4,
+      "total_staked": 11.329287248038199,
+      "net_profit": -2.678881890799535,
+      "roi": -0.23645634823703632,
+      "implied_break_even": 0.5612350575436794,
+      "edge_gap": -0.1612350575436794
+    },
+    "Away Corners | Over 5.5": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 1,
+      "losses": 3,
+      "win_rate": 0.25,
+      "total_staked": 7.312159278021994,
+      "net_profit": -4.5648910502742694,
+      "roi": -0.6242876935127587,
+      "implied_break_even": 0.5227144323605307,
+      "edge_gap": -0.2727144323605307
+    },
+    "Home Corners | Over 3.5": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 1,
+      "losses": 3,
+      "win_rate": 0.25,
+      "total_staked": 7.851917093603913,
+      "net_profit": -3.7795624928397986,
+      "roi": -0.4813553744624468,
+      "implied_break_even": 0.5251926276962109,
+      "edge_gap": -0.2751926276962109
+    },
+    "Home Corners | Under 4.5": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 3,
+      "losses": 1,
+      "win_rate": 0.75,
+      "total_staked": 7.49738509593754,
+      "net_profit": 3.289513714284773,
+      "roi": 0.4387548021332393,
+      "implied_break_even": 0.5242537396087882,
+      "edge_gap": 0.22574626039121182
+    },
+    "Total Corners (3-Way) | Under 8": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 2,
+      "losses": 2,
+      "win_rate": 0.5,
+      "total_staked": 5.740051500066647,
+      "net_profit": 3.2625086350347887,
+      "roi": 0.5683761957531057,
+      "implied_break_even": 0.3134829753278381,
+      "edge_gap": 0.1865170246721619
+    },
+    "Home Corners | Over 4.5": {
+      "total": 2,
+      "resolved_wl": 2,
+      "wins": 1,
+      "losses": 1,
+      "win_rate": 0.5,
+      "total_staked": 3.2595953104091,
+      "net_profit": -1.1409306487301452,
+      "roi": -0.3500221776263849,
+      "implied_break_even": 0.5847965533460345,
+      "edge_gap": -0.08479655334603453
+    },
+    "Home Corners | Under 6.5": {
+      "total": 2,
+      "resolved_wl": 2,
+      "wins": 1,
+      "losses": 1,
+      "win_rate": 0.5,
+      "total_staked": 4.4208085303878395,
+      "net_profit": -0.8461018761021544,
+      "roi": -0.19139075358867114,
+      "implied_break_even": 0.58774847938448,
+      "edge_gap": -0.08774847938448005
+    }
+  },
+  "leagues": {
+    "Championship": {
+      "total": 15,
+      "resolved_wl": 15,
+      "wins": 8,
+      "losses": 7,
+      "win_rate": 0.5333333333333333,
+      "total_staked": 34.01202153346096,
+      "net_profit": -2.7625201335059004,
+      "roi": -0.08122187417728577,
+      "implied_break_even": 0.5326746339696571,
+      "edge_gap": 0.0006586993636762406
+    },
+    "Pro League": {
+      "total": 11,
+      "resolved_wl": 11,
+      "wins": 4,
+      "losses": 7,
+      "win_rate": 0.36363636363636365,
+      "total_staked": 17.736305000342128,
+      "net_profit": -6.051146412096788,
+      "roi": -0.34117288871498674,
+      "implied_break_even": 0.45262715230865674,
+      "edge_gap": -0.0889907886722931
+    },
+    "Bundesliga": {
+      "total": 9,
+      "resolved_wl": 9,
+      "wins": 4,
+      "losses": 5,
+      "win_rate": 0.4444444444444444,
+      "total_staked": 14.763484078882895,
+      "net_profit": 1.5520762724608868,
+      "roi": 0.1051294033419195,
+      "implied_break_even": 0.4803451371511069,
+      "edge_gap": -0.03590069270666246
+    },
+    "La Liga": {
+      "total": 9,
+      "resolved_wl": 9,
+      "wins": 1,
+      "losses": 8,
+      "win_rate": 0.1111111111111111,
+      "total_staked": 17.014413440757956,
+      "net_profit": -13.044000377870692,
+      "roi": -0.7666441410565377,
+      "implied_break_even": 0.5232189160888604,
+      "edge_gap": -0.4121078049777493
+    },
+    "Ligue 1": {
+      "total": 8,
+      "resolved_wl": 8,
+      "wins": 4,
+      "losses": 4,
+      "win_rate": 0.5,
+      "total_staked": 17.492345388338055,
+      "net_profit": -0.022793497984031408,
+      "roi": -0.001303055563905545,
+      "implied_break_even": 0.5213471711531433,
+      "edge_gap": -0.02134717115314333
+    },
+    "Premier League": {
+      "total": 5,
+      "resolved_wl": 5,
+      "wins": 3,
+      "losses": 2,
+      "win_rate": 0.6,
+      "total_staked": 11.150035986969321,
+      "net_profit": 1.8420736686697405,
+      "roi": 0.1652078675640609,
+      "implied_break_even": 0.5360923496669747,
+      "edge_gap": 0.06390765033302526
+    },
+    "Serie A": {
+      "total": 4,
+      "resolved_wl": 4,
+      "wins": 3,
+      "losses": 1,
+      "win_rate": 0.75,
+      "total_staked": 6.925720921373729,
+      "net_profit": 5.590820414609583,
+      "roi": 0.8072546494554149,
+      "implied_break_even": 0.4817358838362228,
+      "edge_gap": 0.2682641161637772
+    }
+  }
+}

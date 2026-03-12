@@ -1,7 +1,7 @@
 import Foundation
 
 struct LocalCornerProjectionService {
-    static let modelVersion = "corner-local-v3.0"
+    static let modelVersion = "corner-local-v1.0"
 
     private struct ModelParams {
         let attackWeight: Double
@@ -13,22 +13,18 @@ struct LocalCornerProjectionService {
         let paceTempoQualityWeight: Double
         let paceXGWeight: Double
         let pacePossessionWeight: Double
-        let homeBiasShift: Double
-        let awayBiasShift: Double
     }
 
     private let defaultParams = ModelParams(
         attackWeight: 0.50,
         defenseWeight: 0.50,
         venueWeight: 0.20,
-        recentWeight: 0.18,
+        recentWeight: 0.28,
         paceShotsWeight: 0.0,
         paceShotQualityWeight: 0.0,
         paceTempoQualityWeight: 0.0,
         paceXGWeight: 0.0,
-        pacePossessionWeight: 1.0,
-        homeBiasShift: 0.25,
-        awayBiasShift: -0.25
+        pacePossessionWeight: 1.0
     )
 
     private let leagueOverrides: [Int: ModelParams] = [
@@ -36,15 +32,13 @@ struct LocalCornerProjectionService {
         40: ModelParams(
             attackWeight: 0.50,
             defenseWeight: 0.50,
-            venueWeight: 0.40,
-            recentWeight: 0.12,
+            venueWeight: 0.60,
+            recentWeight: 0.06,
             paceShotsWeight: 0.0,
-            paceShotQualityWeight: 0.20,
-            paceTempoQualityWeight: 0.15,
+            paceShotQualityWeight: 0.0,
+            paceTempoQualityWeight: 0.0,
             paceXGWeight: 0.0,
-            pacePossessionWeight: 0.65,
-            homeBiasShift: 0.25,
-            awayBiasShift: -0.25
+            pacePossessionWeight: 1.0
         )
     ]
 
@@ -63,8 +57,8 @@ struct LocalCornerProjectionService {
         expectedHome *= paceFactor
         expectedAway *= paceFactor
 
-        expectedHome = clamp(expectedHome + params.homeBiasShift, min: 1.5, max: 9.5)
-        expectedAway = clamp(expectedAway + params.awayBiasShift, min: 1.0, max: 8.5)
+        expectedHome = clamp(expectedHome, min: 1.5, max: 9.5)
+        expectedAway = clamp(expectedAway, min: 1.0, max: 8.5)
 
         let total = expectedHome + expectedAway
         let homeConfidence = teamProjectionConfidence(team: payload.homeTeam)
@@ -229,27 +223,9 @@ struct LocalCornerProjectionService {
         let venueDepth = min(Double(team.venueGames) / 14.0, 1.0)
         let variance = sampleStandardDeviation(team.recentForm.map { Double($0.cornersWon + $0.cornersConceded) })
         let stability = 1.0 - min(variance / 5.0, 1.0)
-        let alignment = teamSignalAlignment(team: team)
 
-        let score = (seasonDepth * 0.4) + (venueDepth * 0.2) + (stability * 0.2) + (alignment * 0.2)
-        return clamp(0.50 + (score * 0.28), min: 0.50, max: 0.78)
-    }
-
-    private func teamSignalAlignment(team: CornerAnalysisPayload.TeamAnalysisData) -> Double {
-        var attackSignals = [team.seasonCornersFor, team.venueCornersFor]
-        var defenseSignals = [team.seasonCornersAgainst, team.venueCornersAgainst]
-
-        if let recentAttack = mean(team.recentForm.map({ Double($0.cornersWon) })) {
-            attackSignals.append(recentAttack)
-        }
-        if let recentDefense = mean(team.recentForm.map({ Double($0.cornersConceded) })) {
-            defenseSignals.append(recentDefense)
-        }
-
-        let attackDispersion = sampleStandardDeviation(attackSignals)
-        let defenseDispersion = sampleStandardDeviation(defenseSignals)
-        let averageDispersion = (attackDispersion + defenseDispersion) / 2.0
-        return 1.0 - min(averageDispersion / 2.5, 1.0)
+        let score = (seasonDepth * 0.5) + (venueDepth * 0.3) + (stability * 0.2)
+        return clamp(0.52 + (score * 0.3), min: 0.52, max: 0.82)
     }
 
     private func weightedMean(values: [Double], weights: [Double]) -> Double? {
