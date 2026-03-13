@@ -51,7 +51,14 @@ struct TeamDetailView: View {
     }
 
     private func header(_ details: TeamDetails) -> some View {
-        HStack(spacing: 16) {
+        let leagueRepository = LeagueRepository()
+        let position = leagueRepository.teamPosition(
+            teamId: details.teamId,
+            leagueId: details.leagueId,
+            season: details.season
+        )
+        
+        return HStack(spacing: 16) {
             AsyncImage(url: URL(string: "https://media.api-sports.io/football/teams/\(details.teamId).png")) { phase in
                 switch phase {
                 case .success(let image):
@@ -65,12 +72,24 @@ struct TeamDetailView: View {
             .frame(width: 64, height: 64)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(details.teamName)
-                    .font(.title)
-                    .fontWeight(.semibold)
+                HStack(spacing: 8) {
+                    Text(details.teamName)
+                        .font(.title)
+                        .fontWeight(.semibold)
+                    TeamPositionView(position: position, size: .medium)
+                }
                 Text("\(details.leagueName) \(String(details.season))/\(String(details.season + 1))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if let position = position {
+                    HStack(spacing: 4) {
+                        Text("Currently")
+                        TeamPositionWithSuffix(position: position, size: .small)
+                        Text("in league table")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()

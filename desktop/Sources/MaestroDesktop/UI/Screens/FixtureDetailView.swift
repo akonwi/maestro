@@ -405,6 +405,17 @@ struct FixtureDetailView: View {
 
     private var header: some View {
         let leagueName = appState.followedLeagues.first { $0.id == fixture.leagueId }?.name ?? ""
+        let leagueRepository = LeagueRepository()
+        let homePosition = leagueRepository.teamPosition(
+            teamId: fixture.homeId,
+            leagueId: fixture.leagueId,
+            season: fixture.season
+        )
+        let awayPosition = leagueRepository.teamPosition(
+            teamId: fixture.awayId,
+            leagueId: fixture.leagueId,
+            season: fixture.season
+        )
 
         return VStack(spacing: 12) {
             HStack(alignment: .center, spacing: 24) {
@@ -420,9 +431,12 @@ struct FixtureDetailView: View {
                 } label: {
                     VStack(spacing: 8) {
                         teamLogo(url: fixture.homeLogoURL)
-                        Text(fixture.homeName)
-                            .font(.headline)
-                            .multilineTextAlignment(.center)
+                        HStack(spacing: 6) {
+                            Text(fixture.homeName)
+                                .font(.headline)
+                                .multilineTextAlignment(.center)
+                            TeamPositionView(position: homePosition, size: .small)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
@@ -482,9 +496,12 @@ struct FixtureDetailView: View {
                 } label: {
                     VStack(spacing: 8) {
                         teamLogo(url: fixture.awayLogoURL)
-                        Text(fixture.awayName)
-                            .font(.headline)
-                            .multilineTextAlignment(.center)
+                        HStack(spacing: 6) {
+                            Text(fixture.awayName)
+                                .font(.headline)
+                                .multilineTextAlignment(.center)
+                            TeamPositionView(position: awayPosition, size: .small)
+                        }
                     }
                 }
                 .buttonStyle(.plain)

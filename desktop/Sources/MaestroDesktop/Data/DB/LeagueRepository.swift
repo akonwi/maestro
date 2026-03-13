@@ -235,6 +235,11 @@ final class LeagueRepository {
             )
         }
     }
+
+    func teamPosition(teamId: Int, leagueId: Int, season: Int) -> Int? {
+        let standings = self.standings(leagueId: leagueId, season: season)
+        return standings.first { $0.teamId == teamId }?.position
+    }
 }
 
 private struct TeamStanding {

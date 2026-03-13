@@ -353,15 +353,7 @@ struct MainScreen: View {
                     Section {
                         ForEach(section.fixtures) { fixture in
                             Button(action: { appState.openFixture(fixture) }) {
-                                HStack {
-                                    Text(timeOnly(fixture.kickoff))
-                                        .frame(width: 48, alignment: .leading)
-                                    Text("\(fixture.homeName) — \(fixture.awayName)")
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Text(statusLabel(fixture))
-                                        .foregroundStyle(.secondary)
-                                }
+                                fixtureRow(fixture)
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -435,6 +427,53 @@ struct MainScreen: View {
                     .padding()
                 }
             }
+        }
+    }
+
+    private func fixtureRow(_ fixture: FixtureSummary) -> some View {
+        let leagueRepository = LeagueRepository()
+        let homePosition = leagueRepository.teamPosition(
+            teamId: fixture.homeId,
+            leagueId: fixture.leagueId,
+            season: fixture.season
+        )
+        let awayPosition = leagueRepository.teamPosition(
+            teamId: fixture.awayId,
+            leagueId: fixture.leagueId,
+            season: fixture.season
+        )
+        
+        return HStack(spacing: 12) {
+            Text(timeOnly(fixture.kickoff))
+                .frame(width: 48, alignment: .leading)
+                .foregroundStyle(.secondary)
+            
+            HStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    if let pos = homePosition {
+                        TeamPositionView(position: pos, size: .small)
+                    }
+                    Text(fixture.homeName)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                
+                Text("—")
+                    .foregroundStyle(.tertiary)
+                
+                HStack(spacing: 4) {
+                    Text(fixture.awayName)
+                    if let pos = awayPosition {
+                        TeamPositionView(position: pos, size: .small)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .lineLimit(1)
+            
+            Spacer()
+            
+            Text(statusLabel(fixture))
+                .foregroundStyle(.secondary)
         }
     }
 
