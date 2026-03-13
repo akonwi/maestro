@@ -972,17 +972,20 @@ struct FixtureDetailView: View {
                 goalMetricCard(
                     title: "Total",
                     value: String(format: "%.2f", analysis.analysis.expectedTotalGoals),
-                    subtitle: analysis.analysis.totalConfidence.map { "\(Int($0 * 100))% conf" }
+                    subtitle: analysis.analysis.totalConfidence.map { "\(Int($0 * 100))% conf" },
+                    helpText: "Projected total goals for the match. Confidence reflects the model's certainty in the total-goals projection, not the probability of a specific bet winning."
                 )
                 goalMetricCard(
                     title: "Over 2.5",
                     value: "\(Int((analysis.analysis.over2_5Probability * 100).rounded()))%",
-                    subtitle: "model"
+                    subtitle: "model",
+                    helpText: "Model-estimated probability that the match finishes with 3 or more total goals."
                 )
                 goalMetricCard(
                     title: "BTTS",
                     value: "\(Int((analysis.analysis.bttsProbability * 100).rounded()))%",
-                    subtitle: "yes"
+                    subtitle: "yes",
+                    helpText: "Model-estimated probability that both teams score at least one goal."
                 )
             }
 
@@ -1037,7 +1040,7 @@ struct FixtureDetailView: View {
         }
     }
 
-    private func goalMetricCard(title: String, value: String, subtitle: String?) -> some View {
+    private func goalMetricCard(title: String, value: String, subtitle: String?, helpText: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
@@ -1055,6 +1058,7 @@ struct FixtureDetailView: View {
         .padding(10)
         .background(Color(nsColor: .textBackgroundColor))
         .cornerRadius(6)
+        .help(helpText ?? "")
     }
 
     private func goalPickView(pick: GoalAnalysisResponse.Pick) -> some View {
@@ -1074,10 +1078,12 @@ struct FixtureDetailView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.green)
+                                .help("You already have this bet saved for the fixture.")
                         } else if canBet {
                             Image(systemName: "plus.circle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.blue)
+                                .help("Click to save this recommended bet.")
                         }
                     }
                     Text(pick.edge)
@@ -1093,6 +1099,7 @@ struct FixtureDetailView: View {
                     Text("+\(String(format: "%.1f", pick.expectedValuePct))% EV")
                         .font(.caption)
                         .foregroundStyle(.green)
+                        .help("Expected value: the model's estimated long-run return on this line versus the current price.")
                 }
             }
 
@@ -1100,14 +1107,17 @@ struct FixtureDetailView: View {
                 Label("\(Int(pick.confidence * 100))%", systemImage: "target")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help("Confidence is the model's certainty in this recommendation after accounting for sample quality and signal stability.")
                 Label("\(Int(pick.estimatedProbability * 100))% est.", systemImage: "percent")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help("Estimated probability that this specific betting line wins according to the local model.")
                 if let stake = pick.recommendedStake {
                     Label(String(format: "$%.0f", stake), systemImage: "dollarsign.circle")
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.blue)
+                        .help("Recommended stake size based on bankroll, edge, confidence, and current exposure controls.")
                 }
             }
 
@@ -1346,6 +1356,7 @@ struct FixtureDetailView: View {
                 Label("Total", systemImage: "sum")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help("Projected total corners for the match. This is the model's expected combined corner count.")
                 Text(String(format: "%.1f", analysis.analysis.expectedTotalCorners))
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -1353,6 +1364,7 @@ struct FixtureDetailView: View {
                     Text("· \(Int(totalConfidence * 100))% conf")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
+                        .help("Confidence reflects the model's certainty in the total-corners projection, not the probability of a specific bet winning.")
                 }
             }
 
@@ -1400,12 +1412,14 @@ struct FixtureDetailView: View {
                 Text("\(Int(confidence * 100))% confidence")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+                    .help("Confidence reflects how stable and well-supported this team projection is based on sample depth, venue history, and recent-form consistency. It is not the same as the probability of a bet winning.")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(Color(nsColor: .textBackgroundColor))
         .cornerRadius(6)
+        .help("Projected \(label.lowercased()) team output from the local model.")
     }
 
     private func aiPickView(pick: CornerAnalysisResponse.Pick) -> some View {
@@ -1425,10 +1439,12 @@ struct FixtureDetailView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.green)
+                                .help("You already have this bet saved for the fixture.")
                         } else if canBet {
                             Image(systemName: "plus.circle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.blue)
+                                .help("Click to save this recommended bet.")
                         }
                     }
                     Text(pick.edge)
@@ -1444,6 +1460,7 @@ struct FixtureDetailView: View {
                     Text("+\(String(format: "%.1f", pick.expectedValuePct))% EV")
                         .font(.caption)
                         .foregroundStyle(.green)
+                        .help("Expected value: the model's estimated long-run return on this line versus the current price.")
                 }
             }
 
@@ -1451,14 +1468,17 @@ struct FixtureDetailView: View {
                 Label("\(Int(pick.confidence * 100))%", systemImage: "target")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help("Confidence is the model's certainty in this recommendation after accounting for sample quality and signal stability.")
                 Label("\(Int(pick.estimatedProbability * 100))% est.", systemImage: "percent")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .help("Estimated probability that this specific betting line wins according to the local model.")
                 if let stake = pick.recommendedStake {
                     Label(String(format: "$%.0f", stake), systemImage: "dollarsign.circle")
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.blue)
+                        .help("Recommended stake size based on bankroll, edge, confidence, and current exposure controls.")
                 }
             }
 
