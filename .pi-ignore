@@ -1,0 +1,22 @@
+# Pi file picker ignore file
+
+# Swift build artifacts
+desktop/.build/
+desktop/.swiftpm/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+.output/
+.vinxi/
+.codanna*
+.fastembed*
+
+# Database files
+*.sqlite
+*.sqbpro
+
+# Bruno API client
+.bruno/
