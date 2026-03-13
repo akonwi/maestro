@@ -196,6 +196,7 @@ struct CornerAnalysisPayload: Encodable {
   let pendingBets: [PendingBet]?
 
   struct FixtureInfo: Encodable {
+    let id: Int
     let leagueId: Int
     let season: Int
     let home: String
@@ -239,7 +240,10 @@ struct CornerAnalysisPayload: Encodable {
   }
 
   struct PendingBet: Encodable {
+    let fixtureId: Int
+    let marketId: Int
     let market: String
+    let lineName: String?
     let odds: Int
     let stake: Double
     let potentialPayout: Double

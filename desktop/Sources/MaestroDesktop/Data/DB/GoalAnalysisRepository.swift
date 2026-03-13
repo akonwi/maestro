@@ -59,7 +59,10 @@ final class GoalAnalysisRepository {
 
         let pendingBets: [GoalAnalysisPayload.PendingBet]? = pending.isEmpty ? nil : pending.map { bet in
             GoalAnalysisPayload.PendingBet(
+                fixtureId: bet.fixtureId,
+                marketId: bet.marketId,
                 market: bet.displayDescription,
+                lineName: bet.lineName,
                 odds: bet.odds,
                 stake: bet.stake,
                 potentialPayout: bet.potentialPayout
@@ -68,6 +71,7 @@ final class GoalAnalysisRepository {
 
         return GoalAnalysisPayload(
             fixture: GoalAnalysisPayload.FixtureInfo(
+                id: fixture.id,
                 leagueId: fixture.leagueId,
                 season: fixture.season,
                 home: fixture.homeName,

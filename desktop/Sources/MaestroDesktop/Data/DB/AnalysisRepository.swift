@@ -56,7 +56,10 @@ final class AnalysisRepository {
 
         let pendingBets: [CornerAnalysisPayload.PendingBet]? = pending.isEmpty ? nil : pending.map { bet in
             CornerAnalysisPayload.PendingBet(
+                fixtureId: bet.fixtureId,
+                marketId: bet.marketId,
                 market: bet.displayDescription,
+                lineName: bet.lineName,
                 odds: bet.odds,
                 stake: bet.stake,
                 potentialPayout: bet.potentialPayout
@@ -65,6 +68,7 @@ final class AnalysisRepository {
 
         return CornerAnalysisPayload(
             fixture: CornerAnalysisPayload.FixtureInfo(
+                id: fixture.id,
                 leagueId: fixture.leagueId,
                 season: fixture.season,
                 home: fixture.homeName,

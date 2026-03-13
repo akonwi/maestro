@@ -108,9 +108,11 @@ struct LocalCornerProjectionService {
             totalConfidence: confidence
         )
         let decision = decisionEngine.selectBets(
+            fixtureId: payload.fixture.id,
             projection: projected,
             markets: marketInputs,
             bankroll: payload.bettingProfile?.bankroll,
+            pendingBets: payload.pendingBets ?? [],
             probabilityEngine: probabilityEngine
         )
 
@@ -503,21 +505,35 @@ private struct OddsDecisionEngine {
         let descriptor: String
     }
 
-    private let minConfidence = 0.66
-    private let minEdgePoints = 3.0
-    private let minEVPct = 2.0
-    private let shortestAllowedFavoriteOdds = -200
-    private let maxPicksPerFixture = 3
-    private let maxFixtureExposurePct = 0.035
+    private let minConfidence = 0.70
+    private let minEdgePoints = 5.0
+    private let minEVPct = 4.0
+    private let shortestAllowedFavoriteOdds = -190
+    private let maxPicksPerFixture = 2
+    private let maxFixtureExposurePct = 0.03
+    private let secondPickMinConfidence = 0.74
+    private let secondPickMinEdgePoints = 8.0
+    private let highCorrelationThreshold = 0.65
+    private let secondPickMaxCorrelation = 0.35
+    private let pendingExposureTightenPct = 0.10
 
     func selectBets(
+        fixtureId: Int,
         projection: ProjectionInput,
         markets: [MarketInput],
         bankroll: Double?,
+        pendingBets: [CornerAnalysisPayload.PendingBet],
         probabilityEngine: MarketProbabilityEngine
     ) -> DecisionResult {
         var candidates: [CandidatePick] = []
         var passReasons: [String] = []
+        let totalPendingStake = pendingBets.reduce(0) { $0 + $1.stake }
+        let pendingExposurePct = (bankroll ?? 0) > 0 ? totalPendingStake / (bankroll ?? 1) : 0.0
+        let effectiveMinConfidence = minConfidence + (pendingExposurePct >= pendingExposureTightenPct ? 0.02 : 0.0)
+        let effectiveMinEdgePoints = minEdgePoints + (pendingExposurePct >= pendingExposureTightenPct ? 1.0 : 0.0)
+        let effectiveMinEVPct = minEVPct + (pendingExposurePct >= pendingExposureTightenPct ? 1.0 : 0.0)
+        let pendingFixtureBets = pendingBets.filter { $0.fixtureId == fixtureId }
+        let pendingGroups = Set(pendingFixtureBets.map { correlationGroupKey(marketId: $0.marketId) })
 
         if markets.isEmpty {
             return .init(
@@ -559,15 +575,15 @@ private struct OddsDecisionEngine {
                     continue
                 }
 
-                guard confidence >= minConfidence else {
+                guard confidence >= effectiveMinConfidence else {
                     passReasons.append("\(market.marketName) \(line.name): confidence \(Int(confidence * 100))% below threshold.")
                     continue
                 }
-                guard edge >= minEdgePoints else {
+                guard edge >= effectiveMinEdgePoints else {
                     passReasons.append("\(market.marketName) \(line.name): edge \(String(format: "%.1f", edge))pp below threshold.")
                     continue
                 }
-                guard evPct >= minEVPct else {
+                guard evPct >= effectiveMinEVPct else {
                     passReasons.append("\(market.marketName) \(line.name): EV \(String(format: "%.1f", evPct))% below threshold.")
                     continue
                 }
@@ -577,7 +593,9 @@ private struct OddsDecisionEngine {
                     decimalOdds: decimalOdds,
                     winProbability: probability.winProbability,
                     confidence: confidence,
-                    edgePoints: edge
+                    edgePoints: edge,
+                    pendingExposurePct: pendingExposurePct,
+                    hasSameFixturePending: !pendingFixtureBets.isEmpty
                 )
                 let edgeText = String(
                     format: "Model %.1f%% vs implied %.1f%% (+%.1fpp)",
@@ -635,11 +653,28 @@ private struct OddsDecisionEngine {
         var picks: [CornerAnalysisResponse.Pick] = []
         var usedGroups = Set<String>()
         let exposureCap = (bankroll ?? 0) * maxFixtureExposurePct
-        var currentExposure = 0.0
+        var currentExposure = pendingFixtureBets.reduce(0) { $0 + $1.stake }
 
         for candidate in candidates {
             if picks.count >= maxPicksPerFixture {
                 passReasons.append("\(candidate.descriptor): omitted to keep fixture recommendations focused.")
+                continue
+            }
+
+            if pendingGroups.contains(candidate.groupKey) {
+                passReasons.append("\(candidate.descriptor): omitted because a pending same-fixture bet already occupies this market group.")
+                continue
+            }
+
+            if pendingFixtureBets.contains(where: { pending in
+                correlationScore(
+                    marketId: candidate.pick.marketId,
+                    lineName: candidate.pick.line,
+                    otherMarketId: pending.marketId,
+                    otherLineName: pending.lineName ?? pending.market
+                ) >= highCorrelationThreshold
+            }) {
+                passReasons.append("\(candidate.descriptor): omitted due to overlap with an existing pending bet on this fixture.")
                 continue
             }
 
@@ -648,11 +683,32 @@ private struct OddsDecisionEngine {
                 continue
             }
 
+            let maxAcceptedCorrelation = picks.map {
+                correlationScore(
+                    marketId: candidate.pick.marketId,
+                    lineName: candidate.pick.line,
+                    otherMarketId: $0.marketId,
+                    otherLineName: $0.line
+                )
+            }.max() ?? 0.0
+
+            if maxAcceptedCorrelation >= highCorrelationThreshold {
+                passReasons.append("\(candidate.descriptor): omitted due to high correlation with another recommended pick.")
+                continue
+            }
+
+            if !picks.isEmpty {
+                let edgePoints = candidate.pick.edgePoints ?? 0
+                if candidate.pick.confidence < secondPickMinConfidence || edgePoints < secondPickMinEdgePoints || maxAcceptedCorrelation > secondPickMaxCorrelation {
+                    passReasons.append("\(candidate.descriptor): omitted because secondary picks must be high-confidence and weakly correlated.")
+                    continue
+                }
+            }
+
             if let bankroll,
                bankroll > 0,
                exposureCap > 0,
                let stake = candidate.pick.recommendedStake,
-               !picks.isEmpty,
                currentExposure + stake > exposureCap {
                 passReasons.append("\(candidate.descriptor): omitted due to fixture exposure cap.")
                 continue
@@ -694,6 +750,48 @@ private struct OddsDecisionEngine {
         }
     }
 
+    private func correlationScore(marketId: Int, lineName: String, otherMarketId: Int, otherLineName: String) -> Double {
+        let family = correlationGroupKey(marketId: marketId)
+        let otherFamily = correlationGroupKey(marketId: otherMarketId)
+        if family == otherFamily { return 1.0 }
+
+        let side = normalizedLineSide(lineName)
+        let otherSide = normalizedLineSide(otherLineName)
+
+        if Set([family, otherFamily]).isSuperset(of: ["total-corners", "home-corners"]) ||
+            Set([family, otherFamily]).isSuperset(of: ["total-corners", "away-corners"]) {
+            if side == otherSide, side != "unknown" { return 0.78 }
+            return 0.35
+        }
+
+        if Set([family, otherFamily]).isSuperset(of: ["home-corners", "away-corners"]) {
+            if side == otherSide, side != "unknown" { return 0.45 }
+            return 0.20
+        }
+
+        if family == "most-corners" || otherFamily == "most-corners" {
+            let mostSide = family == "most-corners" ? side : otherSide
+            let teamFamily = family == "most-corners" ? otherFamily : family
+            if (mostSide == "home" && teamFamily == "home-corners") || (mostSide == "away" && teamFamily == "away-corners") {
+                return 0.72
+            }
+            if teamFamily == "total-corners" { return 0.45 }
+            return 0.25
+        }
+
+        return 0.15
+    }
+
+    private func normalizedLineSide(_ lineName: String) -> String {
+        let lower = lineName.lowercased()
+        if lower.hasPrefix("over") { return "over" }
+        if lower.hasPrefix("under") { return "under" }
+        if lower.hasPrefix("home") { return "home" }
+        if lower.hasPrefix("away") { return "away" }
+        if lower.hasPrefix("draw") { return "draw" }
+        return "unknown"
+    }
+
     private func confidenceForLine(
         marketId: Int,
         lineName: String,
@@ -731,7 +829,9 @@ private struct OddsDecisionEngine {
         decimalOdds: Double,
         winProbability: Double,
         confidence: Double,
-        edgePoints: Double
+        edgePoints: Double,
+        pendingExposurePct: Double,
+        hasSameFixturePending: Bool
     ) -> Double? {
         guard let bankroll, bankroll > 0 else { return nil }
         let b = decimalOdds - 1.0
@@ -743,22 +843,31 @@ private struct OddsDecisionEngine {
         let confidenceMultiplier: Double
         let maxPctCap: Double
 
-        if confidence >= 0.75 {
-            confidenceMultiplier = 1.2
-            maxPctCap = 0.03
-        } else if confidence >= 0.70 {
-            confidenceMultiplier = 0.9
+        if confidence >= 0.78 {
+            confidenceMultiplier = 0.95
             maxPctCap = 0.02
+        } else if confidence >= 0.72 {
+            confidenceMultiplier = 0.78
+            maxPctCap = 0.015
         } else {
-            confidenceMultiplier = 0.6
+            confidenceMultiplier = 0.55
             maxPctCap = 0.01
         }
 
-        let edgeMultiplier = clamp(edgePoints / 8.0, min: 0.65, max: 1.35)
-        let rawStake = bankroll * 0.25 * kelly * confidenceMultiplier * edgeMultiplier
+        let edgeMultiplier = clamp(edgePoints / 9.0, min: 0.70, max: 1.20)
+        var reductionMultiplier = 1.0
+        if pendingExposurePct >= 0.15 {
+            reductionMultiplier *= 0.5
+        } else if pendingExposurePct >= 0.10 {
+            reductionMultiplier *= 0.7
+        }
+        if hasSameFixturePending {
+            reductionMultiplier *= 0.7
+        }
 
+        let rawStake = bankroll * 0.25 * kelly * confidenceMultiplier * edgeMultiplier * reductionMultiplier
         let maxStake = bankroll * maxPctCap
-        let floorStake = min(max(1.0, bankroll * 0.0025), maxStake)
+        let floorStake = min(max(1.0, bankroll * 0.002), maxStake)
         return min(max(rawStake, floorStake), maxStake)
     }
 
