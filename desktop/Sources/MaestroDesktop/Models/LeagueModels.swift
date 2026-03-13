@@ -33,13 +33,24 @@ struct StandingRow: Identifiable {
     var id: Int { teamId }
 }
 
+struct TeamLeague: Identifiable, Equatable {
+    let id: Int
+    let name: String
+}
+
 struct TeamTab: Identifiable, Equatable {
     let id = UUID()
     let teamId: Int
     let teamName: String
-    let leagueId: Int
-    let leagueName: String
     let season: Int
+    
+    // Available leagues and current selection
+    var availableLeagues: [TeamLeague] = []
+    var selectedLeagueId: Int
+    
+    var selectedLeague: TeamLeague? {
+        availableLeagues.first { $0.id == selectedLeagueId }
+    }
 
     // Display state
     var activeTab: TeamTabView = .stats
@@ -56,9 +67,16 @@ struct TeamTab: Identifiable, Equatable {
         case season = "Season"
         var id: String { rawValue }
     }
+    
+    init(teamId: Int, teamName: String, season: Int, initialLeagueId: Int) {
+        self.teamId = teamId
+        self.teamName = teamName
+        self.season = season
+        self.selectedLeagueId = initialLeagueId
+    }
 
     static func == (lhs: TeamTab, rhs: TeamTab) -> Bool {
-        lhs.teamId == rhs.teamId && lhs.leagueId == rhs.leagueId && lhs.season == rhs.season
+        lhs.teamId == rhs.teamId && lhs.season == rhs.season
     }
 }
 

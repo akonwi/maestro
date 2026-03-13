@@ -4,6 +4,38 @@ import SQLite3
 @MainActor
 final class TeamRepository {
     private let formLimit = 5
+    
+    func teamLeagues(teamId: Int, season: Int) -> [TeamLeague] {
+        guard let db = Database.shared.handle else { return [] }
+        
+        let sql = """
+        SELECT DISTINCT f.league_id, l.name
+        FROM fixtures f
+        INNER JOIN leagues l ON l.id = f.league_id
+        WHERE (f.home_id = ? OR f.away_id = ?) 
+          AND f.season = ?
+        ORDER BY l.name ASC;
+        """
+        
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return []
+        }
+        
+        sqlite3_bind_int64(statement, 1, Int64(teamId))
+        sqlite3_bind_int64(statement, 2, Int64(teamId))
+        sqlite3_bind_int64(statement, 3, Int64(season))
+        
+        var results: [TeamLeague] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let leagueId = Int(sqlite3_column_int64(statement, 0))
+            let leagueName = String(cString: sqlite3_column_text(statement, 1))
+            results.append(TeamLeague(id: leagueId, name: leagueName))
+        }
+        
+        sqlite3_finalize(statement)
+        return results
+    }
 
     func teamDetails(teamId: Int, leagueId: Int, leagueName: String, season: Int) -> TeamDetails? {
         guard let db = Database.shared.handle else { return nil }

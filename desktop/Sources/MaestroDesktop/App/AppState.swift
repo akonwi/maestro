@@ -90,12 +90,26 @@ final class AppState: ObservableObject {
     }
 
     func openTeam(teamId: Int, teamName: String, leagueId: Int, leagueName: String, season: Int) {
-        if let existing = openTeams.first(where: { $0.teamId == teamId && $0.leagueId == leagueId }) {
-            activeTabId = existing.id
+        // Check if we already have this team open for this season
+        if let existingIndex = openTeams.firstIndex(where: { $0.teamId == teamId && $0.season == season }) {
+            let existingTab = openTeams[existingIndex]
+            
+            // If the requested league is different from currently selected, switch to it
+            if existingTab.selectedLeagueId != leagueId {
+                openTeams[existingIndex].selectedLeagueId = leagueId
+            }
+            
+            activeTabId = existingTab.id
             return
         }
 
-        let tab = TeamTab(teamId: teamId, teamName: teamName, leagueId: leagueId, leagueName: leagueName, season: season)
+        // Create new team tab and load available leagues
+        let teamRepository = TeamRepository()
+        let availableLeagues = teamRepository.teamLeagues(teamId: teamId, season: season)
+        
+        var tab = TeamTab(teamId: teamId, teamName: teamName, season: season, initialLeagueId: leagueId)
+        tab.availableLeagues = availableLeagues
+        
         openTeams.append(tab)
         activeTabId = tab.id
     }
@@ -228,7 +242,7 @@ final class AppState: ObservableObject {
             }
 
             if let teamTab = openTeams.first(where: { $0.id == tabId }) {
-                syncLeague(id: teamTab.leagueId)
+                syncLeague(id: teamTab.selectedLeagueId)
                 return
             }
         }
@@ -293,7 +307,7 @@ final class AppState: ObservableObject {
         let teamTabs = openTeams.map { tab in
             PersistedTeamTab(
                 teamId: tab.teamId,
-                leagueId: tab.leagueId,
+                leagueId: tab.selectedLeagueId,
                 season: tab.season,
                 activeTab: tab.activeTab.rawValue,
                 statsScope: tab.statsScope.rawValue
@@ -341,14 +355,17 @@ final class AppState: ObservableObject {
         // Restore team tabs
         for persisted in state.teamTabs {
             if let teamName = teamName(for: persisted.teamId),
-               let leagueName = followedLeagues.first(where: { $0.id == persisted.leagueId })?.name {
+               followedLeagues.contains(where: { $0.id == persisted.leagueId }) {
+                let teamRepository = TeamRepository()
+                let availableLeagues = teamRepository.teamLeagues(teamId: persisted.teamId, season: persisted.season)
+                
                 var tab = TeamTab(
                     teamId: persisted.teamId,
                     teamName: teamName,
-                    leagueId: persisted.leagueId,
-                    leagueName: leagueName,
-                    season: persisted.season
+                    season: persisted.season,
+                    initialLeagueId: persisted.leagueId
                 )
+                tab.availableLeagues = availableLeagues
                 if let activeTab = TeamTab.TeamTabView(rawValue: persisted.activeTab) {
                     tab.activeTab = activeTab
                 }
@@ -368,7 +385,7 @@ final class AppState: ObservableObject {
             case .league(let id):
                 activeTabId = openLeagues.first { $0.league.id == id }?.id
             case .team(let teamId, let leagueId, _):
-                activeTabId = openTeams.first { $0.teamId == teamId && $0.leagueId == leagueId }?.id
+                activeTabId = openTeams.first { $0.teamId == teamId && $0.selectedLeagueId == leagueId }?.id
             }
         }
     }
@@ -383,7 +400,7 @@ final class AppState: ObservableObject {
             return .league(id: tab.league.id)
         }
         if let tab = openTeams.first(where: { $0.id == tabId }) {
-            return .team(teamId: tab.teamId, leagueId: tab.leagueId, season: tab.season)
+            return .team(teamId: tab.teamId, leagueId: tab.selectedLeagueId, season: tab.season)
         }
         return nil
     }
@@ -412,26 +429,63 @@ final class AppState: ObservableObject {
     // MARK: - Tab State Bindings
 
     func fixtureTabBinding(_ tabId: UUID) -> Binding<FixtureTab>? {
-        guard let index = openFixtures.firstIndex(where: { $0.id == tabId }) else { return nil }
+        guard openFixtures.contains(where: { $0.id == tabId }) else { return nil }
         return Binding(
-            get: { self.openFixtures[index] },
-            set: { self.openFixtures[index] = $0 }
+            get: { 
+                guard let index = self.openFixtures.firstIndex(where: { $0.id == tabId }),
+                      index < self.openFixtures.count else {
+                    // Return a default tab if the binding becomes invalid
+                    return FixtureTab(fixture: FixtureSummary(
+                        id: 0, leagueId: 0, season: 2025, homeId: 0, awayId: 0,
+                        homeName: "Unknown", awayName: "Unknown", status: "NS",
+                        kickoff: Date(), homeGoals: 0, awayGoals: 0
+                    ))
+                }
+                return self.openFixtures[index]
+            },
+            set: { newValue in
+                guard let index = self.openFixtures.firstIndex(where: { $0.id == tabId }),
+                      index < self.openFixtures.count else { return }
+                self.openFixtures[index] = newValue
+            }
         )
     }
 
     func leagueTabBinding(_ tabId: UUID) -> Binding<LeagueTab>? {
-        guard let index = openLeagues.firstIndex(where: { $0.id == tabId }) else { return nil }
+        guard openLeagues.contains(where: { $0.id == tabId }) else { return nil }
         return Binding(
-            get: { self.openLeagues[index] },
-            set: { self.openLeagues[index] = $0 }
+            get: { 
+                guard let index = self.openLeagues.firstIndex(where: { $0.id == tabId }),
+                      index < self.openLeagues.count else {
+                    // Return a default tab if the binding becomes invalid
+                    return LeagueTab(league: FollowedLeague(id: 0, name: "Unknown", currentSeason: 2025))
+                }
+                return self.openLeagues[index]
+            },
+            set: { newValue in
+                guard let index = self.openLeagues.firstIndex(where: { $0.id == tabId }),
+                      index < self.openLeagues.count else { return }
+                self.openLeagues[index] = newValue
+            }
         )
     }
 
     func teamTabBinding(_ tabId: UUID) -> Binding<TeamTab>? {
-        guard let index = openTeams.firstIndex(where: { $0.id == tabId }) else { return nil }
+        guard openTeams.contains(where: { $0.id == tabId }) else { return nil }
         return Binding(
-            get: { self.openTeams[index] },
-            set: { self.openTeams[index] = $0 }
+            get: { 
+                guard let index = self.openTeams.firstIndex(where: { $0.id == tabId }),
+                      index < self.openTeams.count else {
+                    // Return a default tab if the binding becomes invalid
+                    return TeamTab(teamId: 0, teamName: "Unknown", season: 2025, initialLeagueId: 0)
+                }
+                return self.openTeams[index]
+            },
+            set: { newValue in
+                guard let index = self.openTeams.firstIndex(where: { $0.id == tabId }),
+                      index < self.openTeams.count else { return }
+                self.openTeams[index] = newValue
+            }
         )
     }
 }
