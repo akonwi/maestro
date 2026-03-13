@@ -46,10 +46,26 @@ struct TeamTab: Identifiable, Equatable {
     
     // Available leagues and current selection
     var availableLeagues: [TeamLeague] = []
-    var selectedLeagueId: Int
+    var selectedCompetition: TeamCompetitionFilter = .all
+    
+    enum TeamCompetitionFilter: Equatable, Hashable {
+        case all
+        case specific(leagueId: Int)
+        
+        var isAll: Bool {
+            if case .all = self { return true }
+            return false
+        }
+        
+        var leagueId: Int? {
+            if case .specific(let id) = self { return id }
+            return nil
+        }
+    }
     
     var selectedLeague: TeamLeague? {
-        availableLeagues.first { $0.id == selectedLeagueId }
+        guard let leagueId = selectedCompetition.leagueId else { return nil }
+        return availableLeagues.first { $0.id == leagueId }
     }
 
     // Display state
@@ -68,11 +84,11 @@ struct TeamTab: Identifiable, Equatable {
         var id: String { rawValue }
     }
     
-    init(teamId: Int, teamName: String, season: Int, initialLeagueId: Int) {
+    init(teamId: Int, teamName: String, season: Int, initialCompetition: TeamCompetitionFilter = .all) {
         self.teamId = teamId
         self.teamName = teamName
         self.season = season
-        self.selectedLeagueId = initialLeagueId
+        self.selectedCompetition = initialCompetition
     }
 
     static func == (lhs: TeamTab, rhs: TeamTab) -> Bool {

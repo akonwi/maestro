@@ -6,20 +6,11 @@ struct TeamDetailView: View {
     @EnvironmentObject private var appState: AppState
 
     private let teamRepository = TeamRepository()
-    
-    private var currentLeague: TeamLeague? {
-        tab.selectedLeague
-    }
-    
-    private var currentLeagueName: String {
-        currentLeague?.name ?? "Unknown League"
-    }
 
     var body: some View {
         let details = teamRepository.teamDetails(
             teamId: tab.teamId,
-            leagueId: tab.selectedLeagueId,
-            leagueName: currentLeagueName,
+            competitionFilter: tab.selectedCompetition,
             season: tab.season
         )
 
@@ -31,26 +22,30 @@ struct TeamDetailView: View {
 
                 Divider()
                 
-                // League picker (only show if team is in multiple leagues)
-                if tab.availableLeagues.count > 1 {
-                    HStack {
-                        Text("Competition:")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        Picker("League", selection: $tab.selectedLeagueId) {
-                            ForEach(tab.availableLeagues) { league in
-                                Text(league.name).tag(league.id)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        
-                        Spacer()
-                    }
-                    .padding()
+                // Competition picker 
+                HStack {
+                    Text("Competition:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     
-                    Divider()
+                    Picker("Competition", selection: $tab.selectedCompetition) {
+                        Text("All Competitions").tag(TeamTab.TeamCompetitionFilter.all)
+                        
+                        if tab.availableLeagues.count > 1 {
+                            Divider()
+                        }
+                        
+                        ForEach(tab.availableLeagues) { league in
+                            Text(league.name).tag(TeamTab.TeamCompetitionFilter.specific(leagueId: league.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    
+                    Spacer()
                 }
+                .padding()
+                
+                Divider()
 
                 Picker("", selection: $tab.activeTab) {
                     ForEach(TeamTab.TeamTabView.allCases) { tabView in
@@ -81,11 +76,13 @@ struct TeamDetailView: View {
 
     private func header(_ details: TeamDetails) -> some View {
         let leagueRepository = LeagueRepository()
-        let position = leagueRepository.teamPosition(
-            teamId: details.teamId,
-            leagueId: tab.selectedLeagueId,
-            season: details.season
-        )
+        let position = tab.selectedCompetition.leagueId.flatMap { leagueId in
+            leagueRepository.teamPosition(
+                teamId: details.teamId,
+                leagueId: leagueId,
+                season: details.season
+            )
+        }
         
         return HStack(spacing: 16) {
             AsyncImage(url: URL(string: "https://media.api-sports.io/football/teams/\(details.teamId).png")) { phase in
@@ -107,7 +104,7 @@ struct TeamDetailView: View {
                         .fontWeight(.semibold)
                     TeamPositionView(position: position, size: .medium)
                 }
-                Text("\(currentLeagueName) \(String(details.season))/\(String(details.season + 1))")
+                Text("\(details.leagueName) \(String(details.season))/\(String(details.season + 1))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if let position = position {

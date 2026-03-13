@@ -94,9 +94,9 @@ final class AppState: ObservableObject {
         if let existingIndex = openTeams.firstIndex(where: { $0.teamId == teamId && $0.season == season }) {
             let existingTab = openTeams[existingIndex]
             
-            // If the requested league is different from currently selected, switch to it
-            if existingTab.selectedLeagueId != leagueId {
-                openTeams[existingIndex].selectedLeagueId = leagueId
+            // If the requested league is different from current selection, switch to it
+            if existingTab.selectedCompetition != .specific(leagueId: leagueId) {
+                openTeams[existingIndex].selectedCompetition = .specific(leagueId: leagueId)
             }
             
             activeTabId = existingTab.id
@@ -107,7 +107,11 @@ final class AppState: ObservableObject {
         let teamRepository = TeamRepository()
         let availableLeagues = teamRepository.teamLeagues(teamId: teamId, season: season)
         
-        var tab = TeamTab(teamId: teamId, teamName: teamName, season: season, initialLeagueId: leagueId)
+        // Default to aggregate view, but if only one league available, show that specific one
+        let initialCompetition: TeamTab.TeamCompetitionFilter = availableLeagues.count == 1 ? 
+            .specific(leagueId: leagueId) : .all
+        
+        var tab = TeamTab(teamId: teamId, teamName: teamName, season: season, initialCompetition: initialCompetition)
         tab.availableLeagues = availableLeagues
         
         openTeams.append(tab)
@@ -242,7 +246,14 @@ final class AppState: ObservableObject {
             }
 
             if let teamTab = openTeams.first(where: { $0.id == tabId }) {
-                syncLeague(id: teamTab.selectedLeagueId)
+                // For aggregate view, sync all leagues the team is in
+                if teamTab.selectedCompetition.isAll {
+                    for league in teamTab.availableLeagues {
+                        syncLeague(id: league.id)
+                    }
+                } else if let leagueId = teamTab.selectedCompetition.leagueId {
+                    syncLeague(id: leagueId)
+                }
                 return
             }
         }
@@ -307,7 +318,7 @@ final class AppState: ObservableObject {
         let teamTabs = openTeams.map { tab in
             PersistedTeamTab(
                 teamId: tab.teamId,
-                leagueId: tab.selectedLeagueId,
+                leagueId: tab.selectedCompetition.leagueId ?? 0, // 0 for aggregate view
                 season: tab.season,
                 activeTab: tab.activeTab.rawValue,
                 statsScope: tab.statsScope.rawValue
@@ -354,16 +365,19 @@ final class AppState: ObservableObject {
 
         // Restore team tabs
         for persisted in state.teamTabs {
-            if let teamName = teamName(for: persisted.teamId),
-               followedLeagues.contains(where: { $0.id == persisted.leagueId }) {
+            if let teamName = teamName(for: persisted.teamId) {
                 let teamRepository = TeamRepository()
                 let availableLeagues = teamRepository.teamLeagues(teamId: persisted.teamId, season: persisted.season)
+                
+                // Restore competition filter: if leagueId is 0, use aggregate view
+                let restoredCompetition: TeamTab.TeamCompetitionFilter = 
+                    persisted.leagueId == 0 ? .all : .specific(leagueId: persisted.leagueId)
                 
                 var tab = TeamTab(
                     teamId: persisted.teamId,
                     teamName: teamName,
                     season: persisted.season,
-                    initialLeagueId: persisted.leagueId
+                    initialCompetition: restoredCompetition
                 )
                 tab.availableLeagues = availableLeagues
                 if let activeTab = TeamTab.TeamTabView(rawValue: persisted.activeTab) {
@@ -385,7 +399,8 @@ final class AppState: ObservableObject {
             case .league(let id):
                 activeTabId = openLeagues.first { $0.league.id == id }?.id
             case .team(let teamId, let leagueId, _):
-                activeTabId = openTeams.first { $0.teamId == teamId && $0.selectedLeagueId == leagueId }?.id
+                let competitionFilter: TeamTab.TeamCompetitionFilter = leagueId == 0 ? .all : .specific(leagueId: leagueId)
+                activeTabId = openTeams.first { $0.teamId == teamId && $0.selectedCompetition == competitionFilter }?.id
             }
         }
     }
@@ -400,7 +415,7 @@ final class AppState: ObservableObject {
             return .league(id: tab.league.id)
         }
         if let tab = openTeams.first(where: { $0.id == tabId }) {
-            return .team(teamId: tab.teamId, leagueId: tab.selectedLeagueId, season: tab.season)
+            return .team(teamId: tab.teamId, leagueId: tab.selectedCompetition.leagueId ?? 0, season: tab.season)
         }
         return nil
     }
@@ -477,7 +492,7 @@ final class AppState: ObservableObject {
                 guard let index = self.openTeams.firstIndex(where: { $0.id == tabId }),
                       index < self.openTeams.count else {
                     // Return a default tab if the binding becomes invalid
-                    return TeamTab(teamId: 0, teamName: "Unknown", season: 2025, initialLeagueId: 0)
+                    return TeamTab(teamId: 0, teamName: "Unknown", season: 2025)
                 }
                 return self.openTeams[index]
             },

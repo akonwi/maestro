@@ -37,12 +37,23 @@ final class TeamRepository {
         return results
     }
 
-    func teamDetails(teamId: Int, leagueId: Int, leagueName: String, season: Int) -> TeamDetails? {
+    func teamDetails(teamId: Int, competitionFilter: TeamTab.TeamCompetitionFilter, season: Int) -> TeamDetails? {
         guard let db = Database.shared.handle else { return nil }
 
         guard let teamName = getTeamName(teamId: teamId, db: db) else { return nil }
 
-        let fixtures = getTeamFixtures(teamId: teamId, leagueId: leagueId, season: season, db: db)
+        let fixtures: [FixtureData]
+        let contextName: String
+        
+        switch competitionFilter {
+        case .all:
+            fixtures = getTeamFixturesAllLeagues(teamId: teamId, season: season, db: db)
+            contextName = "All Competitions"
+        case .specific(let leagueId):
+            fixtures = getTeamFixtures(teamId: teamId, leagueId: leagueId, season: season, db: db)
+            contextName = getLeagueName(leagueId: leagueId, db: db) ?? "Unknown League"
+        }
+        
         let finishedFixtures = fixtures.filter { $0.isFinished }
         let formFixtures = Array(finishedFixtures.suffix(formLimit))
 
@@ -85,8 +96,8 @@ final class TeamRepository {
         return TeamDetails(
             teamId: teamId,
             teamName: teamName,
-            leagueId: leagueId,
-            leagueName: leagueName,
+            leagueId: competitionFilter.leagueId ?? 0,
+            leagueName: contextName,
             season: season,
             seasonRecord: seasonRecord,
             formRecord: formRecord,
@@ -107,6 +118,25 @@ final class TeamRepository {
         }
 
         sqlite3_bind_int64(statement, 1, Int64(teamId))
+
+        var name: String?
+        if sqlite3_step(statement) == SQLITE_ROW {
+            name = String(cString: sqlite3_column_text(statement, 0))
+        }
+
+        sqlite3_finalize(statement)
+        return name
+    }
+    
+    private func getLeagueName(leagueId: Int, db: OpaquePointer) -> String? {
+        let sql = "SELECT name FROM leagues WHERE id = ?;"
+        var statement: OpaquePointer?
+
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return nil
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(leagueId))
 
         var name: String?
         if sqlite3_step(statement) == SQLITE_ROW {
@@ -154,6 +184,49 @@ final class TeamRepository {
         sqlite3_bind_int64(statement, 2, Int64(teamId))
         sqlite3_bind_int64(statement, 3, Int64(leagueId))
         sqlite3_bind_int64(statement, 4, Int64(season))
+
+        var results: [FixtureData] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            results.append(FixtureData(
+                id: Int(sqlite3_column_int64(statement, 0)),
+                homeId: Int(sqlite3_column_int64(statement, 1)),
+                awayId: Int(sqlite3_column_int64(statement, 2)),
+                homeName: String(cString: sqlite3_column_text(statement, 3)),
+                awayName: String(cString: sqlite3_column_text(statement, 4)),
+                homeGoals: Int(sqlite3_column_int(statement, 5)),
+                awayGoals: Int(sqlite3_column_int(statement, 6)),
+                timestamp: sqlite3_column_int64(statement, 7),
+                isFinished: sqlite3_column_int(statement, 8) == 1,
+                leagueId: Int(sqlite3_column_int64(statement, 9)),
+                season: Int(sqlite3_column_int64(statement, 10))
+            ))
+        }
+
+        sqlite3_finalize(statement)
+        return results
+    }
+    
+    private func getTeamFixturesAllLeagues(teamId: Int, season: Int, db: OpaquePointer) -> [FixtureData] {
+        let sql = """
+        SELECT
+            f.id, f.home_id, f.away_id, h.name, a.name,
+            f.home_goals, f.away_goals, f.timestamp, f.finished,
+            f.league_id, f.season
+        FROM fixtures f
+        INNER JOIN teams h ON h.id = f.home_id
+        INNER JOIN teams a ON a.id = f.away_id
+        WHERE (f.home_id = ? OR f.away_id = ?) AND f.season = ?
+        ORDER BY f.timestamp ASC;
+        """
+
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) != SQLITE_OK {
+            return []
+        }
+
+        sqlite3_bind_int64(statement, 1, Int64(teamId))
+        sqlite3_bind_int64(statement, 2, Int64(teamId))
+        sqlite3_bind_int64(statement, 3, Int64(season))
 
         var results: [FixtureData] = []
         while sqlite3_step(statement) == SQLITE_ROW {
