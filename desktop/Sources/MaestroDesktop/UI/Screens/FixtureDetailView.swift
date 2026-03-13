@@ -9,6 +9,7 @@ struct FixtureDetailView: View {
     @State private var matchupData: MatchupData?
     @State private var cornerOdds: CornerOddsData?
     @State private var goalOddsMarkets: [APIOddsMarket] = []
+    @State private var hasResolvedOddsForSelectedBookmaker = false
     @State private var isLoadingOdds = false
     @State private var selectedBookmaker: BookmakerInfo = .defaultBookmaker
     @State private var selectedBetLine: SelectedBetLine?
@@ -146,6 +147,7 @@ struct FixtureDetailView: View {
             goalAnalysisError = nil
             goalAnalysisStatusMessage = nil
             goalOddsMarkets = []
+            hasResolvedOddsForSelectedBookmaker = false
             loadStats()
             stopSyncTimer()
             startSyncTimerIfNeeded()
@@ -245,6 +247,7 @@ struct FixtureDetailView: View {
         guard goalAnalysis == nil else { return }
         guard !isLoadingGoalAnalysis else { return }
         guard !hasAutoGoalProjectionAttempted else { return }
+        guard hasResolvedOddsForSelectedBookmaker || appState.apiToken.isEmpty else { return }
 
         hasAutoGoalProjectionAttempted = true
         runGoalAnalysis()
@@ -300,14 +303,18 @@ struct FixtureDetailView: View {
         guard !fixture.isFinished else {
             cornerOdds = nil
             goalOddsMarkets = []
+            hasResolvedOddsForSelectedBookmaker = false
             return
         }
+
+        hasResolvedOddsForSelectedBookmaker = false
 
         // Check cache first (only if using default bookmaker)
         if selectedBookmaker.id == BookmakerInfo.defaultBookmaker.id,
            let cached = OddsCache.shared.getBundle(fixtureId: fixture.id) {
             cornerOdds = cached.cornerOdds
             goalOddsMarkets = cached.goalMarkets
+            hasResolvedOddsForSelectedBookmaker = true
             // Update selected bookmaker to match cached data
             if let cachedBookmaker = cached.cornerOdds.bookmaker {
                 selectedBookmaker = cachedBookmaker
@@ -324,10 +331,12 @@ struct FixtureDetailView: View {
         guard !appState.apiToken.isEmpty else {
             cornerOdds = nil
             goalOddsMarkets = []
+            hasResolvedOddsForSelectedBookmaker = true
             return
         }
 
         if showLoadingState {
+            hasResolvedOddsForSelectedBookmaker = false
             isLoadingOdds = true
         }
         let client = APIFootballClient(apiKey: appState.apiToken)
@@ -366,14 +375,18 @@ struct FixtureDetailView: View {
                     }
                     cornerOdds = oddsData
                     goalOddsMarkets = supportedGoalMarkets
+                    hasResolvedOddsForSelectedBookmaker = true
                     isLoadingOdds = false
 
                     let bookmakerChanged = lastGoalAnalysisBookmakerId != nil && lastGoalAnalysisBookmakerId != bookmakerId
                     let gainedGoalMarkets = lastGoalAnalysisMarketCount == 0 && !supportedGoalMarkets.isEmpty
-                    if canModifyAnalysis,
-                       !isLoadingGoalAnalysis,
-                       goalAnalysis == nil || bookmakerChanged || gainedGoalMarkets {
-                        runGoalAnalysis()
+
+                    if goalAnalysis == nil {
+                        maybeAutoRunGoalProjection()
+                    } else if canModifyAnalysis,
+                              !isLoadingGoalAnalysis,
+                              bookmakerChanged || gainedGoalMarkets {
+                        runGoalAnalysis(preserveExistingResult: true)
                     }
                 }
             } catch {
@@ -382,7 +395,9 @@ struct FixtureDetailView: View {
                         cornerOdds = nil
                         goalOddsMarkets = []
                     }
+                    hasResolvedOddsForSelectedBookmaker = true
                     isLoadingOdds = false
+                    maybeAutoRunGoalProjection()
                 }
             }
         }
@@ -878,8 +893,17 @@ struct FixtureDetailView: View {
                 Text("Goal Projection")
                     .font(.headline)
                 Spacer()
+                if isLoadingGoalAnalysis, goalAnalysis != nil {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                        Text(goalAnalysisStatusMessage ?? "Refreshing...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if canModifyAnalysis {
-                    Button(action: runGoalAnalysis) {
+                    Button(action: { runGoalAnalysis(preserveExistingResult: goalAnalysis != nil) }) {
                         Label(goalAnalysis == nil ? "Project" : "Refresh", systemImage: "soccerball")
                     }
                     .buttonStyle(.borderedProminent)
@@ -888,7 +912,9 @@ struct FixtureDetailView: View {
                 }
             }
 
-            if isLoadingGoalAnalysis {
+            if let analysis = goalAnalysis {
+                goalAnalysisResultView(analysis: analysis)
+            } else if isLoadingGoalAnalysis {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.7)
@@ -910,8 +936,6 @@ struct FixtureDetailView: View {
                             .controlSize(.small)
                     }
                 }
-            } else if let analysis = goalAnalysis {
-                goalAnalysisResultView(analysis: analysis)
             } else {
                 Text(canModifyAnalysis ? "No goal projection available yet." : "Goal projection unavailable after kickoff.")
                     .font(.caption)
@@ -1547,10 +1571,10 @@ struct FixtureDetailView: View {
         }
     }
 
-    private func runGoalAnalysis() {
+    private func runGoalAnalysis(preserveExistingResult: Bool = false) {
         isLoadingGoalAnalysis = true
         goalAnalysisError = nil
-        goalAnalysisStatusMessage = "Loading goal model features..."
+        goalAnalysisStatusMessage = preserveExistingResult ? "Refreshing goal projection..." : "Loading goal model features..."
 
         Task {
             do {
@@ -1726,6 +1750,7 @@ struct FixtureDetailView: View {
                 .labelsHidden()
                 .frame(width: 120)
                 .onChange(of: selectedBookmaker) {
+                    hasAutoGoalProjectionAttempted = false
                     fetchOdds(bookmakerId: selectedBookmaker.id)
                 }
             }
