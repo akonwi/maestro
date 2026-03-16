@@ -382,6 +382,13 @@ struct MainScreen: View {
                             Text(section.name)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            Button {
+                                appState.syncLeague(id: section.id)
+                            } label: {
+                                Label("Sync", systemImage: "arrow.trianglehead.2.clockwise")
+                            }
+                        }
                     }
                 }
             }
