@@ -1295,17 +1295,26 @@ struct FixtureDetailView: View {
                 Text("Corner Projection")
                     .font(.headline)
                 Spacer()
-                if aiAnalysis == nil && !isLoadingAnalysis && canModifyAnalysis {
+                if isLoadingAnalysis, aiAnalysis != nil {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                        Text(analysisStatusMessage ?? "Refreshing...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if canModifyAnalysis {
                     Button(action: runAnalysis) {
-                        Label("Project", systemImage: "chart.line.uptrend.xyaxis")
+                        Label(aiAnalysis == nil ? "Project" : "Refresh", systemImage: "chart.line.uptrend.xyaxis")
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .disabled(matchupData == nil)
+                    .disabled(isLoadingAnalysis || matchupData == nil)
                 }
             }
 
-            if isLoadingAnalysis {
+            if isLoadingAnalysis, aiAnalysis == nil {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.7)
@@ -1329,8 +1338,8 @@ struct FixtureDetailView: View {
                 }
             } else if let analysis = aiAnalysis {
                 aiAnalysisResultView(analysis: analysis)
-            } else if !canModifyAnalysis {
-                Text("No analysis available")
+            } else {
+                Text(canModifyAnalysis ? "No corner projection available yet." : "Corner projection unavailable after kickoff.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
