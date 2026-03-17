@@ -460,6 +460,8 @@ private struct GoalOddsDecisionEngine {
     private let minEdgePoints = 5.0
     private let minEVPct = 4.0
     private let shortestAllowedFavoriteOdds = -210
+    private let longestAllowedUnderdogOdds = 400
+    private let minEstimatedProbability = 0.25
     private let maxPicksPerFixture = 2
     private let maxFixtureExposurePct = 0.03
     private let secondPickMinConfidence = 0.70
@@ -517,12 +519,21 @@ private struct GoalOddsDecisionEngine {
                     passReasons.append("\(market.marketName) \(line.name): odds \(line.odds) too short for target return.")
                     continue
                 }
+                if line.odds > longestAllowedUnderdogOdds {
+                    passReasons.append("\(market.marketName) \(line.name): odds +\(line.odds) too long — Poisson tail estimates unreliable.")
+                    continue
+                }
+                guard probability.winProbability >= minEstimatedProbability else {
+                    passReasons.append("\(market.marketName) \(line.name): model probability \(Int(probability.winProbability * 100))% too low for reliable estimation.")
+                    continue
+                }
                 guard confidence >= effectiveMinConfidence else {
                     passReasons.append("\(market.marketName) \(line.name): confidence \(Int(confidence * 100))% below threshold.")
                     continue
                 }
-                guard edge >= effectiveMinEdgePoints else {
-                    passReasons.append("\(market.marketName) \(line.name): edge \(String(format: "%.1f", edge))pp below threshold.")
+                let scaledMinEdge = scaledEdgeThreshold(odds: line.odds, baseEdge: effectiveMinEdgePoints)
+                guard edge >= scaledMinEdge else {
+                    passReasons.append("\(market.marketName) \(line.name): edge \(String(format: "%.1f", edge))pp below threshold (\(String(format: "%.1f", scaledMinEdge))pp required at these odds).")
                     continue
                 }
                 guard evPct >= effectiveMinEVPct else {
@@ -768,6 +779,24 @@ private struct GoalOddsDecisionEngine {
         let maxStake = bankroll * 0.015
         let floorStake = min(max(1.0, bankroll * 0.002), maxStake)
         return min(max(rawStake, floorStake), maxStake)
+    }
+
+    /// Requires larger edges at longer odds where Poisson tail estimates are less reliable.
+    /// Base threshold (5pp) applies at short favorites. Scales up through plus-money territory.
+    private func scaledEdgeThreshold(odds: Int, baseEdge: Double) -> Double {
+        if odds <= 0 {
+            // Favorites: use base threshold
+            return baseEdge
+        } else if odds <= 150 {
+            // Short plus-money: moderate increase
+            return baseEdge * 1.4
+        } else if odds <= 250 {
+            // Mid plus-money: significant increase
+            return baseEdge * 1.8
+        } else {
+            // Long plus-money (+250 to +400): require strong edge
+            return baseEdge * 2.2
+        }
     }
 
     private func riskNotes(pushProbability: Double, confidence: Double, winProbability: Double) -> [String] {
