@@ -116,9 +116,17 @@ struct BetsListView: View {
         return HStack {
             VStack(alignment: .leading, spacing: 4) {
                 if let fixture = fixture {
-                    Text("\(fixture.homeName) v \(fixture.awayName)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                    Button {
+                        appState.openFixture(fixture)
+                        dismiss()
+                    } label: {
+                        Text("\(fixture.homeName) v \(fixture.awayName)")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open fixture details")
                 }
                 Text(bet.displayDescription)
                     .font(.caption)

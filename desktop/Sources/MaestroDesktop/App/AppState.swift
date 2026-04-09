@@ -28,6 +28,7 @@ final class AppState: ObservableObject {
     private let leagueRepository = LeagueRepository()
     private var cancellables = Set<AnyCancellable>()
     private var settleTimer: Timer?
+    private var fixtureRefreshTimer: Timer?
 
     init() {
         apiToken = settingsRepository.getApiToken()
@@ -38,6 +39,7 @@ final class AppState: ObservableObject {
         restoreSession()
         setupSessionPersistence()
         startSettleTimer()
+        startFixtureRefreshTimer()
 
         syncService.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -54,6 +56,17 @@ final class AppState: ObservableObject {
         settleTimer = Timer.scheduledTimer(withTimeInterval: 5 * 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.trySettlePendingBets()
+            }
+        }
+    }
+
+    private func startFixtureRefreshTimer() {
+        // Sync all followed leagues every 30 minutes to keep fixture list current
+        fixtureRefreshTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, !self.apiToken.isEmpty else { return }
+                await self.syncService.syncAllLeagues(apiKey: self.apiToken)
+                self.refreshFixtures()
             }
         }
     }
