@@ -1,57 +1,5 @@
 import Foundation
 
-// MARK: - Corner Odds
-
-struct CornerOddsData: Equatable, Codable {
-    let markets: [CornerMarket]
-    let bookmaker: BookmakerInfo?
-
-    static let empty = CornerOddsData(markets: [], bookmaker: nil)
-
-    init(markets: [CornerMarket], bookmaker: BookmakerInfo? = nil) {
-        self.markets = markets
-        self.bookmaker = bookmaker
-    }
-}
-
-struct BookmakerInfo: Equatable, Codable, Identifiable, Hashable {
-    let id: Int
-    let name: String
-
-    static let available: [BookmakerInfo] = [
-        BookmakerInfo(id: 8, name: "Bet365"),
-        BookmakerInfo(id: 6, name: "Bwin"),
-        BookmakerInfo(id: 11, name: "1xBet"),
-        BookmakerInfo(id: 3, name: "Unibet"),
-        BookmakerInfo(id: 1, name: "10Bet"),
-        BookmakerInfo(id: 2, name: "888Sport"),
-        BookmakerInfo(id: 4, name: "William Hill"),
-        BookmakerInfo(id: 5, name: "Ladbrokes"),
-    ]
-
-    static let defaultBookmaker = BookmakerInfo(id: 8, name: "Bet365")
-}
-
-struct CornerMarket: Identifiable, Equatable, Codable {
-    let id: Int
-    let name: String
-    let lines: [CornerLine]
-}
-
-struct CornerLine: Identifiable, Equatable, Codable {
-    let id: String
-    let name: String
-    let americanOdd: Int
-    let value: Double?
-
-    var formattedOdd: String {
-        if americanOdd > 0 {
-            return "+\(americanOdd)"
-        }
-        return "\(americanOdd)"
-    }
-}
-
 // MARK: - Form Scope
 
 enum FormScope: String, CaseIterable, Identifiable {

@@ -41,7 +41,6 @@ struct FixtureTab: Identifiable, Equatable {
     enum FixtureTabView: String, Identifiable, Equatable {
         case matchStats = "Match Stats"
         case preMatch = "Pre-match"
-        case betting = "Betting"
         var id: String { rawValue }
     }
 

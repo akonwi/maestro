@@ -5,33 +5,6 @@ struct ChatTools {
     static func definitions() -> [[String: Any]] {
         [
             makeTool(
-                name: "get_bet_stats",
-                description: "Get overall betting performance stats including total bets, wins, losses, ROI, net profit, and win rate.",
-                parameters: [:]
-            ),
-            makeTool(
-                name: "get_all_bets",
-                description: "Get all bets the user has placed, including fixture ID, market, odds, stake, result, and notes.",
-                parameters: [
-                    "properties": [:] as [String: Any],
-                ]
-            ),
-            makeTool(
-                name: "get_pending_bets",
-                description: "Get all unsettled/pending bets.",
-                parameters: [:]
-            ),
-            makeTool(
-                name: "get_bets_for_fixture",
-                description: "Get all bets placed on a specific fixture/match.",
-                parameters: [
-                    "properties": [
-                        "fixture_id": ["type": "integer", "description": "The fixture ID"],
-                    ] as [String: Any],
-                    "required": ["fixture_id"],
-                ]
-            ),
-            makeTool(
                 name: "get_fixtures_for_date",
                 description: "Get all fixtures/matches for a given date, grouped by league.",
                 parameters: [
@@ -72,32 +45,11 @@ struct ChatTools {
                     "required": ["league_id", "season"],
                 ]
             ),
-            makeTool(
-                name: "get_corner_analysis",
-                description: "Get the saved AI corner betting analysis for a fixture. Includes expected corners, recommended picks with confidence/EV, and risks.",
-                parameters: [
-                    "properties": [
-                        "fixture_id": ["type": "integer", "description": "The fixture ID"],
-                    ] as [String: Any],
-                    "required": ["fixture_id"],
-                ]
-            ),
         ]
     }
 
     static func execute(name: String, arguments: [String: Any]) -> String {
         switch name {
-        case "get_bet_stats":
-            return serializeBetStats(BetRepository.shared.stats())
-        case "get_all_bets":
-            return serializeBets(BetRepository.shared.allBets())
-        case "get_pending_bets":
-            return serializeBets(BetRepository.shared.pendingBets())
-        case "get_bets_for_fixture":
-            guard let fixtureId = intArg(arguments, "fixture_id") else {
-                return errorJSON("Missing or invalid fixture_id")
-            }
-            return serializeBets(BetRepository.shared.bets(for: fixtureId))
         case "get_fixtures_for_date":
             guard let dateStr = arguments["date"] as? String else {
                 return errorJSON("Missing date parameter")
@@ -131,14 +83,6 @@ struct ChatTools {
             }
             let repo = LeagueRepository()
             return serializeStandings(repo.standings(leagueId: leagueId, season: season))
-        case "get_corner_analysis":
-            guard let fixtureId = intArg(arguments, "fixture_id") else {
-                return errorJSON("Missing fixture_id")
-            }
-            guard let cached = AnalysisCache.shared.get(fixtureId: fixtureId) else {
-                return errorJSON("No saved analysis for fixture \(fixtureId)")
-            }
-            return serializeAnalysis(cached)
         default:
             return errorJSON("Unknown tool: \(name)")
         }
@@ -183,41 +127,6 @@ struct ChatTools {
     }
 
     // MARK: - Serializers
-
-    private static func serializeBetStats(_ stats: BetStats) -> String {
-        toJSON([
-            "totalBets": stats.totalBets,
-            "pendingBets": stats.pendingBets,
-            "wins": stats.wins,
-            "losses": stats.losses,
-            "pushes": stats.pushes,
-            "totalStaked": stats.totalStaked,
-            "totalPayout": stats.totalPayout,
-            "netProfit": stats.netProfit,
-            "winRate": stats.winRate,
-            "roi": stats.roi,
-        ] as [String: Any])
-    }
-
-    private static func serializeBets(_ bets: [Bet]) -> String {
-        let items = bets.map { bet in
-            [
-                "id": bet.id,
-                "fixtureId": bet.fixtureId,
-                "market": bet.marketName,
-                "marketId": bet.marketId,
-                "line": bet.line as Any,
-                "odds": bet.odds,
-                "formattedOdds": bet.formattedOdds,
-                "stake": bet.stake,
-                "result": bet.result.rawValue,
-                "notes": bet.notes as Any,
-                "potentialPayout": bet.potentialPayout,
-                "createdAt": ISO8601DateFormatter().string(from: bet.createdAt),
-            ] as [String: Any]
-        }
-        return toJSON(items)
-    }
 
     private static func serializeLeagueSections(_ sections: [LeagueSection]) -> String {
         let items = sections.map { section in
@@ -299,14 +208,5 @@ struct ChatTools {
             ] as [String: Any]
         }
         return toJSON(items)
-    }
-
-    private static func serializeAnalysis(_ cached: CachedAnalysis) -> String {
-        guard let data = try? JSONEncoder().encode(cached.analysis),
-              var dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return errorJSON("Failed to serialize analysis")
-        }
-        dict["cachedAt"] = ISO8601DateFormatter().string(from: cached.cachedAt)
-        return toJSON(dict)
     }
 }

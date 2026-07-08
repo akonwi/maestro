@@ -15,11 +15,8 @@ final class AppState: ObservableObject {
     @Published var didAutoSelectDate = false
     @Published var apiToken: String = ""
     @Published var openAIKey: String = ""
-    @Published var bankroll: Double = 0
     @Published var followedLeagues: [FollowedLeague] = []
     @Published var toast: Toast?
-    @Published var betStats: BetStats = .empty
-    @Published var pendingBets: [Bet] = []
 
     let syncService = SyncService()
 
@@ -27,18 +24,14 @@ final class AppState: ObservableObject {
     private let settingsRepository = SettingsRepository()
     private let leagueRepository = LeagueRepository()
     private var cancellables = Set<AnyCancellable>()
-    private var settleTimer: Timer?
     private var fixtureRefreshTimer: Timer?
 
     init() {
         apiToken = settingsRepository.getApiToken()
         openAIKey = settingsRepository.getOpenAIKey()
-        bankroll = settingsRepository.getBankroll()
         refreshLeagues()
-        refreshBets()
         restoreSession()
         setupSessionPersistence()
-        startSettleTimer()
         startFixtureRefreshTimer()
 
         syncService.objectWillChange
@@ -49,17 +42,6 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func startSettleTimer() {
-        trySettlePendingBets()
-
-        // Check every 5 minutes
-        settleTimer = Timer.scheduledTimer(withTimeInterval: 5 * 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.trySettlePendingBets()
-            }
-        }
-    }
-
     private func startFixtureRefreshTimer() {
         // Sync all followed leagues every 30 minutes to keep fixture list current
         fixtureRefreshTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { [weak self] _ in
@@ -68,15 +50,6 @@ final class AppState: ObservableObject {
                 await self.syncService.syncAllLeagues(apiKey: self.apiToken)
                 self.refreshFixtures()
             }
-        }
-    }
-
-    private func trySettlePendingBets() {
-        // Always check the database directly, don't rely on cached pendingBets
-        let settledCount = BetRepository.shared.trySettlePendingBets()
-        if settledCount > 0 {
-            refreshBets()
-            toast = .success("Auto-settled \(settledCount) bet\(settledCount == 1 ? "" : "s")")
         }
     }
 
@@ -182,18 +155,8 @@ final class AppState: ObservableObject {
         settingsRepository.setOpenAIKey(key)
     }
 
-    func updateBankroll(_ amount: Double) {
-        bankroll = amount
-        settingsRepository.setBankroll(amount)
-    }
-
     func refreshLeagues() {
         followedLeagues = leagueRepository.followedLeagues()
-    }
-
-    func refreshBets() {
-        betStats = BetRepository.shared.stats()
-        pendingBets = BetRepository.shared.pendingBets()
     }
 
     func followAndSync(league: LeagueSearchResult) {

@@ -4,7 +4,7 @@ This file provides guidance to coding agents working in this repository.
 
 ## Project Overview
 
-Maestro is now a desktop-only macOS app for viewing soccer fixtures, syncing league data from API-Football, tracking stats, and managing bets locally.
+Maestro is a desktop-only macOS app for exploring soccer data. It syncs fixtures and stats from API-Football into a local SQLite store, then lets the user slice that data along tactical axes (form, possession, xG, and — planned — formations, player performance vs opposition context).
 
 The active application lives in:
 
@@ -26,7 +26,7 @@ Fight entropy. Leave the codebase better than you found it.
 - **Database**: SQLite3 (C API, no ORM)
 - **External APIs**:
   - API-Football.com v3
-  - OpenAI Responses API
+  - OpenAI Chat Completions API (used only by the in-app AI chat)
 
 ## Development Commands
 

@@ -5,7 +5,6 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var tokenDraft: String = ""
     @State private var openAIKeyDraft: String = ""
-    @State private var bankrollDraft: Double = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -26,22 +25,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 SecureField("sk-...", text: $openAIKeyDraft)
                     .textFieldStyle(.roundedBorder)
-                Text("Used for AI corner analysis")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Bankroll")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Text("$")
-                    TextField("0", value: $bankrollDraft, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 100)
-                }
-                Text("Your total betting bankroll for stake sizing recommendations")
+                Text("Used for the in-app AI chat")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -50,10 +34,8 @@ struct SettingsView: View {
                 Button("Clear All") {
                     tokenDraft = ""
                     openAIKeyDraft = ""
-                    bankrollDraft = 0
                     appState.updateApiToken("")
                     appState.updateOpenAIKey("")
-                    appState.updateBankroll(0)
                 }
                 .buttonStyle(.bordered)
 
@@ -68,7 +50,6 @@ struct SettingsView: View {
                 Button("Save") {
                     appState.updateApiToken(tokenDraft)
                     appState.updateOpenAIKey(openAIKeyDraft)
-                    appState.updateBankroll(bankrollDraft)
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
@@ -80,7 +61,6 @@ struct SettingsView: View {
         .onAppear {
             tokenDraft = appState.apiToken
             openAIKeyDraft = appState.openAIKey
-            bankrollDraft = appState.bankroll
         }
     }
 }
