@@ -68,7 +68,8 @@ Ard's stdlib is intentionally small; the idiomatic path for backend work is dire
 - **Outbound HTTP** — Go interop with `net/http` for calls to API-Football and Resend. Wrapping in a small local `http.ard` helper module is optional.
 - **Background worker** — `async::start` with `Chan`-driven ticker + shutdown signal, following the pattern demonstrated in the chi-server example. Polls API-Football on a schedule (see "Sync worker" below).
 - **Config** — `use go:os` for env vars (validated at startup); no config file for v1.
-- **Migrations** — [`migr`](https://github.com/akonwi/migr) CLI, run at container startup by the entrypoint (`migr up && exec server`). SQL files as `NNN_name.up.sql` / `NNN_name.down.sql` under `server/migrations/`. Driven by `DATABASE_URL`.
+- **Migrations** — [`migr`](https://github.com/akonwi/migr) CLI, run at container startup by the entrypoint (`migr up` then `exec server`). SQL files as `NNN_name.up.sql` / `NNN_name.down.sql` under `server/migrations/`. Driven by `DATABASE_URL`.
+  - **Gotcha (found in M1):** the published `migr` release binary is compiled CGO-free, but its `ard/sql` backend uses `mattn/go-sqlite3` which requires CGO, so the release's SQLite path is a non-functional stub. We therefore **build migr from source with CGO on** inside the Docker image, pinned to a commit that builds against Ard 0.25.0 (0.24.0 lacks needed syntax; current dev dropped the `ard/sql`/`ard/io`/`ard/argv`/`ard/decode` stdlib modules migr relies on). Local dev can use the Homebrew `migr` (built with CGO) directly.
 - **TLS** — terminated at Zeabur's edge; server speaks plain HTTP internally.
 
 Rough edges to expect from Ard's Go interop:
