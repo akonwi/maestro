@@ -1,0 +1,45 @@
+use ard/unsafe
+
+use go:bytes
+use go:encoding/json
+use go:net/http
+use maestro_server/config
+
+// Minimal Resend wrapper. One POST /emails call per message. Plain-text
+// bodies only for v1.
+
+let ENDPOINT: Str = "https://api.resend.com/emails"
+
+fn send(cfg: config::Config, to: Str, subject: Str, text: Str) Void!Str {
+  let payload: [Str: Any] = [
+    "from": cfg.resend_from_email,
+    "to": [to],
+    "subject": subject,
+    "text": text,
+  ]
+
+  let body_bytes = try json::Marshal(payload)
+  mut buf = body_bytes
+  let reader = bytes::NewReader(buf)
+
+  mut req = try http::NewRequest("POST", ENDPOINT, reader)
+  req.Header.Set("Authorization", "Bearer {cfg.resend_api_key}")
+  req.Header.Set("Content-Type", "application/json")
+
+  mut client = http::Client{}
+  let resp = try client.Do(req)
+
+  // Guard the Response pointer before touching it — a nil resp on error
+  // would panic on field access.
+  match unsafe::is_nil(resp) {
+    true => Result::err("resend: nil response"),
+    false => {
+      let status = resp.StatusCode
+      try resp.Body.Close()
+      match status >= 200 and status < 300 {
+        true => Result::ok(()),
+        false => Result::err("resend rejected the message: HTTP {status}"),
+      }
+    },
+  }
+}

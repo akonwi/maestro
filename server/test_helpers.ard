@@ -1,0 +1,45 @@
+use maestro_server/app
+use maestro_server/config
+use maestro_server/sql
+
+// Test-only fixtures. Each test builds a fresh in-memory database
+// (:memory: guarantees isolation because our pool caps MaxOpenConns=1).
+
+let SCHEMA: Str = "
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  display_name TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE magic_links (
+  token TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  consumed_at INTEGER
+);
+
+CREATE TABLE sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+"
+
+fn build_app() app::App!Str {
+  let db = try sql::open(":memory:")
+  try sql::exec(db, SCHEMA, [])
+  let cfg = config::Config{
+    database_url: ":memory:",
+    listen_addr: "",
+    resend_api_key: "test",
+    resend_from_email: "test@example.com",
+    server_base_url: "http://test.local",
+    app_base_url: "http://test.local",
+    magic_link_ttl_secs: 900,
+    session_ttl_secs: 2592000,
+  }
+  Result::ok(app::App{db: db, config: cfg})
+}

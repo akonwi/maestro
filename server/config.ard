@@ -1,0 +1,69 @@
+use go:os
+use go:strconv
+
+// All configuration comes from environment variables. Read once at startup;
+// required values fail the process before any HTTP surface is up.
+
+struct Config {
+  database_url: Str,
+  listen_addr: Str,
+  resend_api_key: Str,
+  resend_from_email: Str,
+  server_base_url: Str,
+  app_base_url: Str,
+  magic_link_ttl_secs: Int,
+  session_ttl_secs: Int,
+}
+
+fn load() Config!Str {
+  let database_url = getenv_or("DATABASE_URL", "maestro.db")
+  let port = getenv_or("PORT", "8080")
+  let resend_api_key = try require("RESEND_API_KEY")
+  let resend_from_email = getenv_or("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+  let server_base_url = try require("SERVER_BASE_URL")
+  let app_base_url = try require("APP_BASE_URL")
+  let magic_link_ttl_secs = try parse_int_env("MAGIC_LINK_TTL_SECONDS", 900)
+  let session_ttl_secs = try parse_int_env("SESSION_TTL_SECONDS", 2592000)
+
+  Result::ok(
+    Config{
+      database_url: database_url,
+      listen_addr: "0.0.0.0:{port}",
+      resend_api_key: resend_api_key,
+      resend_from_email: resend_from_email,
+      server_base_url: server_base_url,
+      app_base_url: app_base_url,
+      magic_link_ttl_secs: magic_link_ttl_secs,
+      session_ttl_secs: session_ttl_secs,
+    },
+  )
+}
+
+private fn getenv_or(name: Str, fallback: Str) Str {
+  let value = os::Getenv(name)
+  match value.is_empty() {
+    true => fallback,
+    false => value,
+  }
+}
+
+private fn require(name: Str) Str!Str {
+  let value = os::Getenv(name)
+  match value.is_empty() {
+    true => Result::err("{name} is required"),
+    false => Result::ok(value),
+  }
+}
+
+private fn parse_int_env(name: Str, fallback: Int) Int!Str {
+  let raw = os::Getenv(name)
+  match raw.is_empty() {
+    true => Result::ok(fallback),
+    false => {
+      match strconv::Atoi(raw) {
+        ok(value) => Result::ok(value),
+        err(message) => Result::err("{name} must be an integer: {message}"),
+      }
+    },
+  }
+}

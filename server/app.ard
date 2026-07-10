@@ -1,0 +1,11 @@
+use maestro_server/config
+use maestro_server/sql
+
+// A cheap value threaded through every handler. The db handle is a Go
+// pointer, so copying `App` is copying that pointer; no need to pass
+// `mut App` around.
+
+struct App {
+  db: sql::Database,
+  config: config::Config,
+}

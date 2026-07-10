@@ -73,17 +73,23 @@ fn string(data: Any) Str!Error {
   }
 }
 
-// JSON numbers arrive as Float64; accept only integral values.
+// JSON numbers arrive as Float64; SQL integer columns are normalized to
+// Int by ffi/db.go. Accept either and reject non-integral floats.
 fn int(data: Any) Int!Error {
-  match unsafe::cast<Float64>(data) {
-    value => {
-      let truncated = value.to_int()
-      match truncated.to_f64() == value {
-        true => Result::ok(truncated),
-        false => Result::err(fail("an integer")),
+  match unsafe::cast<Int>(data) {
+    v => Result::ok(v),
+    _ => {
+      match unsafe::cast<Float64>(data) {
+        value => {
+          let truncated = value.to_int()
+          match truncated.to_f64() == value {
+            true => Result::ok(truncated),
+            false => Result::err(fail("an integer")),
+          }
+        },
+        _ => Result::err(fail("a number")),
       }
     },
-    _ => Result::err(fail("a number")),
   }
 }
 

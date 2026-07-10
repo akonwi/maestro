@@ -81,13 +81,24 @@ func Query(db *DB, query string, args []any) ([]map[string]any, error) {
 		}
 		row := make(map[string]any, len(cols))
 		for i, col := range cols {
-			v := values[i]
-			if b, ok := v.([]byte); ok {
-				v = string(b)
-			}
-			row[col] = v
+			row[col] = normalize(values[i])
 		}
 		out = append(out, row)
 	}
 	return out, rows.Err()
+}
+
+// normalize maps values returned by database/sql into Ard-friendly Go
+// types. Notably: []byte -> string (SQLite TEXT columns can come back
+// either way), and int64 -> int so Ard code can `unsafe::cast<Int>`
+// directly instead of dealing with the sized Int64 type.
+func normalize(v any) any {
+	switch x := v.(type) {
+	case []byte:
+		return string(x)
+	case int64:
+		return int(x)
+	default:
+		return v
+	}
 }

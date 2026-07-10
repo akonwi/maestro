@@ -2,70 +2,30 @@ use ard/async
 
 use go:context
 use go:fmt
-use go:github.com/go-chi/chi/v5 as chi
-use go:github.com/go-chi/chi/v5/middleware
 use go:net/http
 use go:os
 use go:os/signal
 use go:syscall
+use maestro_server/app
+use maestro_server/config
+use maestro_server/router
 use maestro_server/sql
 
-// DATABASE_URL doubles as the SQLite file path (matching what `migr` reads).
-fn database_path() Str {
-  let url = os::Getenv("DATABASE_URL")
-  match url.is_empty() {
-    true => "maestro.db",
-    false => url,
-  }
-}
-
-fn listen_addr() Str {
-  let port = os::Getenv("PORT")
-  match port.is_empty() {
-    true => "0.0.0.0:8080",
-    false => "0.0.0.0:{port}",
-  }
-}
-
-fn service(db: sql::Database) mut chi::Mux {
-  let router = chi::NewRouter()
-
-  router.Use(middleware::RequestID)
-  router.Use(middleware::Logger)
-
-  // Liveness + DB connectivity check.
-  router.Get(
-    "/health",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
-      match sql::ping(db) {
-        ok => {
-          mut body = "ok".bytes()
-          w.Write(body)
-        },
-        err(message) => {
-          w.WriteHeader(http::StatusServiceUnavailable)
-          mut body = "database unavailable: {message}".bytes()
-          w.Write(body)
-        },
-      }
-    },
-  )
-
-  router
-}
-
 fn main() {
-  let path = database_path()
-  let db = match sql::open(path) {
-    ok(database) => database,
-    err(message) => panic("failed to open database at {path}: {message}"),
+  let cfg = match config::load() {
+    ok(c) => c,
+    err(message) => panic("config error: {message}"),
   }
-  fmt::Println("database ready at {path}")
 
-  let addr = listen_addr()
-  mut server = http::Server{Addr: addr, Handler: service(db)}
+  let db = match sql::open(cfg.database_url) {
+    ok(database) => database,
+    err(message) => panic("failed to open database at {cfg.database_url}: {message}"),
+  }
+  fmt::Println("database ready at {cfg.database_url}")
 
-  // Graceful shutdown on SIGINT (see examples/chi-server for the pattern).
+  let application = app::App{db: db, config: cfg}
+  mut server = http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
+
   let interrupts = Chan::new<os::Signal>()
   signal::Notify(interrupts.sender(), syscall::SIGINT)
 
@@ -82,7 +42,7 @@ fn main() {
       }
     },
   )
-  fmt::Println("listening on {addr}")
+  fmt::Println("listening on {cfg.listen_addr}")
 
   interrupts.recv()
 
