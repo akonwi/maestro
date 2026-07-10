@@ -1,2 +1,2 @@
 name = "maestro_server"
-ard = ">= 0.25.0"
+ard = ">= 0.26.0"
