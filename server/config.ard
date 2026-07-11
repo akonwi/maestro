@@ -14,6 +14,7 @@ struct Config {
   app_base_url: Str,
   magic_link_ttl_secs: Int,
   session_ttl_secs: Int,
+  api_football_key: Str,
 }
 
 fn load() Config!Str {
@@ -22,10 +23,11 @@ fn load() Config!Str {
   let resend_enabled = parse_bool_env("RESEND_ENABLED", true)
   let resend_api_key = try require_when(resend_enabled, "RESEND_API_KEY")
   let resend_from_email = getenv_or("RESEND_FROM_EMAIL", "onboarding@resend.dev")
-  let server_base_url = try require("SERVER_BASE_URL")
+  let server_base_url = getenv_or("SERVER_BASE_URL", "http://localhost:{port}")
   let app_base_url = try require("APP_BASE_URL")
   let magic_link_ttl_secs = try parse_int_env("MAGIC_LINK_TTL_SECONDS", 900)
   let session_ttl_secs = try parse_int_env("SESSION_TTL_SECONDS", 2592000)
+  let api_football_key = try require("API_FOOTBALL_KEY")
 
   Result::ok(
     Config{
@@ -38,6 +40,7 @@ fn load() Config!Str {
       app_base_url: app_base_url,
       magic_link_ttl_secs: magic_link_ttl_secs,
       session_ttl_secs: session_ttl_secs,
+      api_football_key: api_football_key,
     },
   )
 }

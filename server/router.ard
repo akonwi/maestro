@@ -2,6 +2,7 @@ use go:github.com/go-chi/chi/v5 as chi
 use go:github.com/go-chi/chi/v5/middleware
 use maestro/app
 use maestro/auth
+use maestro/fixtures
 use maestro/health
 
 // Compose the full HTTP surface. Each domain owns its own routes; this
@@ -14,6 +15,7 @@ fn build(a: app::App) mut chi::Mux {
 
   health::register(router, a)
   auth::register(router, a)
+  fixtures::register(router, a)
 
   router
 }

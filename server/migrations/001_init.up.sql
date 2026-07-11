@@ -80,7 +80,7 @@ CREATE TABLE group_members (
   PRIMARY KEY (group_id, user_id)
 );
 
--- Seed the one active competition for v1: MLS regular season 2025.
+-- Seed the one active competition for v1: MLS regular season 2026.
 -- api-football league id 253 = Major League Soccer.
 INSERT INTO competitions (api_football_league_id, name, season, kind, is_active)
-VALUES (253, 'MLS', 2025, 'league', 1);
+VALUES (253, 'MLS', 2026, 'league', 1);

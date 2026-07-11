@@ -27,6 +27,8 @@ export type HarnessOptions = {
   port: number;
   /** When true, /auth/request will call Resend. Default false. */
   resendEnabled?: boolean;
+  /** Extra env vars for the server process (override defaults). */
+  env?: Record<string, string>;
 };
 
 export function createHarness(opts: HarnessOptions) {
@@ -85,8 +87,6 @@ export function createHarness(opts: HarnessOptions) {
       DELETE FROM group_members;
       DELETE FROM groups;
       DELETE FROM predictions;
-      DELETE FROM fixtures;
-      DELETE FROM teams;
       DELETE FROM magic_links;
       DELETE FROM users;
       DELETE FROM sqlite_sequence WHERE name IN (
@@ -103,8 +103,10 @@ export function createHarness(opts: HarnessOptions) {
         PORT: port,
         RESEND_ENABLED: String(resendEnabled),
         RESEND_FROM_EMAIL: "onboarding@resend.dev",
+        API_FOOTBALL_KEY: "test-key",
         SERVER_BASE_URL: base,
         APP_BASE_URL: "http://web.test",
+        ...(opts.env ?? {}),
       },
       stdout: "pipe",
       stderr: "pipe",

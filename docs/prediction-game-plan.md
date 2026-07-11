@@ -4,7 +4,7 @@
 
 A group-based scoreline prediction game for me and my friends. Pick the final score of every fixture before kickoff, earn points, chase the leaderboard.
 
-**v1 covers MLS regular season only.** The system is designed to support additional competitions later (other leagues, cups, playoffs) as first-class citizens — nothing about the schema, sync worker, or UI should hardcode MLS. See "Multi-competition forward compatibility" below.
+**v1 covers MLS regular season only.** The system is designed to support additional competitions later (other leagues, cups, playoffs) as first-class citizens — nothing about the competition configuration or UI should hardcode MLS. See "Multi-competition forward compatibility" below.
 
 ### Scoring (v1)
 
@@ -66,7 +66,7 @@ Ard's stdlib is intentionally small; the idiomatic path for backend work is dire
 - **JSON** — `use go:encoding/json` for encode/decode of typed structs. For non-trivial decoding of upstream API responses (nested, partial, missing fields), a project-local `decode.ard` module, copied from `../tinear/decode.ard`, providing composable decoders (`decode::field`, `decode::list`, `decode::nullable`, etc.) over Go's `Any` values.
 - **Database** — project-local `sql.ard` module wrapping `use go:database/sql` + `use go:github.com/mattn/go-sqlite3` (or a pure-Go driver like `modernc.org/sqlite` if we want to avoid CGO). Storage is **SQLite** on a mounted volume on Zeabur. ~1ms query latency; standard SQL means we can migrate to Postgres later if needed. Considered Cloudflare D1 but rejected: from Zeabur every query becomes a 50–200ms HTTPS round-trip, and D1's value proposition (colocated with Workers) doesn't apply here.
 - **Outbound HTTP** — Go interop with `net/http` for calls to API-Football and Resend. Wrapping in a small local `http.ard` helper module is optional.
-- **Background worker** — `async::start` with `Chan`-driven ticker + shutdown signal, following the pattern demonstrated in the chi-server example. Polls API-Football on a schedule (see "Sync worker" below).
+- **Fixture data** — proxied from API-Football on demand rather than synced into SQLite. A shared in-memory TTL cache stores raw upstream JSON by URL, so many users refreshing within the cache window produce one API request. The app stores only game-owned data (users, groups, predictions, sessions, competition configuration).
 - **Config** — `use go:os` for env vars (validated at startup); no config file for v1.
 - **Migrations** — [`migr`](https://github.com/akonwi/migr) CLI, run at container startup by the entrypoint (`migr up` then `exec server`). SQL files as `NNN_name.up.sql` / `NNN_name.down.sql` under `server/migrations/`. Driven by `DATABASE_URL`.
   - **Gotcha (found in M1):** the published `migr` release binary is compiled CGO-free, but its `ard/sql` backend uses `mattn/go-sqlite3` which requires CGO, so the release's SQLite path is a non-functional stub. We therefore **build migr from source with CGO on** inside the Docker image, pinned to a commit that builds against Ard 0.25.0 (0.24.0 lacks needed syntax; current dev dropped the `ard/sql`/`ard/io`/`ard/argv`/`ard/decode` stdlib modules migr relies on). Local dev can use the Homebrew `migr` (built with CGO) directly.
@@ -133,32 +133,18 @@ competitions (
   name TEXT NOT NULL,               -- e.g. "MLS", "MLS Playoffs", "Premier League"
   season INTEGER NOT NULL,          -- e.g. 2025
   kind TEXT NOT NULL,               -- 'league' | 'cup' | 'playoff'
-  is_active BOOLEAN NOT NULL DEFAULT 1, -- sync worker only touches active competitions
+  is_active BOOLEAN NOT NULL DEFAULT 1, -- fixture proxy fetches active competitions
   UNIQUE (api_football_league_id, season)
 );
 
-teams (
-  id INTEGER PRIMARY KEY,           -- api-football team id
-  name TEXT NOT NULL
-);
--- Crests are fetched directly from api-football by team id
--- (https://media.api-sports.io/football/teams/{id}.png), no local storage needed.
-
-fixtures (
-  id INTEGER PRIMARY KEY,           -- api-football fixture id
-  competition_id INTEGER NOT NULL REFERENCES competitions(id),
-  home_team_id INTEGER NOT NULL REFERENCES teams(id),
-  away_team_id INTEGER NOT NULL REFERENCES teams(id),
-  kickoff_at INTEGER NOT NULL,      -- unix ms
-  status TEXT NOT NULL,             -- NS, LIVE, FT, PST, ...
-  home_score INTEGER,
-  away_score INTEGER
-);
+-- Fixture and team data are fetched from API-Football and cached in
+-- memory; they are not persisted in v1. Team crests come directly from
+-- https://media.api-sports.io/football/teams/{id}.png.
 
 predictions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id),
-  fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
+  fixture_id INTEGER NOT NULL,       -- stable API-Football fixture id
   home_score INTEGER NOT NULL,
   away_score INTEGER NOT NULL,
   points INTEGER,                   -- null until fixture finishes
@@ -197,25 +183,23 @@ Groups are the primary social unit from day one — there is no global "everyone
 
 #### Multi-competition forward compatibility
 
-The `competitions` table is the mechanism. For v1 we seed exactly one row: MLS regular season 2025. The sync worker iterates `WHERE is_active = 1` rather than hardcoding a league ID. Adding playoffs later = insert a second row. Adding the Premier League next season = insert another row. No schema changes required.
+The `competitions` table is the mechanism. For v1 we seed exactly one row: MLS regular season 2026. The fixture proxy fetches `WHERE is_active = 1` rather than hardcoding a league ID. Adding playoffs later = insert a second row. Adding the Premier League next season = insert another row. No schema changes required.
 
 A competition's `kind` lets the UI treat cups/playoffs differently (no draws allowed in playoff outcome scoring, group vs. knockout stage rendering, etc.) once we care.
 
 The API surface (see below) accepts an optional `competition_id` filter but defaults to "all active competitions" so v1 clients don't need to know about the table.
 
-## Sync worker
+## Fixture proxy + cache
 
-One long-lived goroutine (`async::start`) launched at server startup. Uses a `select` loop over a ticker channel and a shutdown channel (see chi-server example for the pattern).
+Fixture endpoints fetch API-Football's season response for every active competition and cache the raw JSON in memory by upstream URL.
 
-The worker iterates every row in `competitions WHERE is_active = 1` on each tick, so adding a new league later is a data change, not a code change.
+- Fixture responses use a hardcoded 60-second TTL.
+- The cache is shared across request goroutines and protected by a Go `sync.RWMutex` behind an opaque pointer in `App`.
+- Cache misses call API-Football; hits parse the cached JSON without network I/O.
+- No fixture/team rows are written to SQLite in v1.
+- Prediction deadlines and scoring will resolve fixture state through the same cached API client. Points can be computed lazily when a leaderboard is requested; persistent fixture storage can return when analysis requires history.
 
-Tick cadence:
-
-- **Every 30 minutes** — for each active competition, pull the next 14 days of upcoming fixtures from API-Football, upsert into `fixtures`.
-- **Every 3 minutes during matchday windows** — refresh scores for any fixture with `kickoff_at` in the last 3 hours OR `status` in (LIVE, HT, ...).
-- **On status transition to FT** — recompute `points` for every prediction on that fixture in a single UPDATE. This is the only "scoring" logic.
-
-"Matchday window" is a runtime check, not a schedule.
+This keeps v1 operationally small while preserving stable references: predictions store API-Football fixture ids, so fixture history can be backfilled later.
 
 ## Scoring computation
 
@@ -292,7 +276,7 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
 - Local `sql.ard` module wrapping Go's `database/sql` + SQLite driver.
 - Local `decode.ard` module copied from `../tinear/decode.ard`.
 - `migr` wired into the container entrypoint; first migration creates the full v1 schema (users, magic_links, sessions, competitions, teams, fixtures, predictions, groups, group_members).
-- Seed row for MLS 2025 regular season in `competitions`.
+- Seed row for MLS 2026 regular season in `competitions`.
 - Health endpoint that verifies DB connectivity.
 - Dockerfile that builds Ard from `main` and runs cleanly.
 - Local dev workflow documented in `server/README.md`.
@@ -303,20 +287,16 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
 - Bearer-token sessions, auth middleware reading `Authorization` header.
 - Resend integration (real emails in dev too, via a test address).
 
-### M3 — Fixtures + sync (server)
+### M3 — Cached fixture proxy (server)
 
 - API-Football client module, driven by active competitions.
-- Sync worker: long-lived goroutine (`async::start` + ticker/shutdown
-  channels, chi-server pattern). Iterates `competitions WHERE is_active = 1`.
-  - Every 30 min: upsert next 14 days of upcoming fixtures.
-  - Every 3 min during matchday windows: refresh scores for live/recent
-    fixtures.
+- Shared in-memory TTL cache for raw upstream responses; no background
+  worker and no local fixture/team persistence in v1.
 - `GET /fixtures/upcoming` and `GET /fixtures/:id` — **public-only** in this
   milestone. No `my_prediction` / `group_predictions` enrichment yet; those
   fields need auth middleware, which lands with predictions (M5). The
   response shape may still evolve when the UI consumes it in M4.
-- `SYNC_ENABLED` env flag (like `RESEND_ENABLED`) so tests and local dev
-  don't hit API-Football.
+- Fixture responses use a hardcoded 60-second TTL.
 
 ### M4 — Web scaffold + fixtures UI
 

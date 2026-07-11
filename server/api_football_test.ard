@@ -1,0 +1,60 @@
+use ard/testing
+
+use maestro/api_football
+
+// A trimmed but shape-accurate API-Football /fixtures response:
+// one finished match and one not-started match.
+let SAMPLE: Str = "\{
+  \"response\": [
+    \{
+      \"fixture\": \{ \"id\": 1001, \"timestamp\": 1700000000, \"status\": \{ \"short\": \"FT\" \} \},
+      \"teams\": \{
+        \"home\": \{ \"id\": 1609, \"name\": \"Inter Miami\" \},
+        \"away\": \{ \"id\": 1615, \"name\": \"Atlanta United\" \}
+      \},
+      \"goals\": \{ \"home\": 2, \"away\": 1 \}
+    \},
+    \{
+      \"fixture\": \{ \"id\": 1002, \"timestamp\": 1800000000, \"status\": \{ \"short\": \"NS\" \} \},
+      \"teams\": \{
+        \"home\": \{ \"id\": 1613, \"name\": \"LA Galaxy\" \},
+        \"away\": \{ \"id\": 1614, \"name\": \"LAFC\" \}
+      \},
+      \"goals\": \{ \"home\": null, \"away\": null \}
+    \}
+  ]
+\}"
+
+test fn parses_fixtures_response() Void!Str {
+  let list = try api_football::parse_fixtures(SAMPLE)
+  try testing::assert(list.size() == 2, "expected 2 fixtures, got {list.size()}")
+
+  match list.at(0) {
+    f => {
+      try testing::assert(f.id == 1001, "first fixture id")
+      try testing::assert(f.status == "FT", "first fixture status")
+      try testing::assert(f.kickoff_at == 1700000000000, "timestamp seconds -> unix ms")
+      try testing::assert(f.home_team_name == "Inter Miami", "home team name")
+      try testing::assert(f.home_score.expect("home score") == 2, "home score")
+      try testing::assert(f.away_score.expect("away score") == 1, "away score")
+    },
+    _ => try testing::fail("missing first fixture"),
+  }
+
+  match list.at(1) {
+    f => {
+      try testing::assert(f.status == "NS", "second fixture status")
+      try testing::assert(f.home_score.is_none(), "unplayed match has no home score")
+      try testing::assert(f.away_score.is_none(), "unplayed match has no away score")
+    },
+    _ => try testing::fail("missing second fixture"),
+  }
+  testing::pass()
+}
+
+test fn rejects_malformed_body() Void!Str {
+  match api_football::parse_fixtures("not json") {
+    ok(_) => testing::fail("malformed body should not parse"),
+    err(_) => testing::pass(),
+  }
+}

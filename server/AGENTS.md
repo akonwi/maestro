@@ -39,6 +39,10 @@ server/
   sessions.ard      session store, token mint/verify + Session struct
   magic_links.ard   magic-link store, single-use consume
   email.ard         Resend wrapper
+  api_football.ard  API-Football client + cached response decoding
+  competitions.ard  competitions store (which leagues/seasons to fetch)
+  fixtures.ard      cached API-Football proxy + public read endpoints
+  ffi/cache.go      concurrency-safe in-memory TTL cache
   crypto.ard        token generation (crypto/rand + hex)
 
   (SQL access and JSON decoding are external Git deps:

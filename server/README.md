@@ -86,6 +86,14 @@ curl http://localhost:8080/health   # -> "ok" when the DB pings
 |----------------|----------------------------------|--------------------|
 | `DATABASE_URL` | SQLite file path (also used by migr) | `maestro.db` (server) / required (migr) |
 | `PORT`         | HTTP listen port                 | `8080`             |
+| `RESEND_ENABLED` | Send real email via Resend    | `true`             |
+| `RESEND_API_KEY` | Resend API key                | required when RESEND_ENABLED |
+| `RESEND_FROM_EMAIL` | From address               | `onboarding@resend.dev` |
+| `SERVER_BASE_URL` | This server's public URL (magic-link emails) | required |
+| `APP_BASE_URL` | Web app URL (verify redirect)    | required           |
+| `MAGIC_LINK_TTL_SECONDS` | Magic-link lifetime    | `900`              |
+| `SESSION_TTL_SECONDS` | Session lifetime          | `2592000` (30d)    |
+| `API_FOOTBALL_KEY` | API-Football key             | required           |
 
 ## Docker
 

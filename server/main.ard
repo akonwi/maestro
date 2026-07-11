@@ -2,6 +2,7 @@ use ard/async
 
 use go:context
 use go:fmt
+use go:maestro/ffi
 use go:net/http
 use go:os
 use go:os/signal
@@ -23,7 +24,7 @@ fn main() {
   }
   fmt::Println("database ready at {cfg.database_url}")
 
-  let application = app::App{db: db, config: cfg}
+  let application = app::App{db: db, config: cfg, cache: ffi::NewCache()}
   mut server = http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
 
   let interrupts = Chan::new<os::Signal>()
