@@ -132,13 +132,14 @@ private fn do_verify(a: app::App, r: mut http::Request) [Str: Any]!Str {
 }
 
 // Read a single string field from a JSON request body. All the M2 auth
-// bodies are simple `{ "field": "value" }` shapes.
+// bodies are simple `{ "field": "value" }` shapes. Every failure gets
+// the same `invalid request:` prefix so clients see a consistent shape.
 private fn decode_field(r: mut http::Request, name: Str) Str!Str {
-  let body = try read_body(r)
+  let body = try read_body(r).map_err(prefix_invalid_request)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
-      let data = try decode::from_json(body)
+      let data = try decode::from_json(body).map_err(prefix_invalid_request)
       decode::run(data, decode::field(name, decode::string)).map_err(describe_body_error)
     },
   }
@@ -161,4 +162,8 @@ private fn bearer_token(r: mut http::Request) Str {
 
 private fn describe_body_error(e: decode::Error) Str {
   "invalid request: {e.to_str()}"
+}
+
+private fn prefix_invalid_request(message: Str) Str {
+  "invalid request: {message}"
 }

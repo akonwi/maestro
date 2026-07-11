@@ -131,9 +131,28 @@ clear message. No config files.
 export DATABASE_URL=./dev.db
 migr up
 ard run main.ard          # or: ard build main.ard --out ./maestro-server
-ard test                  # runs *_test.ard
+ard test                  # runs *_test.ard (store-level unit tests)
 go test ./...             # runs ffi/*_test.go
+bun run test              # runs tests/*.test.ts (e2e API tests via bun:test)
 curl localhost:8080/health
 ```
 
 See `README.md` for the Docker workflow and the migr-from-source note.
+
+### E2E API tests (`tests/*.test.ts`)
+
+The `tests/` directory holds bun:test suites that boot the built server
+binary as a subprocess and hit real HTTP. They double as the API's
+living documentation: reading `tests/auth.test.ts` tells you every
+endpoint's shape, error envelope, and side effects.
+
+- Each test file gets its **own port + own SQLite file** (bun runs test
+  files in parallel). Pass `{ id, port }` to `createHarness`.
+- `setup()` does a file-based DB reset (unlinks + `migr up`) exactly
+  once. `beforeEach` calls `resetDb()` which **truncates tables** via the
+  shared bun:sqlite connection — unlinking the file after the server has
+  it open would leave the server writing to a ghost inode.
+- `RESEND_ENABLED=false` in the harness so `/auth/request` never hits
+  Resend but still writes the `magic_links` row we assert against.
+- Add a new suite by dropping `tests/<domain>.test.ts` and giving it a
+  unique `id` and `port`. Reuse `test-support/harness.ts`.

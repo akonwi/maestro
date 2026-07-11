@@ -37,6 +37,7 @@ server/
 - [Ard compiler](https://github.com/akonwi/ard) on your `PATH` (`ard`)
 - [`migr`](https://github.com/akonwi/migr) on your `PATH`
 - Go 1.26+ (the Ard toolchain shells out to it)
+- [Bun](https://bun.sh) for running the e2e API tests
 
 ## Local development
 
@@ -107,3 +108,16 @@ migr create add_something
 
 Naming is `NNN_name.up.sql` / `NNN_name.down.sql`. `migr up` is idempotent and
 tracks applied migrations in a `schema_migrations` table.
+
+## E2E API tests
+
+Bun-based integration suites live in `tests/`. They build the server
+binary, boot it as a subprocess with its own SQLite file, and hit real
+HTTP endpoints. They double as living documentation of the API.
+
+```sh
+bun install     # first time only
+bun run test    # builds the server via `pretest`, then runs bun test
+```
+
+See `AGENTS.md` for the harness contract and how to add a new suite.

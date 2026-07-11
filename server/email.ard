@@ -11,6 +11,13 @@ use maestro_server/config
 let ENDPOINT: Str = "https://api.resend.com/emails"
 
 fn send(cfg: config::Config, to: Str, subject: Str, text: Str) Void!Str {
+  match cfg.resend_enabled {
+    false => Result::ok(()),
+    true => send_via_resend(cfg, to, subject, text),
+  }
+}
+
+private fn send_via_resend(cfg: config::Config, to: Str, subject: Str, text: Str) Void!Str {
   let payload: [Str: Any] = [
     "from": cfg.resend_from_email,
     "to": [to],

@@ -7,6 +7,7 @@ use go:strconv
 struct Config {
   database_url: Str,
   listen_addr: Str,
+  resend_enabled: Bool,
   resend_api_key: Str,
   resend_from_email: Str,
   server_base_url: Str,
@@ -18,7 +19,8 @@ struct Config {
 fn load() Config!Str {
   let database_url = getenv_or("DATABASE_URL", "maestro.db")
   let port = getenv_or("PORT", "8080")
-  let resend_api_key = try require("RESEND_API_KEY")
+  let resend_enabled = parse_bool_env("RESEND_ENABLED", true)
+  let resend_api_key = try require_when(resend_enabled, "RESEND_API_KEY")
   let resend_from_email = getenv_or("RESEND_FROM_EMAIL", "onboarding@resend.dev")
   let server_base_url = try require("SERVER_BASE_URL")
   let app_base_url = try require("APP_BASE_URL")
@@ -29,6 +31,7 @@ fn load() Config!Str {
     Config{
       database_url: database_url,
       listen_addr: "0.0.0.0:{port}",
+      resend_enabled: resend_enabled,
       resend_api_key: resend_api_key,
       resend_from_email: resend_from_email,
       server_base_url: server_base_url,
@@ -52,6 +55,35 @@ private fn require(name: Str) Str!Str {
   match value.is_empty() {
     true => Result::err("{name} is required"),
     false => Result::ok(value),
+  }
+}
+
+// Required only when a companion flag is on — e.g. RESEND_API_KEY is
+// only needed when RESEND_ENABLED=true.
+private fn require_when(needed: Bool, name: Str) Str!Str {
+  match needed {
+    true => require(name),
+    false => Result::ok(os::Getenv(name)),
+  }
+}
+
+// Parses "true"/"1"/"yes" as true; "false"/"0"/"no" as false; empty as
+// the fallback. Any other value is an error.
+private fn parse_bool_env(name: Str, fallback: Bool) Bool {
+  let raw = os::Getenv(name)
+  match raw.is_empty() {
+    true => fallback,
+    false => {
+      match raw {
+        "true" => true,
+        "1" => true,
+        "yes" => true,
+        "false" => false,
+        "0" => false,
+        "no" => false,
+        _ => fallback,
+      }
+    },
   }
 }
 

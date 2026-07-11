@@ -8,3 +8,9 @@ ard-out/
 
 # Local env
 .env
+
+# Node / bun
+node_modules/
+
+# Test artefacts (built server binary, per-file DBs)
+tmp/
