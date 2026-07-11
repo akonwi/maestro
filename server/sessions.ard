@@ -1,6 +1,6 @@
-use go:maestro_server/ffi
 use go:time
 use maestro_server/app
+use maestro_server/crypto
 use maestro_server/decode
 use maestro_server/sql
 
@@ -16,7 +16,7 @@ struct Session {
 
 // Create a new session for user_id with the configured TTL.
 fn mint(a: app::App, user_id: Int) Session!Str {
-  let token = try ffi::GenerateToken(32)
+  let token = try crypto::generate_token(32)
   let now = time::Now().UnixMilli()
   let ttl_ms = Int64::from(a.config.session_ttl_secs) * 1000
   let expires_at = now + ttl_ms

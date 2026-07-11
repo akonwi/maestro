@@ -1,7 +1,8 @@
 use go:fmt
 use go:github.com/go-chi/chi/v5 as chi
-use go:maestro_server/ffi
+use go:io
 use go:net/http
+use go:strings
 use maestro_server/app
 use maestro_server/decode
 use maestro_server/email
@@ -60,7 +61,7 @@ private fn handle_verify(a: app::App, w: http::ResponseWriter, r: mut http::Requ
 }
 
 private fn handle_logout(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let token = ffi::BearerToken(r)
+  let token = bearer_token(r)
   match token.is_empty() {
     true => response::fail(w, http::StatusUnauthorized, "missing or invalid bearer token"),
     false => {
@@ -78,7 +79,7 @@ private fn handle_logout(a: app::App, w: http::ResponseWriter, r: mut http::Requ
 
 // GET /auth/verify?token=X -> 302 to the web app. Never consumes.
 private fn handle_verify_redirect(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let token = ffi::QueryParam(r, "token")
+  let token = r.URL.Query().Get("token")
   match token.is_empty() {
     true => response::fail(w, http::StatusBadRequest, "missing token"),
     false => {
@@ -133,13 +134,28 @@ private fn do_verify(a: app::App, r: mut http::Request) [Str: Any]!Str {
 // Read a single string field from a JSON request body. All the M2 auth
 // bodies are simple `{ "field": "value" }` shapes.
 private fn decode_field(r: mut http::Request, name: Str) Str!Str {
-  let body = try ffi::ReadBodyString(r)
+  let body = try read_body(r)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
       let data = try decode::from_json(body)
       decode::run(data, decode::field(name, decode::string)).map_err(describe_body_error)
     },
+  }
+}
+
+private fn read_body(r: mut http::Request) Str!Str {
+  let bytes = try io::ReadAll(r.Body)
+  Result::ok(Str::from(bytes))
+}
+
+// Extract the token from a Bearer Authorization header. Returns "" if
+// the header is missing or malformed.
+private fn bearer_token(r: mut http::Request) Str {
+  let auth = r.Header.Get("Authorization")
+  match auth.starts_with("Bearer ") {
+    true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
+    false => "",
   }
 }
 
