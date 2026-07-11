@@ -303,29 +303,47 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
 - Bearer-token sessions, auth middleware reading `Authorization` header.
 - Resend integration (real emails in dev too, via a test address).
 
-### M3 — Fixtures + sync
+### M3 — Fixtures + sync (server)
 
-- API-Football integration, driven by active competitions.
-- Sync worker running on its ticker (iterates `WHERE is_active = 1`).
-- `GET /fixtures/upcoming` and `GET /fixtures/:id`.
+- API-Football client module, driven by active competitions.
+- Sync worker: long-lived goroutine (`async::start` + ticker/shutdown
+  channels, chi-server pattern). Iterates `competitions WHERE is_active = 1`.
+  - Every 30 min: upsert next 14 days of upcoming fixtures.
+  - Every 3 min during matchday windows: refresh scores for live/recent
+    fixtures.
+- `GET /fixtures/upcoming` and `GET /fixtures/:id` — **public-only** in this
+  milestone. No `my_prediction` / `group_predictions` enrichment yet; those
+  fields need auth middleware, which lands with predictions (M5). The
+  response shape may still evolve when the UI consumes it in M4.
+- `SYNC_ENABLED` env flag (like `RESEND_ENABLED`) so tests and local dev
+  don't hit API-Football.
 
-### M4 — Predictions + scoring
+### M4 — Web scaffold + fixtures UI
 
-- `PUT /fixtures/:id/prediction` (with deadline enforcement).
-- Points computation on fixture finish.
-
-### M4.5 — Groups
-
-- `POST /groups` create, `POST /groups/join` by invite code, `GET /groups`, `GET /groups/:id`.
-- `GET /groups/:id/leaderboard/season` and `/week`.
-- Onboarding step in the web app: if a user has no memberships after auth, prompt to create or join.
-
-### M5 — TanStack Start web app
-
-- Scaffold `web/` with TanStack Start, matching the ranger/web-app setup (React 19, Tailwind v4, shadcn/ui, Biome, bun, wrangler).
+- Scaffold `web/` with TanStack Start, matching the ranger/web-app setup
+  (React 19, Tailwind v4, shadcn/ui, Biome, bun, wrangler).
 - Port ranger's theme tokens as the starting point.
-- Auth flow, prediction form, leaderboard, fixture list.
-- Deploy as a Cloudflare Worker via wrangler.
+- Fixture list + fixture detail screens against the real M3 endpoints.
+- **UI drives API refinement**: where the screens want different
+  shapes/groupings than M3 shipped, the endpoints change to match. The
+  UI is the spec; the server follows.
+- No auth in the web app yet — fixtures are public reads.
+
+### M5 — Auth UI + groups + predictions
+
+- Web: magic-link login flow (request → email → verify → bearer in
+  localStorage), authed session handling.
+- Server: auth middleware (the deferred ffi/http.go context adapter) for
+  routes that need a user.
+- Groups: `POST /groups`, `POST /groups/join`, `GET /groups`,
+  `GET /groups/:id`; onboarding step in the web app (no memberships →
+  create or join).
+- Predictions: `PUT /fixtures/:id/prediction` with kickoff deadline
+  enforcement; points computation on fixture finish;
+  `GET /groups/:id/leaderboard/season` and `/week`; leaderboard +
+  prediction form screens.
+- Fixture endpoints gain `my_prediction` / `group_predictions` when the
+  caller is authed.
 
 ### M6 — Ship to friends
 
@@ -335,6 +353,10 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
 
 ### Deferred
 
+- Admin seeding surface: move the MLS seed row out of migrations into an
+  explicit admin action (`POST /admin/competitions` behind an
+  `ADMIN_TOKEN`), so adding a competition is an operational act rather
+  than a code change. For now the seed row from `001_init` stands.
 - Playoffs mode
 - Leagues Cup + US Open Cup
 - Additional leagues beyond MLS (Premier League, etc.) — the schema supports it, just needs the `competitions` row and any UI polish for handling multiple concurrent competitions
