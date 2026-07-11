@@ -1,7 +1,7 @@
 use go:github.com/go-chi/chi/v5 as chi
 use go:net/http
-use maestro_server/app
-use maestro_server/sql
+use maestro/app
+use maestro/sql
 
 // Health check: verifies the DB pool is alive. Returns 200 "ok" or 503.
 fn register(router: mut chi::Mux, a: app::App) {

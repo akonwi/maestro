@@ -11,10 +11,10 @@ The current compiler is unreleased dev — we are dogfooding it.
 
 ## Module system reality
 
-- **A module is a file.** `server/auth.ard` in project `maestro_server`
-  becomes `use maestro_server/auth`, accessed as `auth::thing`. There is no
+- **A module is a file.** `server/auth.ard` in project `maestro`
+  becomes `use maestro/auth`, accessed as `auth::thing`. There is no
   multi-file package.
-- Subdirectories work (`http/x.ard` → `use maestro_server/http/x`) but we stay
+- Subdirectories work (`http/x.ard` → `use maestro/http/x`) but we stay
   **flat** at this size.
 - Assume **no circular imports**. Dependencies flow one direction:
   `main → router → domain handlers → stores → sql/decode`. Stores never import

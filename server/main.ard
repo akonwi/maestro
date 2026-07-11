@@ -6,10 +6,10 @@ use go:net/http
 use go:os
 use go:os/signal
 use go:syscall
-use maestro_server/app
-use maestro_server/config
-use maestro_server/router
-use maestro_server/sql
+use maestro/app
+use maestro/config
+use maestro/router
+use maestro/sql
 
 fn main() {
   let cfg = match config::load() {

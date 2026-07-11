@@ -3,13 +3,13 @@ use go:github.com/go-chi/chi/v5 as chi
 use go:io
 use go:net/http
 use go:strings
-use maestro_server/app
-use maestro_server/decode
-use maestro_server/email
-use maestro_server/magic_links
-use maestro_server/response
-use maestro_server/sessions
-use maestro_server/users
+use maestro/app
+use maestro/decode
+use maestro/email
+use maestro/magic_links
+use maestro/response
+use maestro/sessions
+use maestro/users
 
 // Wire the /auth/* endpoints into the router. No middleware in M2 \u2014
 // logout reads its bearer token inline.

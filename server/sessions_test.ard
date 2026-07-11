@@ -1,8 +1,8 @@
 use ard/testing
 
-use maestro_server/sessions
-use maestro_server/test_helpers
-use maestro_server/users
+use maestro/sessions
+use maestro/test_helpers
+use maestro/users
 
 test fn mint_creates_a_findable_session() Void!Str {
   let app = try test_helpers::build_app()

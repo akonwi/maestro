@@ -1,5 +1,5 @@
-use maestro_server/config
-use maestro_server/sql
+use maestro/config
+use maestro/sql
 
 // A cheap value threaded through every handler. The db handle is a Go
 // pointer, so copying `App` is copying that pointer; no need to pass

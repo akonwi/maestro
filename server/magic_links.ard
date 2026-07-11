@@ -1,8 +1,8 @@
 use go:time
-use maestro_server/app
-use maestro_server/crypto
-use maestro_server/decode
-use maestro_server/sql
+use maestro/app
+use maestro/crypto
+use maestro/decode
+use maestro/sql
 
 // A one-shot email->token record used to bootstrap sessions.
 

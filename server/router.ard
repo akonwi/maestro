@@ -1,8 +1,8 @@
 use go:github.com/go-chi/chi/v5 as chi
 use go:github.com/go-chi/chi/v5/middleware
-use maestro_server/app
-use maestro_server/auth
-use maestro_server/health
+use maestro/app
+use maestro/auth
+use maestro/health
 
 // Compose the full HTTP surface. Each domain owns its own routes; this
 // module is just the wiring diagram.

@@ -1,6 +1,6 @@
-use maestro_server/app
-use maestro_server/config
-use maestro_server/sql
+use maestro/app
+use maestro/config
+use maestro/sql
 
 // Test-only fixtures. Each test builds a fresh in-memory database
 // (:memory: guarantees isolation because our pool caps MaxOpenConns=1).

@@ -1,4 +1,4 @@
-use go:maestro_server/ffi
+use go:maestro/ffi
 
 // A thin, Ard-flavored wrapper over Go's database/sql, backed by the
 // pure-Go SQLite driver in ffi/db.go.

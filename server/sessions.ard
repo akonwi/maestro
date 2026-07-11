@@ -1,8 +1,8 @@
 use go:time
-use maestro_server/app
-use maestro_server/crypto
-use maestro_server/decode
-use maestro_server/sql
+use maestro/app
+use maestro/crypto
+use maestro/decode
+use maestro/sql
 
 // Bearer-token sessions. The `token` column is a 64-char hex string
 // (32 random bytes from crypto/rand).

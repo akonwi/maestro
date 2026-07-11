@@ -1,7 +1,7 @@
 use go:time
-use maestro_server/app
-use maestro_server/decode
-use maestro_server/sql
+use maestro/app
+use maestro/decode
+use maestro/sql
 
 // Domain struct + persistence for users. Handlers never touch sql
 // directly; they call through this module.

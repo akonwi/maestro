@@ -1,4 +1,4 @@
-module maestro_server
+module maestro
 
 go 1.26
 

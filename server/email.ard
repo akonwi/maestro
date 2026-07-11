@@ -3,7 +3,7 @@ use ard/unsafe
 use go:bytes
 use go:encoding/json
 use go:net/http
-use maestro_server/config
+use maestro/config
 
 // Minimal Resend wrapper. One POST /emails call per message. Plain-text
 // bodies only for v1.

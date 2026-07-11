@@ -1,7 +1,7 @@
 use ard/testing
 
-use maestro_server/magic_links
-use maestro_server/test_helpers
+use maestro/magic_links
+use maestro/test_helpers
 
 test fn create_then_consume_yields_email() Void!Str {
   let app = try test_helpers::build_app()
