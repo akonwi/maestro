@@ -9,7 +9,7 @@ use go:syscall
 use maestro/app
 use maestro/config
 use maestro/router
-use maestro/sql
+use sql
 
 fn main() {
   let cfg = match config::load() {

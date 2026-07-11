@@ -1,6 +1,6 @@
 use maestro/app
 use maestro/config
-use maestro/sql
+use sql
 
 // Test-only fixtures. Each test builds a fresh in-memory database
 // (:memory: guarantees isolation because our pool caps MaxOpenConns=1).
@@ -30,7 +30,7 @@ CREATE TABLE sessions (
 
 fn build_app() app::App!Str {
   let db = try sql::open(":memory:")
-  try sql::exec(db, SCHEMA, [])
+  try db.exec(SCHEMA)
   let cfg = config::Config{
     database_url: ":memory:",
     listen_addr: "",

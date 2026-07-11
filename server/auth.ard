@@ -4,7 +4,7 @@ use go:io
 use go:net/http
 use go:strings
 use maestro/app
-use maestro/decode
+use decode
 use maestro/email
 use maestro/magic_links
 use maestro/response

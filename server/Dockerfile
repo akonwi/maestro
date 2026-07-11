@@ -43,21 +43,24 @@ FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache git gcc musl-dev
 
-# TODO: pin to a tagged Ard release once one lands that matches local dev.
-# For now we track main to dogfood the unreleased compiler.
+# Pinned to v0.26.0 (matches ard.toml `ard = ">= 0.26.0"` and local dev).
+# Bump when ready to adopt newer compiler features.
+ARG SERVER_ARD_VERSION=v0.26.0
 WORKDIR /build
 RUN git clone https://github.com/akonwi/ard.git
 WORKDIR /build/ard/compiler
+RUN git checkout ${SERVER_ARD_VERSION}
 RUN go mod download
 ENV CGO_ENABLED=1
 RUN go build --tags=goexperiment.jsonv2 -o /usr/local/bin/ard .
 
-# modernc.org/sqlite is pure Go, so a static (CGO-free) server binary is fine
-# and runs cleanly on a minimal runtime image.
+# ard-sql (with its pure-Go modernc sqlite driver) is fetched via `ard deps
+# fetch` from ard.lock; the server itself compiles CGO-free.
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN ard deps fetch
 ENV CGO_ENABLED=0
 RUN ard build main.ard --out /out/maestro-server
 

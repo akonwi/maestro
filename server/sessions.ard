@@ -1,8 +1,8 @@
+use decode
 use go:time
 use maestro/app
 use maestro/crypto
-use maestro/decode
-use maestro/sql
+use sql
 
 // Bearer-token sessions. The `token` column is a 64-char hex string
 // (32 random bytes from crypto/rand).
@@ -21,11 +21,16 @@ fn mint(a: app::App, user_id: Int) Session!Str {
   let ttl_ms = Int64::from(a.config.session_ttl_secs) * 1000
   let expires_at = now + ttl_ms
 
-  try sql::exec(
-    a.db,
-    "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?);",
-    [token, user_id, now, expires_at],
-  )
+  try a.db
+    .query("INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)")
+    .run(
+      [
+        "token": token,
+        "user_id": user_id,
+        "created_at": now,
+        "expires_at": expires_at,
+      ],
+    )
 
   Result::ok(
     Session{
@@ -40,11 +45,9 @@ fn mint(a: app::App, user_id: Int) Session!Str {
 // Look up a session by its bearer token. Returns none for missing OR
 // expired sessions; expired sessions are also deleted opportunistically.
 fn find_by_token(a: app::App, token: Str) Session?!Str {
-  let rows = try sql::query(
-    a.db,
-    "SELECT token, user_id, created_at, expires_at FROM sessions WHERE token = ? LIMIT 1;",
-    [token],
-  )
+  let rows = try a.db
+    .query("SELECT token, user_id, created_at, expires_at FROM sessions WHERE token = @token LIMIT 1")
+    .all(["token": token])
   match rows.at(0) {
     row => {
       let session = try decode_session(row)
@@ -62,15 +65,14 @@ fn find_by_token(a: app::App, token: Str) Session?!Str {
 }
 
 fn delete(a: app::App, token: Str) Void!Str {
-  sql::exec(a.db, "DELETE FROM sessions WHERE token = ?;", [token])
+  a.db.query("DELETE FROM sessions WHERE token = @token").run(["token": token])
 }
 
-private fn decode_session(row: [Str: Any]) Session!Str {
-  let data: Any = row
-  let token = try decode::run(data, decode::field("token", decode::string)).map_err(describe)
-  let user_id = try decode::run(data, decode::field("user_id", decode::int)).map_err(describe)
-  let created_at_int = try decode::run(data, decode::field("created_at", decode::int)).map_err(describe)
-  let expires_at_int = try decode::run(data, decode::field("expires_at", decode::int)).map_err(describe)
+private fn decode_session(row: Any) Session!Str {
+  let token = try decode::run(row, decode::field("token", decode::string)).map_err(describe)
+  let user_id = try decode::run(row, decode::field("user_id", decode::int)).map_err(describe)
+  let created_at_int = try decode::run(row, decode::field("created_at", decode::int)).map_err(describe)
+  let expires_at_int = try decode::run(row, decode::field("expires_at", decode::int)).map_err(describe)
   Result::ok(
     Session{
       token: token,

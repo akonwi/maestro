@@ -1,7 +1,7 @@
+use decode
 use go:time
 use maestro/app
-use maestro/decode
-use maestro/sql
+use sql
 
 // Domain struct + persistence for users. Handlers never touch sql
 // directly; they call through this module.
@@ -23,30 +23,24 @@ fn get_or_create_by_email(a: app::App, email: Str) User!Str {
 }
 
 fn find_by_id(a: app::App, id: Int) User?!Str {
-  let rows = try sql::query(
-    a.db,
-    "SELECT id, email, display_name, created_at FROM users WHERE id = ? LIMIT 1;",
-    [id],
-  )
+  let rows = try a.db
+    .query("SELECT id, email, display_name, created_at FROM users WHERE id = @id LIMIT 1")
+    .all(["id": id])
   first_user(rows)
 }
 
 fn find_by_email(a: app::App, email: Str) User?!Str {
-  let rows = try sql::query(
-    a.db,
-    "SELECT id, email, display_name, created_at FROM users WHERE email = ? LIMIT 1;",
-    [email],
-  )
+  let rows = try a.db
+    .query("SELECT id, email, display_name, created_at FROM users WHERE email = @email LIMIT 1")
+    .all(["email": email])
   first_user(rows)
 }
 
 private fn create(a: app::App, email: Str) User!Str {
   let now = time::Now().UnixMilli()
-  try sql::exec(
-    a.db,
-    "INSERT INTO users (email, created_at) VALUES (?, ?);",
-    [email, now],
-  )
+  try a.db
+    .query("INSERT INTO users (email, created_at) VALUES (@email, @created_at)")
+    .run(["email": email, "created_at": now])
   let found = try find_by_email(a, email)
   match found {
     user => Result::ok(user),
@@ -54,7 +48,7 @@ private fn create(a: app::App, email: Str) User!Str {
   }
 }
 
-private fn first_user(rows: [[Str: Any]]) User?!Str {
+private fn first_user(rows: [Any]) User?!Str {
   match rows.at(0) {
     row => {
       let user = try decode_user(row)
@@ -64,17 +58,14 @@ private fn first_user(rows: [[Str: Any]]) User?!Str {
   }
 }
 
-private fn decode_user(row: [Str: Any]) User!Str {
-  // Ard's generic-Any inference doesn't upcast a concrete `[Str: Any]`
-  // through the type variable in decode::run, so we ascribe first.
-  let data: Any = row
-  let id = try decode::run(data, decode::field("id", decode::int)).map_err(describe)
-  let email = try decode::run(data, decode::field("email", decode::string)).map_err(describe)
+private fn decode_user(row: Any) User!Str {
+  let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
+  let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
   let display_name = try decode::run(
-    data,
+    row,
     decode::field("display_name", decode::nullable(decode::string)),
   ).map_err(describe)
-  let created_at_int = try decode::run(data, decode::field("created_at", decode::int)).map_err(describe)
+  let created_at_int = try decode::run(row, decode::field("created_at", decode::int)).map_err(describe)
   Result::ok(
     User{
       id: id,

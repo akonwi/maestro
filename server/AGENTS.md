@@ -32,16 +32,18 @@ server/
   app.ard           App struct, threaded to every handler
   router.ard        composes routes: calls each domain's register()
   response.ard      JSON envelope + error helpers
-  middleware.ard    logging, CORS, auth wiring (over ffi/http.go)
+  middleware.ard    logging, CORS, auth wiring (added later)
   health.ard        health handler + register()
   auth.ard          magic-link handlers + register()
   users.ard         user store (queries -> typed structs) + User struct
   sessions.ard      session store, token mint/verify + Session struct
+  magic_links.ard   magic-link store, single-use consume
   email.ard         Resend wrapper
-  sql.ard           db wrapper over ffi/db.go
-  decode.ard        composable JSON decoders (local, replaces ard/decode)
-  ffi/db.go         Go-side SQLite handle
-  ffi/http.go       Go-side auth middleware + context adapter (M2)
+  crypto.ard        token generation (crypto/rand + hex)
+
+  (SQL access and JSON decoding are external Git deps:
+   github.com/akonwi/ard-sql and github.com/akonwi/ard-decode. The local
+   sql.ard/decode.ard/ffi/db.go were replaced once ard-sql stabilized.)
 ```
 
 New domains get one `.ard` file each until they outgrow it, then a subdir.
@@ -68,8 +70,9 @@ fn register(router: mut chi::Mux, app: App) {
 
 ### Data access: thin store modules
 
-Stores own the SQL **and** the row-to-struct decoding. `sql.ard` returns rows
-as `[Str: Any]`; the store turns them into typed Ard structs using `decode`.
+Stores own the SQL **and** the row-to-struct decoding. `sql` (the external
+`ard-sql` dep) returns rows as `[Any]` (each row is an `Any` map); the store
+decodes them into typed Ard structs using the external `decode` dep.
 Handlers are HTTP-only and never touch `sql` directly. Stores are the primary
 unit tested with `ard test` (`users_test.ard`, etc.).
 
