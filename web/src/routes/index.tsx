@@ -1,9 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { FixtureRow } from '@/components/fixture-row'
-import { getUpcomingFixtures } from '@/lib/fixtures'
+import type { Fixture } from '@/lib/fixtures'
+import { upcomingFixturesQuery } from '@/lib/fixtures'
 
-export const Route = createFileRoute('/')({ component: FixturesPage })
+export const Route = createFileRoute('/')({
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(upcomingFixturesQuery),
+  pendingComponent: FixturesRoutePending,
+  errorComponent: FixturesRouteError,
+  component: FixturesPage,
+})
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, {
   weekday: 'long',
@@ -11,17 +18,39 @@ const dayFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
 })
 
+function FixturesRoutePending() {
+  return (
+    <main className='mx-auto w-full max-w-5xl px-4 py-14' id='main-content'>
+      <FixtureSkeleton />
+    </main>
+  )
+}
+
+function FixturesRouteError({
+  error,
+  reset,
+}: {
+  error: Error
+  reset: () => void
+}) {
+  return (
+    <main className='mx-auto w-full max-w-5xl px-4 py-14' id='main-content'>
+      <ErrorState message={error.message} retry={reset} />
+    </main>
+  )
+}
+
 function FixturesPage() {
-  const fixtures = useQuery({
-    queryKey: ['fixtures', 'upcoming'],
-    queryFn: getUpcomingFixtures,
-  })
+  const fixtures = useQuery(upcomingFixturesQuery)
 
   return (
-    <main className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'>
+    <main
+      className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
+      id='main-content'
+    >
       <div className='mb-8'>
         <div className='section-kicker'>MLS / Upcoming</div>
-        <h1 className='mt-3 text-3xl font-semibold tracking-tight'>
+        <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
           Upcoming fixtures
         </h1>
         <p className='mt-2 text-sm text-muted-foreground'>
@@ -31,7 +60,10 @@ function FixturesPage() {
 
       {fixtures.isPending ? <FixtureSkeleton /> : null}
       {fixtures.isError ? (
-        <ErrorState message={fixtures.error.message} />
+        <ErrorState
+          message={fixtures.error.message}
+          retry={() => fixtures.refetch()}
+        />
       ) : null}
       {fixtures.data?.length === 0 ? <EmptyState /> : null}
       {fixtures.data ? <FixtureGroups fixtures={fixtures.data} /> : null}
@@ -39,15 +71,13 @@ function FixturesPage() {
   )
 }
 
-function FixtureGroups({
-  fixtures,
-}: {
-  fixtures: Awaited<ReturnType<typeof getUpcomingFixtures>>
-}) {
+function FixtureGroups({ fixtures }: { fixtures: Fixture[] }) {
   const groups = new Map<string, typeof fixtures>()
   for (const fixture of fixtures) {
     const day = dayFormatter.format(fixture.kickoff_at)
-    groups.set(day, [...(groups.get(day) ?? []), fixture])
+    const group = groups.get(day)
+    if (group) group.push(fixture)
+    else groups.set(day, [fixture])
   }
   return (
     <div className='space-y-8'>
@@ -68,7 +98,15 @@ function FixtureGroups({
 }
 
 function FixtureSkeleton() {
-  return <div className='h-48 animate-pulse border border-border bg-muted' />
+  return (
+    <div aria-live='polite' role='status'>
+      <span className='sr-only'>Loading fixtures…</span>
+      <div
+        aria-hidden
+        className='h-48 animate-pulse border border-border bg-muted motion-reduce:animate-none'
+      />
+    </div>
+  )
 }
 
 function EmptyState() {
@@ -82,10 +120,27 @@ function EmptyState() {
   )
 }
 
-function ErrorState({ message }: { message: string }) {
+function ErrorState({
+  message,
+  retry,
+}: {
+  message: string
+  retry: () => void
+}) {
   return (
-    <div className='border border-danger bg-danger-muted p-4 text-sm text-danger'>
-      <strong>Fixtures unavailable.</strong> {message}
+    <div
+      className='border border-danger bg-danger-muted p-4 text-sm text-danger'
+      role='alert'
+    >
+      <strong>Fixtures unavailable.</strong> Check your connection and try
+      again.
+      <details className='mt-2 text-xs'>
+        <summary>Technical details</summary>
+        <p className='break-words'>{message}</p>
+      </details>
+      <button className='ui-button mt-4' onClick={retry} type='button'>
+        Retry fixtures
+      </button>
     </div>
   )
 }

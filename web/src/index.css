@@ -28,6 +28,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #0b0b0b;
   --foreground: #f4f4f4;
   --muted: #141414;
@@ -82,6 +83,10 @@ html,
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+}
+html {
+  overflow-x: hidden;
 }
 body {
   margin: 0;
@@ -99,6 +104,27 @@ a {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 50;
+  translate: 0 -200%;
+  border: 1px solid var(--foreground);
+  background: var(--background);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  translate: 0;
 }
 
 .app-header {

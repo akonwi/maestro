@@ -4,9 +4,12 @@ import type { ReactNode } from 'react'
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className='min-h-screen bg-background text-foreground'>
+      <a className='skip-link' href='#main-content'>
+        Skip to main content
+      </a>
       <header className='app-header'>
         <div className='app-header-inner mx-auto max-w-6xl'>
-          <Link className='app-wordmark' to='/'>
+          <Link className='app-wordmark' to='/' translate='no'>
             Maestro
           </Link>
           <nav
@@ -20,7 +23,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               Fixtures
             </Link>
-            <span className='text-muted-foreground'>Groups</span>
+            <span
+              aria-disabled='true'
+              className='text-muted-foreground'
+              title='Groups are coming soon'
+            >
+              Groups
+            </span>
           </nav>
         </div>
       </header>

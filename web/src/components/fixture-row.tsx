@@ -1,7 +1,7 @@
 import { CaretRight } from '@phosphor-icons/react'
 import { Link } from '@tanstack/react-router'
 import type { Fixture } from '@/lib/fixtures'
-import { teamCrestUrl } from '@/lib/fixtures'
+import { fixtureStatusLabel, teamCrestUrl } from '@/lib/fixtures'
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -20,7 +20,7 @@ export function FixtureRow({ fixture }: { fixture: Fixture }) {
           {timeFormatter.format(fixture.kickoff_at)}
         </div>
         <div className='mt-1 text-[.6875rem] text-muted-foreground'>
-          {fixture.status}
+          {fixtureStatusLabel(fixture.status)}
         </div>
       </div>
       <div className='grid gap-2 sm:grid-cols-[1fr_2rem_1fr] sm:items-center'>
@@ -52,20 +52,23 @@ function Team({
     <div
       className={`flex min-w-0 items-center gap-2 text-sm font-semibold ${away ? 'sm:flex-row-reverse sm:justify-start' : ''}`}
     >
-      <Crest id={crestId} name={name} />
+      <Crest id={crestId} />
       <span className='min-w-0 truncate'>{name}</span>
     </div>
   )
 }
 
-function Crest({ id, name }: { id: number; name: string }) {
+function Crest({ id }: { id: number }) {
   return (
     <span className='grid size-7 shrink-0 place-items-center border border-border bg-muted p-1'>
       <img
         alt=''
         className='max-h-full max-w-full'
+        decoding='async'
+        height='28'
+        loading='lazy'
         src={teamCrestUrl(id)}
-        title={`${name} crest`}
+        width='28'
       />
     </span>
   )
