@@ -65,7 +65,7 @@ Ard's stdlib is intentionally small; the idiomatic path for backend work is dire
 - **HTTP layer** — Go interop with `chi` (mirrors `examples/chi-server` in the Ard repo). Provides real middleware, sub-routers, path params, graceful shutdown.
 - **JSON** — `use go:encoding/json` for encode/decode of typed structs. For non-trivial decoding of upstream API responses (nested, partial, missing fields), a project-local `decode.ard` module, copied from `../tinear/decode.ard`, providing composable decoders (`decode::field`, `decode::list`, `decode::nullable`, etc.) over Go's `Any` values.
 - **Database** — project-local `sql.ard` module wrapping `use go:database/sql` + `use go:github.com/mattn/go-sqlite3` (or a pure-Go driver like `modernc.org/sqlite` if we want to avoid CGO). Storage is **SQLite** on a mounted volume on Zeabur. ~1ms query latency; standard SQL means we can migrate to Postgres later if needed. Considered Cloudflare D1 but rejected: from Zeabur every query becomes a 50–200ms HTTPS round-trip, and D1's value proposition (colocated with Workers) doesn't apply here.
-- **Outbound HTTP** — Go interop with `net/http` for calls to API-Football and Resend. Wrapping in a small local `http.ard` helper module is optional.
+- **Outbound HTTP** — Go interop with `net/http` for calls to API-Football and Cloudflare Email Service.
 - **Fixture data** — proxied from API-Football on demand rather than synced into SQLite. A shared in-memory TTL cache stores raw upstream JSON by URL, so many users refreshing within the cache window produce one API request. The app stores only game-owned data (users, groups, predictions, sessions, competition configuration).
 - **Config** — `use go:os` for env vars (validated at startup); no config file for v1.
 - **Migrations** — [`migr`](https://github.com/akonwi/migr) CLI, run at container startup by the entrypoint (`migr up` then `exec server`). SQL files as `NNN_name.up.sql` / `NNN_name.down.sql` under `server/migrations/`. Driven by `DATABASE_URL`.
@@ -92,14 +92,14 @@ Rough edges to expect from Ard's Go interop:
 
 ### Email
 
-**Resend** for magic-link delivery. 3000 emails/month free, trivial REST API, good Cloudflare integration if needed later. Cloudflare's Send API was considered but is still beta with limitations; MailChannels (the classic free CF option) discontinued its free tier in mid-2024.
+**Cloudflare Email Service** for magic-link delivery through its REST API. The Ard server calls the API directly; no Workers binding or relay Worker is required. The sender domain is configured in Cloudflare and the API token is scoped to Email Sending.
 
 ### External services summary
 
 | Service | Purpose | Cost at v1 scale |
 |---|---|---|
 | API-Football | Fixtures, scores, sync | Existing key; free tier likely sufficient |
-| Resend | Magic-link email | Free (< 3000/mo) |
+| Cloudflare Email Service | Magic-link email | Usage-based |
 | Zeabur | Server hosting | Free/hobby tier |
 | Cloudflare Workers | Web hosting (TanStack Start via wrangler) | Free |
 
@@ -217,7 +217,7 @@ WHERE fixture_id = :fixture_id;
 
 ## Auth flow (magic link)
 
-1. `POST /auth/request { email }` — server creates `magic_links` row (token = 32 random bytes hex, expires in 15 min), sends email via Resend containing `https://<web-domain>/auth/verify?token=...`.
+1. `POST /auth/request { email }` — server creates `magic_links` row (token = 32 random bytes hex, expires in 15 min), sends email via Cloudflare Email Service containing `https://<web-domain>/auth/verify?token=...`.
 2. Web app hits `POST /auth/verify { token }` on the Ard server — server marks link consumed, creates or fetches user, creates a `sessions` row (30-day expiry), returns `{ session_token, user }`.
 3. Web app stores `session_token` (localStorage) and sends it as `Authorization: Bearer <token>` on subsequent requests.
 4. Middleware on protected routes reads the header, looks up the session, attaches `user_id` to the request context.
@@ -285,7 +285,7 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
 
 - Magic-link request/verify flow.
 - Bearer-token sessions, auth middleware reading `Authorization` header.
-- Resend integration (real emails in dev too, via a test address).
+- Cloudflare Email Service integration over REST.
 
 ### M3 — Cached fixture proxy (server)
 
@@ -328,7 +328,7 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
 ### M6 — Ship to friends
 
 - Real Zeabur deployment.
-- Custom domain, real Resend sender.
+- Custom domain configured as a Cloudflare Email Service sender.
 - Invite emails, first live matchday.
 
 ### Deferred

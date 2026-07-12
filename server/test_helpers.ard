@@ -45,9 +45,10 @@ fn build_app() app::App!Str {
   let cfg = config::Config{
     database_url: ":memory:",
     listen_addr: "",
-    resend_enabled: false,
-    resend_api_key: "test",
-    resend_from_email: "test@example.com",
+    email_enabled: false,
+    cloudflare_account_id: "test-account",
+    cloudflare_email_api_token: "test-token",
+    email_from: "login@example.com",
     server_base_url: "http://test.local",
     app_base_url: "http://test.local",
     magic_link_ttl_secs: 900,

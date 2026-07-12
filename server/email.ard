@@ -2,25 +2,31 @@ use ard/unsafe
 
 use go:bytes
 use go:encoding/json
+use go:io
 use go:net/http
 use maestro/config
 
-// Minimal Resend wrapper. One POST /emails call per message. Plain-text
-// bodies only for v1.
+// Minimal Cloudflare Email Service REST client. One plain-text message per
+// request; the sender must belong to a domain configured for Email Service.
 
-let ENDPOINT: Str = "https://api.resend.com/emails"
+let API_BASE: Str = "https://api.cloudflare.com/client/v4"
 
 fn send(cfg: config::Config, to: Str, subject: Str, text: Str) Void!Str {
-  match cfg.resend_enabled {
+  match cfg.email_enabled {
     false => Result::ok(()),
-    true => send_via_resend(cfg, to, subject, text),
+    true => send_via_cloudflare(cfg, to, subject, text),
   }
 }
 
-private fn send_via_resend(cfg: config::Config, to: Str, subject: Str, text: Str) Void!Str {
-  let payload: [Str: Any] = [
-    "from": cfg.resend_from_email,
-    "to": [to],
+private fn send_via_cloudflare(
+  cfg: config::Config,
+  to: Str,
+  subject: Str,
+  text: Str,
+) Void!Str {
+  let payload: [Str: Str] = [
+    "from": cfg.email_from,
+    "to": to,
     "subject": subject,
     "text": text,
   ]
@@ -28,24 +34,26 @@ private fn send_via_resend(cfg: config::Config, to: Str, subject: Str, text: Str
   let body_bytes = try json::Marshal(payload)
   mut buf = body_bytes
   let reader = bytes::NewReader(buf)
+  let endpoint = "{API_BASE}/accounts/{cfg.cloudflare_account_id}/email/sending/send"
 
-  mut req = try http::NewRequest("POST", ENDPOINT, reader)
-  req.Header.Set("Authorization", "Bearer {cfg.resend_api_key}")
+  mut req = try http::NewRequest("POST", endpoint, reader)
+  req.Header.Set("Authorization", "Bearer {cfg.cloudflare_email_api_token}")
   req.Header.Set("Content-Type", "application/json")
 
   mut client = http::Client{}
   let resp = try client.Do(req)
-
-  // Guard the Response pointer before touching it — a nil resp on error
-  // would panic on field access.
   match unsafe::is_nil(resp) {
-    true => Result::err("resend: nil response"),
+    true => Result::err("cloudflare email: nil response"),
     false => {
       let status = resp.StatusCode
+      let response_bytes = try io::ReadAll(resp.Body)
       try resp.Body.Close()
       match status >= 200 and status < 300 {
         true => Result::ok(()),
-        false => Result::err("resend rejected the message: HTTP {status}"),
+        false => {
+          let detail = Str::from(response_bytes)
+          Result::err("cloudflare email rejected the message: HTTP {status}: {detail}")
+        },
       }
     },
   }

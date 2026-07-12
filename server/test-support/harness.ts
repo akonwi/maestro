@@ -25,14 +25,11 @@ export type HarnessOptions = {
    * collisions between parallel test files.
    */
   port: number;
-  /** When true, /auth/request will call Resend. Default false. */
-  resendEnabled?: boolean;
   /** Extra env vars for the server process (override defaults). */
   env?: Record<string, string>;
 };
 
 export function createHarness(opts: HarnessOptions) {
-  const resendEnabled = opts.resendEnabled ?? false;
   const dbPath = join(TMP_DIR, `maestro-test-${opts.id}.db`);
   const port = String(opts.port);
   const base = `http://127.0.0.1:${port}`;
@@ -101,12 +98,15 @@ export function createHarness(opts: HarnessOptions) {
         ...process.env,
         DATABASE_URL: dbPath,
         PORT: port,
-        RESEND_ENABLED: String(resendEnabled),
-        RESEND_FROM_EMAIL: "onboarding@resend.dev",
+        CLOUDFLARE_ACCOUNT_ID: "test-account",
+        CLOUDFLARE_EMAIL_API_TOKEN: "test-token",
+        EMAIL_FROM: "login@example.com",
         API_FOOTBALL_KEY: "test-key",
         SERVER_BASE_URL: base,
         APP_BASE_URL: "http://web.test",
         ...(opts.env ?? {}),
+        // Tests must never make a real outbound email request.
+        EMAIL_ENABLED: "false",
       },
       stdout: "pipe",
       stderr: "pipe",

@@ -86,9 +86,10 @@ curl http://localhost:8080/health   # -> "ok" when the DB pings
 |----------------|----------------------------------|--------------------|
 | `DATABASE_URL` | SQLite file path (also used by migr) | `maestro.db` (server) / required (migr) |
 | `PORT`         | HTTP listen port                 | `8080`             |
-| `RESEND_ENABLED` | Send real email via Resend    | `true`             |
-| `RESEND_API_KEY` | Resend API key                | required when RESEND_ENABLED |
-| `RESEND_FROM_EMAIL` | From address               | `onboarding@resend.dev` |
+| `EMAIL_ENABLED` | Send real magic-link email through Cloudflare Email Service | `false` |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account containing Email Service | required when EMAIL_ENABLED |
+| `CLOUDFLARE_EMAIL_API_TOKEN` | API token with Email Sending permission | required when EMAIL_ENABLED |
+| `EMAIL_FROM` | Sender on a domain configured for Email Service | required when EMAIL_ENABLED |
 | `SERVER_BASE_URL` | This server's public URL (magic-link emails) | required |
 | `APP_BASE_URL` | Web app URL (verify redirect)    | required           |
 | `MAGIC_LINK_TTL_SECONDS` | Magic-link lifetime    | `900`              |

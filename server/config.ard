@@ -7,9 +7,10 @@ use go:strconv
 struct Config {
   database_url: Str,
   listen_addr: Str,
-  resend_enabled: Bool,
-  resend_api_key: Str,
-  resend_from_email: Str,
+  email_enabled: Bool,
+  cloudflare_account_id: Str,
+  cloudflare_email_api_token: Str,
+  email_from: Str,
   server_base_url: Str,
   app_base_url: Str,
   magic_link_ttl_secs: Int,
@@ -20,9 +21,10 @@ struct Config {
 fn load() Config!Str {
   let database_url = getenv_or("DATABASE_URL", "maestro.db")
   let port = getenv_or("PORT", "8080")
-  let resend_enabled = parse_bool_env("RESEND_ENABLED", true)
-  let resend_api_key = try require_when(resend_enabled, "RESEND_API_KEY")
-  let resend_from_email = getenv_or("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+  let email_enabled = parse_bool_env("EMAIL_ENABLED", false)
+  let cloudflare_account_id = try require_when(email_enabled, "CLOUDFLARE_ACCOUNT_ID")
+  let cloudflare_email_api_token = try require_when(email_enabled, "CLOUDFLARE_EMAIL_API_TOKEN")
+  let email_from = try require_when(email_enabled, "EMAIL_FROM")
   let server_base_url = getenv_or("SERVER_BASE_URL", "http://localhost:{port}")
   let app_base_url = try require("APP_BASE_URL")
   let magic_link_ttl_secs = try parse_int_env("MAGIC_LINK_TTL_SECONDS", 900)
@@ -33,9 +35,10 @@ fn load() Config!Str {
     Config{
       database_url: database_url,
       listen_addr: "0.0.0.0:{port}",
-      resend_enabled: resend_enabled,
-      resend_api_key: resend_api_key,
-      resend_from_email: resend_from_email,
+      email_enabled: email_enabled,
+      cloudflare_account_id: cloudflare_account_id,
+      cloudflare_email_api_token: cloudflare_email_api_token,
+      email_from: email_from,
       server_base_url: server_base_url,
       app_base_url: app_base_url,
       magic_link_ttl_secs: magic_link_ttl_secs,
@@ -61,8 +64,7 @@ private fn require(name: Str) Str!Str {
   }
 }
 
-// Required only when a companion flag is on — e.g. RESEND_API_KEY is
-// only needed when RESEND_ENABLED=true.
+// Required only when a companion feature flag is on.
 private fn require_when(needed: Bool, name: Str) Str!Str {
   match needed {
     true => require(name),

@@ -37,7 +37,7 @@ server/
   users.ard         user store (queries -> typed structs) + User struct
   sessions.ard      session store, token mint/verify + Session struct
   magic_links.ard   magic-link store, single-use consume
-  email.ard         Resend wrapper
+  email.ard         Cloudflare Email Service REST client
   api_football.ard  API-Football client + cached response decoding
   competitions.ard  competitions store (which leagues/seasons to fetch)
   fixtures.ard      cached API-Football proxy + public read endpoints
@@ -118,7 +118,7 @@ Error envelope is `{ "error": "message" }`. Keep it flat for v1.
 ### Config
 
 `config.ard` reads env once at startup into a `Config` struct and validates
-required values (`DATABASE_URL`, `RESEND_API_KEY`, etc.), failing fast with a
+required values (`DATABASE_URL`, `CLOUDFLARE_EMAIL_API_TOKEN`, etc.), failing fast with a
 clear message. No config files.
 
 ## Interop rules of thumb (learned in M1)
@@ -159,7 +159,7 @@ endpoint's shape, error envelope, and side effects.
   once. `beforeEach` calls `resetDb()` which **truncates tables** via the
   shared bun:sqlite connection — unlinking the file after the server has
   it open would leave the server writing to a ghost inode.
-- `RESEND_ENABLED=false` in the harness so `/auth/request` never hits
-  Resend but still writes the `magic_links` row we assert against.
+- `EMAIL_ENABLED=false` in the harness so `/auth/request` never calls
+  Cloudflare Email Service but still writes the `magic_links` row we assert against.
 - Add a new suite by dropping `tests/<domain>.test.ts` and giving it a
   unique `id` and `port`. Reuse `test-support/harness.ts`.
