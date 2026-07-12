@@ -118,10 +118,11 @@ private fn do_request(a: app::App, r: mut http::Request) Void!Str {
   let addr = try decode_field(r, "email")
   let token = try magic_links::create(a, addr)
   let link = "{a.config.server_base_url}/auth/verify?token={token}"
-  let body = "Click the link to sign in to Maestro:\n\n{link}\n\nThe link expires soon and can only be used once."
+  let text = "Click the link to sign in to Maestro:\n\n{link}\n\nThe link expires soon and can only be used once."
+  let html = "<p>Use the link below to sign in to Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
 
-  // A send failure shouldn't leak upstream \u2014 the user can retry.
-  match email::send(a.config, addr, "Your Maestro sign-in link", body) {
+  // A send failure shouldn't leak upstream — the user can retry.
+  match email::send(a.config, addr, "Your Maestro sign-in link", text, html) {
     ok => Result::ok(()),
     err(message) => {
       fmt::Println("email send failed for {addr}: {message}")

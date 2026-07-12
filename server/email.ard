@@ -11,10 +11,10 @@ use maestro/config
 
 let API_BASE: Str = "https://api.cloudflare.com/client/v4"
 
-fn send(cfg: config::Config, to: Str, subject: Str, text: Str) Void!Str {
+fn send(cfg: config::Config, to: Str, subject: Str, text: Str, html: Str) Void!Str {
   match cfg.email_enabled {
     false => Result::ok(()),
-    true => send_via_cloudflare(cfg, to, subject, text),
+    true => send_via_cloudflare(cfg, to, subject, text, html),
   }
 }
 
@@ -23,12 +23,14 @@ private fn send_via_cloudflare(
   to: Str,
   subject: Str,
   text: Str,
+  html: Str,
 ) Void!Str {
   let payload: [Str: Str] = [
     "from": cfg.email_from,
     "to": to,
     "subject": subject,
     "text": text,
+    "html": html,
   ]
 
   let body_bytes = try json::Marshal(payload)
