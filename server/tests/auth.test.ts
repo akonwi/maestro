@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "bun:test";
 import { createHarness } from "../test-support/harness";
 
 const harness = createHarness({ id: "auth", port: 8092 });
@@ -29,7 +36,11 @@ describe("POST /auth/request", () => {
     expect(res.status).toBe(204);
     expect(res.text).toBe("");
 
-    const row = harness.sqlOne<{ email: string; token: string; consumed_at: number | null }>(
+    const row = harness.sqlOne<{
+      email: string;
+      token: string;
+      consumed_at: number | null;
+    }>(
       "SELECT email, token, consumed_at FROM magic_links WHERE email = ?;",
       "ada@example.com",
     );
@@ -46,9 +57,13 @@ describe("POST /auth/request", () => {
   });
 
   it("returns 400 when the JSON is malformed", async () => {
-    const res = await harness.api("POST", "/auth/request", { body: "not json" });
+    const res = await harness.api("POST", "/auth/request", {
+      body: "not json",
+    });
     expect(res.status).toBe(400);
-    expect(res.json).toMatchObject({ error: expect.stringContaining("invalid request") });
+    expect(res.json).toMatchObject({
+      error: expect.stringContaining("invalid request"),
+    });
   });
 
   it("returns 400 when the email field is missing", async () => {
@@ -68,8 +83,13 @@ describe("POST /auth/request", () => {
 describe("GET /auth/verify?token=X", () => {
   it("redirects to the web app without consuming the token", async () => {
     // Mint a magic link first.
-    await harness.api("POST", "/auth/request", { body: { email: "ada@example.com" } });
-    const before = harness.sqlOne<{ token: string; consumed_at: number | null }>(
+    await harness.api("POST", "/auth/request", {
+      body: { email: "ada@example.com" },
+    });
+    const before = harness.sqlOne<{
+      token: string;
+      consumed_at: number | null;
+    }>(
       "SELECT token, consumed_at FROM magic_links WHERE email = ?;",
       "ada@example.com",
     );
@@ -77,7 +97,9 @@ describe("GET /auth/verify?token=X", () => {
 
     const res = await harness.api("GET", `/auth/verify?token=${token}`);
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe(`http://web.test/auth/verify?token=${token}`);
+    expect(res.headers.get("location")).toBe(
+      `http://web.test/auth/verify?token=${token}`,
+    );
 
     const after = harness.sqlOne<{ consumed_at: number | null }>(
       "SELECT consumed_at FROM magic_links WHERE token = ?;",
@@ -145,14 +167,22 @@ describe("POST /auth/verify", () => {
 
   it("is idempotent per email: same email on second verify returns the same user id", async () => {
     const token1 = await mintToken("ada@example.com");
-    const first = await harness.api<{ user: { id: number } }>("POST", "/auth/verify", {
-      body: { token: token1 },
-    });
+    const first = await harness.api<{ user: { id: number } }>(
+      "POST",
+      "/auth/verify",
+      {
+        body: { token: token1 },
+      },
+    );
 
     const token2 = await mintToken("ada@example.com");
-    const second = await harness.api<{ user: { id: number } }>("POST", "/auth/verify", {
-      body: { token: token2 },
-    });
+    const second = await harness.api<{ user: { id: number } }>(
+      "POST",
+      "/auth/verify",
+      {
+        body: { token: token2 },
+      },
+    );
 
     expect(first.json!.user.id).toBe(second.json!.user.id);
   });
@@ -163,13 +193,19 @@ describe("POST /auth/verify", () => {
 
     const res = await harness.api("POST", "/auth/verify", { body: { token } });
     expect(res.status).toBe(400);
-    expect(res.json).toMatchObject({ error: expect.stringContaining("already used") });
+    expect(res.json).toMatchObject({
+      error: expect.stringContaining("already used"),
+    });
   });
 
   it("returns 400 for an unknown token", async () => {
-    const res = await harness.api("POST", "/auth/verify", { body: { token: "not-a-token" } });
+    const res = await harness.api("POST", "/auth/verify", {
+      body: { token: "not-a-token" },
+    });
     expect(res.status).toBe(400);
-    expect(res.json).toMatchObject({ error: expect.stringContaining("invalid or unknown") });
+    expect(res.json).toMatchObject({
+      error: expect.stringContaining("invalid or unknown"),
+    });
   });
 
   it("returns 400 when the body is missing", async () => {
@@ -194,9 +230,13 @@ describe("POST /auth/logout", () => {
       "SELECT token FROM magic_links WHERE email = ? AND consumed_at IS NULL ORDER BY expires_at DESC LIMIT 1;",
       email,
     );
-    const res = await harness.api<{ session_token: string }>("POST", "/auth/verify", {
-      body: { token: link!.token },
-    });
+    const res = await harness.api<{ session_token: string }>(
+      "POST",
+      "/auth/verify",
+      {
+        body: { token: link!.token },
+      },
+    );
     return res.json!.session_token;
   }
 
@@ -218,7 +258,9 @@ describe("POST /auth/logout", () => {
   it("returns 401 when the Authorization header is missing", async () => {
     const res = await harness.api("POST", "/auth/logout");
     expect(res.status).toBe(401);
-    expect(res.json).toMatchObject({ error: expect.stringContaining("bearer") });
+    expect(res.json).toMatchObject({
+      error: expect.stringContaining("bearer"),
+    });
   });
 
   it("returns 401 when the Authorization scheme is not Bearer", async () => {
@@ -233,5 +275,78 @@ describe("POST /auth/logout", () => {
       headers: { Authorization: "Bearer not-a-real-token" },
     });
     expect(res.status).toBe(204);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /auth/me
+// Header: Authorization: Bearer <session_token>
+// -> 200 current user. Missing, unknown, or expired sessions -> 401.
+// ---------------------------------------------------------------------------
+
+describe("GET /auth/me", () => {
+  async function newSession(email: string): Promise<string> {
+    await harness.api("POST", "/auth/request", { body: { email } });
+    const link = harness.sqlOne<{ token: string }>(
+      "SELECT token FROM magic_links WHERE email = ? AND consumed_at IS NULL ORDER BY expires_at DESC LIMIT 1;",
+      email,
+    );
+    const res = await harness.api<{ session_token: string }>(
+      "POST",
+      "/auth/verify",
+      {
+        body: { token: link!.token },
+      },
+    );
+    return res.json!.session_token;
+  }
+
+  it("returns the current user for a valid session", async () => {
+    const token = await newSession("ada@example.com");
+    const res = await harness.api<{
+      id: number;
+      email: string;
+      display_name: string | null;
+    }>("GET", "/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({
+      id: expect.any(Number),
+      email: "ada@example.com",
+      display_name: null,
+    });
+  });
+
+  it("returns 401 without a bearer token", async () => {
+    const res = await harness.api("GET", "/auth/me");
+    expect(res.status).toBe(401);
+    expect(res.json).toEqual({
+      error: "missing, invalid, or expired bearer token",
+    });
+  });
+
+  it("returns 401 for an unknown bearer token", async () => {
+    const res = await harness.api("GET", "/auth/me", {
+      headers: { Authorization: "Bearer unknown" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 for an expired session", async () => {
+    const token = await newSession("ada@example.com");
+    harness.sqlOne(
+      "UPDATE sessions SET expires_at = 0 WHERE token = ? RETURNING token;",
+      token,
+    );
+
+    const res = await harness.api("GET", "/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(401);
+    expect(
+      harness.sqlOne("SELECT token FROM sessions WHERE token = ?;", token),
+    ).not.toBeNull();
   });
 });

@@ -52,3 +52,22 @@ test fn two_mints_get_distinct_tokens() Void!Str {
   try testing::assert(s1.token != s2.token, "tokens must be distinct")
   testing::pass()
 }
+
+test fn delete_expired_removes_only_expired_sessions() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let expired = try sessions::mint(app, user.id)
+  let active = try sessions::mint(app, user.id)
+
+  try app.db
+    .query("UPDATE sessions SET expires_at = 0 WHERE token = @token")
+    .run(["token": expired.token])
+  try sessions::delete_expired(app)
+
+  let rows = try app.db.query("SELECT token FROM sessions").all([:])
+  try testing::assert(rows.size() == 1, "cleanup leaves only the active session")
+
+  let found_active = try sessions::find_by_token(app, active.token)
+  try testing::assert(found_active.is_some(), "active session remains findable")
+  testing::pass()
+}

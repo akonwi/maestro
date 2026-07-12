@@ -10,6 +10,7 @@ use go:syscall
 use maestro/app
 use maestro/config
 use maestro/router
+use maestro/sessions
 use sql
 
 fn main() {
@@ -25,6 +26,7 @@ fn main() {
   fmt::Println("database ready at {cfg.database_url}")
 
   let application = app::App{db: db, config: cfg, cache: ffi::NewCache()}
+  sessions::start_cleanup(application)
   mut server = http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
 
   let interrupts = Chan::new<os::Signal>()

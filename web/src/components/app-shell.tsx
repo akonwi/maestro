@@ -1,5 +1,8 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
+import { currentUserQuery, logout } from '@/lib/auth'
+import { clearSessionToken, useSessionToken } from '@/lib/session'
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -25,15 +28,58 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
             <span
               aria-disabled='true'
-              className='text-muted-foreground'
+              className='hidden text-muted-foreground sm:inline'
               title='Groups are coming soon'
             >
               Groups
             </span>
+            <AuthControls />
           </nav>
         </div>
       </header>
       {children}
     </div>
+  )
+}
+
+function AuthControls() {
+  const token = useSessionToken()
+  const queryClient = useQueryClient()
+  const user = useQuery(currentUserQuery(token))
+  useEffect(() => {
+    if (!user.isError) return
+    clearSessionToken()
+    queryClient.removeQueries({ queryKey: ['auth'] })
+  }, [queryClient, user.isError])
+
+  const signOut = useMutation({
+    mutationFn: () => (token ? logout(token) : Promise.resolve()),
+    onSettled: () => {
+      clearSessionToken()
+      queryClient.removeQueries({ queryKey: ['auth'] })
+    },
+  })
+
+  if (!token) {
+    return (
+      <Link className='font-semibold' to='/login'>
+        Sign in
+      </Link>
+    )
+  }
+
+  return (
+    <button
+      aria-label={`Sign out${user.data?.email ? ` ${user.data.email}` : ''}`}
+      className='max-w-32 truncate border-0 bg-transparent p-0 text-sm font-semibold hover:text-accent'
+      disabled={signOut.isPending}
+      onClick={() => signOut.mutate()}
+      title={user.data?.email ?? 'Sign out'}
+      type='button'
+    >
+      {signOut.isPending
+        ? 'Signing out…'
+        : (user.data?.display_name ?? user.data?.email ?? 'Sign out')}
+    </button>
   )
 }

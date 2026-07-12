@@ -32,7 +32,6 @@ server/
   app.ard           App struct, threaded to every handler
   router.ard        composes routes: calls each domain's register()
   response.ard      JSON envelope + error helpers
-  middleware.ard    logging, CORS, auth wiring (added later)
   health.ard        health handler + register()
   auth.ard          magic-link handlers + register()
   users.ard         user store (queries -> typed structs) + User struct
@@ -43,6 +42,7 @@ server/
   competitions.ard  competitions store (which leagues/seasons to fetch)
   fixtures.ard      cached API-Football proxy + public read endpoints
   ffi/cache.go      concurrency-safe in-memory TTL cache
+  ffi/http.go       auth middleware + request-context user id
   crypto.ard        token generation (crypto/rand + hex)
 
   (SQL access and JSON decoding are external Git deps:
@@ -93,8 +93,8 @@ seams:
 
 ```go
 // ffi/http.go
-func AuthMiddleware(authenticate func(*http.Request) (int64, bool)) func(http.Handler) http.Handler
-func UserID(r *http.Request) (int64, bool)
+func AuthMiddleware(authenticate func(*http.Request) (int, bool)) func(http.Handler) http.Handler
+func UserID(r *http.Request) (int, bool)
 ```
 
 Ard provides the `authenticate` closure (looks up the bearer token via the

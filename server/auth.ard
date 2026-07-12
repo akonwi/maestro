@@ -1,6 +1,7 @@
 use go:fmt
 use go:github.com/go-chi/chi/v5 as chi
 use go:io
+use go:maestro/ffi
 use go:net/http
 use go:strings
 use maestro/app
@@ -11,8 +12,7 @@ use maestro/response
 use maestro/sessions
 use maestro/users
 
-// Wire the /auth/* endpoints into the router. No middleware in M2 \u2014
-// logout reads its bearer token inline.
+// Wire public auth endpoints and the middleware-protected current-user route.
 fn register(router: mut chi::Mux, a: app::App) {
   router.Post(
     "/auth/request",
@@ -36,6 +36,24 @@ fn register(router: mut chi::Mux, a: app::App) {
     "/auth/logout",
     fn(w: http::ResponseWriter, r: mut http::Request) {
       handle_logout(a, w, r)
+    },
+  )
+
+  router.Group(
+    fn(protected: chi::Router) {
+      protected.Use(
+        ffi::AuthMiddleware(
+          fn(r: mut http::Request) Int? {
+            authenticate(a, r)
+          },
+        ),
+      )
+      protected.Get(
+        "/auth/me",
+        fn(w: http::ResponseWriter, r: mut http::Request) {
+          handle_me(a, w, r)
+        },
+      )
     },
   )
 }
@@ -129,6 +147,57 @@ private fn do_verify(a: app::App, r: mut http::Request) [Str: Any]!Str {
     "user": user_payload,
   ]
   Result::ok(payload)
+}
+
+// Authenticate a request for AuthMiddleware. Database failures are logged
+// server-side and intentionally collapse to an unauthenticated result.
+private fn authenticate(a: app::App, r: mut http::Request) Int? {
+  let token = bearer_token(r)
+  match token.is_empty() {
+    true => Maybe::new(),
+    false => {
+      match sessions::find_by_token(a, token) {
+        ok(found) => {
+          match found {
+            session => Maybe::new(session.user_id),
+            _ => Maybe::new(),
+          }
+        },
+        err(message) => {
+          fmt::Println("session lookup failed: {message}")
+          Maybe::new()
+        },
+      }
+    },
+  }
+}
+
+private fn handle_me(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match ffi::UserID(r) {
+    user_id => {
+      match users::find_by_id(a, user_id) {
+        ok(found) => {
+          match found {
+            user => {
+              let payload: [Str: Any] = [
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+              ]
+              response::json_response(w, http::StatusOK, payload)
+            },
+            _ => response::fail(w, http::StatusUnauthorized, "authenticated user no longer exists"),
+          }
+        },
+        err(message) => response::fail(
+          w,
+          http::StatusInternalServerError,
+          "could not load current user: {message}",
+        ),
+      }
+    },
+    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+  }
 }
 
 // Read a single string field from a JSON request body. All the M2 auth

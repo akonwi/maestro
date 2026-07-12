@@ -9,9 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FixturesFixtureIdRouteImport } from './routes/fixtures.$fixtureId'
+import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -22,35 +29,55 @@ const FixturesFixtureIdRoute = FixturesFixtureIdRouteImport.update({
   path: '/fixtures/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/auth/verify',
+  path: '/auth/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/fixtures/$fixtureId': typeof FixturesFixtureIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/fixtures/$fixtureId': typeof FixturesFixtureIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/fixtures/$fixtureId': typeof FixturesFixtureIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/fixtures/$fixtureId'
+  fullPaths: '/' | '/login' | '/auth/verify' | '/fixtures/$fixtureId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/fixtures/$fixtureId'
-  id: '__root__' | '/' | '/fixtures/$fixtureId'
+  to: '/' | '/login' | '/auth/verify' | '/fixtures/$fixtureId'
+  id: '__root__' | '/' | '/login' | '/auth/verify' | '/fixtures/$fixtureId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  AuthVerifyRoute: typeof AuthVerifyRoute
   FixturesFixtureIdRoute: typeof FixturesFixtureIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -65,11 +92,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FixturesFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/verify': {
+      id: '/auth/verify'
+      path: '/auth/verify'
+      fullPath: '/auth/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  AuthVerifyRoute: AuthVerifyRoute,
   FixturesFixtureIdRoute: FixturesFixtureIdRoute,
 }
 export const routeTree = rootRouteImport
