@@ -216,9 +216,9 @@ function PredictionArea({
             </p>
           </div>
           {selectedGroup ? (
-            <div className='flex h-10 min-w-0 items-stretch border border-border bg-surface'>
+            <div className='flex min-w-0 items-stretch bg-surface'>
               <span
-                className='flex items-center border-r border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'
+                className='flex h-10 items-center border border-r-0 border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'
                 id='prediction-group-label'
               >
                 Group
@@ -235,9 +235,15 @@ function PredictionArea({
               >
                 <SelectTrigger
                   aria-labelledby='prediction-group-label'
-                  className='h-full min-w-44 border-0 bg-surface px-3 text-sm font-semibold focus-visible:ring-0'
+                  className='min-w-44 bg-surface px-3 text-sm font-semibold'
+                  size='lg'
                 >
-                  <SelectValue />
+                  <SelectValue>
+                    {groupId =>
+                      groupOptions.find(group => group.value === groupId)
+                        ?.label ?? ''
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent align='end'>
                   <SelectGroup>
