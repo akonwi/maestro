@@ -11,7 +11,7 @@ test fn get_or_create_is_idempotent() Void!Str {
 
   try testing::assert(first.id == again.id, "same email should return same id")
   try testing::assert(first.email == "ada@example.com", "email round-trips")
-  try testing::assert(first.display_name.is_none(), "display_name starts null")
+  try testing::assert(first.display_name.expect("display name") == "ada", "display_name starts from email local part")
   testing::pass()
 }
 

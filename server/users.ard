@@ -1,4 +1,5 @@
 use decode
+use go:strings
 use go:time
 use maestro/app
 use sql
@@ -38,9 +39,13 @@ fn find_by_email(a: app::App, email: Str) User?!Str {
 
 private fn create(a: app::App, email: Str) User!Str {
   let now = time::Now().UnixMilli()
+  let display_name = match strings::Split(email, "@").at(0) {
+    name => name,
+    _ => email,
+  }
   try a.db
-    .query("INSERT INTO users (email, created_at) VALUES (@email, @created_at)")
-    .run(["email": email, "created_at": now])
+    .query("INSERT INTO users (email, display_name, created_at) VALUES (@email, @display_name, @created_at)")
+    .run(["email": email, "display_name": display_name, "created_at": now])
   let found = try find_by_email(a, email)
   match found {
     user => Result::ok(user),

@@ -147,7 +147,7 @@ describe("POST /auth/verify", () => {
     expect(res.json!.user).toEqual({
       id: expect.any(Number),
       email: "ada@example.com",
-      display_name: null,
+      display_name: "ada",
     });
 
     // Magic link consumed.
@@ -315,7 +315,7 @@ describe("GET /auth/me", () => {
     expect(res.json).toEqual({
       id: expect.any(Number),
       email: "ada@example.com",
-      display_name: null,
+      display_name: "ada",
     });
   });
 
