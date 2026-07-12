@@ -1,8 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { verifyMagicLink } from '@/lib/auth'
 import { setSessionToken } from '@/lib/session'
+
+const verificationRequests = new Map<
+  string,
+  ReturnType<typeof verifyMagicLink>
+>()
+
+function verifyMagicLinkOnce(token: string) {
+  const existing = verificationRequests.get(token)
+  if (existing) return existing
+
+  const request = verifyMagicLink(token)
+  verificationRequests.set(token, request)
+  return request
+}
 
 export const Route = createFileRoute('/auth/verify')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -15,9 +29,8 @@ function VerifyPage() {
   const { token } = Route.useSearch()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const started = useRef(false)
   const verify = useMutation({
-    mutationFn: verifyMagicLink,
+    mutationFn: verifyMagicLinkOnce,
     onSuccess: result => {
       setSessionToken(result.session_token)
       queryClient.setQueryData(['auth', 'me'], result.user)
@@ -26,9 +39,7 @@ function VerifyPage() {
   })
 
   useEffect(() => {
-    if (!token || started.current) return
-    started.current = true
-    verify.mutate(token)
+    if (token) verify.mutate(token)
   }, [token, verify.mutate])
 
   if (!token) return <InvalidLink />
