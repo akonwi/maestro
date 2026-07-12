@@ -1,0 +1,35 @@
+use ard/testing
+
+use maestro/groups
+use maestro/predictions
+use maestro/test_helpers
+use maestro/users
+
+test fn upsert_creates_then_updates_one_prediction() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+
+  let first = try predictions::upsert(app, user.id, 100, 2, 1)
+  let updated = try predictions::upsert(app, user.id, 100, 3, 1)
+  try testing::assert(first.id == updated.id, "update preserves prediction id")
+  try testing::assert(updated.home_score == 3, "home score updates")
+  try testing::assert(updated.away_score == 1, "away score updates")
+  testing::pass()
+}
+
+test fn group_list_contains_only_member_predictions() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let member = try users::get_or_create_by_email(app, "member@example.com")
+  let outsider = try users::get_or_create_by_email(app, "outsider@example.com")
+  let group = try groups::create(app, owner.id, "Sunday League")
+  try groups::add_member(app, group.id, member.id)
+
+  try predictions::upsert(app, owner.id, 100, 2, 1)
+  try predictions::upsert(app, member.id, 100, 1, 1)
+  try predictions::upsert(app, outsider.id, 100, 0, 3)
+
+  let visible = try predictions::list_for_group(app, group.id, 100)
+  try testing::assert(visible.size() == 2, "outsider prediction is hidden")
+  testing::pass()
+}

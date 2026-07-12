@@ -13,6 +13,7 @@ export function FixtureRow({ fixture }: { fixture: Fixture }) {
     <Link
       className='grid min-h-20 grid-cols-[4.75rem_minmax(0,1fr)_1.25rem] items-center gap-2 border border-border bg-surface px-3 py-3 transition-colors hover:border-foreground sm:grid-cols-[6rem_minmax(0,1fr)_2rem] sm:gap-0 sm:px-4 sm:py-0'
       params={{ fixtureId: String(fixture.id) }}
+      search={{ group: undefined }}
       to='/fixtures/$fixtureId'
     >
       <div>

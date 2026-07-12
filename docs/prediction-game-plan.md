@@ -16,7 +16,7 @@ A group-based scoreline prediction game for me and my friends. Pick the final sc
 
 - One prediction per user per fixture.
 - Deadline is kickoff time; predictions lock at kickoff.
-- Predictions are private until kickoff, then visible to the group.
+- Predictions are visible to fellow group members immediately after submission.
 - Regular season only. Playoffs, Leagues Cup, US Open Cup deferred to later milestones.
 
 ## Product thesis
@@ -233,11 +233,11 @@ GET  /me                                                     -> { user }
 PATCH /me                       body: { display_name }       -> { user }
 
 GET  /competitions                                           -> [{ id, name, season, kind }]
-GET  /fixtures/upcoming[?competition_id=]                    -> [{ fixture, my_prediction }]
-GET  /fixtures/recent[?competition_id=]                      -> [{ fixture, my_prediction, points }]
-GET  /fixtures/:id?group_id=                                 -> { fixture, my_prediction, group_predictions (if locked) }
-PUT  /fixtures/:id/prediction   body: { home, away }         -> { prediction }
-DELETE /fixtures/:id/prediction                              -> 204
+GET  /fixtures/upcoming[?competition_id=]                    -> [fixture]
+GET  /fixtures/:id                                           -> fixture
+GET  /fixtures/:id/prediction                                -> prediction
+PUT  /fixtures/:id/prediction   body: { home_score, away_score } -> prediction
+GET  /groups/:groupId/fixtures/:fixtureId/predictions         -> [group prediction]
 
 # Groups
 GET  /groups                                                 -> [{ id, name, member_count }]    # my memberships
@@ -321,8 +321,8 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
   enforcement; points computation on fixture finish;
   `GET /groups/:id/leaderboard/season` and `/week`; leaderboard +
   prediction form screens.
-- Fixture endpoints gain `my_prediction` / `group_predictions` when the
-  caller is authed.
+- Fixture detail adds the current user's editable prediction and an always-visible,
+  group-scoped list of member predictions.
 
 ### M6 — Ship to friends
 

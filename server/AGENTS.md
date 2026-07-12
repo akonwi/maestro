@@ -42,6 +42,7 @@ server/
   competitions.ard  competitions store (which leagues/seasons to fetch)
   fixtures.ard      cached API-Football proxy + public read endpoints
   groups.ard        group membership, detail, and email-invite endpoints
+  predictions.ard   prediction persistence, kickoff locking, group visibility
   ffi/cache.go      concurrency-safe in-memory TTL cache
   ffi/http.go       auth middleware + request-context user id
   crypto.ard        token generation (crypto/rand + hex)

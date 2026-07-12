@@ -51,6 +51,18 @@ CREATE TABLE group_members (
   PRIMARY KEY (group_id, user_id)
 );
 
+CREATE TABLE predictions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  fixture_id INTEGER NOT NULL,
+  home_score INTEGER NOT NULL,
+  away_score INTEGER NOT NULL,
+  points INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE (user_id, fixture_id)
+);
+
 "
 
 fn build_app() app::App!Str {
