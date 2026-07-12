@@ -41,6 +41,7 @@ server/
   api_football.ard  API-Football client + cached response decoding
   competitions.ard  competitions store (which leagues/seasons to fetch)
   fixtures.ard      cached API-Football proxy + public read endpoints
+  groups.ard        group membership, detail, and email-invite endpoints
   ffi/cache.go      concurrency-safe in-memory TTL cache
   ffi/http.go       auth middleware + request-context user id
   crypto.ard        token generation (crypto/rand + hex)

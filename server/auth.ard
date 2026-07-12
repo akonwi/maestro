@@ -152,7 +152,7 @@ private fn do_verify(a: app::App, r: mut http::Request) [Str: Any]!Str {
 
 // Authenticate a request for AuthMiddleware. Database failures are logged
 // server-side and intentionally collapse to an unauthenticated result.
-private fn authenticate(a: app::App, r: mut http::Request) Int? {
+fn authenticate(a: app::App, r: mut http::Request) Int? {
   let token = bearer_token(r)
   match token.is_empty() {
     true => Maybe::new(),

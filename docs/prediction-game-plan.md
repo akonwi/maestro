@@ -157,7 +157,6 @@ groups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   owner_id INTEGER NOT NULL REFERENCES users(id),
-  invite_code TEXT NOT NULL UNIQUE, -- random short code
   created_at INTEGER NOT NULL
 );
 
@@ -175,8 +174,8 @@ group_members (
 
 Groups are the primary social unit from day one — there is no global "everyone in one big pool" leaderboard. A user must be a member of at least one group to see any leaderboard. Every leaderboard endpoint is scoped to a `group_id`.
 
-- **Onboarding**: after magic-link verify, if the user has no memberships, they're prompted to join via invite code or create a new group.
-- **Invite codes**: short random strings (e.g. 8 chars, base32). Joining URL is `/join/:code`. Anyone with a valid code can join.
+- **Onboarding**: after magic-link verify, if the user has no memberships, they're prompted to create a new group.
+- **Email invitations**: any current member can add someone by email. The invited user is created if needed, added immediately, and receives a one-time Maestro sign-in link. Repeated invitations are idempotent.
 - **Creation**: any authenticated user can create a group; the creator becomes owner and first member.
 - **Multiple memberships allowed**: a user can be in several groups (e.g. "work friends", "soccer chat"). The UI presents a group switcher; the API takes `group_id` as a required filter on leaderboard/consensus endpoints.
 - **v1 owner privileges**: none beyond creation. No rename, no kick, no per-group scoring rules. Deferred.
@@ -242,9 +241,9 @@ DELETE /fixtures/:id/prediction                              -> 204
 
 # Groups
 GET  /groups                                                 -> [{ id, name, member_count }]    # my memberships
-POST /groups                    body: { name }               -> { group, invite_code }
-POST /groups/join               body: { invite_code }        -> { group }
+POST /groups                    body: { name }               -> group
 GET  /groups/:id                                             -> { group, members }
+POST /groups/:id/invites        body: { email }              -> { member, member_added, invitation_sent }
 
 # Leaderboards — always scoped to a group
 GET  /groups/:id/leaderboard/season[?competition_id=]        -> [{ user, total_points, exact_count, outcome_count, played }]
@@ -315,9 +314,9 @@ The point: v1 ships a working game. v2+ makes it a *learning tool about football
   localStorage), authed session handling.
 - Server: auth middleware (the deferred ffi/http.go context adapter) for
   routes that need a user.
-- Groups: `POST /groups`, `POST /groups/join`, `GET /groups`,
-  `GET /groups/:id`; onboarding step in the web app (no memberships →
-  create or join).
+- Groups: `POST /groups`, `GET /groups`, `GET /groups/:id`, and
+  `POST /groups/:id/invites`; onboarding step in the web app (no memberships →
+  create a group). Any member can invite by email.
 - Predictions: `PUT /fixtures/:id/prediction` with kickoff deadline
   enforcement; points computation on fixture finish;
   `GET /groups/:id/leaderboard/season` and `/week`; leaderboard +

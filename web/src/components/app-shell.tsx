@@ -26,13 +26,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               Fixtures
             </Link>
-            <span
-              aria-disabled='true'
-              className='hidden text-muted-foreground sm:inline'
-              title='Groups are coming soon'
+            <Link
+              activeProps={{ className: 'text-accent font-semibold' }}
+              to='/groups'
             >
               Groups
-            </span>
+            </Link>
             <AuthControls />
           </nav>
         </div>
@@ -50,6 +49,7 @@ function AuthControls() {
     if (!user.isError) return
     clearSessionToken()
     queryClient.removeQueries({ queryKey: ['auth'] })
+    queryClient.removeQueries({ queryKey: ['groups'] })
   }, [queryClient, user.isError])
 
   const signOut = useMutation({
@@ -57,6 +57,7 @@ function AuthControls() {
     onSettled: () => {
       clearSessionToken()
       queryClient.removeQueries({ queryKey: ['auth'] })
+      queryClient.removeQueries({ queryKey: ['groups'] })
     },
   })
 

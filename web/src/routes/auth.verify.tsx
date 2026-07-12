@@ -33,6 +33,7 @@ function VerifyPage() {
     mutationFn: verifyMagicLinkOnce,
     onSuccess: result => {
       setSessionToken(result.session_token)
+      queryClient.removeQueries({ queryKey: ['groups'] })
       queryClient.setQueryData(['auth', 'me'], result.user)
       navigate({ to: '/', replace: true })
     },

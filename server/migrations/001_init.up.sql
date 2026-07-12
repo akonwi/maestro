@@ -66,11 +66,10 @@ CREATE TABLE predictions (
 CREATE INDEX idx_predictions_fixture ON predictions(fixture_id);
 
 CREATE TABLE groups (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  name        TEXT NOT NULL,
-  owner_id    INTEGER NOT NULL REFERENCES users(id),
-  invite_code TEXT NOT NULL UNIQUE,
-  created_at  INTEGER NOT NULL
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  owner_id   INTEGER NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL
 );
 
 CREATE TABLE group_members (
