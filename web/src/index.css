@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/jetbrains-mono";
 
@@ -23,6 +25,11 @@
   --primary-foreground: #ffffff;
   --secondary: #f4f4f4;
   --secondary-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --input: #e5e5e5;
   --ring: #2563eb;
   --radius: 0px;
 }
@@ -46,6 +53,11 @@
   --primary-foreground: #0b0b0b;
   --secondary: #141414;
   --secondary-foreground: #f4f4f4;
+  --popover: #111111;
+  --popover-foreground: #f4f4f4;
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --input: color-mix(in srgb, #ffffff 15%, transparent);
   --ring: #2563eb;
 }
 
@@ -69,6 +81,11 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
   --color-ring: var(--ring);
   --radius-sm: 0px;
   --radius-md: 0px;

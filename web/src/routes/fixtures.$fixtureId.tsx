@@ -8,6 +8,14 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useState } from 'react'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Fixture } from '@/lib/fixtures'
 import { fixtureQuery, fixtureStatusLabel, teamCrestUrl } from '@/lib/fixtures'
 import { groupsQuery } from '@/lib/groups'
@@ -142,6 +150,8 @@ function PredictionArea({
   const mine = useQuery(currentPredictionQuery(fixture.id, Boolean(token)))
   const selectedGroup =
     groups.data?.find(group => group.id === requestedGroup) ?? groups.data?.[0]
+  const groupOptions =
+    groups.data?.map(group => ({ label: group.name, value: group.id })) ?? []
   const groupPredictions = useQuery(
     groupPredictionsQuery(
       selectedGroup?.id ?? 0,
@@ -206,33 +216,40 @@ function PredictionArea({
             </p>
           </div>
           {selectedGroup ? (
-            <label
-              className='flex h-10 min-w-0 items-stretch border border-border bg-surface'
-              htmlFor='prediction-group'
-            >
-              <span className='flex items-center border-r border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
+            <div className='flex h-10 min-w-0 items-stretch border border-border bg-surface'>
+              <span
+                className='flex items-center border-r border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'
+                id='prediction-group-label'
+              >
                 Group
               </span>
-              <select
-                className='min-w-0 flex-1 bg-surface px-3 text-sm font-semibold'
-                id='prediction-group'
-                onChange={event =>
+              <Select
+                items={groupOptions}
+                onValueChange={groupId => {
+                  if (groupId === null) return
                   navigate({
-                    search: previous => ({
-                      ...previous,
-                      group: Number(event.target.value),
-                    }),
+                    search: previous => ({ ...previous, group: groupId }),
                   })
-                }
+                }}
                 value={selectedGroup.id}
               >
-                {groups.data?.map(group => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger
+                  aria-labelledby='prediction-group-label'
+                  className='h-full min-w-44 border-0 bg-surface px-3 text-sm font-semibold focus-visible:ring-0'
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align='end'>
+                  <SelectGroup>
+                    {groupOptions.map(group => (
+                      <SelectItem key={group.value} value={group.value}>
+                        {group.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
           ) : null}
         </div>
         {groups.isPending ? <PredictionSkeleton /> : null}
