@@ -312,9 +312,11 @@ function PredictionForm({
     <form className='border border-border bg-surface' onSubmit={submit}>
       <div className='flex items-center justify-between border-b border-border px-5 py-3'>
         <h3 className='font-semibold'>Your Prediction</h3>
-        <span className='font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
-          {locked ? 'Locked' : initial ? 'Saved' : 'Not submitted'}
-        </span>
+        {locked || !initial ? (
+          <span className='font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
+            {locked ? 'Locked' : 'Not submitted'}
+          </span>
+        ) : null}
       </div>
       <div className='grid grid-cols-[1fr_auto_1fr] items-end gap-4 px-5 py-6 sm:gap-8 sm:px-10'>
         <ScoreInput
