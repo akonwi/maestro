@@ -23,6 +23,7 @@ A migration will add a table dedicated to workflow state:
 ```sql
 CREATE TABLE fixture_scoring_state (
   fixture_id INTEGER PRIMARY KEY,
+  competition_id INTEGER NOT NULL REFERENCES competitions(id),
   kickoff_at INTEGER NOT NULL,
   prediction_lock_at INTEGER NOT NULL,
   state TEXT NOT NULL CHECK (state IN ('pending', 'settled', 'void')),
@@ -43,7 +44,7 @@ CREATE INDEX fixture_scoring_state_due
 ON fixture_scoring_state (state, next_check_at);
 ```
 
-All timestamps are UTC Unix milliseconds. This table stores only the metadata required to schedule, resolve, and audit scoring; it is not a general fixture store.
+All timestamps are UTC Unix milliseconds. `competition_id` is resolved from the provider league and season when state is created so leaderboards can filter without storing the complete fixture. This table otherwise stores only the metadata required to schedule, resolve, and audit scoring; it is not a general fixture store.
 
 The states have application-level meaning independent of API-Football's status codes:
 

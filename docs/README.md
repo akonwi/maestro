@@ -31,3 +31,4 @@ ADRs should describe durable decisions and their consequences without becoming i
 ## Other documents
 
 - [Prediction Game Plan](./prediction-game-plan.md) — product scope, architecture direction, data model, and milestones for the web prediction game.
+- [Scoring and Leaderboards Milestone](./scoring-and-leaderboards-plan.md) — functional scope and implementation guide for asynchronous scoring and group standings.
