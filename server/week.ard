@@ -1,0 +1,75 @@
+use go:time
+
+let DATE_LAYOUT = "2006-01-02"
+let LOCATION = "America/New_York"
+
+struct Bounds {
+  start_ms: Int64,
+  end_ms: Int64,
+  key: Str,
+}
+
+fn current(raw_week: Str) Bounds!Str {
+  bounds(raw_week, time::Now())
+}
+
+fn bounds(raw_week: Str, now: time::Time) Bounds!Str {
+  let location = try time::LoadLocation(LOCATION) -> _ {
+    Result::err("failed to load America/New_York timezone")
+  }
+  let start = match raw_week.is_empty() {
+    true => containing_start(now, location),
+    false => try query_start(raw_week, location),
+  }
+  let end = start.AddDate(0, 0, 7)
+  Result::ok(Bounds{
+    start_ms: start.UnixMilli(),
+    end_ms: end.UnixMilli(),
+    key: start.Format(DATE_LAYOUT),
+  })
+}
+
+private fn query_start(raw: Str, location: mut time::Location) time::Time!Str {
+  let day = try time::ParseInLocation(DATE_LAYOUT, raw, location) -> _ {
+    Result::err("week must be a valid Tuesday in YYYY-MM-DD format")
+  }
+  match day.Format(DATE_LAYOUT) == raw {
+    false => Result::err("week must be a valid Tuesday in YYYY-MM-DD format"),
+    true => {
+      match day.Weekday() == time::Tuesday {
+        false => Result::err("week must be a Tuesday"),
+        true => Result::ok(time::Date(day.Year(), day.Month(), day.Day(), 6, 0, 0, 0, location)),
+      }
+    },
+  }
+}
+
+private fn containing_start(now: time::Time, location: mut time::Location) time::Time {
+  let local = now.In(location)
+  let weekday = local.Weekday()
+  let days_since_tuesday = match weekday == time::Tuesday {
+    true => 0,
+    false => match weekday == time::Wednesday {
+      true => 1,
+      false => match weekday == time::Thursday {
+        true => 2,
+        false => match weekday == time::Friday {
+          true => 3,
+          false => match weekday == time::Saturday {
+            true => 4,
+            false => match weekday == time::Sunday {
+              true => 5,
+              false => 6,
+            },
+          },
+        },
+      },
+    },
+  }
+  let tuesday = local.AddDate(0, 0, 0 - days_since_tuesday)
+  let candidate = time::Date(tuesday.Year(), tuesday.Month(), tuesday.Day(), 6, 0, 0, 0, location)
+  match local.Before(candidate) {
+    true => candidate.AddDate(0, 0, -7),
+    false => candidate,
+  }
+}

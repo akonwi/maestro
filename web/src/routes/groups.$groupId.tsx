@@ -23,17 +23,17 @@ function GroupPage() {
     ...groupQuery(id),
     enabled: Boolean(token) && Number.isInteger(id),
   })
-
   if (!token) return <SignInRequired />
   if (!Number.isInteger(id) || id <= 0) return <InvalidGroup />
 
   return (
     <main
-      className='mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-14'
+      className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
       id='main-content'
     >
       <Link
         className='mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground'
+        search={{ mode: 'season', week: undefined }}
         to='/groups'
       >
         <ArrowLeft aria-hidden size={16} /> Your Groups
@@ -49,11 +49,18 @@ function GroupPage() {
           <p className='mt-2 text-sm'>
             It may not exist, or you may not be a member.
           </p>
+          <button
+            className='ui-button mt-4'
+            onClick={() => detail.refetch()}
+            type='button'
+          >
+            Retry Group
+          </button>
         </div>
       ) : null}
       {detail.data ? (
         <>
-          <div className='section-kicker'>Group</div>
+          <div className='section-kicker'>Group members</div>
           <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
             {detail.data.group.name}
           </h1>
@@ -196,7 +203,11 @@ function InvalidGroup() {
   return (
     <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
       <h1 className='text-xl font-semibold'>Invalid Group</h1>
-      <Link className='ui-button mt-5 inline-flex items-center' to='/groups'>
+      <Link
+        className='ui-button mt-5 inline-flex items-center'
+        search={{ mode: 'season', week: undefined }}
+        to='/groups'
+      >
         View Your Groups
       </Link>
     </main>

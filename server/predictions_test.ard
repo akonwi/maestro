@@ -1,7 +1,9 @@
 use ard/testing
 
+use maestro/api_football
 use maestro/groups
 use maestro/predictions
+use maestro/scoring_state
 use maestro/test_helpers
 use maestro/users
 
@@ -14,6 +16,145 @@ test fn upsert_creates_then_updates_one_prediction() Void!Str {
   try testing::assert(first.id == updated.id, "update preserves prediction id")
   try testing::assert(updated.home_score == 3, "home score updates")
   try testing::assert(updated.away_score == 1, "away score updates")
+  testing::pass()
+}
+
+test fn transactional_upsert_creates_scoring_state_and_preserves_lock() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  let original_kickoff = Int64::from(2000000000000)
+  let fixture = api_football::Fixture{
+    id: 200,
+    kickoff_at: original_kickoff,
+    status: "NS",
+    api_football_league_id: 253,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(),
+    away_score: Maybe::new(),
+  }
+
+  try predictions::upsert_with_state_at(app, user.id, 1, fixture, 2, 1, Int64::from(1000))
+  let first = (try scoring_state::find(app, 200)).expect("scoring state")
+  try testing::assert(first.prediction_lock_at == original_kickoff, "initial kickoff becomes lock")
+  try testing::assert(first.competition_id == 1, "stores competition")
+
+  let revised_fixture = api_football::Fixture{
+    id: 200,
+    kickoff_at: original_kickoff + Int64::from(86400000),
+    status: "PST",
+    api_football_league_id: 253,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(),
+    away_score: Maybe::new(),
+  }
+  try predictions::upsert_with_state_at(app, user.id, 1, revised_fixture, 1, 1, Int64::from(2000))
+  let revised = (try scoring_state::find(app, 200)).expect("revised scoring state")
+  try testing::assert(revised.kickoff_at == revised_fixture.kickoff_at, "scheduling kickoff updates")
+  try testing::assert(revised.prediction_lock_at == original_kickoff, "prediction lock stays immutable")
+  testing::pass()
+}
+
+test fn existing_lock_is_rechecked_inside_transaction() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  let fixture = api_football::Fixture{
+    id: 201,
+    kickoff_at: Int64::from(2000),
+    status: "NS",
+    api_football_league_id: 253,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(),
+    away_score: Maybe::new(),
+  }
+  try predictions::upsert_with_state_at(app, user.id, 1, fixture, 2, 1, Int64::from(1000))
+  match predictions::upsert_with_state_at(app, user.id, 1, fixture, 3, 1, Int64::from(2000)) {
+    ok(_) => try testing::fail("locked prediction should not update"),
+    err(message) => try testing::assert(message == "predictions are locked after kickoff", "lock error"),
+  }
+  let saved = (try predictions::find(app, user.id, 201)).expect("prediction")
+  try testing::assert(saved.home_score == 2, "failed update rolls back")
+  testing::pass()
+}
+
+test fn terminal_scoring_state_rejects_prediction_updates() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  let fixture = api_football::Fixture{
+    id: 202,
+    kickoff_at: Int64::from(5000),
+    status: "NS",
+    api_football_league_id: 253,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(),
+    away_score: Maybe::new(),
+  }
+  try predictions::upsert_with_state_at(app, user.id, 1, fixture, 2, 1, Int64::from(1000))
+  try app.db.query("UPDATE fixture_scoring_state SET state = 'void' WHERE fixture_id = 202").run([:])
+
+  match predictions::upsert_with_state_at(app, user.id, 1, fixture, 3, 1, Int64::from(2000)) {
+    ok(_) => try testing::fail("void fixture should reject updates"),
+    err(_) => {},
+  }
+  let saved = (try predictions::find(app, user.id, 202)).expect("prediction")
+  try testing::assert(saved.home_score == 2, "terminal update does not change prediction")
+  testing::pass()
+}
+
+test fn state_insert_failure_rolls_back_prediction_write() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let fixture = api_football::Fixture{
+    id: 203,
+    kickoff_at: Int64::from(5000),
+    status: "NS",
+    api_football_league_id: 253,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(),
+    away_score: Maybe::new(),
+  }
+
+  match predictions::upsert_with_state_at(app, user.id, 999, fixture, 2, 1, Int64::from(1000)) {
+    ok(_) => try testing::fail("missing competition should fail state insert"),
+    err(_) => {},
+  }
+  let saved = try predictions::find(app, user.id, 203)
+  try testing::assert(saved.is_none(), "prediction write rolls back with state failure")
+  testing::pass()
+}
+
+test fn missing_state_discovery_finds_only_unscored_predictions() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  try predictions::upsert(app, user.id, 300, 1, 0)
+  try predictions::upsert(app, user.id, 301, 2, 0)
+  try app.db.query("UPDATE predictions SET points = 3 WHERE fixture_id = 301").run([:])
+
+  let missing = try scoring_state::missing_fixture_ids(app, 10)
+  try testing::assert(missing.size() == 1, "only one fixture needs state")
+  try testing::assert(missing.at(0).expect("fixture id") == 300, "finds unscored fixture")
   testing::pass()
 }
 

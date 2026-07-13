@@ -1,0 +1,59 @@
+use ard/testing
+
+use maestro/groups
+use maestro/leaderboards
+use maestro/test_helpers
+use maestro/users
+use maestro/week
+
+test fn season_includes_zero_score_members_and_orders_scores() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let second = try users::get_or_create_by_email(app, "second@example.com")
+  let zero = try users::get_or_create_by_email(app, "zero@example.com")
+  let group = try groups::create(app, owner.id, "Friends")
+  try groups::add_member(app, group.id, second.id)
+  try groups::add_member(app, group.id, zero.id)
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (500, 1, 1, 1, 'settled', 'FT', NULL, 0, 1, 1), (501, 1, 1, 1, 'settled', 'FT', NULL, 0, 1, 1)")
+  try app.db.query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@owner, 500, 2, 1, 3, 1, 1), (@owner, 501, 1, 0, 1, 1, 1), (@second, 500, 2, 1, 3, 1, 1)").run(["owner": owner.id, "second": second.id])
+
+  let entries = try leaderboards::season(app, group.id, Maybe::new())
+  try testing::assert(entries.size() == 3, "all members appear")
+  let first = entries.at(0).expect("first")
+  let runner_up = entries.at(1).expect("second")
+  let last = entries.at(2).expect("third")
+  try testing::assert(first.user_id == owner.id and first.total_points == 4, "leader totals points")
+  try testing::assert(first.exact_count == 1 and first.outcome_count == 1 and first.played == 2, "leader stats")
+  try testing::assert(runner_up.user_id == second.id and runner_up.total_points == 3, "runner up")
+  try testing::assert(last.user_id == zero.id and last.total_points == 0 and last.played == 0, "zero score member")
+  testing::pass()
+}
+
+test fn weekly_includes_only_fixtures_inside_bounds() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let group = try groups::create(app, owner.id, "Friends")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (520, 1, 1000, 1, 'settled', 'FT', NULL, 0, 1, 1), (521, 1, 2000, 1, 'settled', 'FT', NULL, 0, 1, 1)")
+  try app.db.query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@owner, 520, 2, 1, 3, 1, 1), (@owner, 521, 2, 1, 1, 1, 1)").run(["owner": owner.id])
+  let bounds = week::Bounds{start_ms: Int64::from(1000), end_ms: Int64::from(2000), key: "test"}
+  let entries = try leaderboards::weekly(app, group.id, Maybe::new(), bounds)
+  let entry = entries.at(0).expect("entry")
+  try testing::assert(entry.total_points == 3 and entry.played == 1, "end boundary is exclusive")
+  testing::pass()
+}
+
+test fn season_filters_by_competition() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let group = try groups::create(app, owner.id, "Friends")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1), (2, 39, 'Premier League', 2026, 'league', 1)")
+  try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (510, 1, 1, 1, 'settled', 'FT', NULL, 0, 1, 1), (511, 2, 1, 1, 'settled', 'FT', NULL, 0, 1, 1)")
+  try app.db.query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@owner, 510, 2, 1, 3, 1, 1), (@owner, 511, 2, 1, 1, 1, 1)").run(["owner": owner.id])
+
+  let entries = try leaderboards::season(app, group.id, Maybe::new(2))
+  let entry = entries.at(0).expect("entry")
+  try testing::assert(entry.total_points == 1 and entry.played == 1, "only requested competition counts")
+  testing::pass()
+}

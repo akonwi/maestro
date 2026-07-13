@@ -34,3 +34,27 @@ func TestCache_StaleEntryMisses(t *testing.T) {
 		t.Fatalf("expected fresh value, got %q (ok=%v)", got, ok)
 	}
 }
+
+func TestCache_EvictsWhenBoundedCapacityIsReached(t *testing.T) {
+	c := NewCache()
+	for i := 0; i < maxCacheEntries+1; i++ {
+		CachePut(c, string(rune(i)), "value")
+	}
+	if len(c.entries) != maxCacheEntries {
+		t.Fatalf("expected %d entries, got %d", maxCacheEntries, len(c.entries))
+	}
+}
+
+func TestCacheAllow_LimitsAndResetsAWindow(t *testing.T) {
+	c := NewCache()
+	if !CacheAllow(c, "user:1", 2, 10) || !CacheAllow(c, "user:1", 2, 10) {
+		t.Fatal("expected first two requests to pass")
+	}
+	if CacheAllow(c, "user:1", 2, 10) {
+		t.Fatal("expected third request to be limited")
+	}
+	time.Sleep(11 * time.Millisecond)
+	if !CacheAllow(c, "user:1", 2, 10) {
+		t.Fatal("expected new window to pass")
+	}
+}

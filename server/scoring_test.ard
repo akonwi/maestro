@@ -1,0 +1,52 @@
+use ard/testing
+
+use decode
+use maestro/predictions
+use maestro/scoring
+use maestro/test_helpers
+use maestro/users
+
+test fn awards_exact_outcome_and_incorrect_points() Void!Str {
+  try testing::assert(scoring::points(2, 1, 2, 1) == 3, "exact home win")
+  try testing::assert(scoring::points(1, 1, 1, 1) == 3, "exact draw")
+  try testing::assert(scoring::points(0, 2, 0, 2) == 3, "exact away win")
+  try testing::assert(scoring::points(1, 0, 3, 2) == 1, "home outcome")
+  try testing::assert(scoring::points(2, 2, 0, 0) == 1, "draw outcome")
+  try testing::assert(scoring::points(0, 1, 1, 4) == 1, "away outcome")
+  try testing::assert(scoring::points(1, 0, 0, 1) == 0, "incorrect outcome")
+  testing::pass()
+}
+
+test fn settlement_scores_all_predictions_and_closes_state() Void!Str {
+  let app = try test_helpers::build_app()
+  let exact = try users::get_or_create_by_email(app, "exact@example.com")
+  let outcome = try users::get_or_create_by_email(app, "outcome@example.com")
+  let wrong = try users::get_or_create_by_email(app, "wrong@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  try predictions::upsert(app, exact.id, 400, 3, 2)
+  try predictions::upsert(app, outcome.id, 400, 2, 1)
+  try predictions::upsert(app, wrong.id, 400, 0, 1)
+  try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (400, 1, 1000, 1000, 'pending', '2H', 1000, 0, 1, 1)")
+
+  try scoring::settle(app, 400, "FT", 3, 2)
+  try testing::assert((try predictions::find(app, exact.id, 400)).expect("exact").points.expect("points") == 3, "exact gets three")
+  try testing::assert((try predictions::find(app, outcome.id, 400)).expect("outcome").points.expect("points") == 1, "outcome gets one")
+  try testing::assert((try predictions::find(app, wrong.id, 400)).expect("wrong").points.expect("points") == 0, "wrong gets zero")
+
+  let row = try app.db.query("SELECT state, final_home_score, final_away_score, scoring_version, next_check_at FROM fixture_scoring_state WHERE fixture_id = 400").first([:])
+  match row {
+    value => {
+      let state = try decode::run(value, decode::field("state", decode::string)).map_err(fn(e) { e.to_str() })
+      let home = try decode::run(value, decode::field("final_home_score", decode::int)).map_err(fn(e) { e.to_str() })
+      let away = try decode::run(value, decode::field("final_away_score", decode::int)).map_err(fn(e) { e.to_str() })
+      let version = try decode::run(value, decode::field("scoring_version", decode::int)).map_err(fn(e) { e.to_str() })
+      let next = try decode::run(value, decode::field("next_check_at", decode::nullable(decode::int))).map_err(fn(e) { e.to_str() })
+      try testing::assert(state == "settled", "state is settled")
+      try testing::assert(home == 3 and away == 2, "stores final score")
+      try testing::assert(version == 1, "stores scoring version")
+      try testing::assert(next.is_none(), "clears next check")
+    },
+    _ => try testing::fail("missing scoring state"),
+  }
+  testing::pass()
+}

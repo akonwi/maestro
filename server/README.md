@@ -80,6 +80,22 @@ The server listens on `PORT` (default `8080`). Check it:
 curl http://localhost:8080/health   # -> "ok" when the DB pings
 ```
 
+### Local scoring simulation
+
+To populate a local group with randomized predictions for the two most recent
+completed MLS rounds, stop the server and run:
+
+```sh
+./scripts/simulate-scoring.sh 1  # group id; defaults to 1
+```
+
+The command loads `.env`, applies migrations, preserves existing prediction
+scores, inserts only missing member predictions, and clears settlement state
+for the selected fixtures. Restart `main.ard` afterward; the real scoring
+worker will discover those fixtures and settle every local prediction for them.
+The simulation requires an explicit local-only opt-in and refuses `/data/*`
+database paths.
+
 ## Environment variables
 
 | Var            | Purpose                          | Default            |

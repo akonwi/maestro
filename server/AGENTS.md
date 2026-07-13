@@ -43,6 +43,11 @@ server/
   fixtures.ard      cached API-Football proxy + public read endpoints
   groups.ard        group membership, detail, and email-invite endpoints
   predictions.ard   prediction persistence, kickoff locking, group visibility
+  scoring_state.ard durable fixture scoring workflow state and discovery
+  scoring.ard       deterministic point calculation and transactional settlement
+  scoring_worker.ard channel-managed result polling and retry scheduling
+  leaderboards.ard  membership-scoped season and weekly standings
+  week.ard          Tuesday 6am America/New_York week boundaries
   ffi/cache.go      concurrency-safe in-memory TTL cache
   ffi/http.go       auth middleware + request-context user id
   crypto.ard        token generation (crypto/rand + hex)

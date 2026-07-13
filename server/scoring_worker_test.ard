@@ -1,0 +1,59 @@
+use ard/testing
+
+use maestro/api_football
+use maestro/predictions
+use maestro/scoring_state
+use maestro/scoring_worker
+use maestro/test_helpers
+use maestro/users
+
+test fn schedules_fixture_checks_by_state() Void!Str {
+  let now = Int64::from(1000000)
+  let kickoff = now + Int64::from(60000)
+  try testing::assert(
+    scoring_worker::next_check_at("NS", kickoff, now) == kickoff + Int64::from(7200000),
+    "future fixture checks after expected finish",
+  )
+  try testing::assert(
+    scoring_worker::next_check_at("2H", kickoff, now) == now + Int64::from(600000),
+    "live fixture checks in ten minutes",
+  )
+  try testing::assert(
+    scoring_worker::next_check_at("PST", now - Int64::from(1), now) == now + Int64::from(21600000),
+    "postponed fixture uses long retry",
+  )
+  testing::pass()
+}
+
+test fn finished_fixture_is_settled_by_worker_dispatch() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "worker@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  try predictions::upsert(app, user.id, 700, 2, 1)
+  try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (700, 1, 1, 1, 'pending', 'FT', 1, 0, 1, 1)")
+  let state = (try scoring_state::find(app, 700)).expect("state")
+  let fixture = api_football::Fixture{
+    id: 700,
+    kickoff_at: Int64::from(1),
+    status: "FT",
+    api_football_league_id: 253,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(2),
+    away_score: Maybe::new(1),
+  }
+  scoring_worker::process_fixture(app, state, fixture)
+  let saved = (try predictions::find(app, user.id, 700)).expect("prediction")
+  try testing::assert(saved.points.expect("points") == 3, "worker dispatch settles finished fixture")
+  testing::pass()
+}
+
+test fn bounds_provider_error_backoff() Void!Str {
+  try testing::assert(scoring_worker::error_delay_ms(0) == Int64::from(300000), "first retry")
+  try testing::assert(scoring_worker::error_delay_ms(2) == Int64::from(1200000), "third retry")
+  try testing::assert(scoring_worker::error_delay_ms(10) == Int64::from(3600000), "retry cap")
+  testing::pass()
+}

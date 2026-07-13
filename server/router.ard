@@ -5,6 +5,7 @@ use maestro/auth
 use maestro/fixtures
 use maestro/groups
 use maestro/health
+use maestro/leaderboards
 use maestro/predictions
 
 // Compose the full HTTP surface. Each domain owns its own routes; this
@@ -20,6 +21,7 @@ fn build(a: app::App) mut chi::Mux {
   fixtures::register(router, a)
   groups::register(router, a)
   predictions::register(router, a)
+  leaderboards::register(router, a)
 
   router
 }

@@ -43,9 +43,9 @@ FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache git gcc musl-dev
 
-# Pinned to v0.26.0 (matches ard.toml `ard = ">= 0.26.0"` and local dev).
-# Bump when ready to adopt newer compiler features.
-ARG SERVER_ARD_VERSION=v0.26.0
+# Pinned to the compiler used in local development and required by the
+# channel-managed scoring worker.
+ARG SERVER_ARD_VERSION=v0.27.0
 WORKDIR /build
 RUN git clone https://github.com/akonwi/ard.git
 WORKDIR /build/ard/compiler
@@ -67,7 +67,7 @@ RUN ard build main.ard --out /out/maestro-server
 # --- Runtime -----------------------------------------------------------------
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 COPY --from=builder /out/maestro-server /usr/local/bin/maestro-server

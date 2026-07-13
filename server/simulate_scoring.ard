@@ -1,0 +1,210 @@
+use decode
+use go:fmt
+use go:maestro/ffi
+use go:math/rand/v2 as rand
+use go:os
+use go:strconv
+use go:time
+use maestro/api_football
+use maestro/app
+use maestro/competitions
+use maestro/config
+use maestro/groups
+use sql
+
+// Local-only fixture prediction backfill for exercising the real scoring
+// worker. Run with the HTTP server stopped, then restart it so discovery and
+// settlement happen through the production worker path.
+fn main() {
+  match run() {
+    ok => (),
+    err(message) => panic("scoring simulation failed: {message}"),
+  }
+}
+
+private fn run() Void!Str {
+  try require_local_opt_in()
+  let cfg = try config::load()
+  try require_local_database(cfg.database_url)
+  let group_id = try simulation_group_id()
+  let db = try sql::open(cfg.database_url)
+  let a = app::App{db: db, config: cfg, cache: ffi::NewCache()}
+
+  let members = try groups::members(a, group_id)
+  try ensure_members(members, group_id)
+  let mls = try active_mls(a)
+  fmt::Println("fetching {mls.name} {mls.season} fixtures from API-Football")
+  let all = try api_football::season_round_fixtures(a, mls.api_football_league_id, mls.season)
+  let rounds = recent_rounds(all)
+  try ensure_two_rounds(rounds)
+
+  let selected = selected_fixtures(all, rounds)
+  let earlier_round = rounds.at(0).expect("round")
+  let later_round = rounds.at(1).expect("round")
+  fmt::Println("selected {selected.size()} fixtures from {earlier_round} and {later_round}")
+  let tx = try a.db.begin()
+  let now = time::Now().UnixMilli()
+  match seed(tx, members, selected, now) {
+    ok(count) => {
+      match tx.commit() {
+        err(message) => Result::err("committing simulation: {message}"),
+        ok => {
+          fmt::Println("inserted {count} missing predictions for group {group_id}")
+          fmt::Println("cleared scoring state for selected fixtures; restart the server to let the real worker score them")
+          Result::ok(())
+        },
+      }
+    },
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
+  }
+}
+
+private fn seed(
+  tx: sql::Transaction,
+  members: [groups::Member],
+  fixtures: [api_football::RoundFixture],
+  now: Int64,
+) Int!Str {
+  mut inserted = 0
+  for item in fixtures {
+    try tx.query("DELETE FROM fixture_scoring_state WHERE fixture_id = @fixture_id").run(["fixture_id": item.fixture.id])
+    try tx.query("UPDATE predictions SET points = NULL WHERE fixture_id = @fixture_id").run(["fixture_id": item.fixture.id])
+    for member in members {
+      let exists = try prediction_exists(tx, member.id, item.fixture.id)
+      match exists {
+        true => (),
+        false => {
+          try tx
+            .query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, NULL, @created_at, @updated_at)")
+            .run([
+              "user_id": member.id,
+              "fixture_id": item.fixture.id,
+              "home_score": rand::IntN(5),
+              "away_score": rand::IntN(5),
+              "created_at": now,
+              "updated_at": now,
+            ])
+          inserted = inserted + 1
+        },
+      }
+    }
+  }
+  Result::ok(inserted)
+}
+
+private fn prediction_exists(tx: sql::Transaction, user_id: Int, fixture_id: Int) Bool!Str {
+  let row = try tx
+    .query("SELECT COUNT(*) AS count FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id")
+    .first(["user_id": user_id, "fixture_id": fixture_id])
+  match row {
+    value => {
+      let count = try decode::run(value, decode::field("count", decode::int)).map_err(describe)
+      Result::ok(count > 0)
+    },
+    _ => Result::ok(false),
+  }
+}
+
+private fn active_mls(a: app::App) competitions::Competition!Str {
+  let all = try competitions::list_active(a)
+  mut found: competitions::Competition? = Maybe::new()
+  for competition in all {
+    match competition.api_football_league_id == 253 {
+      true => { found = Maybe::new(competition) },
+      false => (),
+    }
+  }
+  match found {
+    competition => Result::ok(competition),
+    _ => Result::err("no active MLS competition is configured"),
+  }
+}
+
+private fn ensure_members(members: [groups::Member], group_id: Int) Void!Str {
+  match members.size() > 0 {
+    true => Result::ok(()),
+    false => Result::err("group {group_id} does not exist or has no members"),
+  }
+}
+
+private fn ensure_two_rounds(rounds: [Str]) Void!Str {
+  match rounds.size() == 2 {
+    true => Result::ok(()),
+    false => Result::err("could not find two completed MLS rounds"),
+  }
+}
+
+private fn recent_rounds(fixtures: [api_football::RoundFixture]) [Str] {
+  mut ordered: [Str] = []
+  let now = time::Now().UnixMilli()
+  for item in fixtures {
+    match item.fixture.status == "FT" and item.fixture.kickoff_at < now and not contains(ordered, item.round) {
+      true => ordered.push(item.round),
+      false => (),
+    }
+  }
+  let count = ordered.size()
+  match count >= 2 {
+    true => [ordered.at(count - 2).expect("round"), ordered.at(count - 1).expect("round")],
+    false => [],
+  }
+}
+
+private fn selected_fixtures(
+  fixtures: [api_football::RoundFixture],
+  rounds: [Str],
+) [api_football::RoundFixture] {
+  mut selected: [api_football::RoundFixture] = []
+  for item in fixtures {
+    match item.fixture.status == "FT" and contains(rounds, item.round) {
+      true => selected.push(item),
+      false => (),
+    }
+  }
+  selected
+}
+
+private fn contains(values: [Str], wanted: Str) Bool {
+  mut found = false
+  for value in values {
+    match value == wanted {
+      true => { found = true },
+      false => (),
+    }
+  }
+  found
+}
+
+private fn simulation_group_id() Int!Str {
+  let raw = os::Getenv("SIMULATION_GROUP_ID")
+  match strconv::Atoi(raw) {
+    ok(value) => {
+      match value > 0 {
+        true => Result::ok(value),
+        false => Result::err("SIMULATION_GROUP_ID must be positive"),
+      }
+    },
+    err(_) => Result::err("SIMULATION_GROUP_ID must be an integer"),
+  }
+}
+
+private fn require_local_opt_in() Void!Str {
+  match os::Getenv("SCORING_SIMULATION") == "local" {
+    true => Result::ok(()),
+    false => Result::err("set SCORING_SIMULATION=local to confirm this destructive local simulation"),
+  }
+}
+
+private fn require_local_database(database_url: Str) Void!Str {
+  match database_url.starts_with("/data/") or database_url.starts_with("postgres") {
+    true => Result::err("refusing to modify non-local database {database_url}"),
+    false => Result::ok(()),
+  }
+}
+
+private fn describe(e: decode::Error) Str { e.to_str() }

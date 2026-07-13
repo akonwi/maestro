@@ -5,11 +5,14 @@ use go:maestro/ffi
 use go:net/http
 use go:strconv
 use go:time
+use maestro/api_football
 use maestro/app
 use maestro/auth
-use maestro/fixtures
+use maestro/competitions
 use maestro/groups
 use maestro/response
+use maestro/scoring_state
+use sql
 
 struct Prediction {
   id: Int,
@@ -81,19 +84,24 @@ private fn handle_current(a: app::App, w: http::ResponseWriter, r: mut http::Req
 private fn handle_upsert(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
   match request_int_param(r, "id", "fixture id") {
     ok(fixture_id) => {
-      match ffi::UserID(r) {
-        user_id => {
-          match decode_scores(r) {
-            ok(scores) => {
-              match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-                true => response::fail(w, http::StatusBadRequest, "scores must be between 0 and 99"),
-                false => save_before_kickoff(a, w, user_id, fixture_id, scores),
+      match fixture_id <= 0 {
+        true => response::fail(w, http::StatusBadRequest, "fixture id must be positive"),
+        false => {
+          match ffi::UserID(r) {
+            user_id => {
+              match decode_scores(r) {
+                ok(scores) => {
+                  match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
+                    true => response::fail(w, http::StatusBadRequest, "scores must be between 0 and 99"),
+                    false => save_before_kickoff(a, w, user_id, fixture_id, scores),
+                  }
+                },
+                err(message) => response::fail(w, http::StatusBadRequest, message),
               }
             },
-            err(message) => response::fail(w, http::StatusBadRequest, message),
+            _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
           }
         },
-        _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
       }
     },
     err(message) => response::fail(w, http::StatusBadRequest, message),
@@ -109,24 +117,87 @@ private fn save_before_kickoff(
   fixture_id: Int,
   scores: Scores,
 ) {
-  match fixtures::by_id(a, fixture_id) {
+  let now = time::Now().UnixMilli()
+  match ffi::CacheAllow(a.cache, "prediction-write:{user_id}", 30, Int64::from(60 * 1000)) {
+    false => response::fail(w, http::StatusTooManyRequests, "too many prediction requests"),
+    true => check_existing_lock(a, w, user_id, fixture_id, scores, now),
+  }
+}
+
+private fn check_existing_lock(
+  a: app::App,
+  w: http::ResponseWriter,
+  user_id: Int,
+  fixture_id: Int,
+  scores: Scores,
+  now: Int64,
+) {
+  match scoring_state::find(a, fixture_id) {
+    err(message) => response::fail(w, http::StatusInternalServerError, message),
+    ok(existing) => {
+      match existing {
+        state => {
+          match state.prediction_lock_at <= now {
+            true => response::fail(w, http::StatusConflict, "predictions are locked after kickoff"),
+            false => fetch_and_save(a, w, user_id, fixture_id, scores, now),
+          }
+        },
+        _ => fetch_and_save(a, w, user_id, fixture_id, scores, now),
+      }
+    },
+  }
+}
+
+private fn fetch_and_save(
+  a: app::App,
+  w: http::ResponseWriter,
+  user_id: Int,
+  fixture_id: Int,
+  scores: Scores,
+  now: Int64,
+) {
+  match api_football::fixture_by_id(a, fixture_id) {
+    err(message) => response::fail(w, http::StatusBadGateway, message),
     ok(found) => {
       match found {
         fixture => {
-          match fixture.fixture.kickoff_at <= time::Now().UnixMilli() {
+          match fixture.kickoff_at <= now {
             true => response::fail(w, http::StatusConflict, "predictions are locked after kickoff"),
-            false => {
-              match upsert(a, user_id, fixture_id, scores.home, scores.away) {
-                ok(prediction) => response::json_response(w, http::StatusOK, prediction_json(prediction)),
-                err(message) => response::fail(w, http::StatusInternalServerError, message),
-              }
-            },
+            false => save_for_competition(a, w, user_id, fixture, scores, now),
           }
         },
         _ => response::fail(w, http::StatusNotFound, "fixture not found"),
       }
     },
-    err(message) => response::fail(w, http::StatusBadGateway, message),
+  }
+}
+
+private fn save_for_competition(
+  a: app::App,
+  w: http::ResponseWriter,
+  user_id: Int,
+  fixture: api_football::Fixture,
+  scores: Scores,
+  now: Int64,
+) {
+  match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
+    err(message) => response::fail(w, http::StatusInternalServerError, message),
+    ok(found) => {
+      match found {
+        competition => {
+          match upsert_with_state(a, user_id, competition.id, fixture, scores.home, scores.away) {
+            ok(prediction) => response::json_response(w, http::StatusOK, prediction_json(prediction)),
+            err(message) => {
+              match message == "predictions are locked after kickoff" {
+                true => response::fail(w, http::StatusConflict, message),
+                false => response::fail(w, http::StatusInternalServerError, message),
+              }
+            },
+          }
+        },
+        _ => response::fail(w, http::StatusNotFound, "fixture competition is not active"),
+      }
+    },
   }
 }
 
@@ -167,6 +238,83 @@ private fn respond_group_predictions(a: app::App, w: http::ResponseWriter, group
       response::json_response(w, http::StatusOK, payload)
     },
     err(message) => response::fail(w, http::StatusInternalServerError, message),
+  }
+}
+
+fn upsert_with_state(
+  a: app::App,
+  user_id: Int,
+  competition_id: Int,
+  fixture: api_football::Fixture,
+  home_score: Int,
+  away_score: Int,
+) Prediction!Str {
+  upsert_with_state_at(a, user_id, competition_id, fixture, home_score, away_score, time::Now().UnixMilli())
+}
+
+fn upsert_with_state_at(
+  a: app::App,
+  user_id: Int,
+  competition_id: Int,
+  fixture: api_football::Fixture,
+  home_score: Int,
+  away_score: Int,
+  now: Int64,
+) Prediction!Str {
+  let tx = try a.db.begin()
+  match upsert_with_state_tx(tx, user_id, competition_id, fixture, home_score, away_score, now) {
+    ok(prediction) => {
+      match tx.commit() {
+        ok => Result::ok(prediction),
+        err(message) => Result::err("committing prediction: {message}"),
+      }
+    },
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
+  }
+}
+
+private fn upsert_with_state_tx(
+  tx: sql::Transaction,
+  user_id: Int,
+  competition_id: Int,
+  fixture: api_football::Fixture,
+  home_score: Int,
+  away_score: Int,
+  now: Int64,
+) Prediction!Str {
+  try scoring_state::ensure_prediction_open(tx, fixture.id, fixture.kickoff_at, now)
+
+  try tx
+    .query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, @created_at, @updated_at) ON CONFLICT(user_id, fixture_id) DO UPDATE SET home_score = @home_score, away_score = @away_score, points = NULL, updated_at = @updated_at")
+    .run([
+      "user_id": user_id,
+      "fixture_id": fixture.id,
+      "home_score": home_score,
+      "away_score": away_score,
+      "created_at": now,
+      "updated_at": now,
+    ])
+
+  try scoring_state::upsert_pending(
+    tx,
+    fixture.id,
+    competition_id,
+    fixture.kickoff_at,
+    fixture.status,
+    now,
+  )
+
+  let row = try tx
+    .query("SELECT id, user_id, fixture_id, home_score, away_score, points, created_at, updated_at FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id LIMIT 1")
+    .first(["user_id": user_id, "fixture_id": fixture.id])
+  match row {
+    value => decode_prediction(value),
+    _ => Result::err("saved prediction vanished"),
   }
 }
 

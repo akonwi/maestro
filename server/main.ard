@@ -10,6 +10,7 @@ use go:syscall
 use maestro/app
 use maestro/config
 use maestro/router
+use maestro/scoring_worker
 use maestro/sessions
 use sql
 
@@ -27,10 +28,12 @@ fn main() {
 
   let application = app::App{db: db, config: cfg, cache: ffi::NewCache()}
   sessions::start_cleanup(application)
+  let scoring = scoring_worker::start(application)
   mut server = http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
 
-  let interrupts = Chan::new<os::Signal>()
+  let interrupts = Chan::new<os::Signal>(1)
   signal::Notify(interrupts.sender(), syscall::SIGINT)
+  signal::Notify(interrupts.sender(), syscall::SIGTERM)
 
   async::start(
     fn() {
@@ -51,7 +54,9 @@ fn main() {
 
   fmt::Println("shutting down")
   match server.Shutdown(context::Background()) {
-    ok => fmt::Println("goodbye"),
-    err(message) => panic(message),
+    ok => (),
+    err(message) => fmt::Println("HTTP shutdown failed: {message}"),
   }
+  scoring_worker::shutdown(scoring)
+  fmt::Println("goodbye")
 }

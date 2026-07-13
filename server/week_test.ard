@@ -1,0 +1,40 @@
+use ard/testing
+use go:time
+
+use maestro/week
+
+test fn tuesday_before_six_belongs_to_previous_week() Void!Str {
+  let before = try time::Parse(time::RFC3339, "2026-03-10T09:59:59Z") // 05:59:59 EDT
+  let bounds = try week::bounds("", before)
+  try testing::assert(bounds.key == "2026-03-03", "before cutoff uses prior Tuesday")
+  testing::pass()
+}
+
+test fn tuesday_at_six_starts_new_week() Void!Str {
+  let cutoff = try time::Parse(time::RFC3339, "2026-03-10T10:00:00Z") // 06:00 EDT
+  let bounds = try week::bounds("", cutoff)
+  try testing::assert(bounds.key == "2026-03-10", "cutoff starts new week")
+  testing::pass()
+}
+
+test fn explicit_week_is_dst_safe() Void!Str {
+  let now = try time::Parse(time::RFC3339, "2026-03-05T12:00:00Z")
+  let bounds = try week::bounds("2026-03-03", now)
+  try testing::assert(bounds.start_ms == 1772535600000, "Tuesday 06:00 EST")
+  try testing::assert(bounds.end_ms == 1773136800000, "next Tuesday 06:00 EDT")
+  try testing::assert(bounds.end_ms - bounds.start_ms == Int64::from(167 * 60 * 60 * 1000), "spring DST week is 167 hours")
+  testing::pass()
+}
+
+test fn explicit_week_must_be_a_valid_tuesday() Void!Str {
+  let now = try time::Parse(time::RFC3339, "2026-03-05T12:00:00Z")
+  match week::bounds("2026-03-04", now) {
+    ok(_) => try testing::fail("Wednesday should fail"),
+    err(_) => {},
+  }
+  match week::bounds("2026-02-30", now) {
+    ok(_) => try testing::fail("invalid date should fail"),
+    err(_) => {},
+  }
+  testing::pass()
+}

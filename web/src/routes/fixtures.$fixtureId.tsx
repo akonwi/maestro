@@ -27,6 +27,7 @@ import {
   savePrediction,
 } from '@/lib/predictions'
 import { useSessionToken } from '@/lib/session'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/fixtures/$fixtureId')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -101,7 +102,17 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
         </header>
         <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-5 sm:px-6'>
           <Team id={fixture.home_team.id} name={fixture.home_team.name} />
-          <div className='font-mono text-xs text-muted-foreground'>VS</div>
+          <div className='text-center font-mono font-semibold tabular-nums'>
+            {fixture.status === 'FT' &&
+            fixture.home_score !== null &&
+            fixture.away_score !== null ? (
+              <span className='text-lg'>
+                {fixture.home_score}–{fixture.away_score}
+              </span>
+            ) : (
+              <span className='text-xs text-muted-foreground'>VS</span>
+            )}
+          </div>
           <Team away id={fixture.away_team.id} name={fixture.away_team.name} />
         </div>
         <footer className='border-t border-border bg-muted px-4 py-2.5 text-center text-xs text-muted-foreground'>
@@ -264,6 +275,7 @@ function PredictionArea({
             <p>Create a group to compare predictions with other people.</p>
             <Link
               className='ui-button mt-4 inline-flex items-center'
+              search={{ mode: 'season', week: undefined }}
               to='/groups'
             >
               Create a Group
@@ -417,13 +429,39 @@ function GroupPredictionList({
           <div className='min-w-0 truncate font-semibold'>
             {prediction.user.display_name ?? prediction.user.email}
           </div>
-          <div className='font-mono text-lg font-semibold tabular-nums'>
-            {prediction.home_score}–{prediction.away_score}
+          <div className='flex items-baseline gap-3'>
+            <span className='font-mono text-lg font-semibold tabular-nums'>
+              {prediction.home_score}–{prediction.away_score}
+            </span>
+            {prediction.points !== null ? (
+              <span title={pointDescription(prediction.points)}>
+                <span
+                  aria-hidden
+                  className={cn(
+                    'block min-w-7 text-right font-mono text-sm font-semibold tabular-nums',
+                    prediction.points > 0
+                      ? 'text-accent'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  {prediction.points > 0 ? `+${prediction.points}` : '0'}
+                </span>
+                <span className='sr-only'>
+                  {pointDescription(prediction.points)}
+                </span>
+              </span>
+            ) : null}
           </div>
         </div>
       ))}
     </div>
   )
+}
+
+function pointDescription(points: number) {
+  if (points === 3) return '3 points, exact score'
+  if (points === 1) return '1 point, correct outcome'
+  return '0 points'
 }
 
 function PredictionSkeleton() {
