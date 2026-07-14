@@ -1,8 +1,9 @@
+DROP INDEX IF EXISTS fixture_scoring_state_due;
+DROP TABLE IF EXISTS fixture_scoring_state;
 DROP TABLE IF EXISTS group_members;
 DROP TABLE IF EXISTS groups;
+DROP INDEX IF EXISTS idx_predictions_fixture;
 DROP TABLE IF EXISTS predictions;
-DROP TABLE IF EXISTS fixtures;
-DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS competitions;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS magic_links;

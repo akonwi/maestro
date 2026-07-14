@@ -23,7 +23,7 @@ CREATE TABLE magic_links (
 
 CREATE TABLE sessions (
   token TEXT PRIMARY KEY,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id),
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL
 );
@@ -34,26 +34,27 @@ CREATE TABLE competitions (
   name TEXT NOT NULL,
   season INTEGER NOT NULL,
   kind TEXT NOT NULL,
-  is_active INTEGER NOT NULL DEFAULT 1
+  is_active INTEGER NOT NULL DEFAULT 1,
+  UNIQUE (api_football_league_id, season)
 );
 
 CREATE TABLE groups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  owner_id INTEGER NOT NULL,
+  owner_id INTEGER NOT NULL REFERENCES users(id),
   created_at INTEGER NOT NULL
 );
 
 CREATE TABLE group_members (
-  group_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
+  group_id INTEGER NOT NULL REFERENCES groups(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
   joined_at INTEGER NOT NULL,
   PRIMARY KEY (group_id, user_id)
 );
 
 CREATE TABLE predictions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id),
   fixture_id INTEGER NOT NULL,
   home_score INTEGER NOT NULL,
   away_score INTEGER NOT NULL,
@@ -62,6 +63,8 @@ CREATE TABLE predictions (
   updated_at INTEGER NOT NULL,
   UNIQUE (user_id, fixture_id)
 );
+
+CREATE INDEX idx_predictions_fixture ON predictions(fixture_id);
 
 CREATE TABLE fixture_scoring_state (
   fixture_id INTEGER PRIMARY KEY,
