@@ -68,8 +68,7 @@ Ard's stdlib is intentionally small; the idiomatic path for backend work is dire
 - **Outbound HTTP** — Go interop with `net/http` for calls to API-Football and Cloudflare Email Service.
 - **Fixture data** — proxied from API-Football on demand rather than synced into SQLite. A shared in-memory TTL cache stores raw upstream JSON by URL, so many users refreshing within the cache window produce one API request. The app stores only game-owned data (users, groups, predictions, sessions, competition configuration).
 - **Config** — `use go:os` for env vars (validated at startup); no config file for v1.
-- **Migrations** — [`migr`](https://github.com/akonwi/migr) CLI, run at container startup by the entrypoint (`migr up` then `exec server`). SQL files as `NNN_name.up.sql` / `NNN_name.down.sql` under `server/migrations/`. Driven by `DATABASE_URL`.
-  - **Gotcha (found in M1):** the published `migr` release binary is compiled CGO-free, but its `ard/sql` backend uses `mattn/go-sqlite3` which requires CGO, so the release's SQLite path is a non-functional stub. We therefore **build migr from source with CGO on** inside the Docker image, pinned to a commit that builds against Ard 0.25.0 (0.24.0 lacks needed syntax; current dev dropped the `ard/sql`/`ard/io`/`ard/argv`/`ard/decode` stdlib modules migr relies on). Local dev can use the Homebrew `migr` (built with CGO) directly.
+- **Migrations** — the published, CGO-free [`migr`](https://github.com/akonwi/migr) release with pure-Go SQLite, run at container startup by the entrypoint (`migr up` then `exec server`). The Docker image downloads the platform-specific release artifact. SQL files use `NNN_name.up.sql` / `NNN_name.down.sql` under `server/migrations/` and are driven by `DATABASE_URL`.
 - **TLS** — terminated at Zeabur's edge; server speaks plain HTTP internally.
 
 Rough edges to expect from Ard's Go interop:

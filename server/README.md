@@ -10,9 +10,9 @@ Zeabur as a container.
 - **Ard** compiles to Go; HTTP via Go interop with [chi](https://github.com/go-chi/chi).
 - **SQLite** via a pure-Go driver (`modernc.org/sqlite`), wrapped by a small
   Go FFI package (`ffi/db.go`) and the Ard `sql` module (`sql.ard`).
-- **Migrations** via [`migr`](https://github.com/akonwi/migr). NB: the published
-  migr release binary is CGO-free and its SQLite path is a stub; the Docker
-  image builds migr from source with CGO on. Locally, the Homebrew migr works.
+- **Migrations** via the published, CGO-free [`migr`](https://github.com/akonwi/migr)
+  release with pure-Go SQLite. The Docker image downloads the platform-specific
+  artifact; locally, install migr through Homebrew.
 - **JSON decoding** via the local `decode` module (`decode.ard`), copied from
   tinear; there is no `ard/json`/`ard/decode` stdlib in the current compiler.
 
