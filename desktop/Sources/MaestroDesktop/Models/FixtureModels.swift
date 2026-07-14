@@ -1,0 +1,56 @@
+import Foundation
+
+struct FixtureSummary: Identifiable, Equatable {
+    let id: Int
+    let leagueId: Int
+    let season: Int
+    let homeId: Int
+    let awayId: Int
+    let homeName: String
+    let awayName: String
+    let status: String
+    let kickoff: Date
+    let homeGoals: Int
+    let awayGoals: Int
+
+    var isFinished: Bool {
+        status == "FT" || status == "AET" || status == "PEN" || status == "WO" || status == "AWD"
+    }
+
+    var isPostponed: Bool {
+        status == "PST" || status == "CANC" || status == "ABD" || status == "SUSP" || status == "INT" || status == "WO"
+    }
+
+    var homeLogoURL: URL? {
+        URL(string: "https://media.api-sports.io/football/teams/\(homeId).png")
+    }
+
+    var awayLogoURL: URL? {
+        URL(string: "https://media.api-sports.io/football/teams/\(awayId).png")
+    }
+}
+
+struct FixtureTab: Identifiable, Equatable {
+    let id = UUID()
+    var fixture: FixtureSummary
+
+    // Display state
+    var activeTab: FixtureTabView?
+    var formScope: FormScope = .last5
+
+    enum FixtureTabView: String, Identifiable, Equatable {
+        case matchStats = "Match Stats"
+        case preMatch = "Pre-match"
+        var id: String { rawValue }
+    }
+
+    static func == (lhs: FixtureTab, rhs: FixtureTab) -> Bool {
+        lhs.fixture.id == rhs.fixture.id
+    }
+}
+
+struct LeagueSection: Identifiable, Equatable {
+    let id: Int
+    let name: String
+    let fixtures: [FixtureSummary]
+}

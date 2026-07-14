@@ -1,0 +1,151 @@
+use go:github.com/go-chi/chi/v5 as chi
+use go:net/http
+use go:strconv
+use go:time
+use maestro/api_football
+use maestro/app
+use maestro/competitions
+use maestro/response
+
+// Public fixture reads proxy API-Football through the shared TTL cache.
+// Fixture/team data is not persisted in v1; predictions will store only
+// API-Football's stable fixture id.
+
+struct Fixture {
+  competition_id: Int,
+  fixture: api_football::Fixture,
+}
+
+fn register(router: mut chi::Mux, a: app::App) {
+  router.Get(
+    "/fixtures/upcoming",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_upcoming(a, w, r)
+    },
+  )
+  router.Get(
+    "/fixtures/\{id\}",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_by_id(a, w, r)
+    },
+  )
+}
+
+private fn handle_upcoming(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let raw_comp = r.URL.Query().Get("competition_id")
+  match raw_comp.is_empty() {
+    true => respond_upcoming(a, w, Maybe::new()),
+    false => {
+      match strconv::Atoi(raw_comp) {
+        ok(id) => respond_upcoming(a, w, Maybe::new(id)),
+        err(_) => response::fail(w, http::StatusBadRequest, "competition_id must be an integer"),
+      }
+    },
+  }
+}
+
+private fn respond_upcoming(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
+  match upcoming(a, competition_id) {
+    ok(list) => response::json_response(w, http::StatusOK, to_json_list(list)),
+    err(message) => response::fail(w, http::StatusBadGateway, message),
+  }
+}
+
+private fn handle_by_id(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let raw = chi::URLParam(r, "id")
+  match strconv::Atoi(raw) {
+    ok(id) => {
+      match by_id(a, id) {
+        ok(found) => {
+          match found {
+            f => response::json_response(w, http::StatusOK, to_json(f)),
+            _ => response::fail(w, http::StatusNotFound, "fixture not found"),
+          }
+        },
+        err(message) => response::fail(w, http::StatusBadGateway, message),
+      }
+    },
+    err(_) => response::fail(w, http::StatusBadRequest, "fixture id must be an integer"),
+  }
+}
+
+// Fetch all active competitions, optionally selecting one, then filter
+// to matches whose kickoff is in the future. API-Football returns a
+// season in chronological order; with one active competition (v1), that
+// order is preserved. Cross-competition sorting can be added when a
+// second competition is activated and the UI establishes the grouping.
+fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
+  let all = try fetch(a, competition_id)
+  let now = time::Now().UnixMilli()
+  mut out: [Fixture] = []
+  for f in all {
+    match f.fixture.kickoff_at >= now {
+      true => out.push(f),
+      false => (),
+    }
+  }
+  Result::ok(out)
+}
+
+fn by_id(a: app::App, id: Int) Fixture?!Str {
+  let all = try fetch(a, Maybe::new())
+  mut found: Fixture? = Maybe::new()
+  for f in all {
+    match f.fixture.id == id {
+      true => { found = Maybe::new(f) },
+      false => (),
+    }
+  }
+  Result::ok(found)
+}
+
+private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
+  let comps = try competitions::list_active(a)
+  mut out: [Fixture] = []
+  for comp in comps {
+    let include = match competition_id {
+      wanted => wanted == comp.id,
+      _ => true,
+    }
+    match include {
+      true => {
+        let list = try api_football::season_fixtures(a, comp.api_football_league_id, comp.season)
+        for item in list {
+          out.push(Fixture{competition_id: comp.id, fixture: item})
+        }
+      },
+      false => (),
+    }
+  }
+  Result::ok(out)
+}
+
+private fn to_json_list(list: [Fixture]) [Any] {
+  mut payload: [Any] = []
+  for f in list {
+    payload.push(to_json(f))
+  }
+  payload
+}
+
+private fn to_json(f: Fixture) [Str: Any] {
+  let home_team: [Str: Any] = [
+    "id": f.fixture.home_team_id,
+    "name": f.fixture.home_team_name,
+  ]
+  let away_team: [Str: Any] = [
+    "id": f.fixture.away_team_id,
+    "name": f.fixture.away_team_name,
+  ]
+  let payload: [Str: Any] = [
+    "id": f.fixture.id,
+    "competition_id": f.competition_id,
+    "kickoff_at": f.fixture.kickoff_at,
+    "status": f.fixture.status,
+    "home_team": home_team,
+    "away_team": away_team,
+    "home_score": f.fixture.home_score,
+    "away_score": f.fixture.away_score,
+  ]
+  payload
+}

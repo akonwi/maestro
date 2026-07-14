@@ -1,0 +1,28 @@
+use go:encoding/json
+use go:net/http
+
+// Small helpers so every handler writes consistent responses. The error
+// envelope is flat: `{ "error": "message" }`.
+
+fn json_response(w: http::ResponseWriter, status: Int, value: Any) {
+  match json::Marshal(value) {
+    ok(bytes) => {
+      w.Header().Set("Content-Type", "application/json")
+      w.WriteHeader(status)
+      mut body = bytes
+      w.Write(body)
+    },
+    err(_) => {
+      w.WriteHeader(http::StatusInternalServerError)
+    },
+  }
+}
+
+fn no_content(w: http::ResponseWriter) {
+  w.WriteHeader(http::StatusNoContent)
+}
+
+fn fail(w: http::ResponseWriter, status: Int, message: Str) {
+  let payload: [Str: Str] = ["error": message]
+  json_response(w, status, payload)
+}

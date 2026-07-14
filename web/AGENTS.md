@@ -1,22 +1,49 @@
-# Maestro
-This project is a single page web app for managing and viewing soccer statistics.
+# AGENTS.md — Maestro Web
 
-# Technology
-The technology stack is:
-* Typescript
-* Solidjs
-* tailwindcss
-* daisyUI (https://daisyui.com/)
-* @tanstack/solid-query
+Guidance for work in `web/`. Read alongside `../AGENTS.md` and
+`../docs/prediction-game-plan.md`.
 
-## Guide
-* Use DaisyUI components where possible. Only create one from scratch if there isn't support DaisyUI.
-* Do not overuse comments in the code. limit comments to dense blocks of code that are hard to understand
-* This codebase will outlive you. Don't take shortcuts. Write sufficiently robust code that can be maintained or extended by the next person.
+## Stack
 
-## Patterns
-- When adding local state, consider whether it should be part of the navigation, i.e. url state
-  - tabs, filters, etc. can be part of the URL (useSearchParams())
-- Use <Switch/> for conditionally rendering mutually exclusive states 
-- Use suspense to isolate components that take longer to load data
-- Reuse query options, not custom hooks: Export factory functions for the API query options functions.
+- React 19
+- TanStack Router + TanStack Query
+- Tailwind CSS v4
+- shadcn/ui conventions
+- Bun, Vite, Biome, Wrangler
+
+## Design language
+
+Match Ranger's visual system in `../../ranger/web-app`:
+
+- Use the same semantic color tokens.
+- Geist for UI text; JetBrains Mono for times, scores, and numeric data.
+- Square edges, 1px borders, no decorative shadows.
+- Black/white primary actions; blue active states; orange urgency; green
+  success; red errors.
+- Preserve both light and dark theme tokens.
+
+## API
+
+During development, Vite proxies `/api/*` to the Ard server at
+`http://localhost:8080`. Keep server data access in `src/lib/` and use TanStack
+Query for remote state.
+
+## Required review after frontend work
+
+After each completed body of frontend work, before reporting completion:
+
+1. Activate and apply the `web-design-guidelines` skill to the changed UI.
+2. Activate and apply the `vercel-react-best-practices` skill to the changed
+   React/data-fetching code.
+3. Address applicable findings. If a finding is intentionally deferred, state
+   it explicitly in the completion summary.
+4. Run:
+
+```sh
+bun run check
+bun run typecheck
+bun run build
+```
+
+Do not describe frontend work as complete until both reviews and all three
+checks have passed.

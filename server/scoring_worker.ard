@@ -1,0 +1,210 @@
+use ard/async
+
+use go:fmt
+use go:time
+use maestro/api_football
+use maestro/app
+use maestro/competitions
+use maestro/scoring
+use maestro/scoring_state
+
+let POLL_INTERVAL = 60 * time::Second
+let SHORT_RETRY_MS = Int64::from(10 * 60 * 1000)
+let LONG_RETRY_MS = Int64::from(6 * 60 * 60 * 1000)
+let BATCH_SIZE = 20
+
+struct Worker {
+  stop: Sender<Bool>,
+  done: Receiver<Bool>,
+}
+
+fn start(a: app::App) Worker {
+  let stop = Chan::new<Bool>()
+  let done = Chan::new<Bool>()
+  async::start(fn() { run(a, stop.receiver(), done.sender()) })
+  Worker{stop: stop.sender(), done: done.receiver()}
+}
+
+fn shutdown(worker: Worker) {
+  worker.stop.send(true)
+  let _ = worker.done.recv()
+}
+
+private fn run(a: app::App, stop: Receiver<Bool>, done: Sender<Bool>) {
+  fmt::Println("scoring worker started")
+  mut running = true
+  while running {
+    match poll_once(a) {
+      ok => (),
+      err(message) => fmt::Println("scoring worker pass failed: {message}"),
+    }
+    select {
+      stop.recv() => { running = false },
+      time::After(POLL_INTERVAL).recv() => (),
+    }
+  }
+  fmt::Println("scoring worker stopped")
+  done.send(true)
+}
+
+fn poll_once(a: app::App) Void!Str {
+  try discover_missing(a)
+  let now = time::Now().UnixMilli()
+  let due = try scoring_state::due(a, now, BATCH_SIZE)
+  match due.size() > 0 {
+    true => fmt::Println("scoring worker processing {due.size()} due fixture(s)"),
+    false => (),
+  }
+  for state in due { process_due(a, state) }
+  Result::ok(())
+}
+
+private fn discover_missing(a: app::App) Void!Str {
+  let ids = try scoring_state::missing_fixture_ids(a, BATCH_SIZE)
+  match ids.size() > 0 {
+    true => fmt::Println("scoring worker discovered {ids.size()} fixture(s) without state"),
+    false => (),
+  }
+  for fixture_id in ids {
+    match api_football::fixture_by_id(a, fixture_id) {
+      err(message) => fmt::Println("scoring discovery failed for fixture {fixture_id}: {message}"),
+      ok(found) => {
+        match found {
+          fixture => create_discovered(a, fixture),
+          _ => fmt::Println("scoring discovery found no fixture {fixture_id}"),
+        }
+      },
+    }
+  }
+  Result::ok(())
+}
+
+private fn create_discovered(a: app::App, fixture: api_football::Fixture) {
+  match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
+    err(message) => fmt::Println("scoring discovery competition lookup failed for fixture {fixture.id}: {message}"),
+    ok(found) => {
+      match found {
+        competition => {
+          match scoring_state::create_discovered(
+            a,
+            fixture.id,
+            competition.id,
+            fixture.kickoff_at,
+            fixture.status,
+            time::Now().UnixMilli(),
+          ) {
+            ok => (),
+            err(message) => fmt::Println("scoring discovery state insert failed for fixture {fixture.id}: {message}"),
+          }
+        },
+        _ => fmt::Println("scoring discovery ignored fixture {fixture.id} outside active competitions"),
+      }
+    },
+  }
+}
+
+private fn process_due(a: app::App, state: scoring_state::State) {
+  match api_football::fixture_by_id(a, state.fixture_id) {
+    err(message) => record_error(a, state, message),
+    ok(found) => {
+      match found {
+        fixture => process_fixture(a, state, fixture),
+        _ => record_error(a, state, "fixture not found"),
+      }
+    },
+  }
+}
+
+fn process_fixture(a: app::App, state: scoring_state::State, fixture: api_football::Fixture) {
+  let finished = fixture.status == "FT"
+  let now = time::Now().UnixMilli()
+  match finished {
+    // Ard 0.27 drops a Void-returning call when it is the value of a match arm.
+    // Keep the call as a statement and make the arm value explicit.
+    true => {
+      settle_fixture(a, fixture)
+      ()
+    },
+    false => {
+      match fixture.status == "CANC" {
+        true => {
+          match scoring_state::mark_void(a, fixture.id, fixture.status, now) {
+            ok => fmt::Println("scoring voided cancelled fixture {fixture.id}"),
+            err(message) => fmt::Println("scoring failed to void fixture {fixture.id}: {message}"),
+          }
+        },
+        false => {
+          let next_check = next_check_at(fixture.status, fixture.kickoff_at, now)
+          match scoring_state::reschedule_success(a, fixture.id, fixture.kickoff_at, fixture.status, next_check, now) {
+            ok => (),
+            err(message) => fmt::Println("scoring failed to reschedule fixture {fixture.id}: {message}"),
+          }
+        },
+      }
+    },
+  }
+}
+
+private fn settle_fixture(a: app::App, fixture: api_football::Fixture) {
+  match fixture.home_score {
+    home => {
+      match fixture.away_score {
+        away => {
+          match scoring::settle(a, fixture.id, fixture.status, home, away) {
+            ok => fmt::Println("scoring settled fixture {fixture.id} at {home}-{away}"),
+            err(message) => fmt::Println("scoring settlement failed for fixture {fixture.id}: {message}"),
+          }
+        },
+        _ => record_fixture_error(a, fixture.id, "finished fixture has no away score"),
+      }
+    },
+    _ => record_fixture_error(a, fixture.id, "finished fixture has no home score"),
+  }
+}
+
+private fn record_fixture_error(a: app::App, fixture_id: Int, message: Str) {
+  match scoring_state::find(a, fixture_id) {
+    ok(found) => {
+      match found {
+        state => record_error(a, state, message),
+        _ => (),
+      }
+    },
+    err(find_message) => fmt::Println("scoring could not record fixture {fixture_id} error: {find_message}"),
+  }
+}
+
+private fn record_error(a: app::App, state: scoring_state::State, message: Str) {
+  let now = time::Now().UnixMilli()
+  let next_check = now + error_delay_ms(state.attempt_count)
+  match scoring_state::reschedule_error(a, state.fixture_id, message, next_check, now) {
+    ok => fmt::Println("scoring fixture {state.fixture_id} failed; retry scheduled: {message}"),
+    err(update_message) => fmt::Println("scoring failed to record fixture {state.fixture_id} error: {update_message}"),
+  }
+}
+
+fn next_check_at(status: Str, kickoff_at: Int64, now: Int64) Int64 {
+  match is_live(status) {
+    true => now + SHORT_RETRY_MS,
+    false => {
+      match kickoff_at > now {
+        true => kickoff_at + Int64::from(2 * 60 * 60 * 1000),
+        false => now + LONG_RETRY_MS,
+      }
+    },
+  }
+}
+
+private fn is_live(status: Str) Bool {
+  status == "1H" or status == "HT" or status == "2H" or status == "ET" or status == "BT" or status == "P" or status == "INT"
+}
+
+fn error_delay_ms(attempt_count: Int) Int64 {
+  match attempt_count {
+    0 => Int64::from(5 * 60 * 1000),
+    1 => Int64::from(10 * 60 * 1000),
+    2 => Int64::from(20 * 60 * 1000),
+    3 => Int64::from(40 * 60 * 1000),
+    _ => Int64::from(60 * 60 * 1000),
+  }
+}

@@ -1,0 +1,239 @@
+use go:fmt
+use go:github.com/go-chi/chi/v5 as chi
+use go:io
+use go:maestro/ffi
+use go:net/http
+use go:strings
+use maestro/app
+use decode
+use maestro/email
+use maestro/magic_links
+use maestro/response
+use maestro/sessions
+use maestro/users
+
+// Wire public auth endpoints and the middleware-protected current-user route.
+fn register(router: mut chi::Mux, a: app::App) {
+  router.Post(
+    "/auth/request",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_request(a, w, r)
+    },
+  )
+  router.Get(
+    "/auth/verify",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_verify_redirect(a, w, r)
+    },
+  )
+  router.Post(
+    "/auth/verify",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_verify(a, w, r)
+    },
+  )
+  router.Post(
+    "/auth/logout",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_logout(a, w, r)
+    },
+  )
+
+  router.Group(
+    fn(protected: chi::Router) {
+      protected.Use(
+        ffi::AuthMiddleware(
+          fn(r: mut http::Request) Int? {
+            authenticate(a, r)
+          },
+        ),
+      )
+      protected.Get(
+        "/auth/me",
+        fn(w: http::ResponseWriter, r: mut http::Request) {
+          handle_me(a, w, r)
+        },
+      )
+    },
+  )
+}
+
+// -----------------------------------------------------------------------
+// Handler shells: each one runs a small pure-ish Result-returning
+// function and translates the outcome to an HTTP response. Keeps status
+// codes in the shell, business logic in the do_* function.
+// -----------------------------------------------------------------------
+
+private fn handle_request(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match do_request(a, r) {
+    ok => response::no_content(w),
+    err(message) => response::fail(w, http::StatusBadRequest, message),
+  }
+}
+
+private fn handle_verify(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match do_verify(a, r) {
+    ok(payload) => response::json_response(w, http::StatusOK, payload),
+    err(message) => response::fail(w, http::StatusBadRequest, message),
+  }
+}
+
+private fn handle_logout(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let token = bearer_token(r)
+  match token.is_empty() {
+    true => response::fail(w, http::StatusUnauthorized, "missing or invalid bearer token"),
+    false => {
+      match sessions::delete(a, token) {
+        ok => response::no_content(w),
+        err(message) => response::fail(
+          w,
+          http::StatusInternalServerError,
+          "could not delete session: {message}",
+        ),
+      }
+    },
+  }
+}
+
+// GET /auth/verify?token=X -> 302 to the web app. Never consumes.
+private fn handle_verify_redirect(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let token = r.URL.Query().Get("token")
+  match token.is_empty() {
+    true => response::fail(w, http::StatusBadRequest, "missing token"),
+    false => {
+      let target = "{a.config.app_base_url}/auth/verify?token={token}"
+      w.Header().Set("Location", target)
+      w.WriteHeader(http::StatusFound)
+    },
+  }
+}
+
+// -----------------------------------------------------------------------
+// do_* worker functions
+// -----------------------------------------------------------------------
+
+// POST /auth/request { email }
+// We deliberately never leak whether the email is known.
+private fn do_request(a: app::App, r: mut http::Request) Void!Str {
+  let addr = try decode_field(r, "email")
+  let token = try magic_links::create(a, addr)
+  let link = "{a.config.server_base_url}/auth/verify?token={token}"
+  let text = "Click the link to sign in to Maestro:\n\n{link}\n\nThe link expires soon and can only be used once."
+  let html = "<p>Use the link below to sign in to Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
+
+  // A send failure shouldn't leak upstream — the user can retry.
+  match email::send(a.config, addr, "Your Maestro sign-in link", text, html) {
+    ok => Result::ok(()),
+    err(message) => {
+      fmt::Println("email send failed for {addr}: {message}")
+      Result::ok(())
+    },
+  }
+}
+
+// POST /auth/verify { token } -> { session_token, user }
+private fn do_verify(a: app::App, r: mut http::Request) [Str: Any]!Str {
+  let token = try decode_field(r, "token")
+  let addr = try magic_links::consume(a, token)
+  let user = try users::get_or_create_by_email(a, addr)
+  let session = try sessions::mint(a, user.id)
+
+  let user_payload: [Str: Any] = [
+    "id": user.id,
+    "email": user.email,
+    "display_name": user.display_name,
+  ]
+  let payload: [Str: Any] = [
+    "session_token": session.token,
+    "user": user_payload,
+  ]
+  Result::ok(payload)
+}
+
+// Authenticate a request for AuthMiddleware. Database failures are logged
+// server-side and intentionally collapse to an unauthenticated result.
+fn authenticate(a: app::App, r: mut http::Request) Int? {
+  let token = bearer_token(r)
+  match token.is_empty() {
+    true => Maybe::new(),
+    false => {
+      match sessions::find_by_token(a, token) {
+        ok(found) => {
+          match found {
+            session => Maybe::new(session.user_id),
+            _ => Maybe::new(),
+          }
+        },
+        err(message) => {
+          fmt::Println("session lookup failed: {message}")
+          Maybe::new()
+        },
+      }
+    },
+  }
+}
+
+private fn handle_me(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match ffi::UserID(r) {
+    user_id => {
+      match users::find_by_id(a, user_id) {
+        ok(found) => {
+          match found {
+            user => {
+              let payload: [Str: Any] = [
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+              ]
+              response::json_response(w, http::StatusOK, payload)
+            },
+            _ => response::fail(w, http::StatusUnauthorized, "authenticated user no longer exists"),
+          }
+        },
+        err(message) => response::fail(
+          w,
+          http::StatusInternalServerError,
+          "could not load current user: {message}",
+        ),
+      }
+    },
+    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+  }
+}
+
+// Read a single string field from a JSON request body. All the M2 auth
+// bodies are simple `{ "field": "value" }` shapes. Every failure gets
+// the same `invalid request:` prefix so clients see a consistent shape.
+private fn decode_field(r: mut http::Request, name: Str) Str!Str {
+  let body = try read_body(r).map_err(prefix_invalid_request)
+  match body.is_empty() {
+    true => Result::err("empty request body"),
+    false => {
+      let data = try decode::from_json(body).map_err(prefix_invalid_request)
+      decode::run(data, decode::field(name, decode::string)).map_err(describe_body_error)
+    },
+  }
+}
+
+private fn read_body(r: mut http::Request) Str!Str {
+  let bytes = try io::ReadAll(r.Body)
+  Result::ok(Str::from(bytes))
+}
+
+// Extract the token from a Bearer Authorization header. Returns "" if
+// the header is missing or malformed.
+private fn bearer_token(r: mut http::Request) Str {
+  let auth = r.Header.Get("Authorization")
+  match auth.starts_with("Bearer ") {
+    true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
+    false => "",
+  }
+}
+
+private fn describe_body_error(e: decode::Error) Str {
+  "invalid request: {e.to_str()}"
+}
+
+private fn prefix_invalid_request(message: Str) Str {
+  "invalid request: {message}"
+}

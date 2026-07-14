@@ -1,0 +1,77 @@
+use go:time
+use maestro/app
+use sql
+
+fn points(predicted_home: Int, predicted_away: Int, actual_home: Int, actual_away: Int) Int {
+  match predicted_home == actual_home and predicted_away == actual_away {
+    true => 3,
+    false => {
+      let predicted_outcome = outcome(predicted_home, predicted_away)
+      let actual_outcome = outcome(actual_home, actual_away)
+      match predicted_outcome == actual_outcome {
+        true => 1,
+        false => 0,
+      }
+    },
+  }
+}
+
+private fn outcome(home: Int, away: Int) Int {
+  match home > away {
+    true => 1,
+    false => {
+      match home < away {
+        true => -1,
+        false => 0,
+      }
+    },
+  }
+}
+
+fn settle(
+  a: app::App,
+  fixture_id: Int,
+  provider_status: Str,
+  actual_home: Int,
+  actual_away: Int,
+) Void!Str {
+  let tx = try a.db.begin()
+  let now = time::Now().UnixMilli()
+  match settle_tx(tx, fixture_id, provider_status, actual_home, actual_away, now) {
+    ok => {
+      match tx.commit() {
+        ok => Result::ok(()),
+        err(message) => Result::err("committing fixture settlement: {message}"),
+      }
+    },
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
+  }
+}
+
+private fn settle_tx(
+  tx: sql::Transaction,
+  fixture_id: Int,
+  provider_status: Str,
+  actual_home: Int,
+  actual_away: Int,
+  now: Int64,
+) Void!Str {
+  try tx
+    .query("UPDATE predictions SET points = CASE WHEN home_score = @actual_home AND away_score = @actual_away THEN 3 WHEN (home_score > away_score AND @actual_home > @actual_away) OR (home_score = away_score AND @actual_home = @actual_away) OR (home_score < away_score AND @actual_home < @actual_away) THEN 1 ELSE 0 END WHERE fixture_id = @fixture_id AND EXISTS (SELECT 1 FROM fixture_scoring_state WHERE fixture_id = @fixture_id AND state = 'pending')")
+    .run(["actual_home": actual_home, "actual_away": actual_away, "fixture_id": fixture_id])
+  try tx
+    .query("UPDATE fixture_scoring_state SET state = 'settled', provider_status = @provider_status, final_home_score = @actual_home, final_away_score = @actual_away, scoring_version = 1, settled_at = @now, next_check_at = NULL, last_checked_at = @now, last_error = NULL, updated_at = @now WHERE fixture_id = @fixture_id AND state = 'pending'")
+    .run([
+      "provider_status": provider_status,
+      "actual_home": actual_home,
+      "actual_away": actual_away,
+      "now": now,
+      "fixture_id": fixture_id,
+    ])
+  Result::ok(())
+}

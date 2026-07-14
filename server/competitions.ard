@@ -1,0 +1,70 @@
+use decode
+use maestro/app
+
+// Store for the competitions table — the driver of everything the sync
+// worker does. Adding a competition later is an INSERT, not a deploy.
+
+struct Competition {
+  id: Int,
+  api_football_league_id: Int,
+  name: Str,
+  season: Int,
+  kind: Str,       // 'league' | 'cup' | 'playoff'
+  is_active: Bool,
+}
+
+fn list_active(a: app::App) [Competition]!Str {
+  let rows = try a.db
+    .query("SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE is_active = 1")
+    .all([:])
+  decode_all(rows)
+}
+
+fn list_all(a: app::App) [Competition]!Str {
+  let rows = try a.db
+    .query("SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions ORDER BY id")
+    .all([:])
+  decode_all(rows)
+}
+
+fn find_by_provider(a: app::App, league_id: Int, season: Int) Competition?!Str {
+  let row = try a.db
+    .query("SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE api_football_league_id = @league_id AND season = @season AND is_active = 1 LIMIT 1")
+    .first(["league_id": league_id, "season": season])
+  match row {
+    value => Result::ok(Maybe::new(try decode_competition(value))),
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+private fn decode_all(rows: [Any]) [Competition]!Str {
+  mut out: [Competition] = []
+  for row in rows {
+    let comp = try decode_competition(row)
+    out.push(comp)
+  }
+  Result::ok(out)
+}
+
+private fn decode_competition(row: Any) Competition!Str {
+  let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
+  let league_id = try decode::run(row, decode::field("api_football_league_id", decode::int)).map_err(describe)
+  let name = try decode::run(row, decode::field("name", decode::string)).map_err(describe)
+  let season = try decode::run(row, decode::field("season", decode::int)).map_err(describe)
+  let kind = try decode::run(row, decode::field("kind", decode::string)).map_err(describe)
+  let is_active_int = try decode::run(row, decode::field("is_active", decode::int)).map_err(describe)
+  Result::ok(
+    Competition{
+      id: id,
+      api_football_league_id: league_id,
+      name: name,
+      season: season,
+      kind: kind,
+      is_active: is_active_int == 1,
+    },
+  )
+}
+
+private fn describe(e: decode::Error) Str {
+  "decoding competition row: {e.to_str()}"
+}

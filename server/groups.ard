@@ -1,0 +1,378 @@
+use decode
+use go:fmt
+use go:github.com/go-chi/chi/v5 as chi
+use go:html
+use go:io
+use go:maestro/ffi
+use go:net/http
+use go:strconv
+use go:strings
+use go:time
+use maestro/app
+use maestro/auth
+use maestro/email
+use maestro/magic_links
+use maestro/response
+use maestro/users
+
+struct Group {
+  id: Int,
+  name: Str,
+  owner_id: Int,
+  created_at: Int64,
+  member_count: Int,
+}
+
+struct Member {
+  id: Int,
+  email: Str,
+  display_name: Str?,
+  joined_at: Int64,
+}
+
+struct InviteResult {
+  member: Member,
+  member_added: Bool,
+  invitation_sent: Bool,
+}
+
+fn register(router: mut chi::Mux, a: app::App) {
+  router.Group(
+    fn(protected: chi::Router) {
+      protected.Use(
+        ffi::AuthMiddleware(
+          fn(r: mut http::Request) Int? {
+            auth::authenticate(a, r)
+          },
+        ),
+      )
+      protected.Get(
+        "/groups",
+        fn(w: http::ResponseWriter, r: mut http::Request) { handle_list(a, w, r) },
+      )
+      protected.Post(
+        "/groups",
+        fn(w: http::ResponseWriter, r: mut http::Request) { handle_create(a, w, r) },
+      )
+      protected.Get(
+        "/groups/\{id\}",
+        fn(w: http::ResponseWriter, r: mut http::Request) { handle_detail(a, w, r) },
+      )
+      protected.Post(
+        "/groups/\{id\}/invites",
+        fn(w: http::ResponseWriter, r: mut http::Request) { handle_invite(a, w, r) },
+      )
+    },
+  )
+}
+
+private fn handle_list(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match ffi::UserID(r) {
+    user_id => {
+      match list_for_user(a, user_id) {
+        ok(groups) => {
+          mut payload: [Any] = []
+          for group in groups { payload.push(group_json(group)) }
+          response::json_response(w, http::StatusOK, payload)
+        },
+        err(message) => response::fail(w, http::StatusInternalServerError, message),
+      }
+    },
+    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+  }
+}
+
+private fn handle_create(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match ffi::UserID(r) {
+    user_id => {
+      match decode_string_field(r, "name") {
+        ok(raw_name) => {
+          let name = strings::TrimSpace(raw_name)
+          match name.is_empty() or name.size() > 80 {
+            true => response::fail(w, http::StatusBadRequest, "group name must be between 1 and 80 characters"),
+            false => {
+              match create(a, user_id, name) {
+                ok(group) => response::json_response(w, http::StatusCreated, group_json(group)),
+                err(message) => response::fail(w, http::StatusInternalServerError, message),
+              }
+            },
+          }
+        },
+        err(message) => response::fail(w, http::StatusBadRequest, message),
+      }
+    },
+    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+  }
+}
+
+private fn handle_detail(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match request_group_id(r) {
+    ok(group_id) => {
+      match ffi::UserID(r) {
+        user_id => {
+          match find_for_member(a, group_id, user_id) {
+            ok(found) => {
+              match found {
+                group => {
+                  match members(a, group_id) {
+                    ok(group_members) => {
+                      let payload: [Str: Any] = [
+                        "group": group_json(group),
+                        "members": members_json(group_members),
+                      ]
+                      response::json_response(w, http::StatusOK, payload)
+                    },
+                    err(message) => response::fail(w, http::StatusInternalServerError, message),
+                  }
+                },
+                _ => response::fail(w, http::StatusNotFound, "group not found"),
+              }
+            },
+            err(message) => response::fail(w, http::StatusInternalServerError, message),
+          }
+        },
+        _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+      }
+    },
+    err(message) => response::fail(w, http::StatusBadRequest, message),
+  }
+}
+
+private fn handle_invite(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match request_group_id(r) {
+    ok(group_id) => {
+      match ffi::UserID(r) {
+        inviter_id => {
+          match find_for_member(a, group_id, inviter_id) {
+            ok(found) => {
+              match found {
+                group => invite_to_group(a, w, r, group, inviter_id),
+                _ => response::fail(w, http::StatusNotFound, "group not found"),
+              }
+            },
+            err(message) => response::fail(w, http::StatusInternalServerError, message),
+          }
+        },
+        _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+      }
+    },
+    err(message) => response::fail(w, http::StatusBadRequest, message),
+  }
+}
+
+private fn invite_to_group(
+  a: app::App,
+  w: http::ResponseWriter,
+  r: mut http::Request,
+  group: Group,
+  inviter_id: Int,
+) {
+  match decode_string_field(r, "email") {
+    ok(raw_email) => {
+      let address = strings::ToLower(strings::TrimSpace(raw_email))
+      match address.is_empty() or not strings::Contains(address, "@") {
+        true => response::fail(w, http::StatusBadRequest, "enter a valid email address"),
+        false => {
+          match add_invited_member(a, group, inviter_id, address) {
+            ok(result) => {
+              let payload: [Str: Any] = [
+                "member": member_json(result.member),
+                "member_added": result.member_added,
+                "invitation_sent": result.invitation_sent,
+              ]
+              response::json_response(w, http::StatusOK, payload)
+            },
+            err(message) => response::fail(w, http::StatusBadGateway, message),
+          }
+        },
+      }
+    },
+    err(message) => response::fail(w, http::StatusBadRequest, message),
+  }
+}
+
+private fn add_invited_member(a: app::App, group: Group, inviter_id: Int, address: Str) InviteResult!Str {
+  let invited = try users::get_or_create_by_email(a, address)
+  let existing = try member_by_id(a, group.id, invited.id)
+  match existing {
+    member => Result::ok(InviteResult{member: member, member_added: false, invitation_sent: false}),
+    _ => add_and_notify_member(a, group, inviter_id, invited, address),
+  }
+}
+
+private fn add_and_notify_member(
+  a: app::App,
+  group: Group,
+  inviter_id: Int,
+  invited: users::User,
+  address: Str,
+) InviteResult!Str {
+  try add_member(a, group.id, invited.id)
+  let inviter = try users::find_by_id(a, inviter_id)
+  let inviter_name = match inviter {
+    user => user.display_name.or(user.email),
+    _ => "A group member",
+  }
+  let token = try magic_links::create(a, address)
+  let link = "{a.config.server_base_url}/auth/verify?token={token}"
+  let text = "{inviter_name} added you to {group.name} on Maestro.\n\nSign in to join the predictions:\n{link}\n\nThis link expires soon and can only be used once."
+  let safe_group = html::EscapeString(group.name)
+  let safe_inviter = html::EscapeString(inviter_name)
+  let body = "<p><strong>{safe_inviter}</strong> added you to <strong>{safe_group}</strong> on Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
+  match email::send(a.config, address, "You've been added to {group.name} on Maestro", text, body) {
+    ok => {
+      let joined = try member_by_id(a, group.id, invited.id)
+      match joined {
+        member => Result::ok(
+          InviteResult{
+            member: member,
+            member_added: true,
+            invitation_sent: a.config.email_enabled,
+          },
+        ),
+        _ => Result::err("invited member vanished"),
+      }
+    },
+    err(message) => {
+      fmt::Println("group invitation email failed for {address}: {message}")
+      try remove_member(a, group.id, invited.id)
+      Result::err("invitation email could not be sent; membership was not added")
+    },
+  }
+}
+
+fn create(a: app::App, owner_id: Int, name: Str) Group!Str {
+  let now = time::Now().UnixMilli()
+  try a.db
+    .query("INSERT INTO groups (name, owner_id, created_at) VALUES (@name, @owner_id, @created_at)")
+    .run(["name": name, "owner_id": owner_id, "created_at": now])
+  let rows = try a.db
+    .query("SELECT id FROM groups WHERE owner_id = @owner_id ORDER BY id DESC LIMIT 1")
+    .all(["owner_id": owner_id])
+  let row = rows.at(0).expect("inserted group has id")
+  let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
+  try add_member(a, id, owner_id)
+  let found = try find_for_member(a, id, owner_id)
+  match found {
+    group => Result::ok(group),
+    _ => Result::err("inserted group vanished"),
+  }
+}
+
+fn add_member(a: app::App, group_id: Int, user_id: Int) Void!Str {
+  let now = time::Now().UnixMilli()
+  a.db
+    .query("INSERT INTO group_members (group_id, user_id, joined_at) VALUES (@group_id, @user_id, @joined_at) ON CONFLICT(group_id, user_id) DO NOTHING")
+    .run(["group_id": group_id, "user_id": user_id, "joined_at": now])
+}
+
+private fn remove_member(a: app::App, group_id: Int, user_id: Int) Void!Str {
+  a.db
+    .query("DELETE FROM group_members WHERE group_id = @group_id AND user_id = @user_id")
+    .run(["group_id": group_id, "user_id": user_id])
+}
+
+fn list_for_user(a: app::App, user_id: Int) [Group]!Str {
+  let rows = try a.db
+    .query("SELECT g.id, g.name, g.owner_id, g.created_at, COUNT(all_members.user_id) AS member_count FROM groups g JOIN group_members mine ON mine.group_id = g.id AND mine.user_id = @user_id LEFT JOIN group_members all_members ON all_members.group_id = g.id GROUP BY g.id ORDER BY g.created_at DESC")
+    .all(["user_id": user_id])
+  decode_groups(rows)
+}
+
+fn find_for_member(a: app::App, group_id: Int, user_id: Int) Group?!Str {
+  let rows = try a.db
+    .query("SELECT g.id, g.name, g.owner_id, g.created_at, COUNT(all_members.user_id) AS member_count FROM groups g JOIN group_members mine ON mine.group_id = g.id AND mine.user_id = @user_id LEFT JOIN group_members all_members ON all_members.group_id = g.id WHERE g.id = @group_id GROUP BY g.id LIMIT 1")
+    .all(["group_id": group_id, "user_id": user_id])
+  match rows.at(0) {
+    row => Result::ok(Maybe::new(try decode_group(row))),
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+fn members(a: app::App, group_id: Int) [Member]!Str {
+  let rows = try a.db
+    .query("SELECT u.id, u.email, u.display_name, gm.joined_at FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = @group_id ORDER BY gm.joined_at, u.id")
+    .all(["group_id": group_id])
+  mut out: [Member] = []
+  for row in rows { out.push(try decode_member(row)) }
+  Result::ok(out)
+}
+
+private fn member_by_id(a: app::App, group_id: Int, user_id: Int) Member?!Str {
+  let rows = try a.db
+    .query("SELECT u.id, u.email, u.display_name, gm.joined_at FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = @group_id AND u.id = @user_id LIMIT 1")
+    .all(["group_id": group_id, "user_id": user_id])
+  match rows.at(0) {
+    row => Result::ok(Maybe::new(try decode_member(row))),
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+private fn decode_groups(rows: [Any]) [Group]!Str {
+  mut out: [Group] = []
+  for row in rows { out.push(try decode_group(row)) }
+  Result::ok(out)
+}
+
+private fn decode_group(row: Any) Group!Str {
+  let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
+  let name = try decode::run(row, decode::field("name", decode::string)).map_err(describe)
+  let owner_id = try decode::run(row, decode::field("owner_id", decode::int)).map_err(describe)
+  let created_at = try decode::run(row, decode::field("created_at", decode::int)).map_err(describe)
+  let member_count = try decode::run(row, decode::field("member_count", decode::int)).map_err(describe)
+  Result::ok(Group{id: id, name: name, owner_id: owner_id, created_at: Int64::from(created_at), member_count: member_count})
+}
+
+private fn decode_member(row: Any) Member!Str {
+  let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
+  let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
+  let display_name = try decode::run(row, decode::field("display_name", decode::nullable(decode::string))).map_err(describe)
+  let joined_at = try decode::run(row, decode::field("joined_at", decode::int)).map_err(describe)
+  Result::ok(Member{id: id, email: email, display_name: display_name, joined_at: Int64::from(joined_at)})
+}
+
+private fn group_json(group: Group) [Str: Any] {
+  let payload: [Str: Any] = [
+    "id": group.id,
+    "name": group.name,
+    "owner_id": group.owner_id,
+    "created_at": group.created_at,
+    "member_count": group.member_count,
+  ]
+  payload
+}
+
+private fn members_json(group_members: [Member]) [Any] {
+  mut payload: [Any] = []
+  for member in group_members { payload.push(member_json(member)) }
+  payload
+}
+
+private fn member_json(member: Member) [Str: Any] {
+  let payload: [Str: Any] = [
+    "id": member.id,
+    "email": member.email,
+    "display_name": member.display_name,
+    "joined_at": member.joined_at,
+  ]
+  payload
+}
+
+private fn request_group_id(r: mut http::Request) Int!Str {
+  strconv::Atoi(chi::URLParam(r, "id")).map_err(invalid_group_id)
+}
+
+private fn decode_string_field(r: mut http::Request, name: Str) Str!Str {
+  let bytes = try io::ReadAll(r.Body)
+  let body = Str::from(bytes)
+  match body.is_empty() {
+    true => Result::err("empty request body"),
+    false => {
+      let data = try decode::from_json(body)
+      decode::run(data, decode::field(name, decode::string)).map_err(describe)
+    },
+  }
+}
+
+private fn invalid_group_id(_: Str) Str { "group id must be an integer" }
+private fn describe(e: decode::Error) Str { e.to_str() }

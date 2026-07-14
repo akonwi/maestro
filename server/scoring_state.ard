@@ -1,0 +1,181 @@
+use decode
+use maestro/app
+use sql
+
+struct State {
+  fixture_id: Int,
+  competition_id: Int,
+  kickoff_at: Int64,
+  prediction_lock_at: Int64,
+  state: Str,
+  provider_status: Str?,
+  next_check_at: Int64?,
+  attempt_count: Int,
+}
+
+fn find(a: app::App, fixture_id: Int) State?!Str {
+  let row = try a.db
+    .query("SELECT fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count FROM fixture_scoring_state WHERE fixture_id = @fixture_id LIMIT 1")
+    .first(["fixture_id": fixture_id])
+  match row {
+    value => Result::ok(Maybe::new(try decode_state(value))),
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+fn ensure_prediction_open(
+  tx: sql::Transaction,
+  fixture_id: Int,
+  fallback_lock_at: Int64,
+  now: Int64,
+) Void!Str {
+  let row = try tx
+    .query("SELECT prediction_lock_at, state FROM fixture_scoring_state WHERE fixture_id = @fixture_id LIMIT 1")
+    .first(["fixture_id": fixture_id])
+  match row {
+    value => {
+      let lock = try decode::run(value, decode::field("prediction_lock_at", decode::int)).map_err(describe)
+      let state = try decode::run(value, decode::field("state", decode::string)).map_err(describe)
+      match state != "pending" or Int64::from(lock) <= now {
+        true => Result::err("predictions are locked after kickoff"),
+        false => Result::ok(()),
+      }
+    },
+    _ => {
+      match fallback_lock_at <= now {
+        true => Result::err("predictions are locked after kickoff"),
+        false => Result::ok(()),
+      }
+    },
+  }
+}
+
+fn upsert_pending(
+  tx: sql::Transaction,
+  fixture_id: Int,
+  competition_id: Int,
+  kickoff_at: Int64,
+  provider_status: Str,
+  now: Int64,
+) Void!Str {
+  let next_check_at = kickoff_at + Int64::from(2 * 60 * 60 * 1000)
+  try tx
+    .query("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (@fixture_id, @competition_id, @kickoff_at, @prediction_lock_at, 'pending', @provider_status, @next_check_at, 0, @created_at, @updated_at) ON CONFLICT(fixture_id) DO UPDATE SET competition_id = @competition_id, kickoff_at = @kickoff_at, provider_status = @provider_status, next_check_at = CASE WHEN fixture_scoring_state.state = 'pending' THEN @next_check_at ELSE fixture_scoring_state.next_check_at END, updated_at = @updated_at")
+    .run([
+      "fixture_id": fixture_id,
+      "competition_id": competition_id,
+      "kickoff_at": kickoff_at,
+      "prediction_lock_at": kickoff_at,
+      "provider_status": provider_status,
+      "next_check_at": next_check_at,
+      "created_at": now,
+      "updated_at": now,
+    ])
+  Result::ok(())
+}
+
+fn create_discovered(
+  a: app::App,
+  fixture_id: Int,
+  competition_id: Int,
+  kickoff_at: Int64,
+  provider_status: Str,
+  now: Int64,
+) Void!Str {
+  let next_check_at = kickoff_at + Int64::from(2 * 60 * 60 * 1000)
+  try a.db
+    .query("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (@fixture_id, @competition_id, @kickoff_at, @prediction_lock_at, 'pending', @provider_status, @next_check_at, 0, @created_at, @updated_at) ON CONFLICT(fixture_id) DO NOTHING")
+    .run([
+      "fixture_id": fixture_id,
+      "competition_id": competition_id,
+      "kickoff_at": kickoff_at,
+      "prediction_lock_at": kickoff_at,
+      "provider_status": provider_status,
+      "next_check_at": next_check_at,
+      "created_at": now,
+      "updated_at": now,
+    ])
+  Result::ok(())
+}
+
+fn due(a: app::App, now: Int64, limit: Int) [State]!Str {
+  let rows = try a.db
+    .query("SELECT fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count FROM fixture_scoring_state WHERE state = 'pending' AND next_check_at IS NOT NULL AND next_check_at <= @now ORDER BY next_check_at, fixture_id LIMIT @limit")
+    .all(["now": now, "limit": limit])
+  mut states: [State] = []
+  for row in rows { states.push(try decode_state(row)) }
+  Result::ok(states)
+}
+
+fn reschedule_success(
+  a: app::App,
+  fixture_id: Int,
+  kickoff_at: Int64,
+  provider_status: Str,
+  next_check_at: Int64,
+  now: Int64,
+) Void!Str {
+  try a.db
+    .query("UPDATE fixture_scoring_state SET kickoff_at = @kickoff_at, provider_status = @provider_status, next_check_at = @next_check_at, attempt_count = 0, last_checked_at = @now, last_error = NULL, updated_at = @now WHERE fixture_id = @fixture_id AND state = 'pending'")
+    .run(["kickoff_at": kickoff_at, "provider_status": provider_status, "next_check_at": next_check_at, "now": now, "fixture_id": fixture_id])
+  Result::ok(())
+}
+
+fn reschedule_error(
+  a: app::App,
+  fixture_id: Int,
+  message: Str,
+  next_check_at: Int64,
+  now: Int64,
+) Void!Str {
+  try a.db
+    .query("UPDATE fixture_scoring_state SET next_check_at = @next_check_at, attempt_count = attempt_count + 1, last_checked_at = @now, last_error = @message, updated_at = @now WHERE fixture_id = @fixture_id AND state = 'pending'")
+    .run(["next_check_at": next_check_at, "now": now, "message": message, "fixture_id": fixture_id])
+  Result::ok(())
+}
+
+fn mark_void(a: app::App, fixture_id: Int, provider_status: Str, now: Int64) Void!Str {
+  try a.db
+    .query("UPDATE fixture_scoring_state SET state = 'void', provider_status = @provider_status, next_check_at = NULL, last_checked_at = @now, last_error = NULL, updated_at = @now WHERE fixture_id = @fixture_id AND state = 'pending'")
+    .run(["provider_status": provider_status, "now": now, "fixture_id": fixture_id])
+  Result::ok(())
+}
+
+fn missing_fixture_ids(a: app::App, limit: Int) [Int]!Str {
+  let rows = try a.db
+    .query("SELECT DISTINCT p.fixture_id FROM predictions p LEFT JOIN fixture_scoring_state s ON s.fixture_id = p.fixture_id WHERE p.points IS NULL AND s.fixture_id IS NULL ORDER BY p.fixture_id LIMIT @limit")
+    .all(["limit": limit])
+  mut ids: [Int] = []
+  for row in rows {
+    ids.push(try decode::run(row, decode::field("fixture_id", decode::int)).map_err(describe))
+  }
+  Result::ok(ids)
+}
+
+private fn decode_state(row: Any) State!Str {
+  let fixture_id = try int_field(row, "fixture_id")
+  let competition_id = try int_field(row, "competition_id")
+  let kickoff_at = try int_field(row, "kickoff_at")
+  let prediction_lock_at = try int_field(row, "prediction_lock_at")
+  let state = try decode::run(row, decode::field("state", decode::string)).map_err(describe)
+  let provider_status = try decode::run(row, decode::field("provider_status", decode::nullable(decode::string))).map_err(describe)
+  let next_check = try decode::run(row, decode::field("next_check_at", decode::nullable(decode::int))).map_err(describe)
+  let next_check_at = next_check.map(fn(value) { Int64::from(value) })
+  let attempt_count = try int_field(row, "attempt_count")
+  Result::ok(State{
+    fixture_id: fixture_id,
+    competition_id: competition_id,
+    kickoff_at: Int64::from(kickoff_at),
+    prediction_lock_at: Int64::from(prediction_lock_at),
+    state: state,
+    provider_status: provider_status,
+    next_check_at: next_check_at,
+    attempt_count: attempt_count,
+  })
+}
+
+private fn int_field(row: Any, name: Str) Int!Str {
+  decode::run(row, decode::field(name, decode::int)).map_err(describe)
+}
+
+private fn describe(e: decode::Error) Str { e.to_str() }

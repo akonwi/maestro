@@ -1,0 +1,106 @@
+use go:os
+use go:strconv
+
+// All configuration comes from environment variables. Read once at startup;
+// required values fail the process before any HTTP surface is up.
+
+struct Config {
+  database_url: Str,
+  listen_addr: Str,
+  email_enabled: Bool,
+  cloudflare_account_id: Str,
+  cloudflare_email_api_token: Str,
+  email_from: Str,
+  server_base_url: Str,
+  app_base_url: Str,
+  magic_link_ttl_secs: Int,
+  session_ttl_secs: Int,
+  api_football_key: Str,
+}
+
+fn load() Config!Str {
+  let database_url = getenv_or("DATABASE_URL", "maestro.db")
+  let port = getenv_or("PORT", "8080")
+  let email_enabled = parse_bool_env("EMAIL_ENABLED", false)
+  let cloudflare_account_id = try require_when(email_enabled, "CLOUDFLARE_ACCOUNT_ID")
+  let cloudflare_email_api_token = try require_when(email_enabled, "CLOUDFLARE_EMAIL_API_TOKEN")
+  let email_from = try require_when(email_enabled, "EMAIL_FROM")
+  let server_base_url = getenv_or("SERVER_BASE_URL", "http://localhost:{port}")
+  let app_base_url = try require("APP_BASE_URL")
+  let magic_link_ttl_secs = try parse_int_env("MAGIC_LINK_TTL_SECONDS", 900)
+  let session_ttl_secs = try parse_int_env("SESSION_TTL_SECONDS", 2592000)
+  let api_football_key = try require("API_FOOTBALL_KEY")
+
+  Result::ok(
+    Config{
+      database_url: database_url,
+      listen_addr: "0.0.0.0:{port}",
+      email_enabled: email_enabled,
+      cloudflare_account_id: cloudflare_account_id,
+      cloudflare_email_api_token: cloudflare_email_api_token,
+      email_from: email_from,
+      server_base_url: server_base_url,
+      app_base_url: app_base_url,
+      magic_link_ttl_secs: magic_link_ttl_secs,
+      session_ttl_secs: session_ttl_secs,
+      api_football_key: api_football_key,
+    },
+  )
+}
+
+private fn getenv_or(name: Str, fallback: Str) Str {
+  let value = os::Getenv(name)
+  match value.is_empty() {
+    true => fallback,
+    false => value,
+  }
+}
+
+private fn require(name: Str) Str!Str {
+  let value = os::Getenv(name)
+  match value.is_empty() {
+    true => Result::err("{name} is required"),
+    false => Result::ok(value),
+  }
+}
+
+// Required only when a companion feature flag is on.
+private fn require_when(needed: Bool, name: Str) Str!Str {
+  match needed {
+    true => require(name),
+    false => Result::ok(os::Getenv(name)),
+  }
+}
+
+// Parses "true"/"1"/"yes" as true; "false"/"0"/"no" as false; empty as
+// the fallback. Any other value is an error.
+private fn parse_bool_env(name: Str, fallback: Bool) Bool {
+  let raw = os::Getenv(name)
+  match raw.is_empty() {
+    true => fallback,
+    false => {
+      match raw {
+        "true" => true,
+        "1" => true,
+        "yes" => true,
+        "false" => false,
+        "0" => false,
+        "no" => false,
+        _ => fallback,
+      }
+    },
+  }
+}
+
+private fn parse_int_env(name: Str, fallback: Int) Int!Str {
+  let raw = os::Getenv(name)
+  match raw.is_empty() {
+    true => Result::ok(fallback),
+    false => {
+      match strconv::Atoi(raw) {
+        ok(value) => Result::ok(value),
+        err(message) => Result::err("{name} must be an integer: {message}"),
+      }
+    },
+  }
+}

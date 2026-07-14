@@ -1,0 +1,110 @@
+use ard/async
+
+use decode
+use go:fmt
+use go:time
+use maestro/app
+use maestro/crypto
+use sql
+
+// Bearer-token sessions. The `token` column is a 64-char hex string
+// (32 random bytes from crypto/rand).
+
+struct Session {
+  token: Str,
+  user_id: Int,
+  created_at: Int64,
+  expires_at: Int64,
+}
+
+// Create a new session for user_id with the configured TTL.
+fn mint(a: app::App, user_id: Int) Session!Str {
+  let token = try crypto::generate_token(32)
+  let now = time::Now().UnixMilli()
+  let ttl_ms = Int64::from(a.config.session_ttl_secs) * 1000
+  let expires_at = now + ttl_ms
+
+  try a.db
+    .query("INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)")
+    .run(
+      [
+        "token": token,
+        "user_id": user_id,
+        "created_at": now,
+        "expires_at": expires_at,
+      ],
+    )
+
+  Result::ok(
+    Session{
+      token: token,
+      user_id: user_id,
+      created_at: now,
+      expires_at: expires_at,
+    },
+  )
+}
+
+// Look up a session by its bearer token. Returns none for missing or
+// expired sessions; the hourly cleanup worker removes expired rows.
+fn find_by_token(a: app::App, token: Str) Session?!Str {
+  let rows = try a.db
+    .query("SELECT token, user_id, created_at, expires_at FROM sessions WHERE token = @token LIMIT 1")
+    .all(["token": token])
+  match rows.at(0) {
+    row => {
+      let session = try decode_session(row)
+      let now = time::Now().UnixMilli()
+      match session.expires_at <= now {
+        true => Result::ok(Maybe::new()),
+        false => Result::ok(Maybe::new(session)),
+      }
+    },
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+fn delete(a: app::App, token: Str) Void!Str {
+  a.db.query("DELETE FROM sessions WHERE token = @token").run(["token": token])
+}
+
+// Start one low-frequency cleanup goroutine for expired session rows.
+// Expiration checks still happen on reads, so cleanup cadence never extends
+// access; it only bounds stale database records.
+fn start_cleanup(a: app::App) {
+  async::start(
+    fn() {
+      while {
+        time::Sleep(time::Hour)
+        match delete_expired(a) {
+          ok => (),
+          err(message) => fmt::Println("session cleanup failed: {message}"),
+        }
+      }
+    },
+  )
+}
+
+fn delete_expired(a: app::App) Void!Str {
+  let now = time::Now().UnixMilli()
+  a.db.query("DELETE FROM sessions WHERE expires_at <= @now").run(["now": now])
+}
+
+private fn decode_session(row: Any) Session!Str {
+  let token = try decode::run(row, decode::field("token", decode::string)).map_err(describe)
+  let user_id = try decode::run(row, decode::field("user_id", decode::int)).map_err(describe)
+  let created_at_int = try decode::run(row, decode::field("created_at", decode::int)).map_err(describe)
+  let expires_at_int = try decode::run(row, decode::field("expires_at", decode::int)).map_err(describe)
+  Result::ok(
+    Session{
+      token: token,
+      user_id: user_id,
+      created_at: Int64::from(created_at_int),
+      expires_at: Int64::from(expires_at_int),
+    },
+  )
+}
+
+private fn describe(e: decode::Error) Str {
+  "decoding session row: {e.to_str()}"
+}

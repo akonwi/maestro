@@ -1,0 +1,62 @@
+use ard/unsafe
+
+use go:bytes
+use go:encoding/json
+use go:io
+use go:net/http
+use maestro/config
+
+// Minimal Cloudflare Email Service REST client. One plain-text message per
+// request; the sender must belong to a domain configured for Email Service.
+
+let API_BASE: Str = "https://api.cloudflare.com/client/v4"
+
+fn send(cfg: config::Config, to: Str, subject: Str, text: Str, html: Str) Void!Str {
+  match cfg.email_enabled {
+    false => Result::ok(()),
+    true => send_via_cloudflare(cfg, to, subject, text, html),
+  }
+}
+
+private fn send_via_cloudflare(
+  cfg: config::Config,
+  to: Str,
+  subject: Str,
+  text: Str,
+  html: Str,
+) Void!Str {
+  let payload: [Str: Str] = [
+    "from": cfg.email_from,
+    "to": to,
+    "subject": subject,
+    "text": text,
+    "html": html,
+  ]
+
+  let body_bytes = try json::Marshal(payload)
+  mut buf = body_bytes
+  let reader = bytes::NewReader(buf)
+  let endpoint = "{API_BASE}/accounts/{cfg.cloudflare_account_id}/email/sending/send"
+
+  mut req = try http::NewRequest("POST", endpoint, reader)
+  req.Header.Set("Authorization", "Bearer {cfg.cloudflare_email_api_token}")
+  req.Header.Set("Content-Type", "application/json")
+
+  mut client = http::Client{}
+  let resp = try client.Do(req)
+  match unsafe::is_nil(resp) {
+    true => Result::err("cloudflare email: nil response"),
+    false => {
+      let status = resp.StatusCode
+      let response_bytes = try io::ReadAll(resp.Body)
+      try resp.Body.Close()
+      match status >= 200 and status < 300 {
+        true => Result::ok(()),
+        false => {
+          let detail = Str::from(response_bytes)
+          Result::err("cloudflare email rejected the message: HTTP {status}: {detail}")
+        },
+      }
+    },
+  }
+}

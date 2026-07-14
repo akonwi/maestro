@@ -1,0 +1,45 @@
+use ard/testing
+
+use maestro/groups
+use maestro/test_helpers
+use maestro/users
+
+test fn create_adds_owner_as_first_member() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let group = try groups::create(app, owner.id, "Sunday League")
+
+  try testing::assert(group.name == "Sunday League", "name round-trips")
+  try testing::assert(group.owner_id == owner.id, "creator owns group")
+  try testing::assert(group.member_count == 1, "owner is first member")
+  testing::pass()
+}
+
+test fn add_member_is_idempotent() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let friend = try users::get_or_create_by_email(app, "friend@example.com")
+  let group = try groups::create(app, owner.id, "Sunday League")
+
+  try groups::add_member(app, group.id, friend.id)
+  try groups::add_member(app, group.id, friend.id)
+  let members = try groups::members(app, group.id)
+  try testing::assert(members.size() == 2, "duplicate add creates one membership")
+  testing::pass()
+}
+
+test fn list_and_detail_require_membership() Void!Str {
+  let app = try test_helpers::build_app()
+  let owner = try users::get_or_create_by_email(app, "owner@example.com")
+  let outsider = try users::get_or_create_by_email(app, "outsider@example.com")
+  let group = try groups::create(app, owner.id, "Sunday League")
+
+  let owner_groups = try groups::list_for_user(app, owner.id)
+  let outsider_groups = try groups::list_for_user(app, outsider.id)
+  try testing::assert(owner_groups.size() == 1, "member sees group")
+  try testing::assert(outsider_groups.size() == 0, "outsider does not see group")
+
+  let hidden = try groups::find_for_member(app, group.id, outsider.id)
+  try testing::assert(hidden.is_none(), "detail hidden from outsider")
+  testing::pass()
+}

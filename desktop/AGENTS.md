@@ -4,7 +4,9 @@ This file provides guidance to coding agents when working in the desktop app.
 
 ## Overview
 
-Maestro Desktop is a native macOS app for viewing soccer fixtures, tracking stats, and managing bets. It's a companion to the web app, using its own local SQLite database synced from the API-Football.com API.
+Maestro Desktop is a native macOS app for exploring soccer data. It uses a local SQLite database synced directly from the API-Football.com API. The product is a personal tactical lens on football — fixtures, form, possession, xG, and (planned) formations, opposition context, and player-level slicing.
+
+See `docs/tactical-revamp-plan.md` for the current direction.
 
 ## Technology Stack
 
@@ -13,13 +15,13 @@ Maestro Desktop is a native macOS app for viewing soccer fixtures, tracking stat
 - **Build System**: Swift Package Manager
 - **Database**: SQLite3 (C API, no ORM)
 - **External APIs**:
-  - API-Football.com v3 (fixtures, odds, stats)
-  - OpenAI Responses API (corner betting analysis)
+  - API-Football.com v3 (fixtures, stats, standings, lineups)
+  - OpenAI Chat Completions API (in-app AI chat only)
 
 ## Development Commands
 
 ```bash
-cd desktop/MaestroDesktop
+cd desktop
 
 # Build debug
 swift build
@@ -44,33 +46,46 @@ MaestroDesktop/
 ├── Sources/MaestroDesktop/
 │   ├── App/
 │   │   ├── MaestroDesktopApp.swift    # @main entry point
-│   │   └── AppState.swift             # Global observable state
+│   │   ├── AppState.swift             # Global observable state
+│   │   ├── SessionState.swift         # Tab persistence
+│   │   └── AppCommandNotifications.swift
 │   ├── Data/
 │   │   ├── API/
 │   │   │   ├── APIFootballClient.swift  # API-Football.com client
-│   │   │   └── OpenAIService.swift      # OpenAI corner analysis
+│   │   │   ├── ChatService.swift        # OpenAI chat wrapper
+│   │   │   └── ChatTools.swift          # Tool definitions for chat
 │   │   ├── DB/
 │   │   │   ├── Database.swift           # SQLite connection singleton
-│   │   │   ├── *Repository.swift        # Domain data access
-│   │   │   └── *Cache.swift             # Caching layers
+│   │   │   ├── FixtureRepository.swift
+│   │   │   ├── LeagueRepository.swift
+│   │   │   ├── PreMatchRepository.swift
+│   │   │   ├── SettingsRepository.swift
+│   │   │   └── TeamRepository.swift
 │   │   └── Sync/
 │   │       └── SyncService.swift        # Fixture sync from API
 │   ├── Models/
+│   │   ├── ChatModels.swift
 │   │   ├── FixtureModels.swift
-│   │   ├── BetModels.swift
-│   │   ├── StatsModels.swift
-│   │   └── PreMatchModels.swift
+│   │   ├── LeagueModels.swift
+│   │   ├── PreMatchModels.swift
+│   │   └── StatsModels.swift
 │   └── UI/
 │       ├── Screens/
-│       │   ├── MainScreen.swift         # Primary navigation
-│       │   ├── FixtureDetailView.swift  # Fixture stats/betting
-│       │   ├── BetsListView.swift       # Bet history
-│       │   ├── SettingsView.swift       # API keys config
-│       │   └── LeagueSearchView.swift   # Follow leagues
+│       │   ├── MainScreen.swift
+│       │   ├── FixtureDetailView.swift
+│       │   ├── FixtureTabView.swift
+│       │   ├── LeagueDetailView.swift
+│       │   ├── LeagueSearchView.swift
+│       │   ├── SettingsView.swift
+│       │   └── TeamDetailView.swift
 │       └── Components/
-│           ├── BetFormSheet.swift
-│           ├── StatComparisonRow.swift
+│           ├── ChatBubbleView.swift
+│           ├── ChatFloatingButton.swift
+│           ├── ChatPanelView.swift
+│           ├── ChatViewModel.swift
 │           ├── MatchupBar.swift
+│           ├── StatComparisonRow.swift
+│           ├── TeamPositionView.swift
 │           └── ToastView.swift
 ```
 
@@ -79,14 +94,14 @@ MaestroDesktop/
 ### State Management
 
 - `AppState` is the single source of truth, passed via `@EnvironmentObject`
-- Contains: selected date, followed leagues, open fixture tabs, API tokens, bet stats
+- Contains: selected date, followed leagues, open fixture/league/team tabs, API tokens
 - Repositories are instantiated locally in views, not injected
 
 ### Database Layer
 
 - Direct SQLite3 C API usage (no wrappers)
 - Database singleton at `Database.shared.handle`
-- Tables created lazily in repository/cache `init()` methods via `ensureTable()`
+- Tables created lazily in repository `init()` methods via `ensureTable()`
 - Pattern for queries:
 ```swift
 let sql = "SELECT ... FROM ... WHERE ...;"
@@ -108,16 +123,10 @@ if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
 4. Opening a fixture creates a tab, shows `FixtureDetailView`
 5. For live matches, `SyncService.syncFixture()` auto-refreshes every 10 minutes
 
-### Fixture Lifecycle States
+### Fixture Views
 
-- **Pre-match**: Shows pre-match stats, corner odds, AI analysis, bet recording
-- **In-play**: Shows live stats, recorded bets with settle buttons, cached AI analysis (read-only)
-- **Finished**: Shows final stats, pre-match data, settled bets
-
-### Caching
-
-- `OddsCache`: In-memory cache for corner odds (1 hour TTL)
-- `AnalysisCache`: SQLite-persisted AI analyses (no expiry, includes timestamp)
+- **Pre-match**: form, season stats comparison, attack-vs-defense matchup
+- **In-play / Finished**: live/final match statistics + pre-match view
 
 ## Key Patterns
 
@@ -127,13 +136,6 @@ if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
 - Use `@EnvironmentObject` for `AppState`
 - Instantiate repositories as `private let` properties
 - Load data in `onAppear`, reload on `onChange` of dependencies
-
-### American Odds Display
-
-```swift
-// Format: +150 (positive) or -110 (negative)
-let formatted = odds > 0 ? "+\(odds)" : "\(odds)"
-```
 
 ### Relative Timestamps
 
@@ -154,17 +156,16 @@ return formatter.localizedString(for: date, relativeTo: Date())
 
 - Requires API key stored in settings
 - Rate limited; sync operations fetch fixture lists then individual details
-- Corner odds from bookmaker endpoints (market IDs: 45, 55, 56, 57, 58, 85)
 
 ### OpenAI
 
-- Uses Responses API with stored prompts
-- Prompt ID configured in `OpenAIService`
-- Response parsing handles nested `output[0].content[0].text` structure
-- Strips markdown code blocks from responses
+- Used by the in-app AI chat (`ChatService` + `ChatTools`)
+- Standard Chat Completions API with function calling
+- Tools operate against the local SQLite store
 
 ## Notes
 
 - Bundle identifier: `com.akonwi.maestro`
 - The app runs as a plain executable; for proper macOS integration (Dock icon, keyboard focus), it sets activation policy to `.regular`
-- No external Swift dependencies - only system frameworks and SQLite3
+- No external Swift dependencies — only system frameworks and SQLite3
+- Historical schemas from the removed odds/betting features may still exist in the local SQLite file for existing users. New code does not read or write them.

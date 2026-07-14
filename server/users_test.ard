@@ -1,0 +1,49 @@
+use ard/testing
+
+use maestro/test_helpers
+use maestro/users
+
+test fn get_or_create_is_idempotent() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let first = try users::get_or_create_by_email(app, "ada@example.com")
+  let again = try users::get_or_create_by_email(app, "ada@example.com")
+
+  try testing::assert(first.id == again.id, "same email should return same id")
+  try testing::assert(first.email == "ada@example.com", "email round-trips")
+  try testing::assert(first.display_name.expect("display name") == "ada", "display_name starts from email local part")
+  testing::pass()
+}
+
+test fn different_emails_get_different_ids() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let ada = try users::get_or_create_by_email(app, "ada@example.com")
+  let ben = try users::get_or_create_by_email(app, "ben@example.com")
+
+  try testing::assert(ada.id != ben.id, "different emails should get different ids")
+  testing::pass()
+}
+
+test fn find_by_id_returns_user() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let created = try users::get_or_create_by_email(app, "ada@example.com")
+  let found = try users::find_by_id(app, created.id)
+
+  match found {
+    user => {
+      try testing::assert(user.email == "ada@example.com", "email matches")
+      testing::pass()
+    },
+    _ => testing::fail("user not found by id"),
+  }
+}
+
+test fn find_by_id_missing_returns_none() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let found = try users::find_by_id(app, 9999)
+  try testing::assert(found.is_none(), "unknown id returns none")
+  testing::pass()
+}

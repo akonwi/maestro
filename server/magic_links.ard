@@ -1,0 +1,103 @@
+use decode
+use go:time
+use maestro/app
+use maestro/crypto
+use sql
+
+// A one-shot email->token record used to bootstrap sessions.
+
+struct MagicLink {
+  token: Str,
+  email: Str,
+  expires_at: Int64,
+  consumed_at: Int64?,
+}
+
+// Mint a new magic link for `email`. Returns the token to embed in the
+// verification URL.
+fn create(a: app::App, email: Str) Str!Str {
+  let token = try crypto::generate_token(32)
+  let now = time::Now().UnixMilli()
+  let ttl_ms = Int64::from(a.config.magic_link_ttl_secs) * 1000
+  let expires_at = now + ttl_ms
+
+  try a.db
+    .query("INSERT INTO magic_links (token, email, expires_at) VALUES (@token, @email, @expires_at)")
+    .run(["token": token, "email": email, "expires_at": expires_at])
+  Result::ok(token)
+}
+
+// Single-use redemption. Returns the email the link was minted for, or an
+// error if the token is unknown, expired, or already consumed.
+fn consume(a: app::App, token: Str) Str!Str {
+  let found = try find(a, token)
+  match found {
+    link => {
+      try guard_unused(link)
+      try guard_fresh(link)
+      let now = time::Now().UnixMilli()
+      try a.db
+        .query("UPDATE magic_links SET consumed_at = @now WHERE token = @token AND consumed_at IS NULL")
+        .run(["now": now, "token": token])
+      Result::ok(link.email)
+    },
+    _ => Result::err("invalid or unknown magic link"),
+  }
+}
+
+private fn guard_unused(link: MagicLink) Void!Str {
+  match link.consumed_at.is_some() {
+    true => Result::err("magic link already used"),
+    false => Result::ok(()),
+  }
+}
+
+private fn guard_fresh(link: MagicLink) Void!Str {
+  let now = time::Now().UnixMilli()
+  match link.expires_at <= now {
+    true => Result::err("magic link expired"),
+    false => Result::ok(()),
+  }
+}
+
+private fn find(a: app::App, token: Str) MagicLink?!Str {
+  let rows = try a.db
+    .query("SELECT token, email, expires_at, consumed_at FROM magic_links WHERE token = @token LIMIT 1")
+    .all(["token": token])
+  match rows.at(0) {
+    row => {
+      let link = try decode_link(row)
+      Result::ok(Maybe::new(link))
+    },
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+private fn decode_link(row: Any) MagicLink!Str {
+  let token = try decode::run(row, decode::field("token", decode::string)).map_err(describe)
+  let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
+  let expires_at_int = try decode::run(row, decode::field("expires_at", decode::int)).map_err(describe)
+  let consumed_at = try decode::run(
+    row,
+    decode::field("consumed_at", decode::nullable(decode::int)),
+  ).map_err(describe)
+  Result::ok(
+    MagicLink{
+      token: token,
+      email: email,
+      expires_at: Int64::from(expires_at_int),
+      consumed_at: nullable_int64(consumed_at),
+    },
+  )
+}
+
+private fn nullable_int64(v: Int?) Int64? {
+  match v {
+    x => Maybe::new(Int64::from(x)),
+    _ => Maybe::new(),
+  }
+}
+
+private fn describe(e: decode::Error) Str {
+  "decoding magic_link row: {e.to_str()}"
+}

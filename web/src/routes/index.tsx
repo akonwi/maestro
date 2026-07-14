@@ -1,250 +1,146 @@
-import { A, useSearchParams } from "@solidjs/router";
-import { clientOnly } from "@solidjs/start";
-import { useQuery } from "@tanstack/solid-query";
-import { createMemo, For, Match, Show, Switch } from "solid-js";
-import { fixturesTodayQueryOptions } from "~/api/fixtures";
-import { LeagueMenu } from "~/components/league-menu";
-import { formatFixtureTime } from "~/lib/formatters";
+import { useQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { FixtureRow } from '@/components/fixture-row'
+import type { Fixture } from '@/lib/fixtures'
+import { upcomingFixturesQuery } from '@/lib/fixtures'
 
-function Page() {
-  const [searchParams, setSearchParams] = useSearchParams<{ date?: string }>();
+export const Route = createFileRoute('/')({
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(upcomingFixturesQuery),
+  pendingComponent: FixturesRoutePending,
+  errorComponent: FixturesRouteError,
+  component: FixturesPage,
+})
 
-  const selectedDate = () => {
-    return typeof searchParams.date === "string"
-      ? searchParams.date
-      : new Date().toISOString().split("T")[0] || "";
-  };
+const dayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+})
 
-  const formattedDate = createMemo(() => {
-    const date = new Date(`${selectedDate()}T00:00:00`);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  });
-
-  const fixturesQuery = useQuery(() =>
-    fixturesTodayQueryOptions(selectedDate()),
-  );
-
-  const navigateDate = (direction: "prev" | "next") => {
-    const currentDate = new Date(`${selectedDate()}T00:00:00`);
-    const newDate = new Date(currentDate);
-    if (direction === "prev") {
-      newDate.setDate(currentDate.getDate() - 1);
-    } else {
-      newDate.setDate(currentDate.getDate() + 1);
-    }
-    setSearchParams({ date: newDate.toISOString().split("T")[0] });
-  };
-
-  const matchupUrl = (fixtureId: number) => `/matchup/${fixtureId}`;
-
-  const fixtureStatusLabel = (fixture: {
-    status: string;
-    timestamp: number;
-  }) =>
-    fixture.status === "NS"
-      ? formatFixtureTime(fixture.timestamp)
-      : fixture.status;
-
-  const leagues = () => fixturesQuery.data ?? [];
-
+function FixturesRoutePending() {
   return (
-    <div class="space-y-4 md:space-y-6">
-      {/* Header - stacks on mobile */}
-      <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-        <h1 class="text-2xl md:text-3xl font-bold">Fixtures</h1>
-        <div class="flex items-center justify-between sm:justify-end gap-3 md:gap-4">
-          <div class="text-sm md:text-lg font-medium text-base-content/80">
-            {formattedDate()}
-          </div>
-          <div class="flex items-center gap-1 md:gap-2">
-            <button
-              type="button"
-              class="btn btn-xs md:btn-sm btn-outline"
-              onClick={() => navigateDate("prev")}
-              aria-label="Previous day"
-            >
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Go Back</title>
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="btn btn-xs md:btn-sm btn-outline"
-              onClick={() => navigateDate("next")}
-              aria-label="Next day"
-            >
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Go Forward</title>
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="btn btn-xs md:btn-sm btn-primary"
-              onClick={() => {
-                const today = new Date().toISOString().split("T")[0] || "";
-                setSearchParams({ date: today });
-              }}
-            >
-              Today
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <Switch>
-        <Match when={fixturesQuery.isError}>
-          <div class="alert alert-error">
-            <span>
-              Failed to load fixtures:{" "}
-              {fixturesQuery.error instanceof Error
-                ? fixturesQuery.error.message
-                : "Unknown error"}
-            </span>
-          </div>
-        </Match>
-
-        <Match when={fixturesQuery.isPending}>
-          <div class="flex w-52 flex-col gap-4">
-            <div class="skeleton h-32 w-full" />
-            <div class="skeleton h-4 w-28" />
-            <div class="skeleton h-4 w-full" />
-            <div class="skeleton h-4 w-full" />
-          </div>
-        </Match>
-
-        <Match when={leagues().length === 0}>
-          <div class="text-center py-12">
-            <div class="text-base-content/60 text-lg">
-              No fixtures for followed leagues
-            </div>
-            <div class="text-base-content/40 text-sm mt-2">
-              Try following more leagues to see fixtures
-            </div>
-          </div>
-        </Match>
-
-        <Match when>
-          <div class="space-y-4 md:space-y-6">
-            <For each={leagues()}>
-              {league => (
-                <div class="card bg-base-100 border border-base-300">
-                  <div class="card-body p-3 md:p-6">
-                    <LeagueMenu league={league} trigger="context">
-                      <h2 class="card-title text-base md:text-lg">
-                        {league.name}
-                      </h2>
-                    </LeagueMenu>
-                    <div class="divide-y divide-base-300">
-                      <For each={league.fixtures}>
-                        {fixture => (
-                          <A
-                            href={matchupUrl(fixture.id)}
-                            class="block py-2 md:py-3 hover:bg-base-200 -mx-3 px-3 md:-mx-4 md:px-4 transition-colors"
-                          >
-                            {/* Mobile layout: stacked, full width */}
-                            <div class="md:hidden">
-                              <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2 min-w-0 flex-1">
-                                  <img
-                                    src={`https://media.api-sports.io/football/teams/${fixture.home.id}.png`}
-                                    alt={fixture.home.name}
-                                    class="w-5 h-5 shrink-0"
-                                  />
-                                  <span class="text-sm truncate">
-                                    {fixture.home.name}
-                                  </span>
-                                </div>
-                                <div class="shrink-0 px-2">
-                                  <span class="text-base-content/50 text-xs">
-                                    {fixtureStatusLabel(fixture)}
-                                    <Show when={fixture.finished}>
-                                      {` • ${fixture.home_goals}-${fixture.away_goals}`}
-                                    </Show>
-                                  </span>
-                                </div>
-                                <div class="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                                  <span class="text-sm truncate">
-                                    {fixture.away.name}
-                                  </span>
-                                  <img
-                                    src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
-                                    alt={fixture.away.name}
-                                    class="w-5 h-5 shrink-0"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Desktop layout: horizontal */}
-                            <div class="hidden md:flex md:items-center md:justify-between">
-                              <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <img
-                                  src={`https://media.api-sports.io/football/teams/${fixture.home.id}.png`}
-                                  alt={fixture.home.name}
-                                  class="w-6 h-6 shrink-0"
-                                />
-                                <span class="text-base font-medium truncate">
-                                  {fixture.home.name}
-                                </span>
-                                <span class="text-base-content/50 text-sm shrink-0">
-                                  vs
-                                </span>
-                                <span class="text-base font-medium truncate">
-                                  {fixture.away.name}
-                                </span>
-                                <img
-                                  src={`https://media.api-sports.io/football/teams/${fixture.away.id}.png`}
-                                  alt={fixture.away.name}
-                                  class="w-6 h-6 shrink-0"
-                                />
-                              </div>
-                              <div class="text-sm text-base-content/60 shrink-0 ml-2">
-                                {fixtureStatusLabel(fixture)}
-                                <Show when={fixture.finished}>
-                                  {` • ${fixture.home_goals}-${fixture.away_goals}`}
-                                </Show>
-                              </div>
-                            </div>
-                          </A>
-                        )}
-                      </For>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </For>
-          </div>
-        </Match>
-      </Switch>
-    </div>
-  );
+    <main className='mx-auto w-full max-w-5xl px-4 py-14' id='main-content'>
+      <FixtureSkeleton />
+    </main>
+  )
 }
 
-export default clientOnly(async () => ({ default: Page }), { lazy: true });
+function FixturesRouteError({
+  error,
+  reset,
+}: {
+  error: Error
+  reset: () => void
+}) {
+  return (
+    <main className='mx-auto w-full max-w-5xl px-4 py-14' id='main-content'>
+      <ErrorState message={error.message} retry={reset} />
+    </main>
+  )
+}
+
+function FixturesPage() {
+  const fixtures = useQuery(upcomingFixturesQuery)
+
+  return (
+    <main
+      className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
+      id='main-content'
+    >
+      <div className='mb-8'>
+        <div className='section-kicker'>MLS / Upcoming</div>
+        <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
+          Upcoming fixtures
+        </h1>
+        <p className='mt-2 text-sm text-muted-foreground'>
+          Make your picks before kickoff. Exact score earns three points.
+        </p>
+      </div>
+
+      {fixtures.isPending ? <FixtureSkeleton /> : null}
+      {fixtures.isError ? (
+        <ErrorState
+          message={fixtures.error.message}
+          retry={() => fixtures.refetch()}
+        />
+      ) : null}
+      {fixtures.data?.length === 0 ? <EmptyState /> : null}
+      {fixtures.data ? <FixtureGroups fixtures={fixtures.data} /> : null}
+    </main>
+  )
+}
+
+function FixtureGroups({ fixtures }: { fixtures: Fixture[] }) {
+  const groups = new Map<string, typeof fixtures>()
+  for (const fixture of fixtures) {
+    const day = dayFormatter.format(fixture.kickoff_at)
+    const group = groups.get(day)
+    if (group) group.push(fixture)
+    else groups.set(day, [fixture])
+  }
+  return (
+    <div className='space-y-8'>
+      {[...groups].map(([day, dayFixtures]) => (
+        <section key={day}>
+          <h2 className='mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+            {day}
+          </h2>
+          <div className='grid gap-2'>
+            {dayFixtures.map(fixture => (
+              <FixtureRow fixture={fixture} key={fixture.id} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function FixtureSkeleton() {
+  return (
+    <div aria-live='polite' role='status'>
+      <span className='sr-only'>Loading fixtures…</span>
+      <div
+        aria-hidden
+        className='h-48 animate-pulse border border-border bg-muted motion-reduce:animate-none'
+      />
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div className='border border-border bg-surface p-8 text-center'>
+      <h2 className='font-semibold'>No upcoming fixtures</h2>
+      <p className='mt-2 text-sm text-muted-foreground'>
+        Check back when the next matchday is scheduled.
+      </p>
+    </div>
+  )
+}
+
+function ErrorState({
+  message,
+  retry,
+}: {
+  message: string
+  retry: () => void
+}) {
+  return (
+    <div
+      className='border border-danger bg-danger-muted p-4 text-sm text-danger'
+      role='alert'
+    >
+      <strong>Fixtures unavailable.</strong> Check your connection and try
+      again.
+      <details className='mt-2 text-xs'>
+        <summary>Technical details</summary>
+        <p className='break-words'>{message}</p>
+      </details>
+      <button className='ui-button mt-4' onClick={retry} type='button'>
+        Retry fixtures
+      </button>
+    </div>
+  )
+}

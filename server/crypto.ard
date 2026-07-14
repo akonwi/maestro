@@ -1,0 +1,16 @@
+use go:bytes
+use go:crypto/rand
+use go:encoding/hex
+
+// Cryptographic helpers. Small enough to stay one file.
+
+// Return a URL-safe hex token backed by `n` bytes of crypto/rand
+// entropy. The returned string is `2 * n` characters long.
+fn generate_token(n: Int) Str!Str {
+  // Allocate a zero-filled byte buffer of length n. Ard has no `make`
+  // equivalent; bytes.Repeat is the idiomatic path.
+  mut seed: [Byte] = [0]
+  mut buf = bytes::Repeat(seed, n)
+  try rand::Read(mut buf)
+  Result::ok(hex::EncodeToString(buf))
+}

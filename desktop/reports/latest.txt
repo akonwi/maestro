@@ -1,0 +1,32 @@
+Database: /Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite
+Generated (UTC): 2026-03-12T01:03:33.081453+00:00
+Overall
+  bets=2 wl=2 wins=2 losses=0 win_rate=100.0% roi=205.0%
+  staked=$2.73 net=$5.59 implied_break_even=34.5% gap=65.5%
+
+By Prompt Version
+- goal-local-v1.0
+  bets=2 wl=2 wins=2 losses=0 win_rate=100.0% roi=205.0%
+  staked=$2.73 net=$5.59 implied_break_even=34.5% gap=65.5%
+
+By Market
+- Unknown(16)
+  bets=1 wl=1 wins=1 losses=0 win_rate=100.0% roi=150.0%
+  staked=$1.73 net=$2.59 implied_break_even=40.0% gap=60.0%
+- Unknown(5)
+  bets=1 wl=1 wins=1 losses=0 win_rate=100.0% roi=300.0%
+  staked=$1.00 net=$3.00 implied_break_even=25.0% gap=75.0%
+
+By Confidence Band
+- 70-79%
+  bets=2 wl=2 wins=2 losses=0 win_rate=100.0% roi=205.0%
+  staked=$2.73 net=$5.59 implied_break_even=34.5% gap=65.5%
+
+By League (min 2 bets)
+- Championship
+  bets=2 wl=2 wins=2 losses=0 win_rate=100.0% roi=205.0%
+  staked=$2.73 net=$5.59 implied_break_even=34.5% gap=65.5%
+
+Recent 10 Bets
+  bets=2 wl=2 wins=2 losses=0 win_rate=100.0% roi=205.0%
+  staked=$2.73 net=$5.59 implied_break_even=34.5% gap=65.5%

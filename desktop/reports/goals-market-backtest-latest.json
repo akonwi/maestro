@@ -1,0 +1,841 @@
+{
+  "database": "/Users/akonwi/Library/Application Support/com.akonwi.maestro/maestro.sqlite",
+  "generated_at_utc": "2026-03-11T02:35:58.166150+00:00",
+  "settings": {
+    "league_ids": [],
+    "min_history": 10,
+    "recent_limit": 5,
+    "threshold": 0.57,
+    "min_league_samples": 60
+  },
+  "summary": {
+    "threshold": 0.57,
+    "market_count": 5,
+    "overall": {
+      "away_over_0_5": {
+        "all_fixtures": {
+          "n": 1259,
+          "accuracy": 0.710087370929309,
+          "brier": 0.19919117453415536,
+          "avg_pred": 0.7169022418943874,
+          "actual_rate": 0.7077045274027005,
+          "pick_rate": 0.9737887212073074
+        },
+        "actionable": {
+          "decisions": 1148,
+          "accuracy": 0.7203832752613241,
+          "yes_picks": 1143,
+          "no_picks": 5,
+          "avg_edge_from_50": 0.2366634869686385
+        }
+      },
+      "away_over_1_5": {
+        "all_fixtures": {
+          "n": 1259,
+          "accuracy": 0.6489277204130263,
+          "brier": 0.21808054798867707,
+          "avg_pred": 0.3796854263355249,
+          "actual_rate": 0.3471008737092931,
+          "pick_rate": 0.19777601270849882
+        },
+        "actionable": {
+          "decisions": 943,
+          "accuracy": 0.6903499469777307,
+          "yes_picks": 119,
+          "no_picks": 824,
+          "avg_edge_from_50": 0.19214602870889394
+        }
+      },
+      "btts": {
+        "all_fixtures": {
+          "n": 1259,
+          "accuracy": 0.5401111993645751,
+          "brier": 0.25105876089178003,
+          "avg_pred": 0.5567536325556846,
+          "actual_rate": 0.5440826052422557,
+          "pick_rate": 0.7323272438443209
+        },
+        "actionable": {
+          "decisions": 599,
+          "accuracy": 0.5726210350584308,
+          "yes_picks": 527,
+          "no_picks": 72,
+          "avg_edge_from_50": 0.13195961466070008
+        }
+      },
+      "home_over_0_5": {
+        "all_fixtures": {
+          "n": 1259,
+          "accuracy": 0.7744241461477362,
+          "brier": 0.1680724259322271,
+          "avg_pred": 0.7814332594602328,
+          "actual_rate": 0.7744241461477362,
+          "pick_rate": 1.0
+        },
+        "actionable": {
+          "decisions": 1246,
+          "accuracy": 0.776083467094703,
+          "yes_picks": 1246,
+          "no_picks": 0,
+          "avg_edge_from_50": 0.28386513404029445
+        }
+      },
+      "home_over_1_5": {
+        "all_fixtures": {
+          "n": 1259,
+          "accuracy": 0.5972994440031771,
+          "brier": 0.23563949688908645,
+          "avg_pred": 0.46578259593851584,
+          "actual_rate": 0.4416203335980937,
+          "pick_rate": 0.37569499602859413
+        },
+        "actionable": {
+          "decisions": 815,
+          "accuracy": 0.6233128834355828,
+          "yes_picks": 284,
+          "no_picks": 531,
+          "avg_edge_from_50": 0.15293110225675163
+        }
+      }
+    },
+    "by_league": {
+      "away_over_0_5": {
+        "Bundesliga": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.7037037037037037,
+            "brier": 0.20839694672456208,
+            "avg_pred": 0.7951786467460469,
+            "actual_rate": 0.725925925925926,
+            "pick_rate": 0.9777777777777777
+          },
+          "actionable": {
+            "decisions": 129,
+            "accuracy": 0.7131782945736435,
+            "yes_picks": 129,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.3092293719538121
+          }
+        },
+        "Championship": {
+          "all_fixtures": {
+            "n": 314,
+            "accuracy": 0.7229299363057324,
+            "brier": 0.19518868274237003,
+            "avg_pred": 0.7011340926552998,
+            "actual_rate": 0.7229299363057324,
+            "pick_rate": 0.9936305732484076
+          },
+          "actionable": {
+            "decisions": 289,
+            "accuracy": 0.726643598615917,
+            "yes_picks": 289,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.21466574116128748
+          }
+        },
+        "La Liga": {
+          "all_fixtures": {
+            "n": 170,
+            "accuracy": 0.7058823529411765,
+            "brier": 0.20148524400749515,
+            "avg_pred": 0.7073591677355568,
+            "actual_rate": 0.7058823529411765,
+            "pick_rate": 0.9882352941176471
+          },
+          "actionable": {
+            "decisions": 151,
+            "accuracy": 0.7152317880794702,
+            "yes_picks": 150,
+            "no_picks": 1,
+            "avg_edge_from_50": 0.2296460887855933
+          }
+        },
+        "Ligue 1": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.6148148148148148,
+            "brier": 0.24007756228440472,
+            "avg_pred": 0.7509797372803844,
+            "actual_rate": 0.6222222222222222,
+            "pick_rate": 0.9925925925925926
+          },
+          "actionable": {
+            "decisions": 130,
+            "accuracy": 0.6384615384615384,
+            "yes_picks": 130,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.25972343823910415
+          }
+        },
+        "Premier League": {
+          "all_fixtures": {
+            "n": 191,
+            "accuracy": 0.7539267015706806,
+            "brier": 0.18224694715009862,
+            "avg_pred": 0.7405022153943174,
+            "actual_rate": 0.7539267015706806,
+            "pick_rate": 0.9895287958115183
+          },
+          "actionable": {
+            "decisions": 183,
+            "accuracy": 0.7595628415300546,
+            "yes_picks": 182,
+            "no_picks": 1,
+            "avg_edge_from_50": 0.25136548211504045
+          }
+        },
+        "Pro League": {
+          "all_fixtures": {
+            "n": 133,
+            "accuracy": 0.7669172932330827,
+            "brier": 0.1710491840117039,
+            "avg_pred": 0.6747627194717363,
+            "actual_rate": 0.7218045112781954,
+            "pick_rate": 0.9097744360902256
+          },
+          "actionable": {
+            "decisions": 111,
+            "accuracy": 0.7747747747747747,
+            "yes_picks": 109,
+            "no_picks": 2,
+            "avg_edge_from_50": 0.21193750601356415
+          }
+        },
+        "Serie A": {
+          "all_fixtures": {
+            "n": 180,
+            "accuracy": 0.6777777777777778,
+            "brier": 0.20575746838656886,
+            "avg_pred": 0.6754420254166172,
+            "actual_rate": 0.6722222222222223,
+            "pick_rate": 0.9388888888888889
+          },
+          "actionable": {
+            "decisions": 154,
+            "accuracy": 0.7012987012987013,
+            "yes_picks": 153,
+            "no_picks": 1,
+            "avg_edge_from_50": 0.20527723637966483
+          }
+        }
+      },
+      "away_over_1_5": {
+        "Bundesliga": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.6518518518518519,
+            "brier": 0.23586970390859283,
+            "avg_pred": 0.49439527271326816,
+            "actual_rate": 0.4,
+            "pick_rate": 0.4962962962962963
+          },
+          "actionable": {
+            "decisions": 88,
+            "accuracy": 0.6477272727272727,
+            "yes_picks": 42,
+            "no_picks": 46,
+            "avg_edge_from_50": 0.16350635101125624
+          }
+        },
+        "Championship": {
+          "all_fixtures": {
+            "n": 314,
+            "accuracy": 0.6464968152866242,
+            "brier": 0.21027072852501344,
+            "avg_pred": 0.35296418437655774,
+            "actual_rate": 0.32802547770700635,
+            "pick_rate": 0.10191082802547771
+          },
+          "actionable": {
+            "decisions": 250,
+            "accuracy": 0.708,
+            "yes_picks": 9,
+            "no_picks": 241,
+            "avg_edge_from_50": 0.1911374033684832
+          }
+        },
+        "La Liga": {
+          "all_fixtures": {
+            "n": 170,
+            "accuracy": 0.6764705882352942,
+            "brier": 0.21474541157558014,
+            "avg_pred": 0.3666727606441817,
+            "actual_rate": 0.3058823529411765,
+            "pick_rate": 0.1588235294117647
+          },
+          "actionable": {
+            "decisions": 127,
+            "accuracy": 0.7007874015748031,
+            "yes_picks": 14,
+            "no_picks": 113,
+            "avg_edge_from_50": 0.20065499099263348
+          }
+        },
+        "Ligue 1": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.6148148148148148,
+            "brier": 0.22040283494123503,
+            "avg_pred": 0.4234103748629764,
+            "actual_rate": 0.2814814814814815,
+            "pick_rate": 0.2962962962962963
+          },
+          "actionable": {
+            "decisions": 89,
+            "accuracy": 0.6741573033707865,
+            "yes_picks": 22,
+            "no_picks": 67,
+            "avg_edge_from_50": 0.17243201913268108
+          }
+        },
+        "Premier League": {
+          "all_fixtures": {
+            "n": 191,
+            "accuracy": 0.612565445026178,
+            "brier": 0.22733544783618803,
+            "avg_pred": 0.40660223019976255,
+            "actual_rate": 0.3769633507853403,
+            "pick_rate": 0.23036649214659685
+          },
+          "actionable": {
+            "decisions": 131,
+            "accuracy": 0.6870229007633588,
+            "yes_picks": 19,
+            "no_picks": 112,
+            "avg_edge_from_50": 0.16847974026426366
+          }
+        },
+        "Pro League": {
+          "all_fixtures": {
+            "n": 133,
+            "accuracy": 0.7142857142857143,
+            "brier": 0.19774807309658107,
+            "avg_pred": 0.33152720298707344,
+            "actual_rate": 0.3533834586466165,
+            "pick_rate": 0.15789473684210525
+          },
+          "actionable": {
+            "decisions": 105,
+            "accuracy": 0.7619047619047619,
+            "yes_picks": 6,
+            "no_picks": 99,
+            "avg_edge_from_50": 0.22568773151182536
+          }
+        },
+        "Serie A": {
+          "all_fixtures": {
+            "n": 180,
+            "accuracy": 0.6444444444444445,
+            "brier": 0.22360247139231978,
+            "avg_pred": 0.3271263487262262,
+            "actual_rate": 0.3888888888888889,
+            "pick_rate": 0.1
+          },
+          "actionable": {
+            "decisions": 152,
+            "accuracy": 0.6447368421052632,
+            "yes_picks": 7,
+            "no_picks": 145,
+            "avg_edge_from_50": 0.2121137065320278
+          }
+        }
+      },
+      "btts": {
+        "Bundesliga": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.5777777777777777,
+            "brier": 0.2521626658255161,
+            "avg_pred": 0.6662891175206422,
+            "actual_rate": 0.6148148148148148,
+            "pick_rate": 0.9629629629629629
+          },
+          "actionable": {
+            "decisions": 126,
+            "accuracy": 0.6031746031746031,
+            "yes_picks": 125,
+            "no_picks": 1,
+            "avg_edge_from_50": 0.17885612028016146
+          }
+        },
+        "Championship": {
+          "all_fixtures": {
+            "n": 314,
+            "accuracy": 0.5127388535031847,
+            "brier": 0.24848048235470943,
+            "avg_pred": 0.5325998117618791,
+            "actual_rate": 0.5668789808917197,
+            "pick_rate": 0.678343949044586
+          },
+          "actionable": {
+            "decisions": 92,
+            "accuracy": 0.5760869565217391,
+            "yes_picks": 82,
+            "no_picks": 10,
+            "avg_edge_from_50": 0.1074537525248219
+          }
+        },
+        "La Liga": {
+          "all_fixtures": {
+            "n": 170,
+            "accuracy": 0.5529411764705883,
+            "brier": 0.24365801986528915,
+            "avg_pred": 0.5469320263458841,
+            "actual_rate": 0.5470588235294118,
+            "pick_rate": 0.7235294117647059
+          },
+          "actionable": {
+            "decisions": 79,
+            "accuracy": 0.6582278481012658,
+            "yes_picks": 67,
+            "no_picks": 12,
+            "avg_edge_from_50": 0.11370049515524729
+          }
+        },
+        "Ligue 1": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.4888888888888889,
+            "brier": 0.27832544368788076,
+            "avg_pred": 0.6111575073467235,
+            "actual_rate": 0.4444444444444444,
+            "pick_rate": 0.9259259259259259
+          },
+          "actionable": {
+            "decisions": 97,
+            "accuracy": 0.4639175257731959,
+            "yes_picks": 97,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.14347041265335403
+          }
+        },
+        "Premier League": {
+          "all_fixtures": {
+            "n": 191,
+            "accuracy": 0.5654450261780105,
+            "brier": 0.24383063061686328,
+            "avg_pred": 0.5899628680610018,
+            "actual_rate": 0.5916230366492147,
+            "pick_rate": 0.9214659685863874
+          },
+          "actionable": {
+            "decisions": 123,
+            "accuracy": 0.5934959349593496,
+            "yes_picks": 121,
+            "no_picks": 2,
+            "avg_edge_from_50": 0.12753626280025984
+          }
+        },
+        "Pro League": {
+          "all_fixtures": {
+            "n": 133,
+            "accuracy": 0.5789473684210527,
+            "brier": 0.2490576257710106,
+            "avg_pred": 0.4886061315889201,
+            "actual_rate": 0.556390977443609,
+            "pick_rate": 0.45112781954887216
+          },
+          "actionable": {
+            "decisions": 39,
+            "accuracy": 0.5641025641025641,
+            "yes_picks": 12,
+            "no_picks": 27,
+            "avg_edge_from_50": 0.1011490054018623
+          }
+        },
+        "Serie A": {
+          "all_fixtures": {
+            "n": 180,
+            "accuracy": 0.5333333333333333,
+            "brier": 0.24991326948871342,
+            "avg_pred": 0.5011095903741053,
+            "actual_rate": 0.46111111111111114,
+            "pick_rate": 0.5277777777777778
+          },
+          "actionable": {
+            "decisions": 42,
+            "accuracy": 0.5238095238095238,
+            "yes_picks": 23,
+            "no_picks": 19,
+            "avg_edge_from_50": 0.09540348106181261
+          }
+        }
+      },
+      "home_over_0_5": {
+        "Bundesliga": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.837037037037037,
+            "brier": 0.1257649542325813,
+            "avg_pred": 0.8441169286681265,
+            "actual_rate": 0.837037037037037,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 135,
+            "accuracy": 0.837037037037037,
+            "yes_picks": 135,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.34411692866812665
+          }
+        },
+        "Championship": {
+          "all_fixtures": {
+            "n": 314,
+            "accuracy": 0.7866242038216561,
+            "brier": 0.16864402569879586,
+            "avg_pred": 0.7634126156991623,
+            "actual_rate": 0.7866242038216561,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 314,
+            "accuracy": 0.7866242038216561,
+            "yes_picks": 314,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.26341261569916213
+          }
+        },
+        "La Liga": {
+          "all_fixtures": {
+            "n": 170,
+            "accuracy": 0.788235294117647,
+            "brier": 0.15753063088735242,
+            "avg_pred": 0.7793054387732244,
+            "actual_rate": 0.788235294117647,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 170,
+            "accuracy": 0.788235294117647,
+            "yes_picks": 170,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.2793054387732247
+          }
+        },
+        "Ligue 1": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.7333333333333333,
+            "brier": 0.19401944339087832,
+            "avg_pred": 0.8196030824322138,
+            "actual_rate": 0.7333333333333333,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 135,
+            "accuracy": 0.7333333333333333,
+            "yes_picks": 135,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.31960308243221386
+          }
+        },
+        "Premier League": {
+          "all_fixtures": {
+            "n": 191,
+            "accuracy": 0.7643979057591623,
+            "brier": 0.17514841290532807,
+            "avg_pred": 0.8023314482920008,
+            "actual_rate": 0.7643979057591623,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 190,
+            "accuracy": 0.7631578947368421,
+            "yes_picks": 190,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.303583159396125
+          }
+        },
+        "Pro League": {
+          "all_fixtures": {
+            "n": 133,
+            "accuracy": 0.7969924812030075,
+            "brier": 0.15754104379327652,
+            "avg_pred": 0.7364125693353291,
+            "actual_rate": 0.7969924812030075,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 124,
+            "accuracy": 0.8145161290322581,
+            "yes_picks": 124,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.2500719622969024
+          }
+        },
+        "Serie A": {
+          "all_fixtures": {
+            "n": 180,
+            "accuracy": 0.7166666666666667,
+            "brier": 0.1896585498724962,
+            "avg_pred": 0.7512876593343255,
+            "actual_rate": 0.7166666666666667,
+            "pick_rate": 1.0
+          },
+          "actionable": {
+            "decisions": 177,
+            "accuracy": 0.7175141242937854,
+            "yes_picks": 177,
+            "no_picks": 0,
+            "avg_edge_from_50": 0.2548119591482741
+          }
+        }
+      },
+      "home_over_1_5": {
+        "Bundesliga": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.5851851851851851,
+            "brier": 0.23988499801465551,
+            "avg_pred": 0.5702471952467844,
+            "actual_rate": 0.5185185185185185,
+            "pick_rate": 0.6814814814814815
+          },
+          "actionable": {
+            "decisions": 90,
+            "accuracy": 0.6111111111111112,
+            "yes_picks": 67,
+            "no_picks": 23,
+            "avg_edge_from_50": 0.16115666636330023
+          }
+        },
+        "Championship": {
+          "all_fixtures": {
+            "n": 314,
+            "accuracy": 0.5732484076433121,
+            "brier": 0.24240769020902195,
+            "avg_pred": 0.43147668653959226,
+            "actual_rate": 0.40445859872611467,
+            "pick_rate": 0.21337579617834396
+          },
+          "actionable": {
+            "decisions": 204,
+            "accuracy": 0.5784313725490197,
+            "yes_picks": 34,
+            "no_picks": 170,
+            "avg_edge_from_50": 0.13516713062365945
+          }
+        },
+        "La Liga": {
+          "all_fixtures": {
+            "n": 170,
+            "accuracy": 0.6941176470588235,
+            "brier": 0.2116591063568442,
+            "avg_pred": 0.4625080550089567,
+            "actual_rate": 0.4764705882352941,
+            "pick_rate": 0.3588235294117647
+          },
+          "actionable": {
+            "decisions": 113,
+            "accuracy": 0.7433628318584071,
+            "yes_picks": 36,
+            "no_picks": 77,
+            "avg_edge_from_50": 0.15624944285116632
+          }
+        },
+        "Ligue 1": {
+          "all_fixtures": {
+            "n": 135,
+            "accuracy": 0.5333333333333333,
+            "brier": 0.25796245277941365,
+            "avg_pred": 0.5266074066998264,
+            "actual_rate": 0.4148148148148148,
+            "pick_rate": 0.5703703703703704
+          },
+          "actionable": {
+            "decisions": 86,
+            "accuracy": 0.5348837209302325,
+            "yes_picks": 55,
+            "no_picks": 31,
+            "avg_edge_from_50": 0.1513852471921905
+          }
+        },
+        "Premier League": {
+          "all_fixtures": {
+            "n": 191,
+            "accuracy": 0.5654450261780105,
+            "brier": 0.24430098573529116,
+            "avg_pred": 0.496275059173104,
+            "actual_rate": 0.47643979057591623,
+            "pick_rate": 0.4816753926701571
+          },
+          "actionable": {
+            "decisions": 113,
+            "accuracy": 0.6106194690265486,
+            "yes_picks": 56,
+            "no_picks": 57,
+            "avg_edge_from_50": 0.14459732769181124
+          }
+        },
+        "Pro League": {
+          "all_fixtures": {
+            "n": 133,
+            "accuracy": 0.6090225563909775,
+            "brier": 0.23008352331508772,
+            "avg_pred": 0.40318212017376975,
+            "actual_rate": 0.44360902255639095,
+            "pick_rate": 0.2631578947368421
+          },
+          "actionable": {
+            "decisions": 90,
+            "accuracy": 0.6222222222222222,
+            "yes_picks": 15,
+            "no_picks": 75,
+            "avg_edge_from_50": 0.17999606387371714
+          }
+        },
+        "Serie A": {
+          "all_fixtures": {
+            "n": 180,
+            "accuracy": 0.6333333333333333,
+            "brier": 0.21958333163526988,
+            "avg_pred": 0.41989687671910775,
+            "actual_rate": 0.39444444444444443,
+            "pick_rate": 0.2722222222222222
+          },
+          "actionable": {
+            "decisions": 118,
+            "accuracy": 0.6779661016949152,
+            "yes_picks": 21,
+            "no_picks": 97,
+            "avg_edge_from_50": 0.16176155631389738
+          }
+        }
+      }
+    },
+    "by_confidence": {
+      "away_over_0_5": {
+        "50-59%": {
+          "n": 12,
+          "accuracy": 0.5833333333333334,
+          "brier": 0.28112800850787895,
+          "avg_pred": 0.739167296191499,
+          "actual_rate": 0.5,
+          "pick_rate": 0.9166666666666666
+        },
+        "60-69%": {
+          "n": 681,
+          "accuracy": 0.7033773861967695,
+          "brier": 0.20134418976774365,
+          "avg_pred": 0.7216896375492966,
+          "actual_rate": 0.7063142437591777,
+          "pick_rate": 0.973568281938326
+        },
+        "70-79%": {
+          "n": 566,
+          "accuracy": 0.7208480565371025,
+          "brier": 0.19486353251691457,
+          "avg_pred": 0.7106700915541768,
+          "actual_rate": 0.7137809187279152,
+          "pick_rate": 0.9752650176678446
+        }
+      },
+      "away_over_1_5": {
+        "50-59%": {
+          "n": 12,
+          "accuracy": 0.6666666666666666,
+          "brier": 0.17477633023266007,
+          "avg_pred": 0.4120842235912166,
+          "actual_rate": 0.25,
+          "pick_rate": 0.25
+        },
+        "60-69%": {
+          "n": 681,
+          "accuracy": 0.6593245227606461,
+          "brier": 0.2145432539002783,
+          "avg_pred": 0.38738845043694536,
+          "actual_rate": 0.33480176211453744,
+          "pick_rate": 0.22320117474302498
+        },
+        "70-79%": {
+          "n": 566,
+          "accuracy": 0.6360424028268551,
+          "brier": 0.22325466086371482,
+          "avg_pred": 0.36973039986885287,
+          "actual_rate": 0.36395759717314485,
+          "pick_rate": 0.16607773851590105
+        }
+      },
+      "btts": {
+        "50-59%": {
+          "n": 12,
+          "accuracy": 0.3333333333333333,
+          "brier": 0.33039402639380644,
+          "avg_pred": 0.6078039062024101,
+          "actual_rate": 0.25,
+          "pick_rate": 0.9166666666666666
+        },
+        "60-69%": {
+          "n": 681,
+          "accuracy": 0.5345080763582967,
+          "brier": 0.2547220093619928,
+          "avg_pred": 0.5606841904445539,
+          "actual_rate": 0.540381791483113,
+          "pick_rate": 0.7298091042584435
+        },
+        "70-79%": {
+          "n": 566,
+          "accuracy": 0.5512367491166078,
+          "brier": 0.24496919305743636,
+          "avg_pred": 0.5509421251244456,
+          "actual_rate": 0.5547703180212014,
+          "pick_rate": 0.7314487632508834
+        }
+      },
+      "home_over_0_5": {
+        "50-59%": {
+          "n": 12,
+          "accuracy": 0.5833333333333334,
+          "brier": 0.33569072820303786,
+          "avg_pred": 0.8272150812021257,
+          "actual_rate": 0.5833333333333334,
+          "pick_rate": 1.0
+        },
+        "60-69%": {
+          "n": 681,
+          "accuracy": 0.7723935389133627,
+          "brier": 0.16890275393064358,
+          "avg_pred": 0.7815462551470777,
+          "actual_rate": 0.7723935389133627,
+          "pick_rate": 1.0
+        },
+        "70-79%": {
+          "n": 566,
+          "accuracy": 0.7809187279151943,
+          "brier": 0.16351964679058265,
+          "avg_pred": 0.7803266659555593,
+          "actual_rate": 0.7809187279151943,
+          "pick_rate": 1.0
+        }
+      },
+      "home_over_1_5": {
+        "50-59%": {
+          "n": 12,
+          "accuracy": 0.4166666666666667,
+          "brier": 0.2885097425911714,
+          "avg_pred": 0.5406766344662919,
+          "actual_rate": 0.25,
+          "pick_rate": 0.6666666666666666
+        },
+        "60-69%": {
+          "n": 681,
+          "accuracy": 0.5991189427312775,
+          "brier": 0.23602566369871747,
+          "avg_pred": 0.46755082850783314,
+          "actual_rate": 0.43612334801762115,
+          "pick_rate": 0.3876651982378855
+        },
+        "70-79%": {
+          "n": 566,
+          "accuracy": 0.598939929328622,
+          "brier": 0.23405394468805446,
+          "avg_pred": 0.46206723402678673,
+          "actual_rate": 0.45229681978798586,
+          "pick_rate": 0.3551236749116608
+        }
+      }
+    }
+  }
+}

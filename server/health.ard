@@ -1,0 +1,24 @@
+use go:github.com/go-chi/chi/v5 as chi
+use go:net/http
+use maestro/app
+
+// Health check: verifies the DB pool is alive by round-tripping a
+// trivial query. Returns 200 "ok" or 503.
+fn register(router: mut chi::Mux, a: app::App) {
+  router.Get(
+    "/health",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      match a.db.query("SELECT 1").all([:]) {
+        ok(_) => {
+          mut body = "ok".bytes()
+          w.Write(body)
+        },
+        err(message) => {
+          w.WriteHeader(http::StatusServiceUnavailable)
+          mut body = "database unavailable: {message}".bytes()
+          w.Write(body)
+        },
+      }
+    },
+  )
+}

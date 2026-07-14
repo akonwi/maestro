@@ -1,0 +1,62 @@
+use ard/async
+
+use go:context
+use go:fmt
+use go:maestro/ffi
+use go:net/http
+use go:os
+use go:os/signal
+use go:syscall
+use maestro/app
+use maestro/config
+use maestro/router
+use maestro/scoring_worker
+use maestro/sessions
+use sql
+
+fn main() {
+  let cfg = match config::load() {
+    ok(c) => c,
+    err(message) => panic("config error: {message}"),
+  }
+
+  let db = match sql::open(cfg.database_url) {
+    ok(database) => database,
+    err(message) => panic("failed to open database at {cfg.database_url}: {message}"),
+  }
+  fmt::Println("database ready at {cfg.database_url}")
+
+  let application = app::App{db: db, config: cfg, cache: ffi::NewCache()}
+  sessions::start_cleanup(application)
+  let scoring = scoring_worker::start(application)
+  mut server = http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
+
+  let interrupts = Chan::new<os::Signal>(1)
+  signal::Notify(interrupts.sender(), syscall::SIGINT)
+  signal::Notify(interrupts.sender(), syscall::SIGTERM)
+
+  async::start(
+    fn() {
+      match server.ListenAndServe() {
+        ok => (),
+        err(message) => {
+          match message == "http: Server closed" {
+            true => (),
+            false => panic(message),
+          }
+        },
+      }
+    },
+  )
+  fmt::Println("listening on {cfg.listen_addr}")
+
+  interrupts.recv()
+
+  fmt::Println("shutting down")
+  match server.Shutdown(context::Background()) {
+    ok => (),
+    err(message) => fmt::Println("HTTP shutdown failed: {message}"),
+  }
+  scoring_worker::shutdown(scoring)
+  fmt::Println("goodbye")
+}

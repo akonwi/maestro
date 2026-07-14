@@ -1,0 +1,73 @@
+use ard/testing
+
+use maestro/sessions
+use maestro/test_helpers
+use maestro/users
+
+test fn mint_creates_a_findable_session() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+
+  let session = try sessions::mint(app, user.id)
+  try testing::assert(session.token.size() == 64, "token is 32 bytes hex-encoded (64 chars)")
+  try testing::assert(session.user_id == user.id, "session references the right user")
+  try testing::assert(session.expires_at > session.created_at, "expires after created")
+
+  let found = try sessions::find_by_token(app, session.token)
+  match found {
+    s => {
+      try testing::assert(s.user_id == user.id, "find_by_token returns the same user")
+      testing::pass()
+    },
+    _ => testing::fail("minted session not findable"),
+  }
+}
+
+test fn delete_removes_the_session() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let session = try sessions::mint(app, user.id)
+
+  try sessions::delete(app, session.token)
+
+  let found = try sessions::find_by_token(app, session.token)
+  try testing::assert(found.is_none(), "deleted session is gone")
+  testing::pass()
+}
+
+test fn find_missing_returns_none() Void!Str {
+  let app = try test_helpers::build_app()
+  let found = try sessions::find_by_token(app, "not-a-real-token")
+  try testing::assert(found.is_none(), "missing token returns none")
+  testing::pass()
+}
+
+test fn two_mints_get_distinct_tokens() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+
+  let s1 = try sessions::mint(app, user.id)
+  let s2 = try sessions::mint(app, user.id)
+
+  try testing::assert(s1.token != s2.token, "tokens must be distinct")
+  testing::pass()
+}
+
+test fn delete_expired_removes_only_expired_sessions() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let expired = try sessions::mint(app, user.id)
+  let active = try sessions::mint(app, user.id)
+
+  try app.db
+    .query("UPDATE sessions SET expires_at = 0 WHERE token = @token")
+    .run(["token": expired.token])
+  try sessions::delete_expired(app)
+
+  let rows = try app.db.query("SELECT token FROM sessions").all([:])
+  try testing::assert(rows.size() == 1, "cleanup leaves only the active session")
+
+  let found_active = try sessions::find_by_token(app, active.token)
+  try testing::assert(found_active.is_some(), "active session remains findable")
+  testing::pass()
+}

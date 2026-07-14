@@ -1,0 +1,87 @@
+{
+  "fixture": {
+    "home": "Sunderland",
+    "away": "Burnley"
+  },
+  "homeTeam": {
+    "name": "Sunderland",
+    "seasonGames": 23,
+    "seasonCornersFor": 3.57,
+    "seasonCornersAgainst": 4.83,
+    "venueCornersFor": 3.64,
+    "venueCornersAgainst": 4.36,
+    "venueGames": 11,
+    "shotsPerGame": 9.65,
+    "possessionAvg": 43.7,
+    "recentForm": [
+      {"opponent": "West Ham", "venue": "A", "cornersWon": 3, "cornersConceded": 3},
+      {"opponent": "Crystal Palace", "venue": "H", "cornersWon": 3, "cornersConceded": 4},
+      {"opponent": "Brentford", "venue": "A", "cornersWon": 4, "cornersConceded": 7},
+      {"opponent": "Tottenham", "venue": "A", "cornersWon": 5, "cornersConceded": 3},
+      {"opponent": "Manchester City", "venue": "H", "cornersWon": 3, "cornersConceded": 5}
+    ]
+  },
+  "awayTeam": {
+    "name": "Burnley",
+    "seasonGames": 23,
+    "seasonCornersFor": 3.43,
+    "seasonCornersAgainst": 6.0,
+    "venueCornersFor": 3.82,
+    "venueCornersAgainst": 6.55,
+    "venueGames": 11,
+    "shotsPerGame": 8.83,
+    "possessionAvg": 40.5,
+    "recentForm": [
+      {"opponent": "Tottenham", "venue": "H", "cornersWon": 1, "cornersConceded": 3},
+      {"opponent": "Liverpool", "venue": "A", "cornersWon": 1, "cornersConceded": 9},
+      {"opponent": "Manchester United", "venue": "H", "cornersWon": 2, "cornersConceded": 6},
+      {"opponent": "Brighton", "venue": "A", "cornersWon": 4, "cornersConceded": 4},
+      {"opponent": "Newcastle", "venue": "H", "cornersWon": 3, "cornersConceded": 4}
+    ]
+  },
+  "markets": [
+    {
+      "id": 55,
+      "name": "Most Corners",
+      "lines": [
+        {"name": "Home", "odds": -200},
+        {"name": "Draw", "odds": 700},
+        {"name": "Away", "odds": 200}
+      ]
+    },
+    {
+      "id": 45,
+      "name": "Total Corners",
+      "lines": [
+        {"name": "Over 9", "odds": -117},
+        {"name": "Under 9", "odds": -105},
+        {"name": "Over 9.5", "odds": 110},
+        {"name": "Under 9.5", "odds": -149},
+        {"name": "Over 10", "odds": 140},
+        {"name": "Under 10", "odds": -182},
+        {"name": "Over 10.5", "odds": 185},
+        {"name": "Under 10.5", "odds": -250}
+      ]
+    },
+    {
+      "id": 57,
+      "name": "Home Corners",
+      "lines": [
+        {"name": "Over 4.5", "odds": -161},
+        {"name": "Under 4.5", "odds": 120},
+        {"name": "Over 5.5", "odds": 145},
+        {"name": "Under 5.5", "odds": -192}
+      ]
+    },
+    {
+      "id": 58,
+      "name": "Away Corners",
+      "lines": [
+        {"name": "Over 3.5", "odds": -115},
+        {"name": "Under 3.5", "odds": -115},
+        {"name": "Over 4.5", "odds": 175},
+        {"name": "Under 4.5", "odds": -238}
+      ]
+    }
+  ]
+}
