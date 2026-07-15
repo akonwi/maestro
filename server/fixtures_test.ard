@@ -1,0 +1,70 @@
+use ard/testing
+
+use maestro/api_football
+use maestro/fixtures
+
+fn round_fixture(id: Int, kickoff_secs: Int, status: Str, round: Str) api_football::RoundFixture {
+  api_football::RoundFixture{
+    fixture: api_football::Fixture{
+      id: id,
+      kickoff_at: Int64::from(kickoff_secs) * 1000,
+      status: status,
+      api_football_league_id: 253,
+      season: 2026,
+      home_team_id: 1,
+      home_team_name: "Home",
+      away_team_id: 2,
+      away_team_name: "Away",
+      home_score: Maybe::new(),
+      away_score: Maybe::new(),
+    },
+    round: round,
+  }
+}
+
+test fn picks_round_of_earliest_playable_fixture() Void!Str {
+  let list = [
+    round_fixture(1, 1000, "FT", "Regular Season - 1"),
+    round_fixture(2, 2000, "FT", "Regular Season - 1"),
+    round_fixture(3, 3000, "NS", "Regular Season - 2"),
+    round_fixture(4, 3100, "NS", "Regular Season - 2"),
+    round_fixture(5, 9000, "NS", "Regular Season - 3"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 2", "expected round 2, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn in_play_fixtures_keep_their_round_current() Void!Str {
+  let list = [
+    round_fixture(1, 1000, "FT", "Regular Season - 1"),
+    round_fixture(2, 2000, "2H", "Regular Season - 1"),
+    round_fixture(3, 3000, "NS", "Regular Season - 2"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 1", "expected round 1, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn postponed_fixture_cannot_hijack_the_round() Void!Str {
+  let list = [
+    round_fixture(1, 1000, "PST", "Regular Season - 1"),
+    round_fixture(2, 3000, "NS", "Regular Season - 2"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 2", "expected round 2, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn finished_season_has_no_current_round() Void!Str {
+  let list = [
+    round_fixture(1, 1000, "FT", "Regular Season - 1"),
+    round_fixture(2, 2000, "AET", "Regular Season - 2"),
+  ]
+  try testing::assert(fixtures::pick_round(list).is_none(), "expected no round")
+  try testing::assert(fixtures::pick_round([]).is_none(), "empty list has no round")
+  Result::ok(())
+}

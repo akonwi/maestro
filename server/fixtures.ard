@@ -16,11 +16,26 @@ struct Fixture {
   fixture: api_football::Fixture,
 }
 
+// The "current round" (matchday) of one competition: the round containing
+// the earliest fixture that is still to be played. `name` is none when the
+// season has no remaining playable fixtures.
+struct CurrentRound {
+  competition_id: Int?,
+  name: Str?,
+  fixtures: [Fixture],
+}
+
 fn register(router: mut chi::Mux, a: app::App) {
   router.Get(
     "/fixtures/upcoming",
     fn(w: http::ResponseWriter, r: mut http::Request) {
       handle_upcoming(a, w, r)
+    },
+  )
+  router.Get(
+    "/fixtures/round",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_round(a, w, r)
     },
   )
   router.Get(
@@ -47,6 +62,26 @@ private fn handle_upcoming(a: app::App, w: http::ResponseWriter, r: mut http::Re
 private fn respond_upcoming(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
   match upcoming(a, competition_id) {
     ok(list) => response::json_response(w, http::StatusOK, to_json_list(list)),
+    err(message) => response::fail(w, http::StatusBadGateway, message),
+  }
+}
+
+private fn handle_round(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let raw_comp = r.URL.Query().Get("competition_id")
+  match raw_comp.is_empty() {
+    true => respond_round(a, w, Maybe::new()),
+    false => {
+      match strconv::Atoi(raw_comp) {
+        ok(id) => respond_round(a, w, Maybe::new(id)),
+        err(_) => response::fail(w, http::StatusBadRequest, "competition_id must be an integer"),
+      }
+    },
+  }
+}
+
+private fn respond_round(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
+  match current_round(a, competition_id) {
+    ok(payload) => response::json_response(w, http::StatusOK, round_json(payload)),
     err(message) => response::fail(w, http::StatusBadGateway, message),
   }
 }
@@ -87,6 +122,81 @@ fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
   Result::ok(out)
 }
 
+// Statuses that mean a fixture will not be played (as scheduled) anymore.
+// PST (postponed) is included so a lone rescheduled-but-dateless match
+// cannot hijack the current round.
+let SETTLED_STATUSES: [Str] = ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"]
+
+fn is_settled(status: Str) Bool {
+  mut found = false
+  for s in SETTLED_STATUSES {
+    match s == status {
+      true => { found = true },
+      false => (),
+    }
+  }
+  found
+}
+
+// The round of the earliest fixture that is still playable (not started,
+// in play, or awaiting kickoff). None when every fixture is settled.
+fn pick_round(list: [api_football::RoundFixture]) Str? {
+  mut best_kickoff = Int64::from(0)
+  mut best_round: Str? = Maybe::new()
+  for f in list {
+    match not is_settled(f.fixture.status) {
+      true => {
+        match best_round.is_none() or f.fixture.kickoff_at < best_kickoff {
+          true => {
+            best_kickoff = f.fixture.kickoff_at
+            best_round = Maybe::new(f.round)
+          },
+          false => (),
+        }
+      },
+      false => (),
+    }
+  }
+  best_round
+}
+
+// Resolve the current round for one competition: the one requested, or the
+// first active competition when unspecified. Uses the same cached season
+// fetch as /fixtures/upcoming — no extra upstream call.
+fn current_round(a: app::App, competition_id: Int?) CurrentRound!Str {
+  let comps = try competitions::list_active(a)
+  mut chosen: competitions::Competition? = Maybe::new()
+  for comp in comps {
+    let wanted = match competition_id {
+      id => id == comp.id,
+      _ => chosen.is_none(),
+    }
+    match wanted {
+      true => { chosen = Maybe::new(comp) },
+      false => (),
+    }
+  }
+  match chosen {
+    comp => {
+      let list = try api_football::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+      match pick_round(list) {
+        name => {
+          mut out: [Fixture] = []
+          for f in list {
+            match f.round == name {
+              true => out.push(Fixture{competition_id: comp.id, fixture: f.fixture}),
+              false => (),
+            }
+          }
+          Result::ok(CurrentRound{competition_id: Maybe::new(comp.id), name: Maybe::new(name), fixtures: out})
+        },
+        _ => Result::ok(CurrentRound{competition_id: Maybe::new(comp.id), name: Maybe::new(), fixtures: []}),
+      }
+    },
+    _ => Result::ok(CurrentRound{competition_id: Maybe::new(), name: Maybe::new(), fixtures: []}),
+  }
+}
+
 fn by_id(a: app::App, id: Int) Fixture?!Str {
   let all = try fetch(a, Maybe::new())
   mut found: Fixture? = Maybe::new()
@@ -118,6 +228,15 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
     }
   }
   Result::ok(out)
+}
+
+private fn round_json(p: CurrentRound) [Str: Any] {
+  let payload: [Str: Any] = [
+    "competition_id": p.competition_id,
+    "round": p.name,
+    "fixtures": to_json_list(p.fixtures),
+  ]
+  payload
 }
 
 private fn to_json_list(list: [Fixture]) [Any] {

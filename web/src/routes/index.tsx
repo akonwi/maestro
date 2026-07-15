@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { FixtureRow } from '@/components/fixture-row'
 import type { Fixture } from '@/lib/fixtures'
-import { upcomingFixturesQuery } from '@/lib/fixtures'
+import { currentRoundQuery, roundLabel } from '@/lib/fixtures'
 
 export const Route = createFileRoute('/')({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(upcomingFixturesQuery),
+    context.queryClient.ensureQueryData(currentRoundQuery),
   pendingComponent: FixturesRoutePending,
   errorComponent: FixturesRouteError,
   component: FixturesPage,
@@ -41,7 +41,7 @@ function FixturesRouteError({
 }
 
 function FixturesPage() {
-  const fixtures = useQuery(upcomingFixturesQuery)
+  const round = useQuery(currentRoundQuery)
 
   return (
     <main
@@ -49,24 +49,26 @@ function FixturesPage() {
       id='main-content'
     >
       <div className='mb-8'>
-        <div className='section-kicker'>MLS / Upcoming</div>
+        <div className='section-kicker'>MLS / Current matchday</div>
         <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
-          Upcoming fixtures
+          {round.data?.round ? roundLabel(round.data.round) : 'Fixtures'}
         </h1>
         <p className='mt-2 text-sm text-muted-foreground'>
           Make your picks before kickoff. Exact score earns three points.
         </p>
       </div>
 
-      {fixtures.isPending ? <FixtureSkeleton /> : null}
-      {fixtures.isError ? (
+      {round.isPending ? <FixtureSkeleton /> : null}
+      {round.isError ? (
         <ErrorState
-          message={fixtures.error.message}
-          retry={() => fixtures.refetch()}
+          message={round.error.message}
+          retry={() => round.refetch()}
         />
       ) : null}
-      {fixtures.data?.length === 0 ? <EmptyState /> : null}
-      {fixtures.data ? <FixtureGroups fixtures={fixtures.data} /> : null}
+      {round.data?.fixtures.length === 0 ? <EmptyState /> : null}
+      {round.data && round.data.fixtures.length > 0 ? (
+        <FixtureGroups fixtures={round.data.fixtures} />
+      ) : null}
     </main>
   )
 }
@@ -112,9 +114,10 @@ function FixtureSkeleton() {
 function EmptyState() {
   return (
     <div className='border border-border bg-surface p-8 text-center'>
-      <h2 className='font-semibold'>No upcoming fixtures</h2>
+      <h2 className='font-semibold'>No matchday scheduled</h2>
       <p className='mt-2 text-sm text-muted-foreground'>
-        Check back when the next matchday is scheduled.
+        The season has no remaining fixtures. Check back when the next one kicks
+        off.
       </p>
     </div>
   )

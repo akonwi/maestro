@@ -29,18 +29,31 @@ async function request<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-function getUpcomingFixtures() {
-  return request<Fixture[]>('/fixtures/upcoming')
+export type CurrentRound = {
+  competition_id: number | null
+  round: string | null
+  fixtures: Fixture[]
+}
+
+function getCurrentRound() {
+  return request<CurrentRound>('/fixtures/round')
 }
 
 function getFixture(id: number) {
   return request<Fixture>(`/fixtures/${id}`)
 }
 
-export const upcomingFixturesQuery = queryOptions({
-  queryKey: ['fixtures', 'upcoming'],
-  queryFn: getUpcomingFixtures,
+export const currentRoundQuery = queryOptions({
+  queryKey: ['fixtures', 'round'],
+  queryFn: getCurrentRound,
 })
+
+// API-Football round names look like "Regular Season - 28"; render the
+// friendlier "Matchday 28" when the name matches that shape.
+export function roundLabel(round: string) {
+  const match = /^Regular Season - (\d+)$/.exec(round)
+  return match ? `Matchday ${match[1]}` : round
+}
 
 export function fixtureQuery(id: number) {
   return queryOptions({
