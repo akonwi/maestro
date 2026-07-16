@@ -35,17 +35,33 @@ export type CurrentRound = {
   fixtures: Fixture[]
 }
 
-function getCurrentRound() {
-  return request<CurrentRound>('/fixtures/round')
+export type SeasonRounds = {
+  competition_id: number | null
+  rounds: string[]
+  current: string | null
+}
+
+function getRound(name?: string) {
+  const query = name ? `?name=${encodeURIComponent(name)}` : ''
+  return request<CurrentRound>(`/fixtures/round${query}`)
 }
 
 function getFixture(id: number) {
   return request<Fixture>(`/fixtures/${id}`)
 }
 
-export const currentRoundQuery = queryOptions({
-  queryKey: ['fixtures', 'round'],
-  queryFn: getCurrentRound,
+/** A specific round by name, or the current matchday when name is omitted. */
+export function roundQuery(name?: string) {
+  return queryOptions({
+    queryKey: ['fixtures', 'round', name ?? 'current'],
+    queryFn: () => getRound(name),
+  })
+}
+
+export const seasonRoundsQuery = queryOptions({
+  queryKey: ['fixtures', 'rounds'],
+  queryFn: () => request<SeasonRounds>('/fixtures/rounds'),
+  staleTime: 5 * 60 * 1000,
 })
 
 // API-Football round names look like "Regular Season - 28"; render the

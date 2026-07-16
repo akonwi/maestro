@@ -1,12 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { FixtureRow } from '@/components/fixture-row'
+import { MatchdayNavigator } from '@/components/matchday-navigator'
 import type { Fixture } from '@/lib/fixtures'
-import { currentRoundQuery, roundLabel } from '@/lib/fixtures'
+import { roundLabel, roundQuery, seasonRoundsQuery } from '@/lib/fixtures'
 
 export const Route = createFileRoute('/')({
-  loader: ({ context }) =>
-    context.queryClient.ensureQueryData(currentRoundQuery),
+  validateSearch: (search: Record<string, unknown>): { round?: string } =>
+    typeof search.round === 'string' ? { round: search.round } : {},
+  loaderDeps: ({ search }) => ({ round: search.round }),
+  loader: ({ context, deps }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(seasonRoundsQuery),
+      context.queryClient.ensureQueryData(roundQuery(deps.round)),
+    ]),
   pendingComponent: FixturesRoutePending,
   errorComponent: FixturesRouteError,
   component: FixturesPage,
@@ -41,22 +48,48 @@ function FixturesRouteError({
 }
 
 function FixturesPage() {
-  const round = useQuery(currentRoundQuery)
+  const { round: roundParam } = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
+  const season = useQuery(seasonRoundsQuery)
+  const round = useQuery(roundQuery(roundParam))
+
+  const current = season.data?.current ?? null
+  const viewed = round.data?.round ?? roundParam ?? current
+  const mode = matchdayMode(season.data?.rounds ?? [], current, viewed)
+
+  function selectRound(name: string) {
+    // Clearing the param keeps the default 'current matchday' view live.
+    navigate({
+      search: () => ({ round: name === current ? undefined : name }),
+    })
+  }
 
   return (
     <main
       className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
       id='main-content'
     >
-      <div className='mb-8'>
-        <div className='section-kicker'>MLS / Current matchday</div>
+      <div className='mb-6'>
+        <div className='section-kicker'>{modeKicker(mode)}</div>
         <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
-          {round.data?.round ? roundLabel(round.data.round) : 'Fixtures'}
+          {viewed ? roundLabel(viewed) : 'Fixtures'}
         </h1>
         <p className='mt-2 text-sm text-muted-foreground'>
-          Make your picks before kickoff. Exact score earns three points.
+          {mode === 'results'
+            ? 'Final scores and how the matchday played out.'
+            : 'Make your picks before kickoff. Exact score earns three points.'}
         </p>
       </div>
+
+      {season.data && season.data.rounds.length > 0 && viewed ? (
+        <div className='mb-8'>
+          <MatchdayNavigator
+            current={viewed}
+            onSelect={selectRound}
+            rounds={season.data.rounds}
+          />
+        </div>
+      ) : null}
 
       {round.isPending ? <FixtureSkeleton /> : null}
       {round.isError ? (
@@ -71,6 +104,26 @@ function FixturesPage() {
       ) : null}
     </main>
   )
+}
+
+type MatchdayMode = 'current' | 'results' | 'upcoming'
+
+function matchdayMode(
+  rounds: string[],
+  current: string | null,
+  viewed: string | null | undefined,
+): MatchdayMode {
+  if (!viewed || !current || viewed === current) return 'current'
+  const viewedIndex = rounds.indexOf(viewed)
+  const currentIndex = rounds.indexOf(current)
+  if (viewedIndex < 0 || currentIndex < 0) return 'current'
+  return viewedIndex < currentIndex ? 'results' : 'upcoming'
+}
+
+function modeKicker(mode: MatchdayMode) {
+  if (mode === 'results') return 'MLS / Results'
+  if (mode === 'upcoming') return 'MLS / Upcoming'
+  return 'MLS / Current matchday'
 }
 
 function FixtureGroups({ fixtures }: { fixtures: Fixture[] }) {

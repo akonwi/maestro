@@ -1,6 +1,7 @@
 use go:github.com/go-chi/chi/v5 as chi
 use go:net/http
 use go:strconv
+use go:strings
 use go:time
 use maestro/api_football
 use maestro/app
@@ -39,6 +40,12 @@ fn register(router: mut chi::Mux, a: app::App) {
     },
   )
   router.Get(
+    "/fixtures/rounds",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_rounds(a, w, r)
+    },
+  )
+  router.Get(
     "/fixtures/\{id\}",
     fn(w: http::ResponseWriter, r: mut http::Request) {
       handle_by_id(a, w, r)
@@ -67,21 +74,46 @@ private fn respond_upcoming(a: app::App, w: http::ResponseWriter, competition_id
 }
 
 private fn handle_round(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let raw_name = r.URL.Query().Get("name")
+  let name: Str? = match raw_name.is_empty() {
+    true => Maybe::new(),
+    false => Maybe::new(raw_name),
+  }
   let raw_comp = r.URL.Query().Get("competition_id")
   match raw_comp.is_empty() {
-    true => respond_round(a, w, Maybe::new()),
+    true => respond_round(a, w, Maybe::new(), name),
     false => {
       match strconv::Atoi(raw_comp) {
-        ok(id) => respond_round(a, w, Maybe::new(id)),
+        ok(id) => respond_round(a, w, Maybe::new(id), name),
         err(_) => response::fail(w, http::StatusBadRequest, "competition_id must be an integer"),
       }
     },
   }
 }
 
-private fn respond_round(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
-  match current_round(a, competition_id) {
+private fn respond_round(a: app::App, w: http::ResponseWriter, competition_id: Int?, name: Str?) {
+  match round_payload(a, competition_id, name) {
     ok(payload) => response::json_response(w, http::StatusOK, round_json(payload)),
+    err(message) => response::fail(w, http::StatusBadGateway, message),
+  }
+}
+
+private fn handle_rounds(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  let raw_comp = r.URL.Query().Get("competition_id")
+  match raw_comp.is_empty() {
+    true => respond_rounds(a, w, Maybe::new()),
+    false => {
+      match strconv::Atoi(raw_comp) {
+        ok(id) => respond_rounds(a, w, Maybe::new(id)),
+        err(_) => response::fail(w, http::StatusBadRequest, "competition_id must be an integer"),
+      }
+    },
+  }
+}
+
+private fn respond_rounds(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
+  match season_rounds(a, competition_id) {
+    ok(payload) => response::json_response(w, http::StatusOK, payload),
     err(message) => response::fail(w, http::StatusBadGateway, message),
   }
 }
@@ -160,10 +192,7 @@ fn pick_round(list: [api_football::RoundFixture]) Str? {
   best_round
 }
 
-// Resolve the current round for one competition: the one requested, or the
-// first active competition when unspecified. Uses the same cached season
-// fetch as /fixtures/upcoming — no extra upstream call.
-fn current_round(a: app::App, competition_id: Int?) CurrentRound!Str {
+private fn active_competition(a: app::App, competition_id: Int?) (competitions::Competition?)!Str {
   let comps = try competitions::list_active(a)
   mut chosen: competitions::Competition? = Maybe::new()
   for comp in comps {
@@ -176,10 +205,22 @@ fn current_round(a: app::App, competition_id: Int?) CurrentRound!Str {
       false => (),
     }
   }
+  Result::ok(chosen)
+}
+
+// Resolve a round for one competition: the requested round name, or the
+// current round when unspecified. Uses the same cached season fetch as
+// /fixtures/upcoming — no extra upstream call.
+fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRound!Str {
+  let chosen = try active_competition(a, competition_id)
   match chosen {
     comp => {
       let list = try api_football::season_round_fixtures(a, comp.api_football_league_id, comp.season)
-      match pick_round(list) {
+      let picked: Str? = match requested {
+        name => Maybe::new(name),
+        _ => pick_round(list),
+      }
+      match picked {
         name => {
           mut out: [Fixture] = []
           for f in list {
@@ -194,6 +235,93 @@ fn current_round(a: app::App, competition_id: Int?) CurrentRound!Str {
       }
     },
     _ => Result::ok(CurrentRound{competition_id: Maybe::new(), name: Maybe::new(), fixtures: []}),
+  }
+}
+
+// The trailing integer in a round name like "Regular Season - 28", or a
+// large sentinel so unparseable names sort to the end. Regular-season
+// rounds all parse; this keeps the picker in numeric order even when the
+// upstream fixture array isn't strictly chronological (postponements).
+fn round_order_key(name: Str) Int {
+  let fields = strings::Fields(name)
+  match fields.at(fields.size() - 1) {
+    tail => {
+      match strconv::Atoi(tail) {
+        ok(n) => n,
+        err(_) => 1000000,
+      }
+    },
+    _ => 1000000,
+  }
+}
+
+// Insertion sort by numeric round key (small lists: ~38 rounds).
+fn sort_round_names(names: [Str]) [Str] {
+  mut out: [Str] = []
+  for name in names {
+    let key = round_order_key(name)
+    mut inserted = false
+    mut result: [Str] = []
+    for existing in out {
+      let goes_before = (not inserted) and (key < round_order_key(existing))
+      match goes_before {
+        true => {
+          result.push(name)
+          inserted = true
+        },
+        false => (),
+      }
+      result.push(existing)
+    }
+    match inserted {
+      true => (),
+      false => result.push(name),
+    }
+    out = result
+  }
+  out
+}
+
+// Every round name in the season, ordered by round number, plus the
+// current round.
+fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
+  let chosen = try active_competition(a, competition_id)
+  match chosen {
+    comp => {
+      let list = try api_football::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+      mut names: [Str] = []
+      for f in list {
+        mut seen = false
+        for n in names {
+          match n == f.round {
+            true => { seen = true },
+            false => (),
+          }
+        }
+        match seen {
+          true => (),
+          false => names.push(f.round),
+        }
+      }
+      let ordered = sort_round_names(names)
+      mut rounds: [Any] = []
+      for n in ordered {
+        rounds.push(n)
+      }
+      let payload: [Str: Any] = [
+        "competition_id": comp.id,
+        "rounds": rounds,
+        "current": pick_round(list),
+      ]
+      Result::ok(payload)
+    },
+    _ => {
+      let empty: [Any] = []
+      let no_comp: Int? = Maybe::new()
+      let no_round: Str? = Maybe::new()
+      let payload: [Str: Any] = ["competition_id": no_comp, "rounds": empty, "current": no_round]
+      Result::ok(payload)
+    },
   }
 }
 

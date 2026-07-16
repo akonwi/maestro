@@ -9,6 +9,7 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
 })
 
 export function FixtureRow({ fixture }: { fixture: Fixture }) {
+  const hasScore = fixture.home_score !== null && fixture.away_score !== null
   return (
     <Link
       className='grid min-h-20 grid-cols-[4.75rem_minmax(0,1fr)_1.25rem] items-center gap-2 border border-border bg-surface px-3 py-3 transition-colors hover:border-foreground sm:grid-cols-[6rem_minmax(0,1fr)_2rem] sm:gap-0 sm:px-4 sm:py-0'
@@ -24,11 +25,17 @@ export function FixtureRow({ fixture }: { fixture: Fixture }) {
           {fixtureStatusLabel(fixture.status)}
         </div>
       </div>
-      <div className='grid gap-2 sm:grid-cols-[1fr_2rem_1fr] sm:items-center'>
+      <div className='grid gap-2 sm:grid-cols-[1fr_3rem_1fr] sm:items-center'>
         <Team crestId={fixture.home_team.id} name={fixture.home_team.name} />
-        <span className='hidden text-center font-mono text-[.625rem] text-muted-foreground sm:block'>
-          VS
-        </span>
+        {hasScore ? (
+          <span className='text-center font-mono text-sm font-semibold tabular-nums'>
+            {fixture.home_score}–{fixture.away_score}
+          </span>
+        ) : (
+          <span className='hidden text-center font-mono text-[.625rem] text-muted-foreground sm:block'>
+            VS
+          </span>
+        )}
         <Team
           away
           crestId={fixture.away_team.id}
