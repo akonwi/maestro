@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useState } from 'react'
+import { FixtureOutlook } from '@/components/fixture-outlook'
+import { MatchDetailPanel } from '@/components/match-detail'
 import {
   Select,
   SelectContent,
@@ -16,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { matchDetailQuery, outlookQuery } from '@/lib/analysis'
 import type { Fixture } from '@/lib/fixtures'
 import { fixtureQuery, fixtureStatusLabel, teamCrestUrl } from '@/lib/fixtures'
 import { groupsQuery } from '@/lib/groups'
@@ -86,6 +89,10 @@ function FixturePage() {
 
 function FixtureDetail({ fixture }: { fixture: Fixture }) {
   const locked = useKickoffLocked(fixture.kickoff_at)
+  const outlook = useQuery(outlookQuery(fixture.id, !locked))
+  const matchDetail = useQuery(matchDetailQuery(fixture.id, locked))
+  const showStatus =
+    locked && fixture.status !== 'NS' && fixture.status !== 'TBD'
   return (
     <>
       <article className='border border-border bg-surface'>
@@ -93,9 +100,13 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
           <h1 className='sr-only'>
             {fixture.home_team.name} vs {fixture.away_team.name}
           </h1>
-          <span className='font-mono text-[.625rem] font-semibold uppercase tracking-wider text-accent'>
-            {fixtureStatusLabel(fixture.status)} Fixture
-          </span>
+          {showStatus ? (
+            <span className='font-mono text-[.625rem] font-semibold uppercase tracking-wider text-accent'>
+              {fixtureStatusLabel(fixture.status)}
+            </span>
+          ) : (
+            <span aria-hidden />
+          )}
           <span className='text-sm text-muted-foreground'>
             {kickoffFormatter.format(fixture.kickoff_at)}
           </span>
@@ -115,13 +126,18 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
           </div>
           <Team away id={fixture.away_team.id} name={fixture.away_team.name} />
         </div>
-        <footer className='border-t border-border bg-muted px-4 py-2.5 text-center text-xs text-muted-foreground'>
-          {locked
-            ? 'Predictions are locked.'
-            : 'Predictions are open until kickoff.'}
-        </footer>
+        {locked ? null : (
+          <footer className='border-t border-border bg-muted px-4 py-2.5 text-center text-xs text-muted-foreground'>
+            Predictions are open until kickoff.
+          </footer>
+        )}
       </article>
       <PredictionArea fixture={fixture} locked={locked} />
+      {locked ? (
+        <MatchDetailPanel query={matchDetail} />
+      ) : (
+        <FixtureOutlook kickoffAt={fixture.kickoff_at} query={outlook} />
+      )}
     </>
   )
 }
@@ -220,7 +236,7 @@ function PredictionArea({
         <div className='flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
           <div>
             <h3 className='font-semibold' id='group-predictions-heading'>
-              Group Predictions
+              Predictions
             </h3>
             <p className='mt-0.5 text-xs text-muted-foreground'>
               Visible as submitted.

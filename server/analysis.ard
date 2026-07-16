@@ -1,0 +1,240 @@
+use go:github.com/go-chi/chi/v5 as chi
+use go:net/http
+use go:strconv
+use maestro/api_football
+use maestro/app
+use maestro/response
+
+// Fixture analysis: read-only proxies over API-Football's pre-match
+// outlook and post-match detail. Nothing here is persisted; responses
+// ride the shared TTL cache in the api_football module.
+
+fn register(router: mut chi::Mux, a: app::App) {
+  router.Get(
+    "/fixtures/\{id\}/outlook",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_outlook(a, w, r)
+    },
+  )
+  router.Get(
+    "/fixtures/\{id\}/match",
+    fn(w: http::ResponseWriter, r: mut http::Request) {
+      handle_match(a, w, r)
+    },
+  )
+}
+
+private fn handle_outlook(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match strconv::Atoi(chi::URLParam(r, "id")) {
+    ok(id) => {
+      match api_football::fixture_outlook(a, id) {
+        ok(found) => {
+          match found {
+            outlook => response::json_response(w, http::StatusOK, outlook_json(outlook)),
+            _ => response::fail(w, http::StatusNotFound, "no outlook available for this fixture"),
+          }
+        },
+        err(message) => response::fail(w, http::StatusBadGateway, message),
+      }
+    },
+    err(_) => response::fail(w, http::StatusBadRequest, "fixture id must be an integer"),
+  }
+}
+
+private fn handle_match(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+  match strconv::Atoi(chi::URLParam(r, "id")) {
+    ok(id) => {
+      match match_json(a, id) {
+        ok(payload) => response::json_response(w, http::StatusOK, payload),
+        err(message) => response::fail(w, http::StatusBadGateway, message),
+      }
+    },
+    err(_) => response::fail(w, http::StatusBadRequest, "fixture id must be an integer"),
+  }
+}
+
+// ─── JSON shaping ───────────────────────────────────────────────────────
+
+fn outlook_json(o: api_football::Outlook) [Str: Any] {
+  mut comparison: [Any] = []
+  for c in o.comparison {
+    let entry: [Str: Any] = ["label": c.label, "home": c.home, "away": c.away]
+    comparison.push(entry)
+  }
+  mut h2h: [Any] = []
+  for m in o.h2h {
+    let entry: [Str: Any] = [
+      "kickoff_at": m.kickoff_at,
+      "home_name": m.home_name,
+      "away_name": m.away_name,
+      "home_goals": m.home_goals,
+      "away_goals": m.away_goals,
+    ]
+    h2h.push(entry)
+  }
+  let percent: [Str: Any] = ["home": o.percent_home, "draw": o.percent_draw, "away": o.percent_away]
+  let payload: [Str: Any] = [
+    "percent": percent,
+    "comparison": comparison,
+    "home": team_outlook_json(o.home),
+    "away": team_outlook_json(o.away),
+    "h2h": h2h,
+  ]
+  payload
+}
+
+private fn team_outlook_json(t: api_football::TeamOutlook) [Str: Any] {
+  let payload: [Str: Any] = [
+    "id": t.id,
+    "name": t.name,
+    "form": t.form,
+    "goals_for_avg": t.goals_for_avg,
+    "goals_against_avg": t.goals_against_avg,
+  ]
+  payload
+}
+
+// Each section degrades independently: a failed or partially populated
+// upstream section becomes an empty list instead of failing the whole
+// response. Only when every section errors do we surface a failure.
+fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
+  mut failures = 0
+  mut last_error = ""
+
+  mut stats: [api_football::TeamStats] = []
+  match api_football::fixture_statistics(a, fixture_id) {
+    ok(v) => { stats = v },
+    err(message) => {
+      failures = failures + 1
+      last_error = message
+    },
+  }
+  mut events: [api_football::MatchEvent] = []
+  match api_football::fixture_events(a, fixture_id) {
+    ok(v) => { events = v },
+    err(message) => {
+      failures = failures + 1
+      last_error = message
+    },
+  }
+  mut lineups: [api_football::Lineup] = []
+  match api_football::fixture_lineups(a, fixture_id) {
+    ok(v) => { lineups = v },
+    err(message) => {
+      failures = failures + 1
+      last_error = message
+    },
+  }
+  mut players: [api_football::TeamPlayers] = []
+  match api_football::fixture_players(a, fixture_id) {
+    ok(v) => { players = v },
+    err(message) => {
+      failures = failures + 1
+      last_error = message
+    },
+  }
+
+  try require_some_section(failures, last_error)
+
+  mut stats_json: [Any] = []
+  for t in stats {
+    mut lines: [Any] = []
+    for s in t.stats {
+      let line: [Str: Any] = ["label": s.label, "value": s.value]
+      lines.push(line)
+    }
+    let entry: [Str: Any] = ["team_id": t.team_id, "team_name": t.team_name, "stats": lines]
+    stats_json.push(entry)
+  }
+
+  mut events_json: [Any] = []
+  for e in events {
+    let entry: [Str: Any] = [
+      "minute": e.minute,
+      "extra": e.extra,
+      "team_id": e.team_id,
+      "kind": e.kind,
+      "detail": e.detail,
+      "player": e.player,
+      "assist": e.assist,
+      "comments": e.comments,
+    ]
+    events_json.push(entry)
+  }
+
+  mut lineups_json: [Any] = []
+  for l in lineups {
+    let entry: [Str: Any] = [
+      "team_id": l.team_id,
+      "team_name": l.team_name,
+      "formation": l.formation,
+      "coach": l.coach,
+      "color_primary": l.color_primary,
+      "color_number": l.color_number,
+      "starters": lineup_players_json(l.starters),
+      "bench": lineup_players_json(l.bench),
+    ]
+    lineups_json.push(entry)
+  }
+
+  mut players_json: [Any] = []
+  for t in players {
+    mut lines: [Any] = []
+    for p in t.players {
+      let line: [Str: Any] = [
+        "id": p.id,
+        "name": p.name,
+        "position": p.position,
+        "rating": p.rating,
+        "minutes": p.minutes,
+        "goals": p.goals,
+        "assists": p.assists,
+        "saves": p.saves,
+        "shots": p.shots,
+        "shots_on": p.shots_on,
+        "passes": p.passes,
+        "key_passes": p.key_passes,
+        "tackles": p.tackles,
+        "duels": p.duels,
+        "duels_won": p.duels_won,
+        "dribbles_attempted": p.dribbles_attempted,
+        "dribbles_won": p.dribbles_won,
+        "yellow": p.yellow,
+        "red": p.red,
+      ]
+      lines.push(line)
+    }
+    let entry: [Str: Any] = ["team_id": t.team_id, "team_name": t.team_name, "players": lines]
+    players_json.push(entry)
+  }
+
+  let payload: [Str: Any] = [
+    "statistics": stats_json,
+    "events": events_json,
+    "lineups": lineups_json,
+    "players": players_json,
+  ]
+  Result::ok(payload)
+}
+
+private fn require_some_section(failures: Int, last_error: Str) Void!Str {
+  match failures == 4 {
+    true => Result::err(last_error),
+    false => Result::ok(()),
+  }
+}
+
+private fn lineup_players_json(list: [api_football::LineupPlayer]) [Any] {
+  mut out: [Any] = []
+  for p in list {
+    let entry: [Str: Any] = [
+      "id": p.id,
+      "name": p.name,
+      "number": p.number,
+      "pos": p.pos,
+      "grid": p.grid,
+    ]
+    out.push(entry)
+  }
+  out
+}

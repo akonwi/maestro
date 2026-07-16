@@ -13,6 +13,8 @@ use maestro/config
 
 let BASE_URL = "https://v3.football.api-sports.io"
 let FIXTURE_CACHE_TTL_MS = Int64::from(60 * 1000)
+// Pre-match outlooks move slowly; cache them for an hour.
+let OUTLOOK_CACHE_TTL_MS = Int64::from(60 * 60 * 1000)
 
 // One fixture as we care about it. Timestamps are unix ms. Scores are
 // none until the match has started.
@@ -73,7 +75,11 @@ private fn cached_fixtures(a: app::App, url: Str) [Fixture]!Str {
 }
 
 private fn cached_body(a: app::App, url: Str) Str!Str {
-  match ffi::CacheGet(a.cache, url, FIXTURE_CACHE_TTL_MS) {
+  cached_body_ttl(a, url, FIXTURE_CACHE_TTL_MS)
+}
+
+private fn cached_body_ttl(a: app::App, url: Str, ttl_ms: Int64) Str!Str {
+  match ffi::CacheGet(a.cache, url, ttl_ms) {
     cached => Result::ok(cached),
     _ => {
       let body = try get(a.config, url)
@@ -148,4 +154,445 @@ private fn decode_fixture(item: Any) Fixture!decode::Error {
 
 private fn describe(e: decode::Error) Str {
   "decoding api-football response: {e.to_str()}"
+}
+
+// ─── Pre-match outlook (/predictions) ───────────────────────────────
+
+// One home%/away% comparison axis (form, attack, defense, goals).
+struct Comparison {
+  label: Str,
+  home: Str,
+  away: Str,
+}
+
+struct TeamOutlook {
+  id: Int,
+  name: Str,
+  form: Str,               // "DWWWW..." most recent last
+  goals_for_avg: Str,      // per game, e.g. "2.5"
+  goals_against_avg: Str,
+}
+
+struct H2HResult {
+  kickoff_at: Int64,
+  home_name: Str,
+  away_name: Str,
+  home_goals: Int?,
+  away_goals: Int?,
+}
+
+struct Outlook {
+  percent_home: Str,
+  percent_draw: Str,
+  percent_away: Str,
+  comparison: [Comparison],
+  home: TeamOutlook,
+  away: TeamOutlook,
+  h2h: [H2HResult],
+}
+
+// Fetch API-Football's pre-match outlook for a fixture. None when the
+// upstream has no prediction data for it.
+fn fixture_outlook(a: app::App, fixture_id: Int) Outlook?!Str {
+  let body = try cached_body_ttl(a, "{BASE_URL}/predictions?fixture={fixture_id}", OUTLOOK_CACHE_TTL_MS)
+  parse_outlook(body)
+}
+
+fn parse_outlook(body: Str) Outlook?!Str {
+  let data = try decode::from_json(body)
+  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  match items.at(0) {
+    item => {
+      // Incomplete prediction payloads (nulls while upstream is still
+      // computing) are treated as "no outlook", not an error.
+      match decode::run(item, decode_outlook) {
+        ok(outlook) => Result::ok(Maybe::new(outlook)),
+        err(_) => Result::ok(Maybe::new()),
+      }
+    },
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+// ─── Tolerant decoding helpers ────────────────────────────────────
+// Upstream data is often partially populated (live matches, fresh
+// fixtures). These treat missing intermediates and nulls as absent
+// instead of failing the whole response.
+
+private fn opt_string(item: Any, names: [Str]) Str? {
+  match decode::run(item, decode::path(names, decode::nullable(decode::string))) {
+    ok(v) => v,
+    err(_) => Maybe::new(),
+  }
+}
+
+private fn opt_int(item: Any, names: [Str]) Int? {
+  match decode::run(item, decode::path(names, decode::nullable(decode::int))) {
+    ok(v) => v,
+    err(_) => Maybe::new(),
+  }
+}
+
+private fn string_or(item: Any, names: [Str], fallback: Str) Str {
+  match opt_string(item, names) {
+    v => v,
+    _ => fallback,
+  }
+}
+
+private fn decode_outlook(item: Any) Outlook!decode::Error {
+  let percent_home = try decode::run(item, decode::path(["predictions", "percent", "home"], decode::string))
+  let percent_draw = try decode::run(item, decode::path(["predictions", "percent", "draw"], decode::string))
+  let percent_away = try decode::run(item, decode::path(["predictions", "percent", "away"], decode::string))
+
+  mut comparison: [Comparison] = []
+  let axes = [["form", "Form"], ["att", "Attack"], ["def", "Defense"], ["goals", "Goals"]]
+  for axis in axes {
+    let key = axis.at(0).expect("axis key")
+    let label = axis.at(1).expect("axis label")
+    let home = try decode::run(item, decode::path(["comparison", key, "home"], decode::string))
+    let away = try decode::run(item, decode::path(["comparison", key, "away"], decode::string))
+    comparison.push(Comparison{label: label, home: home, away: away})
+  }
+
+  let home = try decode::run(item, decode::path(["teams", "home"], decode_team_outlook))
+  let away = try decode::run(item, decode::path(["teams", "away"], decode_team_outlook))
+  let h2h = decode_h2h_list(item)
+
+  Result::ok(
+    Outlook{
+      percent_home: percent_home,
+      percent_draw: percent_draw,
+      percent_away: percent_away,
+      comparison: comparison,
+      home: home,
+      away: away,
+      h2h: h2h,
+    },
+  )
+}
+
+private fn decode_team_outlook(item: Any) TeamOutlook!decode::Error {
+  let id = try decode::run(item, decode::field("id", decode::int))
+  let name = try decode::run(item, decode::field("name", decode::string))
+  let form = string_or(item, ["league", "form"], "")
+  let gf = string_or(item, ["league", "goals", "for", "average", "total"], "0")
+  let ga = string_or(item, ["league", "goals", "against", "average", "total"], "0")
+  Result::ok(TeamOutlook{id: id, name: name, form: form, goals_for_avg: gf, goals_against_avg: ga})
+}
+
+private fn decode_h2h_list(item: Any) [H2HResult] {
+  match decode::run(item, decode::field("h2h", decode::list(decode::any))) {
+    ok(items) => {
+      mut out: [H2HResult] = []
+      for entry in items {
+        match decode::run(entry, decode_h2h) {
+          ok(meeting) => out.push(meeting),
+          err(_) => (),
+        }
+      }
+      out
+    },
+    err(_) => [],
+  }
+}
+
+private fn decode_h2h(item: Any) H2HResult!decode::Error {
+  let ts_secs = try decode::run(item, decode::path(["fixture", "timestamp"], decode::int))
+  let home_name = try decode::run(item, decode::path(["teams", "home", "name"], decode::string))
+  let away_name = try decode::run(item, decode::path(["teams", "away", "name"], decode::string))
+  let home_goals = try decode::run(item, decode::path(["goals", "home"], decode::nullable(decode::int)))
+  let away_goals = try decode::run(item, decode::path(["goals", "away"], decode::nullable(decode::int)))
+  Result::ok(
+    H2HResult{
+      kickoff_at: Int64::from(ts_secs) * 1000,
+      home_name: home_name,
+      away_name: away_name,
+      home_goals: home_goals,
+      away_goals: away_goals,
+    },
+  )
+}
+
+// ─── Match detail (statistics, events, lineups, players) ─────────────────
+
+struct StatLine {
+  label: Str,
+  value: Str?,   // upstream mixes ints, "55%", and null; normalized to text
+}
+
+struct TeamStats {
+  team_id: Int,
+  team_name: Str,
+  stats: [StatLine],
+}
+
+struct MatchEvent {
+  minute: Int,
+  extra: Int?,
+  team_id: Int,
+  kind: Str,     // Goal | Card | subst | Var
+  detail: Str,   // Normal Goal | Own Goal | Yellow Card | Substitution 1 | ...
+  player: Str?,
+  assist: Str?,
+  comments: Str?,
+}
+
+struct LineupPlayer {
+  id: Int?,
+  name: Str,
+  number: Int,
+  pos: Str?,
+  grid: Str?,    // "row:col", none for bench
+}
+
+struct Lineup {
+  team_id: Int,
+  team_name: Str,
+  formation: Str,
+  coach: Str,
+  color_primary: Str?,
+  color_number: Str?,
+  starters: [LineupPlayer],
+  bench: [LineupPlayer],
+}
+
+struct PlayerLine {
+  id: Int,
+  name: Str,
+  position: Str?,
+  rating: Str?,
+  minutes: Int?,
+  goals: Int?,
+  assists: Int?,
+  saves: Int?,
+  shots: Int?,
+  shots_on: Int?,
+  passes: Int?,
+  key_passes: Int?,
+  tackles: Int?,
+  duels: Int?,
+  duels_won: Int?,
+  dribbles_attempted: Int?,
+  dribbles_won: Int?,
+  yellow: Int?,
+  red: Int?,
+}
+
+struct TeamPlayers {
+  team_id: Int,
+  team_name: Str,
+  players: [PlayerLine],
+}
+
+fn fixture_statistics(a: app::App, fixture_id: Int) [TeamStats]!Str {
+  let body = try cached_body(a, "{BASE_URL}/fixtures/statistics?fixture={fixture_id}")
+  parse_statistics(body)
+}
+
+fn parse_statistics(body: Str) [TeamStats]!Str {
+  let data = try decode::from_json(body)
+  decode::run(data, decode::field("response", decode::list(decode_team_stats))).map_err(describe)
+}
+
+private fn decode_team_stats(item: Any) TeamStats!decode::Error {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
+  let stats = try decode::run(item, decode::field("statistics", decode::list(decode_stat_line)))
+  Result::ok(TeamStats{team_id: team_id, team_name: team_name, stats: stats})
+}
+
+private fn decode_stat_line(item: Any) StatLine!decode::Error {
+  let label = try decode::run(item, decode::field("type", decode::string))
+  let value = try decode::run(item, decode::field("value", decode::nullable(loose_string)))
+  Result::ok(StatLine{label: label, value: value})
+}
+
+// Accept a JSON string or number and render it as text.
+private fn loose_string(data: Any) Str!decode::Error {
+  match decode::string(data) {
+    ok(s) => Result::ok(s),
+    err(_) => {
+      match decode::int(data) {
+        ok(i) => Result::ok("{i}"),
+        err(_) => {
+          let f = try decode::float(data)
+          Result::ok("{f}")
+        },
+      }
+    },
+  }
+}
+
+fn fixture_events(a: app::App, fixture_id: Int) [MatchEvent]!Str {
+  let body = try cached_body(a, "{BASE_URL}/fixtures/events?fixture={fixture_id}")
+  parse_events(body)
+}
+
+fn parse_events(body: Str) [MatchEvent]!Str {
+  let data = try decode::from_json(body)
+  decode::run(data, decode::field("response", decode::list(decode_event))).map_err(describe)
+}
+
+private fn decode_event(item: Any) MatchEvent!decode::Error {
+  let minute = try decode::run(item, decode::path(["time", "elapsed"], decode::int))
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let kind = try decode::run(item, decode::field("type", decode::string))
+  let detail = string_or(item, ["detail"], "")
+  let extra = opt_int(item, ["time", "extra"])
+  let player = opt_string(item, ["player", "name"])
+  let assist = opt_string(item, ["assist", "name"])
+  let comments = opt_string(item, ["comments"])
+  Result::ok(
+    MatchEvent{
+      minute: minute,
+      extra: extra,
+      team_id: team_id,
+      kind: kind,
+      detail: detail,
+      player: player,
+      assist: assist,
+      comments: comments,
+    },
+  )
+}
+
+fn fixture_lineups(a: app::App, fixture_id: Int) [Lineup]!Str {
+  let body = try cached_body(a, "{BASE_URL}/fixtures/lineups?fixture={fixture_id}")
+  parse_lineups(body)
+}
+
+fn parse_lineups(body: Str) [Lineup]!Str {
+  let data = try decode::from_json(body)
+  decode::run(data, decode::field("response", decode::list(decode_lineup))).map_err(describe)
+}
+
+private fn decode_lineup(item: Any) Lineup!decode::Error {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
+  let formation = string_or(item, ["formation"], "")
+  let coach = string_or(item, ["coach", "name"], "")
+  let color_primary = opt_string(item, ["team", "colors", "player", "primary"])
+  let color_number = opt_string(item, ["team", "colors", "player", "number"])
+  let starters = decode_lineup_players(item, "startXI")
+  let bench = decode_lineup_players(item, "substitutes")
+  Result::ok(
+    Lineup{
+      team_id: team_id,
+      team_name: team_name,
+      formation: formation,
+      coach: coach,
+      color_primary: color_primary,
+      color_number: color_number,
+      starters: starters,
+      bench: bench,
+    },
+  )
+}
+
+// Malformed individual players are skipped rather than failing the team.
+private fn decode_lineup_players(item: Any, field: Str) [LineupPlayer] {
+  match decode::run(item, decode::field(field, decode::list(decode::any))) {
+    ok(items) => {
+      mut out: [LineupPlayer] = []
+      for entry in items {
+        match decode::run(entry, decode_lineup_player) {
+          ok(player) => out.push(player),
+          err(_) => (),
+        }
+      }
+      out
+    },
+    err(_) => [],
+  }
+}
+
+private fn decode_lineup_player(item: Any) LineupPlayer!decode::Error {
+  let name = try decode::run(item, decode::path(["player", "name"], decode::string))
+  let id = opt_int(item, ["player", "id"])
+  let number = match opt_int(item, ["player", "number"]) {
+    n => n,
+    _ => 0,
+  }
+  let pos = opt_string(item, ["player", "pos"])
+  let grid = opt_string(item, ["player", "grid"])
+  Result::ok(LineupPlayer{id: id, name: name, number: number, pos: pos, grid: grid})
+}
+
+fn fixture_players(a: app::App, fixture_id: Int) [TeamPlayers]!Str {
+  let body = try cached_body(a, "{BASE_URL}/fixtures/players?fixture={fixture_id}")
+  parse_players(body)
+}
+
+fn parse_players(body: Str) [TeamPlayers]!Str {
+  let data = try decode::from_json(body)
+  decode::run(data, decode::field("response", decode::list(decode_team_players))).map_err(describe)
+}
+
+private fn decode_team_players(item: Any) TeamPlayers!decode::Error {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
+  // Malformed individual players are skipped rather than failing the team.
+  let entries = try decode::run(item, decode::field("players", decode::list(decode::any)))
+  mut players: [PlayerLine] = []
+  for entry in entries {
+    match decode::run(entry, decode_player_line) {
+      ok(player) => players.push(player),
+      err(_) => (),
+    }
+  }
+  Result::ok(TeamPlayers{team_id: team_id, team_name: team_name, players: players})
+}
+
+private fn decode_player_line(item: Any) PlayerLine!decode::Error {
+  let id = try decode::run(item, decode::path(["player", "id"], decode::int))
+  let name = try decode::run(item, decode::path(["player", "name"], decode::string))
+  let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
+  match stats.at(0) {
+    s => decode_player_stats(id, name, s),
+    _ => Result::err(decode::Error{expected: "player statistics", path: ["statistics"]}),
+  }
+}
+
+private fn decode_player_stats(id: Int, name: Str, s: Any) PlayerLine!decode::Error {
+  let position = opt_string(s, ["games", "position"])
+  let rating = opt_string(s, ["games", "rating"])
+  let minutes = opt_int(s, ["games", "minutes"])
+  let goals = opt_int(s, ["goals", "total"])
+  let assists = opt_int(s, ["goals", "assists"])
+  let saves = opt_int(s, ["goals", "saves"])
+  let shots = opt_int(s, ["shots", "total"])
+  let shots_on = opt_int(s, ["shots", "on"])
+  let passes = opt_int(s, ["passes", "total"])
+  let key_passes = opt_int(s, ["passes", "key"])
+  let tackles = opt_int(s, ["tackles", "total"])
+  let duels = opt_int(s, ["duels", "total"])
+  let duels_won = opt_int(s, ["duels", "won"])
+  let dribbles_attempted = opt_int(s, ["dribbles", "attempts"])
+  let dribbles_won = opt_int(s, ["dribbles", "success"])
+  let yellow = opt_int(s, ["cards", "yellow"])
+  let red = opt_int(s, ["cards", "red"])
+  Result::ok(
+    PlayerLine{
+      id: id,
+      name: name,
+      position: position,
+      rating: rating,
+      minutes: minutes,
+      goals: goals,
+      assists: assists,
+      saves: saves,
+      shots: shots,
+      shots_on: shots_on,
+      passes: passes,
+      key_passes: key_passes,
+      tackles: tackles,
+      duels: duels,
+      duels_won: duels_won,
+      dribbles_attempted: dribbles_attempted,
+      dribbles_won: dribbles_won,
+      yellow: yellow,
+      red: red,
+    },
+  )
 }

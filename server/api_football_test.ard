@@ -71,3 +71,40 @@ test fn rejects_malformed_body() Void!Str {
     err(_) => testing::pass(),
   }
 }
+
+// Lineups with data still being populated: null formation/coach/colors and
+// a malformed player entry must not fail the team.
+let PARTIAL_LINEUPS: Str = "\{
+  \"response\": [
+    \{
+      \"team\": \{ \"id\": 1609, \"name\": \"Inter Miami\" \},
+      \"formation\": null,
+      \"coach\": \{\},
+      \"startXI\": [
+        \{ \"player\": \{ \"id\": 1, \"name\": \"R. Rios\", \"number\": 34, \"pos\": \"G\", \"grid\": \"1:1\" \} \},
+        \{ \"player\": \{ \"id\": null, \"name\": \"No Number\", \"number\": null, \"pos\": null, \"grid\": null \} \},
+        \{ \"player\": null \}
+      ],
+      \"substitutes\": []
+    \}
+  ]
+\}"
+
+test fn partial_lineups_decode_leniently() Void!Str {
+  let lineups = try api_football::parse_lineups(PARTIAL_LINEUPS)
+  try testing::assert(lineups.size() == 1, "one team decoded")
+  let team = lineups.at(0).expect("team")
+  try testing::assert(team.formation == "", "null formation becomes empty")
+  try testing::assert(team.coach == "", "missing coach becomes empty")
+  try testing::assert(team.color_primary.is_none(), "missing colors tolerated")
+  try testing::assert(team.starters.size() == 2, "malformed player skipped, got {team.starters.size()}")
+  Result::ok(())
+}
+
+test fn incomplete_outlook_is_treated_as_absent() Void!Str {
+  // A response item without prediction percentages should yield none, not an error.
+  let body = "\{ \"response\": [ \{ \"predictions\": \{\} \} ] \}"
+  let outlook = try api_football::parse_outlook(body)
+  try testing::assert(outlook.is_none(), "incomplete outlook should be none")
+  Result::ok(())
+}

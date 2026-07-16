@@ -1,5 +1,6 @@
 use go:github.com/go-chi/chi/v5 as chi
 use go:github.com/go-chi/chi/v5/middleware
+use maestro/analysis
 use maestro/app
 use maestro/auth
 use maestro/fixtures
@@ -19,6 +20,7 @@ fn build(a: app::App) mut chi::Mux {
   health::register(router, a)
   auth::register(router, a)
   fixtures::register(router, a)
+  analysis::register(router, a)
   groups::register(router, a)
   predictions::register(router, a)
   leaderboards::register(router, a)
