@@ -363,29 +363,29 @@ function PredictionForm({
           value={awayScore}
         />
       </div>
-      <div className='border-t border-border p-4'>
-        {save.isError ? (
-          <p className='mb-3 text-sm text-danger' role='alert'>
-            {save.error.message}
-          </p>
-        ) : null}
-        <button
-          className='ui-button ui-button-primary w-full'
-          disabled={locked || save.isPending}
-          type='submit'
-        >
-          {locked
-            ? 'Predictions Locked'
-            : save.isPending
+      {locked ? null : (
+        <div className='border-t border-border p-4'>
+          {save.isError ? (
+            <p className='mb-3 text-sm text-danger' role='alert'>
+              {save.error.message}
+            </p>
+          ) : null}
+          <button
+            className='ui-button ui-button-primary w-full'
+            disabled={save.isPending}
+            type='submit'
+          >
+            {save.isPending
               ? 'Saving prediction…'
               : initial
                 ? 'Update Prediction'
                 : 'Save Prediction'}
-        </button>
-        <p className='mt-3 text-center text-xs text-muted-foreground'>
-          Open until kickoff
-        </p>
-      </div>
+          </button>
+          <p className='mt-3 text-center text-xs text-muted-foreground'>
+            Open until kickoff
+          </p>
+        </div>
+      )}
     </form>
   )
 }
