@@ -1,31 +1,31 @@
-use go:github.com/go-chi/chi/v5 as chi
-use go:net/http
-use go:strconv
+use dram
 use maestro/api_football
 use maestro/app
 use maestro/response
+use go:net/http
+use go:strconv
 
 // Fixture analysis: read-only proxies over API-Football's pre-match
 // outlook and post-match detail. Nothing here is persisted; responses
 // ride the shared TTL cache in the api_football module.
 
-fn register(router: mut chi::Mux, a: app::App) {
-  router.Get(
-    "/fixtures/\{id\}/outlook",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+fn register(router: mut dram::App, a: app::App) {
+  router.get(
+    "/fixtures/:id/outlook",
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_outlook(a, w, r)
     },
   )
-  router.Get(
-    "/fixtures/\{id\}/match",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+  router.get(
+    "/fixtures/:id/match",
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_match(a, w, r)
     },
   )
 }
 
-private fn handle_outlook(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  match strconv::Atoi(chi::URLParam(r, "id")) {
+private fn handle_outlook(a: app::App, w: mut dram::Response, r: dram::Request) {
+  match strconv::Atoi(r.param("id").or("")) {
     ok(id) => {
       match api_football::fixture_outlook(a, id) {
         ok(found) => {
@@ -41,8 +41,8 @@ private fn handle_outlook(a: app::App, w: http::ResponseWriter, r: mut http::Req
   }
 }
 
-private fn handle_match(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  match strconv::Atoi(chi::URLParam(r, "id")) {
+private fn handle_match(a: app::App, w: mut dram::Response, r: dram::Request) {
+  match strconv::Atoi(r.param("id").or("")) {
     ok(id) => {
       match match_json(a, id) {
         ok(payload) => response::json_response(w, http::StatusOK, payload),
@@ -70,6 +70,7 @@ fn outlook_json(o: api_football::Outlook) [Str: Any] {
       "home_goals": m.home_goals,
       "away_goals": m.away_goals,
     ]
+
     h2h.push(entry)
   }
   let percent: [Str: Any] = ["home": o.percent_home, "draw": o.percent_draw, "away": o.percent_away]
@@ -80,6 +81,7 @@ fn outlook_json(o: api_football::Outlook) [Str: Any] {
     "away": team_outlook_json(o.away),
     "h2h": h2h,
   ]
+
   payload
 }
 
@@ -91,6 +93,7 @@ private fn team_outlook_json(t: api_football::TeamOutlook) [Str: Any] {
     "goals_for_avg": t.goals_for_avg,
     "goals_against_avg": t.goals_against_avg,
   ]
+
   payload
 }
 
@@ -159,6 +162,7 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
       "assist": e.assist,
       "comments": e.comments,
     ]
+
     events_json.push(entry)
   }
 
@@ -174,6 +178,7 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
       "starters": lineup_players_json(l.starters),
       "bench": lineup_players_json(l.bench),
     ]
+
     lineups_json.push(entry)
   }
 
@@ -202,18 +207,15 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
         "yellow": p.yellow,
         "red": p.red,
       ]
+
       lines.push(line)
     }
     let entry: [Str: Any] = ["team_id": t.team_id, "team_name": t.team_name, "players": lines]
     players_json.push(entry)
   }
 
-  let payload: [Str: Any] = [
-    "statistics": stats_json,
-    "events": events_json,
-    "lineups": lineups_json,
-    "players": players_json,
-  ]
+  let payload: [Str: Any] = ["statistics": stats_json, "events": events_json, "lineups": lineups_json, "players": players_json]
+
   Result::ok(payload)
 }
 
@@ -227,13 +229,8 @@ private fn require_some_section(failures: Int, last_error: Str) Void!Str {
 private fn lineup_players_json(list: [api_football::LineupPlayer]) [Any] {
   mut out: [Any] = []
   for p in list {
-    let entry: [Str: Any] = [
-      "id": p.id,
-      "name": p.name,
-      "number": p.number,
-      "pos": p.pos,
-      "grid": p.grid,
-    ]
+    let entry: [Str: Any] = ["id": p.id, "name": p.name, "number": p.number, "pos": p.pos, "grid": p.grid]
+
     out.push(entry)
   }
   out

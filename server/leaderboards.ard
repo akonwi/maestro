@@ -1,13 +1,12 @@
 use decode
-use go:github.com/go-chi/chi/v5 as chi
-use go:maestro/ffi
-use go:net/http
-use go:strconv
+use dram
 use maestro/app
 use maestro/auth
 use maestro/groups
 use maestro/response
 use maestro/week
+use go:net/http
+use go:strconv
 
 struct Entry {
   user_id: Int,
@@ -19,28 +18,25 @@ struct Entry {
   played: Int,
 }
 
-fn register(router: mut chi::Mux, a: app::App) {
-  router.Group(
-    fn(protected: chi::Router) {
-      protected.Use(
-        ffi::AuthMiddleware(
-          fn(r: mut http::Request) Int? { auth::authenticate(a, r) },
-        ),
-      )
-      protected.Get(
-        "/groups/\{id\}/leaderboard/season",
-        fn(w: http::ResponseWriter, r: mut http::Request) { handle_season(a, w, r) },
-      )
-      protected.Get(
-        "/groups/\{id\}/leaderboard/week",
-        fn(w: http::ResponseWriter, r: mut http::Request) { handle_week(a, w, r) },
-      )
+fn register(router: mut dram::App, a: app::App) {
+  mut protected = router.group("/")
+  protected.use_middleware(auth::middleware(a))
+  protected.get(
+    "/groups/:id/leaderboard/season",
+    fn(r: dram::Request, w: mut dram::Response) {
+      handle_season(a, w, r)
+    },
+  )
+  protected.get(
+    "/groups/:id/leaderboard/week",
+    fn(r: dram::Request, w: mut dram::Response) {
+      handle_week(a, w, r)
     },
   )
 }
 
-private fn handle_season(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  match strconv::Atoi(chi::URLParam(r, "id")) {
+private fn handle_season(a: app::App, w: mut dram::Response, r: dram::Request) {
+  match strconv::Atoi(r.param("id").or("")) {
     err(_) => response::fail(w, http::StatusBadRequest, "group id must be an integer"),
     ok(group_id) => {
       match parse_competition(r) {
@@ -51,14 +47,14 @@ private fn handle_season(a: app::App, w: http::ResponseWriter, r: mut http::Requ
   }
 }
 
-private fn handle_week(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  match strconv::Atoi(chi::URLParam(r, "id")) {
+private fn handle_week(a: app::App, w: mut dram::Response, r: dram::Request) {
+  match strconv::Atoi(r.param("id").or("")) {
     err(_) => response::fail(w, http::StatusBadRequest, "group id must be an integer"),
     ok(group_id) => {
       match parse_competition(r) {
         err(message) => response::fail(w, http::StatusBadRequest, message),
         ok(competition_id) => {
-          match week::current(r.URL.Query().Get("week")) {
+          match week::current(r.query("week").or("")) {
             err(message) => response::fail(w, http::StatusBadRequest, message),
             ok(bounds) => authorize_and_respond_week(a, w, r, group_id, competition_id, bounds),
           }
@@ -70,12 +66,12 @@ private fn handle_week(a: app::App, w: http::ResponseWriter, r: mut http::Reques
 
 private fn authorize_and_respond(
   a: app::App,
-  w: http::ResponseWriter,
-  r: mut http::Request,
+  w: mut dram::Response,
+  r: dram::Request,
   group_id: Int,
   competition_id: Int?,
 ) {
-  match ffi::UserID(r) {
+  match auth::user_id(r) {
     user_id => {
       match groups::find_for_member(a, group_id, user_id) {
         err(message) => response::fail(w, http::StatusInternalServerError, message),
@@ -93,13 +89,13 @@ private fn authorize_and_respond(
 
 private fn authorize_and_respond_week(
   a: app::App,
-  w: http::ResponseWriter,
-  r: mut http::Request,
+  w: mut dram::Response,
+  r: dram::Request,
   group_id: Int,
   competition_id: Int?,
   bounds: week::Bounds,
 ) {
-  match ffi::UserID(r) {
+  match auth::user_id(r) {
     user_id => {
       match groups::find_for_member(a, group_id, user_id) {
         err(message) => response::fail(w, http::StatusInternalServerError, message),
@@ -115,14 +111,20 @@ private fn authorize_and_respond_week(
   }
 }
 
-private fn respond(a: app::App, w: http::ResponseWriter, group_id: Int, competition_id: Int?) {
+private fn respond(a: app::App, w: mut dram::Response, group_id: Int, competition_id: Int?) {
   match season(a, group_id, competition_id) {
     err(message) => response::fail(w, http::StatusInternalServerError, message),
     ok(entries) => response::json_response(w, http::StatusOK, entries_json(entries)),
   }
 }
 
-private fn respond_week(a: app::App, w: http::ResponseWriter, group_id: Int, competition_id: Int?, bounds: week::Bounds) {
+private fn respond_week(
+  a: app::App,
+  w: mut dram::Response,
+  group_id: Int,
+  competition_id: Int?,
+  bounds: week::Bounds,
+) {
   match weekly(a, group_id, competition_id, bounds) {
     err(message) => response::fail(w, http::StatusInternalServerError, message),
     ok(entries) => response::json_response(w, http::StatusOK, entries_json(entries)),
@@ -153,11 +155,21 @@ private fn aggregate(
     true => 1,
     false => 0,
   }
-  let rows = try a.db
-    .query("SELECT u.id AS user_id, u.email, u.display_name, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) THEN p.points ELSE 0 END), 0) AS total_points, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 3 THEN 1 ELSE 0 END), 0) AS exact_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 1 THEN 1 ELSE 0 END), 0) AS outcome_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points IS NOT NULL THEN 1 ELSE 0 END), 0) AS played FROM group_members gm JOIN users u ON u.id = gm.user_id LEFT JOIN predictions p ON p.user_id = gm.user_id LEFT JOIN fixture_scoring_state s ON s.fixture_id = p.fixture_id WHERE gm.group_id = @group_id GROUP BY u.id, u.email, u.display_name ORDER BY total_points DESC, exact_count DESC, outcome_count DESC, COALESCE(u.display_name, u.email), u.id")
-    .all(["group_id": group_id, "competition_id": competition_filter, "bounded": bounded_int, "start_ms": start_ms, "end_ms": end_ms])
+  let rows = try a.db.query(
+    "SELECT u.id AS user_id, u.email, u.display_name, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) THEN p.points ELSE 0 END), 0) AS total_points, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 3 THEN 1 ELSE 0 END), 0) AS exact_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 1 THEN 1 ELSE 0 END), 0) AS outcome_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points IS NOT NULL THEN 1 ELSE 0 END), 0) AS played FROM group_members gm JOIN users u ON u.id = gm.user_id LEFT JOIN predictions p ON p.user_id = gm.user_id LEFT JOIN fixture_scoring_state s ON s.fixture_id = p.fixture_id WHERE gm.group_id = @group_id GROUP BY u.id, u.email, u.display_name ORDER BY total_points DESC, exact_count DESC, outcome_count DESC, COALESCE(u.display_name, u.email), u.id",
+  ).all(
+    [
+      "group_id": group_id,
+      "competition_id": competition_filter,
+      "bounded": bounded_int,
+      "start_ms": start_ms,
+      "end_ms": end_ms,
+    ],
+  )
   mut entries: [Entry] = []
-  for row in rows { entries.push(try decode_entry(row)) }
+  for row in rows {
+    entries.push(try decode_entry(row))
+  }
   Result::ok(entries)
 }
 
@@ -188,11 +200,8 @@ private fn same_score(a: Entry, b: Entry) Bool {
 }
 
 private fn entry_json(entry: Entry, rank: Int) [Str: Any] {
-  let user: [Str: Any] = [
-    "id": entry.user_id,
-    "email": entry.email,
-    "display_name": entry.display_name,
-  ]
+  let user: [Str: Any] = ["id": entry.user_id, "email": entry.email, "display_name": entry.display_name]
+
   let payload: [Str: Any] = [
     "rank": rank,
     "user": user,
@@ -201,6 +210,7 @@ private fn entry_json(entry: Entry, rank: Int) [Str: Any] {
     "outcome_count": entry.outcome_count,
     "played": entry.played,
   ]
+
   payload
 }
 
@@ -212,19 +222,21 @@ private fn decode_entry(row: Any) Entry!Str {
   let exact_count = try int_field(row, "exact_count")
   let outcome_count = try int_field(row, "outcome_count")
   let played = try int_field(row, "played")
-  Result::ok(Entry{
-    user_id: user_id,
-    email: email,
-    display_name: display_name,
-    total_points: total_points,
-    exact_count: exact_count,
-    outcome_count: outcome_count,
-    played: played,
-  })
+  Result::ok(
+    Entry{
+      user_id: user_id,
+      email: email,
+      display_name: display_name,
+      total_points: total_points,
+      exact_count: exact_count,
+      outcome_count: outcome_count,
+      played: played,
+    },
+  )
 }
 
-private fn parse_competition(r: mut http::Request) Int?!Str {
-  let raw = r.URL.Query().Get("competition_id")
+private fn parse_competition(r: dram::Request) Int?!Str {
+  let raw = r.query("competition_id").or("")
   match raw.is_empty() {
     true => Result::ok(Maybe::new()),
     false => {
@@ -240,4 +252,6 @@ private fn int_field(row: Any, name: Str) Int!Str {
   decode::run(row, decode::field(name, decode::int)).map_err(describe)
 }
 
-private fn describe(e: decode::Error) Str { e.to_str() }
+private fn describe(e: decode::Error) Str {
+  e.to_str()
+}

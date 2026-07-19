@@ -8,6 +8,4 @@ package tools
 
 import (
 	_ "github.com/akonwi/ard-sql/ffi"
-	_ "github.com/go-chi/chi/v5"
-	_ "github.com/go-chi/chi/v5/middleware"
 )

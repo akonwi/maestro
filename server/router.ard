@@ -1,5 +1,5 @@
-use go:github.com/go-chi/chi/v5 as chi
-use go:github.com/go-chi/chi/v5/middleware
+use dram
+use go:fmt
 use maestro/analysis
 use maestro/app
 use maestro/auth
@@ -8,14 +8,20 @@ use maestro/groups
 use maestro/health
 use maestro/leaderboards
 use maestro/predictions
+use go:time
 
 // Compose the full HTTP surface. Each domain owns its own routes; this
 // module is just the wiring diagram.
-fn build(a: app::App) mut chi::Mux {
-  let router = chi::NewRouter()
+fn build(a: app::App) dram::App {
+  mut router = dram::App::new()
 
-  router.Use(middleware::RequestID)
-  router.Use(middleware::Logger)
+  router.use_middleware(
+    fn(request: dram::Request, response: mut dram::Response, next: dram::Next) {
+      let started = time::Now()
+      next.run(request, response)
+      fmt::Println("{request.method} {request.path} {response.status} {time::Since(started).String()}")
+    },
+  )
 
   health::register(router, a)
   auth::register(router, a)
