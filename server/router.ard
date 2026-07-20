@@ -15,7 +15,7 @@ use go:time
 fn build(a: app::App) dram::App {
   mut router = dram::App::new()
 
-  router.use_middleware(
+  router.use(
     fn(request: dram::Request, response: mut dram::Response, next: dram::Next) {
       let started = time::Now()
       next.run(request, response)

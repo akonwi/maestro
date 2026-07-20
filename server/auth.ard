@@ -41,7 +41,7 @@ fn register(router: mut dram::App, a: app::App) {
   )
 
   mut protected = router.group("/")
-  protected.use_middleware(middleware(a))
+  protected.use(middleware(a))
   protected.get(
     "/auth/me",
     fn(r: dram::Request, w: mut dram::Response) {

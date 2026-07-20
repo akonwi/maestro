@@ -31,7 +31,7 @@ server/
 
 ## Prerequisites
 
-- [Ard 0.29.0](https://github.com/akonwi/ard) or newer on your `PATH` (`ard`)
+- Latest unreleased [Ard compiler](https://github.com/akonwi/ard) on your `PATH` (`ard-dev`)
 - [`migr`](https://github.com/akonwi/migr) on your `PATH`
 - Go 1.26+ (the Ard toolchain shells out to it)
 - [Bun](https://bun.sh) for running the e2e API tests
@@ -61,13 +61,13 @@ migr down        # roll back the last batch
 Run the server (compiles and runs in one step):
 
 ```sh
-ard run main.ard
+ard-dev run main.ard
 ```
 
 Or build a binary:
 
 ```sh
-ard build main.ard --out ./maestro-server
+ard-dev build main.ard --out ./maestro-server
 ./maestro-server
 ```
 
@@ -111,11 +111,12 @@ database paths.
 
 ## Docker
 
-The Dockerfile now uses Ard 0.29.0. The migration still depends on the sibling
-`../../dram` checkout, which is outside the Docker build context. Container
-builds remain blocked until Dram is available as a pinned Git dependency. The
-runtime image will continue to run `migr up` against `/data/maestro.db` once
-that dependency path is available.
+The Dockerfile uses Ard 0.29.0, but the current Dram API requires the latest
+`ard-dev` parser and still lives in the sibling `../../dram` checkout outside
+the Docker build context. Container builds remain blocked until the parser is
+released and Dram is available as a pinned Git dependency. The runtime image
+will continue to run `migr up` against `/data/maestro.db` once those build-time
+dependencies are available.
 
 ## Migrations
 

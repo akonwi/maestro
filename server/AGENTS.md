@@ -6,8 +6,8 @@ game. Read alongside `../docs/prediction-game-plan.md` (product + milestones).
 ## What this is
 
 An Ard HTTP service on SQLite. Ard compiles to Go; the HTTP layer uses the
-filesystem Dram dependency, which integrates with Go's `net/http`. The project
-requires the released Ard 0.29.0 compiler or newer.
+filesystem Dram dependency, which integrates with Go's `net/http`. The current
+Dram API requires the latest `ard-dev` parser.
 
 ## Module system reality
 
@@ -82,7 +82,7 @@ Stores own the SQL **and** the row-to-struct decoding. `sql` (the external
 `ard-sql` dep) returns rows as `[Any]` (each row is an `Any` map); the store
 decodes them into typed Ard structs using the external `decode` dep.
 Handlers are HTTP-only and never touch `sql` directly. Stores are the primary
-unit tested with `ard test` (`users_test.ard`, etc.).
+unit tested with `ard-dev test` (`users_test.ard`, etc.).
 
 ### Domain structs: colocated with their store
 
@@ -129,8 +129,8 @@ clear message. No config files.
 ```sh
 export DATABASE_URL=./dev.db
 migr up
-ard run main.ard          # or: ard build main.ard --out ./maestro-server
-ard test                  # runs *_test.ard (store-level unit tests)
+ard-dev run main.ard      # or: ard-dev build main.ard --out ./maestro-server
+ard-dev test              # runs *_test.ard (store-level unit tests)
 go test ./...             # runs ffi/*_test.go
 bun run test              # runs tests/*.test.ts (e2e API tests via bun:test)
 curl localhost:8080/health

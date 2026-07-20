@@ -20,7 +20,7 @@ struct Entry {
 
 fn register(router: mut dram::App, a: app::App) {
   mut protected = router.group("/")
-  protected.use_middleware(auth::middleware(a))
+  protected.use(auth::middleware(a))
   protected.get(
     "/groups/:id/leaderboard/season",
     fn(r: dram::Request, w: mut dram::Response) {

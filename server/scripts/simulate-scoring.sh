@@ -20,4 +20,4 @@ echo "Seeding scoring simulation into ${DATABASE_URL:-maestro.db} for group ${SI
 echo "Stop the Maestro server before continuing; restart it afterward to run scoring."
 
 migr up
-ard run simulate_scoring.ard
+ard-dev run simulate_scoring.ard

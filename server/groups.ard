@@ -36,7 +36,7 @@ struct InviteResult {
 
 fn register(router: mut dram::App, a: app::App) {
   mut protected = router.group("/")
-  protected.use_middleware(auth::middleware(a))
+  protected.use(auth::middleware(a))
   protected.get(
     "/groups",
     fn(r: dram::Request, w: mut dram::Response) {
