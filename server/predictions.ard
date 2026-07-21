@@ -36,52 +36,48 @@ struct GroupPrediction {
 fn register(router: mut dram::App, a: app::App) {
   mut protected = router.group("/")
   protected.use(auth::middleware(a))
-  protected.get(
-    "/fixtures/:id/prediction",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ { res.json(http::StatusBadRequest, ["error": "id must be an integer"]) }
-      let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+  protected.get("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
+    let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ {
+      res.json(http::StatusBadRequest, ["error": "id must be an integer"])
+    }
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
 
-      match find(a, user_id, fixture_id) {
-        ok(found) => {
-          match found {
-            prediction => res.json(http::StatusOK, prediction_json(prediction)),
-            _ => res.json(http::StatusNotFound, ["error": "prediction not found"]),
-          }
-        },
-        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-      }
-    },
-  )
-  protected.put(
-    "/fixtures/:id/prediction",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match request_int_param(req, "id", "fixture id") {
-        ok(fixture_id) => {
-          match fixture_id <= 0 {
-            true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
-            false => {
-              match auth::user_id(req) {
-                user_id => {
-                  match decode_scores(req) {
-                    ok(scores) => {
-                      match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-                        true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
-                        false => save_before_kickoff(a, res, user_id, fixture_id, scores),
-                      }
-                    },
-                    err(message) => res.json(http::StatusBadRequest, ["error": message]),
-                  }
-                },
-                _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-              }
-            },
-          }
-        },
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
-      }
-    },
-  )
+    match find(a, user_id, fixture_id) {
+      ok(found) => {
+        match found {
+          prediction => res.json(http::StatusOK, prediction_json(prediction)),
+          _ => res.json(http::StatusNotFound, ["error": "prediction not found"]),
+        }
+      },
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
+  protected.put("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
+    match request_int_param(req, "id", "fixture id") {
+      ok(fixture_id) => {
+        match fixture_id <= 0 {
+          true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
+          false => {
+            match auth::user_id(req) {
+              user_id => {
+                match decode_scores(req) {
+                  ok(scores) => {
+                    match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
+                      true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
+                      false => save_before_kickoff(a, res, user_id, fixture_id, scores),
+                    }
+                  },
+                  err(message) => res.json(http::StatusBadRequest, ["error": message]),
+                }
+              },
+              _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
+            }
+          },
+        }
+      },
+      err(message) => res.json(http::StatusBadRequest, ["error": message]),
+    }
+  })
   protected.get(
     "/groups/:groupId/fixtures/:fixtureId/predictions",
     fn(req: dram::Request, res: mut dram::Response) {
@@ -418,7 +414,11 @@ private fn prediction_json(prediction: Prediction) [Str: Any] {
 }
 
 private fn group_prediction_json(prediction: GroupPrediction) [Str: Any] {
-  let user: [Str: Any] = ["id": prediction.user_id, "email": prediction.email, "display_name": prediction.display_name]
+  let user: [Str: Any] = [
+    "id": prediction.user_id,
+    "email": prediction.email,
+    "display_name": prediction.display_name,
+  ]
 
   let payload: [Str: Any] = [
     "user": user,
@@ -447,11 +447,9 @@ private fn decode_scores(req: dram::Request) Scores!Str {
 private fn request_int_param(req: dram::Request, name: Str, label: Str) Int!Str {
   strconv::Atoi(
     req.param(name).or(""),
-  ).map_err(
-    fn(_: Str) {
-      "{label} must be an integer"
-    },
-  )
+  ).map_err(fn(_: Str) {
+    "{label} must be an integer"
+  })
 }
 
 private fn int_field(row: Any, name: Str) Int!Str {
