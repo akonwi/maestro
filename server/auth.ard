@@ -46,9 +46,10 @@ fn register(router: mut dram::App, a: app::App) {
   router.post(
     "/auth/verify",
     fn(req: dram::Request, res: mut dram::Response) {
-      match do_verify(a, req) {
+      let token = try decode_field(req, "token") -> err { set_error(res, err) }
+      match verify(a, token) {
         ok(payload) => res.json(http::StatusOK, payload),
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
+        err(message) => set_error(res, message),
       }
     },
   )
@@ -99,10 +100,6 @@ fn register(router: mut dram::App, a: app::App) {
   )
 }
 
-// -----------------------------------------------------------------------
-// do_* worker functions
-// -----------------------------------------------------------------------
-
 // We deliberately never leak whether the email is known.
 private fn send_magic_link(a: app::App, address: Str) Void!Str {
   let token = try magic_links::create(a, address)
@@ -120,9 +117,7 @@ private fn send_magic_link(a: app::App, address: Str) Void!Str {
   }
 }
 
-// POST /auth/verify { token } -> { session_token, user }
-private fn do_verify(a: app::App, req: dram::Request) [Str: Any]!Str {
-  let token = try decode_field(req, "token")
+private fn verify(a: app::App, token: Str) [Str: Any]!Str {
   let addr = try magic_links::consume(a, token)
   let user = try users::get_or_create_by_email(a, addr)
   let session = try sessions::mint(a, user.id)
