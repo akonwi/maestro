@@ -21,9 +21,11 @@ export function FixtureRow({ fixture }: { fixture: Fixture }) {
         <div className='whitespace-nowrap font-mono text-sm font-semibold tabular-nums'>
           {timeFormatter.format(fixture.kickoff_at)}
         </div>
-        <div className='mt-1 text-[.6875rem] text-muted-foreground'>
-          {fixtureStatusLabel(fixture.status)}
-        </div>
+        {fixture.status === 'NS' ? null : (
+          <div className='mt-1 text-[.6875rem] text-muted-foreground'>
+            {fixtureStatusLabel(fixture.status)}
+          </div>
+        )}
       </div>
       <div className='grid gap-2 sm:grid-cols-[1fr_3rem_1fr] sm:items-center'>
         <Team crestId={fixture.home_team.id} name={fixture.home_team.name} />
