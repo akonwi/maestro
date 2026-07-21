@@ -24,44 +24,36 @@ fn register(router: mut dram::App, a: app::App) {
   protected.get(
     "/groups/:id/leaderboard/season",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_season(a, res, req)
+      match strconv::Atoi(req.param("id").or("")) {
+        err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
+        ok(group_id) => {
+          match parse_competition(req) {
+            err(message) => response::fail(res, http::StatusBadRequest, message),
+            ok(competition_id) => authorize_and_respond(a, res, req, group_id, competition_id),
+          }
+        },
+      }
     },
   )
   protected.get(
     "/groups/:id/leaderboard/week",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_week(a, res, req)
-    },
-  )
-}
-
-private fn handle_season(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match strconv::Atoi(req.param("id").or("")) {
-    err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
-    ok(group_id) => {
-      match parse_competition(req) {
-        err(message) => response::fail(res, http::StatusBadRequest, message),
-        ok(competition_id) => authorize_and_respond(a, res, req, group_id, competition_id),
-      }
-    },
-  }
-}
-
-private fn handle_week(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match strconv::Atoi(req.param("id").or("")) {
-    err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
-    ok(group_id) => {
-      match parse_competition(req) {
-        err(message) => response::fail(res, http::StatusBadRequest, message),
-        ok(competition_id) => {
-          match week::current(req.query("week").or("")) {
+      match strconv::Atoi(req.param("id").or("")) {
+        err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
+        ok(group_id) => {
+          match parse_competition(req) {
             err(message) => response::fail(res, http::StatusBadRequest, message),
-            ok(bounds) => authorize_and_respond_week(a, res, req, group_id, competition_id, bounds),
+            ok(competition_id) => {
+              match week::current(req.query("week").or("")) {
+                err(message) => response::fail(res, http::StatusBadRequest, message),
+                ok(bounds) => authorize_and_respond_week(a, res, req, group_id, competition_id, bounds),
+              }
+            },
           }
         },
       }
     },
-  }
+  )
 }
 
 private fn authorize_and_respond(

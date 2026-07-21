@@ -18,25 +18,51 @@ fn register(router: mut dram::App, a: app::App) {
   router.post(
     "/auth/request",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_request(a, res, req)
+      match do_request(a, req) {
+        ok => response::no_content(res),
+        err(message) => response::fail(res, http::StatusBadRequest, message),
+      }
     },
   )
+  // GET /auth/verify?token=X -> 302 to the web app. Never consumes.
   router.get(
     "/auth/verify",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_verify_redirect(a, res, req)
+      let token = req.query("token").or("")
+      match token.is_empty() {
+        true => response::fail(res, http::StatusBadRequest, "missing token"),
+        false => {
+          let target = "{a.config.app_base_url}/auth/verify?token={token}"
+          res.header("Location", target)
+          res.status = http::StatusFound
+        },
+      }
     },
   )
   router.post(
     "/auth/verify",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_verify(a, res, req)
+      match do_verify(a, req) {
+        ok(payload) => response::json_response(res, http::StatusOK, payload),
+        err(message) => response::fail(res, http::StatusBadRequest, message),
+      }
     },
   )
   router.post(
     "/auth/logout",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_logout(a, res, req)
+      let token = bearer_token(req)
+      match token.is_empty() {
+        true => response::fail(res, http::StatusUnauthorized, "missing or invalid bearer token"),
+        false => {
+          match sessions::delete(a, token) {
+            ok => response::no_content(res),
+            err(message) => {
+              response::fail(res, http::StatusInternalServerError, "could not delete session: {message}")
+            },
+          }
+        },
+      }
     },
   )
 
@@ -45,57 +71,28 @@ fn register(router: mut dram::App, a: app::App) {
   protected.get(
     "/auth/me",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_me(a, res, req)
-    },
-  )
-}
+      match user_id(req) {
+        user_id => {
+          match users::find_by_id(a, user_id) {
+            ok(found) => {
+              match found {
+                user => {
+                  let payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
 
-// -----------------------------------------------------------------------
-// Handler shells: each one runs a small pure-ish Result-returning
-// function and translates the outcome to an HTTP response. Keeps status
-// codes in the shell, business logic in the do_* function.
-// -----------------------------------------------------------------------
-
-private fn handle_request(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match do_request(a, req) {
-    ok => response::no_content(res),
-    err(message) => response::fail(res, http::StatusBadRequest, message),
-  }
-}
-
-private fn handle_verify(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match do_verify(a, req) {
-    ok(payload) => response::json_response(res, http::StatusOK, payload),
-    err(message) => response::fail(res, http::StatusBadRequest, message),
-  }
-}
-
-private fn handle_logout(a: app::App, res: mut dram::Response, req: dram::Request) {
-  let token = bearer_token(req)
-  match token.is_empty() {
-    true => response::fail(res, http::StatusUnauthorized, "missing or invalid bearer token"),
-    false => {
-      match sessions::delete(a, token) {
-        ok => response::no_content(res),
-        err(message) => {
-          response::fail(res, http::StatusInternalServerError, "could not delete session: {message}")
+                  response::json_response(res, http::StatusOK, payload)
+                },
+                _ => response::fail(res, http::StatusUnauthorized, "authenticated user no longer exists"),
+              }
+            },
+            err(message) => {
+              response::fail(res, http::StatusInternalServerError, "could not load current user: {message}")
+            },
+          }
         },
+        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
       }
     },
-  }
-}
-
-// GET /auth/verify?token=X -> 302 to the web app. Never consumes.
-private fn handle_verify_redirect(a: app::App, res: mut dram::Response, req: dram::Request) {
-  let token = req.query("token").or("")
-  match token.is_empty() {
-    true => response::fail(res, http::StatusBadRequest, "missing token"),
-    false => {
-      let target = "{a.config.app_base_url}/auth/verify?token={token}"
-      res.header("Location", target)
-      res.status = http::StatusFound
-    },
-  }
+  )
 }
 
 // -----------------------------------------------------------------------
@@ -180,29 +177,6 @@ fn user_id(req: dram::Request) Int? {
   match context::value(req.context(), USER_ID_KEY) {
     value => unsafe::cast<Int>(value),
     _ => Maybe::new(),
-  }
-}
-
-private fn handle_me(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match user_id(req) {
-    user_id => {
-      match users::find_by_id(a, user_id) {
-        ok(found) => {
-          match found {
-            user => {
-              let payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
-
-              response::json_response(res, http::StatusOK, payload)
-            },
-            _ => response::fail(res, http::StatusUnauthorized, "authenticated user no longer exists"),
-          }
-        },
-        err(message) => {
-          response::fail(res, http::StatusInternalServerError, "could not load current user: {message}")
-        },
-      }
-    },
-    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
   }
 }
 

@@ -40,70 +40,87 @@ fn register(router: mut dram::App, a: app::App) {
   protected.get(
     "/fixtures/:id/prediction",
     fn(req: dram::Request, res: mut dram::Response) {
-      handle_current(a, res, req)
-    },
-  )
-  protected.put(
-    "/fixtures/:id/prediction",
-    fn(req: dram::Request, res: mut dram::Response) {
-      handle_upsert(a, res, req)
-    },
-  )
-  protected.get(
-    "/groups/:groupId/fixtures/:fixtureId/predictions",
-    fn(req: dram::Request, res: mut dram::Response) {
-      handle_group(a, res, req)
-    },
-  )
-}
-
-private fn handle_current(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match request_int_param(req, "id", "fixture id") {
-    ok(fixture_id) => {
-      match auth::user_id(req) {
-        user_id => {
-          match find(a, user_id, fixture_id) {
-            ok(found) => {
-              match found {
-                prediction => response::json_response(res, http::StatusOK, prediction_json(prediction)),
-                _ => response::fail(res, http::StatusNotFound, "prediction not found"),
-              }
-            },
-            err(message) => response::fail(res, http::StatusInternalServerError, message),
-          }
-        },
-        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
-      }
-    },
-    err(message) => response::fail(res, http::StatusBadRequest, message),
-  }
-}
-
-private fn handle_upsert(a: app::App, res: mut dram::Response, req: dram::Request) {
-  match request_int_param(req, "id", "fixture id") {
-    ok(fixture_id) => {
-      match fixture_id <= 0 {
-        true => response::fail(res, http::StatusBadRequest, "fixture id must be positive"),
-        false => {
+      match request_int_param(req, "id", "fixture id") {
+        ok(fixture_id) => {
           match auth::user_id(req) {
             user_id => {
-              match decode_scores(req) {
-                ok(scores) => {
-                  match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-                    true => response::fail(res, http::StatusBadRequest, "scores must be between 0 and 99"),
-                    false => save_before_kickoff(a, res, user_id, fixture_id, scores),
+              match find(a, user_id, fixture_id) {
+                ok(found) => {
+                  match found {
+                    prediction => response::json_response(res, http::StatusOK, prediction_json(prediction)),
+                    _ => response::fail(res, http::StatusNotFound, "prediction not found"),
                   }
                 },
-                err(message) => response::fail(res, http::StatusBadRequest, message),
+                err(message) => response::fail(res, http::StatusInternalServerError, message),
               }
             },
             _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
           }
         },
+        err(message) => response::fail(res, http::StatusBadRequest, message),
       }
     },
-    err(message) => response::fail(res, http::StatusBadRequest, message),
-  }
+  )
+  protected.put(
+    "/fixtures/:id/prediction",
+    fn(req: dram::Request, res: mut dram::Response) {
+      match request_int_param(req, "id", "fixture id") {
+        ok(fixture_id) => {
+          match fixture_id <= 0 {
+            true => response::fail(res, http::StatusBadRequest, "fixture id must be positive"),
+            false => {
+              match auth::user_id(req) {
+                user_id => {
+                  match decode_scores(req) {
+                    ok(scores) => {
+                      match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
+                        true => response::fail(res, http::StatusBadRequest, "scores must be between 0 and 99"),
+                        false => save_before_kickoff(a, res, user_id, fixture_id, scores),
+                      }
+                    },
+                    err(message) => response::fail(res, http::StatusBadRequest, message),
+                  }
+                },
+                _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+              }
+            },
+          }
+        },
+        err(message) => response::fail(res, http::StatusBadRequest, message),
+      }
+    },
+  )
+  protected.get(
+    "/groups/:groupId/fixtures/:fixtureId/predictions",
+    fn(req: dram::Request, res: mut dram::Response) {
+      let group_id = request_int_param(req, "groupId", "group id")
+      let fixture_id = request_int_param(req, "fixtureId", "fixture id")
+      match group_id {
+        ok(group_value) => {
+          match fixture_id {
+            ok(fixture_value) => {
+              match auth::user_id(req) {
+                user_id => {
+                  match groups::find_for_member(a, group_value, user_id) {
+                    ok(found) => {
+                      match found {
+                        _group => respond_group_predictions(a, res, group_value, fixture_value),
+                        _ => response::fail(res, http::StatusNotFound, "group not found"),
+                      }
+                    },
+                    err(message) => response::fail(res, http::StatusInternalServerError, message),
+                  }
+                },
+                _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+              }
+            },
+            err(message) => response::fail(res, http::StatusBadRequest, message),
+          }
+        },
+        err(message) => response::fail(res, http::StatusBadRequest, message),
+      }
+    },
+  )
 }
 
 struct Scores {
@@ -199,35 +216,6 @@ private fn save_for_competition(
         _ => response::fail(res, http::StatusNotFound, "fixture competition is not active"),
       }
     },
-  }
-}
-
-private fn handle_group(a: app::App, res: mut dram::Response, req: dram::Request) {
-  let group_id = request_int_param(req, "groupId", "group id")
-  let fixture_id = request_int_param(req, "fixtureId", "fixture id")
-  match group_id {
-    ok(group_value) => {
-      match fixture_id {
-        ok(fixture_value) => {
-          match auth::user_id(req) {
-            user_id => {
-              match groups::find_for_member(a, group_value, user_id) {
-                ok(found) => {
-                  match found {
-                    _group => respond_group_predictions(a, res, group_value, fixture_value),
-                    _ => response::fail(res, http::StatusNotFound, "group not found"),
-                  }
-                },
-                err(message) => response::fail(res, http::StatusInternalServerError, message),
-              }
-            },
-            _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
-          }
-        },
-        err(message) => response::fail(res, http::StatusBadRequest, message),
-      }
-    },
-    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
