@@ -2,31 +2,28 @@
 
 The backend for the Maestro prediction game (see `../docs/prediction-game-plan.md`).
 
-Written in [Ard](https://github.com/akonwi/ard), backed by SQLite, deployed to
-Zeabur as a container.
+Written in [Ard](https://github.com/akonwi/ard) and backed by SQLite.
 
 ## Stack
 
-- **Ard** compiles to Go; HTTP via Go interop with [chi](https://github.com/go-chi/chi).
-- **SQLite** via a pure-Go driver (`modernc.org/sqlite`), wrapped by a small
-  Go FFI package (`ffi/db.go`) and the Ard `sql` module (`sql.ard`).
+- **Ard** compiles to Go; HTTP via a pinned [Dram](https://github.com/akonwi/dram) dependency backed by `net/http`.
+- **SQLite** via the external `ard-sql` dependency and its pure-Go driver.
 - **Migrations** via the published, CGO-free [`migr`](https://github.com/akonwi/migr)
   release with pure-Go SQLite. The Docker image downloads the platform-specific
   artifact; locally, install migr through Homebrew.
-- **JSON decoding** via the local `decode` module (`decode.ard`), copied from
-  tinear; there is no `ard/json`/`ard/decode` stdlib in the current compiler.
+- **JSON decoding** via the external `ard-decode` dependency.
 
 ## Layout
 
 ```
 server/
 ├── ard.toml            # Ard project manifest
-├── go.mod / go.sum     # Go deps (chi, modernc sqlite) for interop
+├── go.mod / go.sum     # Go dependencies retained for Ard interop
 ├── tools.go            # build-tagged; pins interop-only deps for `go mod tidy`
-├── main.ard            # entrypoint: chi server + /health
-├── sql.ard             # Ard wrapper over Go database/sql
-├── decode.ard          # composable JSON decoders (local module)
-├── ffi/db.go           # Go-side SQLite handle the sql module calls
+├── main.ard            # entrypoint: net/http server with a Dram handler
+├── router.ard          # Dram routes and global middleware
+├── response.ard        # JSON response and error-envelope helpers
+├── ffi/cache.go        # concurrency-safe in-memory TTL cache
 ├── migrations/         # migr up/down SQL files
 ├── Dockerfile          # multi-stage: builds Ard compiler, server, grabs migr
 └── entrypoint.sh       # runs `migr up` then the server
@@ -34,7 +31,7 @@ server/
 
 ## Prerequisites
 
-- [Ard compiler](https://github.com/akonwi/ard) on your `PATH` (`ard`)
+- [Ard 0.30.0](https://github.com/akonwi/ard) or newer on your `PATH` (`ard`)
 - [`migr`](https://github.com/akonwi/migr) on your `PATH`
 - Go 1.26+ (the Ard toolchain shells out to it)
 - [Bun](https://bun.sh) for running the e2e API tests
@@ -119,8 +116,9 @@ docker build -t maestro-server .
 docker run --rm -p 8080:8080 -v "$PWD/data:/data" maestro-server
 ```
 
-The container runs `migr up` against `/data/maestro.db` before starting the
-server. Mount a volume at `/data` for persistence (Zeabur does this).
+The image uses Ard 0.30.0 and resolves Dram from its pinned Git commit. It runs
+`migr up` against `/data/maestro.db` before starting the server. Mount a volume
+at `/data` for persistence.
 
 ## Migrations
 

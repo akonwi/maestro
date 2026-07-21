@@ -1,59 +1,51 @@
-use go:fmt
-use go:github.com/go-chi/chi/v5 as chi
-use go:io
-use go:maestro/ffi
-use go:net/http
-use go:strings
-use maestro/app
+use ard/unsafe
+
 use decode
+use dram
+use dram/context
+use go:fmt
+use maestro/app
 use maestro/email
 use maestro/magic_links
 use maestro/response
 use maestro/sessions
 use maestro/users
+use go:net/http
+use go:strings
 
 // Wire public auth endpoints and the middleware-protected current-user route.
-fn register(router: mut chi::Mux, a: app::App) {
-  router.Post(
+fn register(router: mut dram::App, a: app::App) {
+  router.post(
     "/auth/request",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_request(a, w, r)
     },
   )
-  router.Get(
+  router.get(
     "/auth/verify",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_verify_redirect(a, w, r)
     },
   )
-  router.Post(
+  router.post(
     "/auth/verify",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_verify(a, w, r)
     },
   )
-  router.Post(
+  router.post(
     "/auth/logout",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_logout(a, w, r)
     },
   )
 
-  router.Group(
-    fn(protected: chi::Router) {
-      protected.Use(
-        ffi::AuthMiddleware(
-          fn(r: mut http::Request) Int? {
-            authenticate(a, r)
-          },
-        ),
-      )
-      protected.Get(
-        "/auth/me",
-        fn(w: http::ResponseWriter, r: mut http::Request) {
-          handle_me(a, w, r)
-        },
-      )
+  mut protected = router.group("/")
+  protected.use(middleware(a))
+  protected.get(
+    "/auth/me",
+    fn(r: dram::Request, w: mut dram::Response) {
+      handle_me(a, w, r)
     },
   )
 }
@@ -64,46 +56,44 @@ fn register(router: mut chi::Mux, a: app::App) {
 // codes in the shell, business logic in the do_* function.
 // -----------------------------------------------------------------------
 
-private fn handle_request(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+private fn handle_request(a: app::App, w: mut dram::Response, r: dram::Request) {
   match do_request(a, r) {
     ok => response::no_content(w),
     err(message) => response::fail(w, http::StatusBadRequest, message),
   }
 }
 
-private fn handle_verify(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+private fn handle_verify(a: app::App, w: mut dram::Response, r: dram::Request) {
   match do_verify(a, r) {
     ok(payload) => response::json_response(w, http::StatusOK, payload),
     err(message) => response::fail(w, http::StatusBadRequest, message),
   }
 }
 
-private fn handle_logout(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+private fn handle_logout(a: app::App, w: mut dram::Response, r: dram::Request) {
   let token = bearer_token(r)
   match token.is_empty() {
     true => response::fail(w, http::StatusUnauthorized, "missing or invalid bearer token"),
     false => {
       match sessions::delete(a, token) {
         ok => response::no_content(w),
-        err(message) => response::fail(
-          w,
-          http::StatusInternalServerError,
-          "could not delete session: {message}",
-        ),
+        err(message) => {
+          response::fail(w, http::StatusInternalServerError, "could not delete session: {message}")
+        },
       }
     },
   }
 }
 
 // GET /auth/verify?token=X -> 302 to the web app. Never consumes.
-private fn handle_verify_redirect(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let token = r.URL.Query().Get("token")
+private fn handle_verify_redirect(a: app::App, w: mut dram::Response, r: dram::Request) {
+  let token = r.query("token").or("")
   match token.is_empty() {
     true => response::fail(w, http::StatusBadRequest, "missing token"),
     false => {
       let target = "{a.config.app_base_url}/auth/verify?token={token}"
-      w.Header().Set("Location", target)
-      w.WriteHeader(http::StatusFound)
+      w.header("Location", target)
+      w.status = http::StatusFound
     },
   }
 }
@@ -114,7 +104,7 @@ private fn handle_verify_redirect(a: app::App, w: http::ResponseWriter, r: mut h
 
 // POST /auth/request { email }
 // We deliberately never leak whether the email is known.
-private fn do_request(a: app::App, r: mut http::Request) Void!Str {
+private fn do_request(a: app::App, r: dram::Request) Void!Str {
   let addr = try decode_field(r, "email")
   let token = try magic_links::create(a, addr)
   let link = "{a.config.server_base_url}/auth/verify?token={token}"
@@ -132,27 +122,22 @@ private fn do_request(a: app::App, r: mut http::Request) Void!Str {
 }
 
 // POST /auth/verify { token } -> { session_token, user }
-private fn do_verify(a: app::App, r: mut http::Request) [Str: Any]!Str {
+private fn do_verify(a: app::App, r: dram::Request) [Str: Any]!Str {
   let token = try decode_field(r, "token")
   let addr = try magic_links::consume(a, token)
   let user = try users::get_or_create_by_email(a, addr)
   let session = try sessions::mint(a, user.id)
 
-  let user_payload: [Str: Any] = [
-    "id": user.id,
-    "email": user.email,
-    "display_name": user.display_name,
-  ]
-  let payload: [Str: Any] = [
-    "session_token": session.token,
-    "user": user_payload,
-  ]
+  let user_payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
+
+  let payload: [Str: Any] = ["session_token": session.token, "user": user_payload]
+
   Result::ok(payload)
 }
 
-// Authenticate a request for AuthMiddleware. Database failures are logged
+// Authenticate a request for Dram middleware. Database failures are logged
 // server-side and intentionally collapse to an unauthenticated result.
-fn authenticate(a: app::App, r: mut http::Request) Int? {
+fn authenticate(a: app::App, r: dram::Request) Int? {
   let token = bearer_token(r)
   match token.is_empty() {
     true => Maybe::new(),
@@ -173,28 +158,48 @@ fn authenticate(a: app::App, r: mut http::Request) Int? {
   }
 }
 
-private fn handle_me(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  match ffi::UserID(r) {
+private struct UserIdKey {
+  marker: Int,
+}
+
+let USER_ID_KEY = UserIdKey{marker: 0}
+
+fn middleware(a: app::App) dram::Middleware {
+  fn(r: dram::Request, w: mut dram::Response, next: dram::Next) {
+    match authenticate(a, r) {
+      user_id => {
+        let derived = context::with_value(r.context(), USER_ID_KEY, user_id)
+        next.run(r.with_context(derived), w)
+      },
+      _ => response::fail(w, http::StatusUnauthorized, "missing, invalid, or expired bearer token"),
+    }
+  }
+}
+
+fn user_id(r: dram::Request) Int? {
+  match context::value(r.context(), USER_ID_KEY) {
+    value => unsafe::cast<Int>(value),
+    _ => Maybe::new(),
+  }
+}
+
+private fn handle_me(a: app::App, w: mut dram::Response, r: dram::Request) {
+  match user_id(r) {
     user_id => {
       match users::find_by_id(a, user_id) {
         ok(found) => {
           match found {
             user => {
-              let payload: [Str: Any] = [
-                "id": user.id,
-                "email": user.email,
-                "display_name": user.display_name,
-              ]
+              let payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
+
               response::json_response(w, http::StatusOK, payload)
             },
             _ => response::fail(w, http::StatusUnauthorized, "authenticated user no longer exists"),
           }
         },
-        err(message) => response::fail(
-          w,
-          http::StatusInternalServerError,
-          "could not load current user: {message}",
-        ),
+        err(message) => {
+          response::fail(w, http::StatusInternalServerError, "could not load current user: {message}")
+        },
       }
     },
     _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
@@ -204,7 +209,7 @@ private fn handle_me(a: app::App, w: http::ResponseWriter, r: mut http::Request)
 // Read a single string field from a JSON request body. All the M2 auth
 // bodies are simple `{ "field": "value" }` shapes. Every failure gets
 // the same `invalid request:` prefix so clients see a consistent shape.
-private fn decode_field(r: mut http::Request, name: Str) Str!Str {
+private fn decode_field(r: dram::Request, name: Str) Str!Str {
   let body = try read_body(r).map_err(prefix_invalid_request)
   match body.is_empty() {
     true => Result::err("empty request body"),
@@ -215,15 +220,14 @@ private fn decode_field(r: mut http::Request, name: Str) Str!Str {
   }
 }
 
-private fn read_body(r: mut http::Request) Str!Str {
-  let bytes = try io::ReadAll(r.Body)
-  Result::ok(Str::from(bytes))
+private fn read_body(r: dram::Request) Str!Str {
+  Result::ok(Str::from(r.body))
 }
 
 // Extract the token from a Bearer Authorization header. Returns "" if
 // the header is missing or malformed.
-private fn bearer_token(r: mut http::Request) Str {
-  let auth = r.Header.Get("Authorization")
+private fn bearer_token(r: dram::Request) Str {
+  let auth = r.header("Authorization").or("")
   match auth.starts_with("Bearer ") {
     true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
     false => "",

@@ -1,18 +1,17 @@
 use decode
-use go:github.com/go-chi/chi/v5 as chi
-use go:io
-use go:maestro/ffi
-use go:net/http
-use go:strconv
-use go:time
+use dram
 use maestro/api_football
 use maestro/app
 use maestro/auth
 use maestro/competitions
+use go:maestro/ffi
 use maestro/groups
 use maestro/response
 use maestro/scoring_state
+use go:net/http
 use sql
+use go:strconv
+use go:time
 
 struct Prediction {
   id: Int,
@@ -35,34 +34,33 @@ struct GroupPrediction {
   updated_at: Int64,
 }
 
-fn register(router: mut chi::Mux, a: app::App) {
-  router.Group(
-    fn(protected: chi::Router) {
-      protected.Use(
-        ffi::AuthMiddleware(
-          fn(r: mut http::Request) Int? { auth::authenticate(a, r) },
-        ),
-      )
-      protected.Get(
-        "/fixtures/\{id\}/prediction",
-        fn(w: http::ResponseWriter, r: mut http::Request) { handle_current(a, w, r) },
-      )
-      protected.Put(
-        "/fixtures/\{id\}/prediction",
-        fn(w: http::ResponseWriter, r: mut http::Request) { handle_upsert(a, w, r) },
-      )
-      protected.Get(
-        "/groups/\{groupId\}/fixtures/\{fixtureId\}/predictions",
-        fn(w: http::ResponseWriter, r: mut http::Request) { handle_group(a, w, r) },
-      )
+fn register(router: mut dram::App, a: app::App) {
+  mut protected = router.group("/")
+  protected.use(auth::middleware(a))
+  protected.get(
+    "/fixtures/:id/prediction",
+    fn(r: dram::Request, w: mut dram::Response) {
+      handle_current(a, w, r)
+    },
+  )
+  protected.put(
+    "/fixtures/:id/prediction",
+    fn(r: dram::Request, w: mut dram::Response) {
+      handle_upsert(a, w, r)
+    },
+  )
+  protected.get(
+    "/groups/:groupId/fixtures/:fixtureId/predictions",
+    fn(r: dram::Request, w: mut dram::Response) {
+      handle_group(a, w, r)
     },
   )
 }
 
-private fn handle_current(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+private fn handle_current(a: app::App, w: mut dram::Response, r: dram::Request) {
   match request_int_param(r, "id", "fixture id") {
     ok(fixture_id) => {
-      match ffi::UserID(r) {
+      match auth::user_id(r) {
         user_id => {
           match find(a, user_id, fixture_id) {
             ok(found) => {
@@ -81,13 +79,13 @@ private fn handle_current(a: app::App, w: http::ResponseWriter, r: mut http::Req
   }
 }
 
-private fn handle_upsert(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+private fn handle_upsert(a: app::App, w: mut dram::Response, r: dram::Request) {
   match request_int_param(r, "id", "fixture id") {
     ok(fixture_id) => {
       match fixture_id <= 0 {
         true => response::fail(w, http::StatusBadRequest, "fixture id must be positive"),
         false => {
-          match ffi::UserID(r) {
+          match auth::user_id(r) {
             user_id => {
               match decode_scores(r) {
                 ok(scores) => {
@@ -108,11 +106,14 @@ private fn handle_upsert(a: app::App, w: http::ResponseWriter, r: mut http::Requ
   }
 }
 
-struct Scores { home: Int, away: Int }
+struct Scores {
+  home: Int,
+  away: Int,
+}
 
 private fn save_before_kickoff(
   a: app::App,
-  w: http::ResponseWriter,
+  w: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
@@ -126,7 +127,7 @@ private fn save_before_kickoff(
 
 private fn check_existing_lock(
   a: app::App,
-  w: http::ResponseWriter,
+  w: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
@@ -150,7 +151,7 @@ private fn check_existing_lock(
 
 private fn fetch_and_save(
   a: app::App,
-  w: http::ResponseWriter,
+  w: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
@@ -174,7 +175,7 @@ private fn fetch_and_save(
 
 private fn save_for_competition(
   a: app::App,
-  w: http::ResponseWriter,
+  w: mut dram::Response,
   user_id: Int,
   fixture: api_football::Fixture,
   scores: Scores,
@@ -201,14 +202,14 @@ private fn save_for_competition(
   }
 }
 
-private fn handle_group(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
+private fn handle_group(a: app::App, w: mut dram::Response, r: dram::Request) {
   let group_id = request_int_param(r, "groupId", "group id")
   let fixture_id = request_int_param(r, "fixtureId", "fixture id")
   match group_id {
     ok(group_value) => {
       match fixture_id {
         ok(fixture_value) => {
-          match ffi::UserID(r) {
+          match auth::user_id(r) {
             user_id => {
               match groups::find_for_member(a, group_value, user_id) {
                 ok(found) => {
@@ -230,11 +231,18 @@ private fn handle_group(a: app::App, w: http::ResponseWriter, r: mut http::Reque
   }
 }
 
-private fn respond_group_predictions(a: app::App, w: http::ResponseWriter, group_id: Int, fixture_id: Int) {
+private fn respond_group_predictions(
+  a: app::App,
+  w: mut dram::Response,
+  group_id: Int,
+  fixture_id: Int,
+) {
   match list_for_group(a, group_id, fixture_id) {
     ok(predictions) => {
       mut payload: [Any] = []
-      for prediction in predictions { payload.push(group_prediction_json(prediction)) }
+      for prediction in predictions {
+        payload.push(group_prediction_json(prediction))
+      }
       response::json_response(w, http::StatusOK, payload)
     },
     err(message) => response::fail(w, http::StatusInternalServerError, message),
@@ -249,7 +257,15 @@ fn upsert_with_state(
   home_score: Int,
   away_score: Int,
 ) Prediction!Str {
-  upsert_with_state_at(a, user_id, competition_id, fixture, home_score, away_score, time::Now().UnixMilli())
+  upsert_with_state_at(
+    a,
+    user_id,
+    competition_id,
+    fixture,
+    home_score,
+    away_score,
+    time::Now().UnixMilli(),
+  )
 }
 
 fn upsert_with_state_at(
@@ -289,16 +305,18 @@ private fn upsert_with_state_tx(
 ) Prediction!Str {
   try scoring_state::ensure_prediction_open(tx, fixture.id, fixture.kickoff_at, now)
 
-  try tx
-    .query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, @created_at, @updated_at) ON CONFLICT(user_id, fixture_id) DO UPDATE SET home_score = @home_score, away_score = @away_score, points = NULL, updated_at = @updated_at")
-    .run([
+  try tx.query(
+    "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, @created_at, @updated_at) ON CONFLICT(user_id, fixture_id) DO UPDATE SET home_score = @home_score, away_score = @away_score, points = NULL, updated_at = @updated_at",
+  ).run(
+    [
       "user_id": user_id,
       "fixture_id": fixture.id,
       "home_score": home_score,
       "away_score": away_score,
       "created_at": now,
       "updated_at": now,
-    ])
+    ],
+  )
 
   try scoring_state::upsert_pending(
     tx,
@@ -309,9 +327,9 @@ private fn upsert_with_state_tx(
     now,
   )
 
-  let row = try tx
-    .query("SELECT id, user_id, fixture_id, home_score, away_score, points, created_at, updated_at FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id LIMIT 1")
-    .first(["user_id": user_id, "fixture_id": fixture.id])
+  let row = try tx.query(
+    "SELECT id, user_id, fixture_id, home_score, away_score, points, created_at, updated_at FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id LIMIT 1",
+  ).first(["user_id": user_id, "fixture_id": fixture.id])
   match row {
     value => decode_prediction(value),
     _ => Result::err("saved prediction vanished"),
@@ -320,16 +338,18 @@ private fn upsert_with_state_tx(
 
 fn upsert(a: app::App, user_id: Int, fixture_id: Int, home_score: Int, away_score: Int) Prediction!Str {
   let now = time::Now().UnixMilli()
-  try a.db
-    .query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, @created_at, @updated_at) ON CONFLICT(user_id, fixture_id) DO UPDATE SET home_score = @home_score, away_score = @away_score, points = NULL, updated_at = @updated_at")
-    .run([
+  try a.db.query(
+    "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, @created_at, @updated_at) ON CONFLICT(user_id, fixture_id) DO UPDATE SET home_score = @home_score, away_score = @away_score, points = NULL, updated_at = @updated_at",
+  ).run(
+    [
       "user_id": user_id,
       "fixture_id": fixture_id,
       "home_score": home_score,
       "away_score": away_score,
       "created_at": now,
       "updated_at": now,
-    ])
+    ],
+  )
   let found = try find(a, user_id, fixture_id)
   match found {
     prediction => Result::ok(prediction),
@@ -338,9 +358,9 @@ fn upsert(a: app::App, user_id: Int, fixture_id: Int, home_score: Int, away_scor
 }
 
 fn find(a: app::App, user_id: Int, fixture_id: Int) Prediction?!Str {
-  let rows = try a.db
-    .query("SELECT id, user_id, fixture_id, home_score, away_score, points, created_at, updated_at FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id LIMIT 1")
-    .all(["user_id": user_id, "fixture_id": fixture_id])
+  let rows = try a.db.query(
+    "SELECT id, user_id, fixture_id, home_score, away_score, points, created_at, updated_at FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id LIMIT 1",
+  ).all(["user_id": user_id, "fixture_id": fixture_id])
   match rows.at(0) {
     row => Result::ok(Maybe::new(try decode_prediction(row))),
     _ => Result::ok(Maybe::new()),
@@ -348,11 +368,13 @@ fn find(a: app::App, user_id: Int, fixture_id: Int) Prediction?!Str {
 }
 
 fn list_for_group(a: app::App, group_id: Int, fixture_id: Int) [GroupPrediction]!Str {
-  let rows = try a.db
-    .query("SELECT u.id AS user_id, u.email, u.display_name, p.home_score, p.away_score, p.points, p.updated_at FROM predictions p JOIN group_members gm ON gm.user_id = p.user_id AND gm.group_id = @group_id JOIN users u ON u.id = p.user_id WHERE p.fixture_id = @fixture_id ORDER BY p.updated_at, u.id")
-    .all(["group_id": group_id, "fixture_id": fixture_id])
+  let rows = try a.db.query(
+    "SELECT u.id AS user_id, u.email, u.display_name, p.home_score, p.away_score, p.points, p.updated_at FROM predictions p JOIN group_members gm ON gm.user_id = p.user_id AND gm.group_id = @group_id JOIN users u ON u.id = p.user_id WHERE p.fixture_id = @fixture_id ORDER BY p.updated_at, u.id",
+  ).all(["group_id": group_id, "fixture_id": fixture_id])
   mut out: [GroupPrediction] = []
-  for row in rows { out.push(try decode_group_prediction(row)) }
+  for row in rows {
+    out.push(try decode_group_prediction(row))
+  }
   Result::ok(out)
 }
 
@@ -365,7 +387,18 @@ private fn decode_prediction(row: Any) Prediction!Str {
   let points = try decode::run(row, decode::field("points", decode::nullable(decode::int))).map_err(describe)
   let created_at = try int_field(row, "created_at")
   let updated_at = try int_field(row, "updated_at")
-  Result::ok(Prediction{id: id, user_id: user_id, fixture_id: fixture_id, home_score: home_score, away_score: away_score, points: points, created_at: Int64::from(created_at), updated_at: Int64::from(updated_at)})
+  Result::ok(
+    Prediction{
+      id: id,
+      user_id: user_id,
+      fixture_id: fixture_id,
+      home_score: home_score,
+      away_score: away_score,
+      points: points,
+      created_at: Int64::from(created_at),
+      updated_at: Int64::from(updated_at),
+    },
+  )
 }
 
 private fn decode_group_prediction(row: Any) GroupPrediction!Str {
@@ -376,7 +409,17 @@ private fn decode_group_prediction(row: Any) GroupPrediction!Str {
   let away_score = try int_field(row, "away_score")
   let points = try decode::run(row, decode::field("points", decode::nullable(decode::int))).map_err(describe)
   let updated_at = try int_field(row, "updated_at")
-  Result::ok(GroupPrediction{user_id: user_id, email: email, display_name: display_name, home_score: home_score, away_score: away_score, points: points, updated_at: Int64::from(updated_at)})
+  Result::ok(
+    GroupPrediction{
+      user_id: user_id,
+      email: email,
+      display_name: display_name,
+      home_score: home_score,
+      away_score: away_score,
+      points: points,
+      updated_at: Int64::from(updated_at),
+    },
+  )
 }
 
 private fn prediction_json(prediction: Prediction) [Str: Any] {
@@ -390,15 +433,13 @@ private fn prediction_json(prediction: Prediction) [Str: Any] {
     "created_at": prediction.created_at,
     "updated_at": prediction.updated_at,
   ]
+
   payload
 }
 
 private fn group_prediction_json(prediction: GroupPrediction) [Str: Any] {
-  let user: [Str: Any] = [
-    "id": prediction.user_id,
-    "email": prediction.email,
-    "display_name": prediction.display_name,
-  ]
+  let user: [Str: Any] = ["id": prediction.user_id, "email": prediction.email, "display_name": prediction.display_name]
+
   let payload: [Str: Any] = [
     "user": user,
     "home_score": prediction.home_score,
@@ -406,12 +447,12 @@ private fn group_prediction_json(prediction: GroupPrediction) [Str: Any] {
     "points": prediction.points,
     "updated_at": prediction.updated_at,
   ]
+
   payload
 }
 
-private fn decode_scores(r: mut http::Request) Scores!Str {
-  let bytes = try io::ReadAll(r.Body)
-  let body = Str::from(bytes)
+private fn decode_scores(r: dram::Request) Scores!Str {
+  let body = Str::from(r.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
@@ -423,12 +464,20 @@ private fn decode_scores(r: mut http::Request) Scores!Str {
   }
 }
 
-private fn request_int_param(r: mut http::Request, name: Str, label: Str) Int!Str {
-  strconv::Atoi(chi::URLParam(r, name)).map_err(fn(_: Str) { "{label} must be an integer" })
+private fn request_int_param(r: dram::Request, name: Str, label: Str) Int!Str {
+  strconv::Atoi(
+    r.param(name).or(""),
+  ).map_err(
+    fn(_: Str) {
+      "{label} must be an integer"
+    },
+  )
 }
 
 private fn int_field(row: Any, name: Str) Int!Str {
   decode::run(row, decode::field(name, decode::int)).map_err(describe)
 }
 
-private fn describe(e: decode::Error) Str { e.to_str() }
+private fn describe(e: decode::Error) Str {
+  e.to_str()
+}

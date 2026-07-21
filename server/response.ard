@@ -1,28 +1,18 @@
-use go:encoding/json
-use go:net/http
+use dram
 
 // Small helpers so every handler writes consistent responses. The error
 // envelope is flat: `{ "error": "message" }`.
 
-fn json_response(w: http::ResponseWriter, status: Int, value: Any) {
-  match json::Marshal(value) {
-    ok(bytes) => {
-      w.Header().Set("Content-Type", "application/json")
-      w.WriteHeader(status)
-      mut body = bytes
-      w.Write(body)
-    },
-    err(_) => {
-      w.WriteHeader(http::StatusInternalServerError)
-    },
-  }
+fn json_response(response: mut dram::Response, status: Int, value: Any) {
+  response.json(status, value)
 }
 
-fn no_content(w: http::ResponseWriter) {
-  w.WriteHeader(http::StatusNoContent)
+fn no_content(response: mut dram::Response) {
+  response.status = 204
+  response.body = []
 }
 
-fn fail(w: http::ResponseWriter, status: Int, message: Str) {
+fn fail(response: mut dram::Response, status: Int, message: Str) {
   let payload: [Str: Str] = ["error": message]
-  json_response(w, status, payload)
+  response.json(status, payload)
 }

@@ -1,12 +1,12 @@
-use go:github.com/go-chi/chi/v5 as chi
-use go:net/http
-use go:strconv
-use go:strings
-use go:time
+use dram
 use maestro/api_football
 use maestro/app
 use maestro/competitions
 use maestro/response
+use go:net/http
+use go:strconv
+use go:strings
+use go:time
 
 // Public fixture reads proxy API-Football through the shared TTL cache.
 // Fixture/team data is not persisted in v1; predictions will store only
@@ -26,35 +26,35 @@ struct CurrentRound {
   fixtures: [Fixture],
 }
 
-fn register(router: mut chi::Mux, a: app::App) {
-  router.Get(
+fn register(router: mut dram::App, a: app::App) {
+  router.get(
     "/fixtures/upcoming",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_upcoming(a, w, r)
     },
   )
-  router.Get(
+  router.get(
     "/fixtures/round",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_round(a, w, r)
     },
   )
-  router.Get(
+  router.get(
     "/fixtures/rounds",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_rounds(a, w, r)
     },
   )
-  router.Get(
-    "/fixtures/\{id\}",
-    fn(w: http::ResponseWriter, r: mut http::Request) {
+  router.get(
+    "/fixtures/:id",
+    fn(r: dram::Request, w: mut dram::Response) {
       handle_by_id(a, w, r)
     },
   )
 }
 
-private fn handle_upcoming(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let raw_comp = r.URL.Query().Get("competition_id")
+private fn handle_upcoming(a: app::App, w: mut dram::Response, r: dram::Request) {
+  let raw_comp = r.query("competition_id").or("")
   match raw_comp.is_empty() {
     true => respond_upcoming(a, w, Maybe::new()),
     false => {
@@ -66,20 +66,20 @@ private fn handle_upcoming(a: app::App, w: http::ResponseWriter, r: mut http::Re
   }
 }
 
-private fn respond_upcoming(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
+private fn respond_upcoming(a: app::App, w: mut dram::Response, competition_id: Int?) {
   match upcoming(a, competition_id) {
     ok(list) => response::json_response(w, http::StatusOK, to_json_list(list)),
     err(message) => response::fail(w, http::StatusBadGateway, message),
   }
 }
 
-private fn handle_round(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let raw_name = r.URL.Query().Get("name")
+private fn handle_round(a: app::App, w: mut dram::Response, r: dram::Request) {
+  let raw_name = r.query("name").or("")
   let name: Str? = match raw_name.is_empty() {
     true => Maybe::new(),
     false => Maybe::new(raw_name),
   }
-  let raw_comp = r.URL.Query().Get("competition_id")
+  let raw_comp = r.query("competition_id").or("")
   match raw_comp.is_empty() {
     true => respond_round(a, w, Maybe::new(), name),
     false => {
@@ -91,15 +91,15 @@ private fn handle_round(a: app::App, w: http::ResponseWriter, r: mut http::Reque
   }
 }
 
-private fn respond_round(a: app::App, w: http::ResponseWriter, competition_id: Int?, name: Str?) {
+private fn respond_round(a: app::App, w: mut dram::Response, competition_id: Int?, name: Str?) {
   match round_payload(a, competition_id, name) {
     ok(payload) => response::json_response(w, http::StatusOK, round_json(payload)),
     err(message) => response::fail(w, http::StatusBadGateway, message),
   }
 }
 
-private fn handle_rounds(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let raw_comp = r.URL.Query().Get("competition_id")
+private fn handle_rounds(a: app::App, w: mut dram::Response, r: dram::Request) {
+  let raw_comp = r.query("competition_id").or("")
   match raw_comp.is_empty() {
     true => respond_rounds(a, w, Maybe::new()),
     false => {
@@ -111,15 +111,15 @@ private fn handle_rounds(a: app::App, w: http::ResponseWriter, r: mut http::Requ
   }
 }
 
-private fn respond_rounds(a: app::App, w: http::ResponseWriter, competition_id: Int?) {
+private fn respond_rounds(a: app::App, w: mut dram::Response, competition_id: Int?) {
   match season_rounds(a, competition_id) {
     ok(payload) => response::json_response(w, http::StatusOK, payload),
     err(message) => response::fail(w, http::StatusBadGateway, message),
   }
 }
 
-private fn handle_by_id(a: app::App, w: http::ResponseWriter, r: mut http::Request) {
-  let raw = chi::URLParam(r, "id")
+private fn handle_by_id(a: app::App, w: mut dram::Response, r: dram::Request) {
+  let raw = r.param("id").or("")
   match strconv::Atoi(raw) {
     ok(id) => {
       match by_id(a, id) {
@@ -229,12 +229,34 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
               false => (),
             }
           }
-          Result::ok(CurrentRound{competition_id: Maybe::new(comp.id), name: Maybe::new(name), fixtures: out})
+          Result::ok(
+            CurrentRound{
+              competition_id: Maybe::new(comp.id),
+              name: Maybe::new(name),
+              fixtures: out,
+            },
+          )
         },
-        _ => Result::ok(CurrentRound{competition_id: Maybe::new(comp.id), name: Maybe::new(), fixtures: []}),
+        _ => {
+          Result::ok(
+            CurrentRound{
+              competition_id: Maybe::new(comp.id),
+              name: Maybe::new(),
+              fixtures: [],
+            },
+          )
+        },
       }
     },
-    _ => Result::ok(CurrentRound{competition_id: Maybe::new(), name: Maybe::new(), fixtures: []}),
+    _ => {
+      Result::ok(
+        CurrentRound{
+          competition_id: Maybe::new(),
+          name: Maybe::new(),
+          fixtures: [],
+        },
+      )
+    },
   }
 }
 
@@ -263,7 +285,7 @@ fn sort_round_names(names: [Str]) [Str] {
     mut inserted = false
     mut result: [Str] = []
     for existing in out {
-      let goes_before = (not inserted) and (key < round_order_key(existing))
+      let goes_before = (not inserted) and key < round_order_key(existing)
       match goes_before {
         true => {
           result.push(name)
@@ -308,11 +330,8 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
       for n in ordered {
         rounds.push(n)
       }
-      let payload: [Str: Any] = [
-        "competition_id": comp.id,
-        "rounds": rounds,
-        "current": pick_round(list),
-      ]
+      let payload: [Str: Any] = ["competition_id": comp.id, "rounds": rounds, "current": pick_round(list)]
+
       Result::ok(payload)
     },
     _ => {
@@ -359,11 +378,8 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
 }
 
 private fn round_json(p: CurrentRound) [Str: Any] {
-  let payload: [Str: Any] = [
-    "competition_id": p.competition_id,
-    "round": p.name,
-    "fixtures": to_json_list(p.fixtures),
-  ]
+  let payload: [Str: Any] = ["competition_id": p.competition_id, "round": p.name, "fixtures": to_json_list(p.fixtures)]
+
   payload
 }
 
@@ -376,14 +392,10 @@ private fn to_json_list(list: [Fixture]) [Any] {
 }
 
 private fn to_json(f: Fixture) [Str: Any] {
-  let home_team: [Str: Any] = [
-    "id": f.fixture.home_team_id,
-    "name": f.fixture.home_team_name,
-  ]
-  let away_team: [Str: Any] = [
-    "id": f.fixture.away_team_id,
-    "name": f.fixture.away_team_name,
-  ]
+  let home_team: [Str: Any] = ["id": f.fixture.home_team_id, "name": f.fixture.home_team_name]
+
+  let away_team: [Str: Any] = ["id": f.fixture.away_team_id, "name": f.fixture.away_team_name]
+
   let payload: [Str: Any] = [
     "id": f.fixture.id,
     "competition_id": f.competition_id,
@@ -394,5 +406,6 @@ private fn to_json(f: Fixture) [Str: Any] {
     "home_score": f.fixture.home_score,
     "away_score": f.fixture.away_score,
   ]
+
   payload
 }

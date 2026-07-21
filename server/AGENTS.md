@@ -5,9 +5,9 @@ game. Read alongside `../docs/prediction-game-plan.md` (product + milestones).
 
 ## What this is
 
-An Ard HTTP service on SQLite. Ard compiles to Go; we use Go interop (`use
-go:...`) for the HTTP layer (chi) and wrap the rest in small local modules.
-The current compiler is unreleased dev — we are dogfooding it.
+An Ard HTTP service on SQLite. Ard compiles to Go; the HTTP layer uses the
+pinned Dram Git dependency, which integrates with Go's `net/http`. The project
+requires the released Ard 0.30.0 compiler or newer.
 
 ## Module system reality
 
@@ -18,10 +18,9 @@ The current compiler is unreleased dev — we are dogfooding it.
   **flat** at this size.
 - Assume **no circular imports**. Dependencies flow one direction:
   `main → router → domain handlers → stores → sql/decode`. Stores never import
-  http; handlers never import each other.
-- We are on an **unreleased compiler**. Bias toward boring, shallow structure.
-  `decode.ard` already carries a workaround for a generic-function miscompile
-  (ard#282); expect more surface area with cleverness.
+  HTTP modules; handlers never import each other.
+- Bias toward boring, shallow structure; the language and ecosystem are still
+  young enough that clever abstractions expose more compiler surface area.
 
 ## Layout — flat by domain (mirrors ranger/server)
 
@@ -49,7 +48,6 @@ server/
   leaderboards.ard  membership-scoped season and weekly standings
   week.ard          Tuesday 6am America/New_York week boundaries
   ffi/cache.go      concurrency-safe in-memory TTL cache
-  ffi/http.go       auth middleware + request-context user id
   crypto.ard        token generation (crypto/rand + hex)
 
   (SQL access and JSON decoding are external Git deps:
@@ -64,8 +62,7 @@ New domains get one `.ard` file each until they outgrow it, then a subdir.
 ### Dependency threading: the `App` value
 
 No globals. Handlers receive an `App` (cheap value; the db handle is a Go
-pointer). chi handlers must be `fn(w, r)`, so each domain builds them as
-closures capturing `app`:
+pointer). Dram handlers are closures that capture `app`:
 
 ```ard
 struct App {
@@ -74,8 +71,8 @@ struct App {
   // email: email::Client   (added in M2)
 }
 
-fn register(router: mut chi::Mux, app: App) {
-  router.Post("/auth/request", fn(w, r) { handle_request(app, w, r) })
+fn register(router: mut dram::App, app: App) {
+  router.post("/auth/request", fn(request, response) { handle_request(app, response, request) })
 }
 ```
 
@@ -92,32 +89,21 @@ unit tested with `ard test` (`users_test.ard`, etc.).
 `users.ard` defines `User`; `sessions.ard` defines `Session`. No shared
 `models.ard` unless a struct is genuinely cross-domain.
 
-### Auth: chi middleware + context, plumbed through Go FFI
+### Auth: Dram middleware + request context
 
-We use real middleware with `context.WithValue`, but the `context` mechanics
-live in `ffi/http.go` (idiomatic and painless in Go), exposed as Ard-friendly
-seams:
-
-```go
-// ffi/http.go
-func AuthMiddleware(authenticate func(*http.Request) (int, bool)) func(http.Handler) http.Handler
-func UserID(r *http.Request) (int, bool)
-```
-
-Ard provides the `authenticate` closure (looks up the bearer token via the
-sessions store) and reads the id back with `UserID(r)` in protected handlers.
+Authentication is ordinary Dram middleware. It reads the bearer token from the
+Dram request, looks up the session, stores the user id in a derived Go context
+through `dram/context`, and continues with `next.run(request.with_context(ctx),
+response)`. Protected handlers read the typed value through `auth::user_id`.
 `/auth/*` and `/health` are public; everything else sits behind the middleware.
-
-> This adapter is the first thing to build/verify in M2, before auth logic is
-> layered on it, to confirm the interop compiles.
 
 ### Responses: simple error envelope
 
 One `response.ard` with helpers used everywhere:
 
 ```ard
-fn json(w, status, value)          // Content-Type: application/json
-fn fail(w, status, message)        // { "error": "message" }
+fn json_response(response, status, value) // Content-Type: application/json
+fn fail(response, status, message)        // { "error": "message" }
 ```
 
 Error envelope is `{ "error": "message" }`. Keep it flat for v1.
@@ -133,11 +119,10 @@ clear message. No config files.
 - Go slice params need **mutable** Ard slices (`mut body`, `mut args`).
 - A Go func returning only `error` maps to `Void!Str`; `(T, error)` maps to
   `T!Str`.
-- Ard closures work as Go func values (that's how chi route handlers and the
-  auth adapter callback work), but authoring Go *interface-shaped* callbacks
-  still needs a companion Go wrapper in `ffi/`.
-- Anything `any`-keyed or interface-heavy (like `context`) belongs behind a
-  thin `ffi/*.go` seam, not driven directly from Ard.
+- Dram owns the `net/http` adaptation; application handlers and middleware stay
+  in Ard and capture dependencies directly.
+- Dram carries Go's `context.Context` directly; use `dram/context` helpers and
+  application-owned comparable key types for request values.
 
 ## Build / test / run
 
