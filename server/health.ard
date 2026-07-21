@@ -7,10 +7,10 @@ use go:net/http
 fn register(router: mut dram::App, a: app::App) {
   router.get(
     "/health",
-    fn(request: dram::Request, response: mut dram::Response) {
+    fn(req: dram::Request, res: mut dram::Response) {
       match a.db.query("SELECT 1").all([:]) {
-        ok(_) => response.text(http::StatusOK, "ok"),
-        err(message) => response.text(http::StatusServiceUnavailable, "database unavailable: {message}"),
+        ok(_) => res.text(http::StatusOK, "ok"),
+        err(message) => res.text(http::StatusServiceUnavailable, "database unavailable: {message}"),
       }
     },
   )

@@ -39,32 +39,32 @@ fn register(router: mut dram::App, a: app::App) {
   protected.use(auth::middleware(a))
   protected.get(
     "/groups",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_list(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_list(a, res, req)
     },
   )
   protected.post(
     "/groups",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_create(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_create(a, res, req)
     },
   )
   protected.get(
     "/groups/:id",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_detail(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_detail(a, res, req)
     },
   )
   protected.post(
     "/groups/:id/invites",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_invite(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_invite(a, res, req)
     },
   )
 }
 
-private fn handle_list(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match auth::user_id(r) {
+private fn handle_list(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match auth::user_id(req) {
     user_id => {
       match list_for_user(a, user_id) {
         ok(groups) => {
@@ -72,42 +72,42 @@ private fn handle_list(a: app::App, w: mut dram::Response, r: dram::Request) {
           for group in groups {
             payload.push(group_json(group))
           }
-          response::json_response(w, http::StatusOK, payload)
+          response::json_response(res, http::StatusOK, payload)
         },
-        err(message) => response::fail(w, http::StatusInternalServerError, message),
+        err(message) => response::fail(res, http::StatusInternalServerError, message),
       }
     },
-    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
   }
 }
 
-private fn handle_create(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match auth::user_id(r) {
+private fn handle_create(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match auth::user_id(req) {
     user_id => {
-      match decode_string_field(r, "name") {
+      match decode_string_field(req, "name") {
         ok(raw_name) => {
           let name = strings::TrimSpace(raw_name)
           match name.is_empty() or name.size() > 80 {
-            true => response::fail(w, http::StatusBadRequest, "group name must be between 1 and 80 characters"),
+            true => response::fail(res, http::StatusBadRequest, "group name must be between 1 and 80 characters"),
             false => {
               match create(a, user_id, name) {
-                ok(group) => response::json_response(w, http::StatusCreated, group_json(group)),
-                err(message) => response::fail(w, http::StatusInternalServerError, message),
+                ok(group) => response::json_response(res, http::StatusCreated, group_json(group)),
+                err(message) => response::fail(res, http::StatusInternalServerError, message),
               }
             },
           }
         },
-        err(message) => response::fail(w, http::StatusBadRequest, message),
+        err(message) => response::fail(res, http::StatusBadRequest, message),
       }
     },
-    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
   }
 }
 
-private fn handle_detail(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match request_group_id(r) {
+private fn handle_detail(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match request_group_id(req) {
     ok(group_id) => {
-      match auth::user_id(r) {
+      match auth::user_id(req) {
         user_id => {
           match find_for_member(a, group_id, user_id) {
             ok(found) => {
@@ -117,58 +117,58 @@ private fn handle_detail(a: app::App, w: mut dram::Response, r: dram::Request) {
                     ok(group_members) => {
                       let payload: [Str: Any] = ["group": group_json(group), "members": members_json(group_members)]
 
-                      response::json_response(w, http::StatusOK, payload)
+                      response::json_response(res, http::StatusOK, payload)
                     },
-                    err(message) => response::fail(w, http::StatusInternalServerError, message),
+                    err(message) => response::fail(res, http::StatusInternalServerError, message),
                   }
                 },
-                _ => response::fail(w, http::StatusNotFound, "group not found"),
+                _ => response::fail(res, http::StatusNotFound, "group not found"),
               }
             },
-            err(message) => response::fail(w, http::StatusInternalServerError, message),
+            err(message) => response::fail(res, http::StatusInternalServerError, message),
           }
         },
-        _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
       }
     },
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
-private fn handle_invite(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match request_group_id(r) {
+private fn handle_invite(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match request_group_id(req) {
     ok(group_id) => {
-      match auth::user_id(r) {
+      match auth::user_id(req) {
         inviter_id => {
           match find_for_member(a, group_id, inviter_id) {
             ok(found) => {
               match found {
-                group => invite_to_group(a, w, r, group, inviter_id),
-                _ => response::fail(w, http::StatusNotFound, "group not found"),
+                group => invite_to_group(a, res, req, group, inviter_id),
+                _ => response::fail(res, http::StatusNotFound, "group not found"),
               }
             },
-            err(message) => response::fail(w, http::StatusInternalServerError, message),
+            err(message) => response::fail(res, http::StatusInternalServerError, message),
           }
         },
-        _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
       }
     },
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
 private fn invite_to_group(
   a: app::App,
-  w: mut dram::Response,
-  r: dram::Request,
+  res: mut dram::Response,
+  req: dram::Request,
   group: Group,
   inviter_id: Int,
 ) {
-  match decode_string_field(r, "email") {
+  match decode_string_field(req, "email") {
     ok(raw_email) => {
       let address = strings::ToLower(strings::TrimSpace(raw_email))
       match address.is_empty() or not strings::Contains(address, "@") {
-        true => response::fail(w, http::StatusBadRequest, "enter a valid email address"),
+        true => response::fail(res, http::StatusBadRequest, "enter a valid email address"),
         false => {
           match add_invited_member(a, group, inviter_id, address) {
             ok(result) => {
@@ -178,14 +178,14 @@ private fn invite_to_group(
                 "invitation_sent": result.invitation_sent,
               ]
 
-              response::json_response(w, http::StatusOK, payload)
+              response::json_response(res, http::StatusOK, payload)
             },
-            err(message) => response::fail(w, http::StatusBadGateway, message),
+            err(message) => response::fail(res, http::StatusBadGateway, message),
           }
         },
       }
     },
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
@@ -389,12 +389,12 @@ private fn member_json(member: Member) [Str: Any] {
   payload
 }
 
-private fn request_group_id(r: dram::Request) Int!Str {
-  strconv::Atoi(r.param("id").or("")).map_err(invalid_group_id)
+private fn request_group_id(req: dram::Request) Int!Str {
+  strconv::Atoi(req.param("id").or("")).map_err(invalid_group_id)
 }
 
-private fn decode_string_field(r: dram::Request, name: Str) Str!Str {
-  let body = Str::from(r.body)
+private fn decode_string_field(req: dram::Request, name: Str) Str!Str {
+  let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {

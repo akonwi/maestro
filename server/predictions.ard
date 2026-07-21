@@ -39,70 +39,70 @@ fn register(router: mut dram::App, a: app::App) {
   protected.use(auth::middleware(a))
   protected.get(
     "/fixtures/:id/prediction",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_current(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_current(a, res, req)
     },
   )
   protected.put(
     "/fixtures/:id/prediction",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_upsert(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_upsert(a, res, req)
     },
   )
   protected.get(
     "/groups/:groupId/fixtures/:fixtureId/predictions",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_group(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_group(a, res, req)
     },
   )
 }
 
-private fn handle_current(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match request_int_param(r, "id", "fixture id") {
+private fn handle_current(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match request_int_param(req, "id", "fixture id") {
     ok(fixture_id) => {
-      match auth::user_id(r) {
+      match auth::user_id(req) {
         user_id => {
           match find(a, user_id, fixture_id) {
             ok(found) => {
               match found {
-                prediction => response::json_response(w, http::StatusOK, prediction_json(prediction)),
-                _ => response::fail(w, http::StatusNotFound, "prediction not found"),
+                prediction => response::json_response(res, http::StatusOK, prediction_json(prediction)),
+                _ => response::fail(res, http::StatusNotFound, "prediction not found"),
               }
             },
-            err(message) => response::fail(w, http::StatusInternalServerError, message),
+            err(message) => response::fail(res, http::StatusInternalServerError, message),
           }
         },
-        _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
       }
     },
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
-private fn handle_upsert(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match request_int_param(r, "id", "fixture id") {
+private fn handle_upsert(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match request_int_param(req, "id", "fixture id") {
     ok(fixture_id) => {
       match fixture_id <= 0 {
-        true => response::fail(w, http::StatusBadRequest, "fixture id must be positive"),
+        true => response::fail(res, http::StatusBadRequest, "fixture id must be positive"),
         false => {
-          match auth::user_id(r) {
+          match auth::user_id(req) {
             user_id => {
-              match decode_scores(r) {
+              match decode_scores(req) {
                 ok(scores) => {
                   match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-                    true => response::fail(w, http::StatusBadRequest, "scores must be between 0 and 99"),
-                    false => save_before_kickoff(a, w, user_id, fixture_id, scores),
+                    true => response::fail(res, http::StatusBadRequest, "scores must be between 0 and 99"),
+                    false => save_before_kickoff(a, res, user_id, fixture_id, scores),
                   }
                 },
-                err(message) => response::fail(w, http::StatusBadRequest, message),
+                err(message) => response::fail(res, http::StatusBadRequest, message),
               }
             },
-            _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+            _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
           }
         },
       }
     },
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
@@ -113,37 +113,37 @@ struct Scores {
 
 private fn save_before_kickoff(
   a: app::App,
-  w: mut dram::Response,
+  res: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
 ) {
   let now = time::Now().UnixMilli()
   match ffi::CacheAllow(a.cache, "prediction-write:{user_id}", 30, Int64::from(60 * 1000)) {
-    false => response::fail(w, http::StatusTooManyRequests, "too many prediction requests"),
-    true => check_existing_lock(a, w, user_id, fixture_id, scores, now),
+    false => response::fail(res, http::StatusTooManyRequests, "too many prediction requests"),
+    true => check_existing_lock(a, res, user_id, fixture_id, scores, now),
   }
 }
 
 private fn check_existing_lock(
   a: app::App,
-  w: mut dram::Response,
+  res: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
   now: Int64,
 ) {
   match scoring_state::find(a, fixture_id) {
-    err(message) => response::fail(w, http::StatusInternalServerError, message),
+    err(message) => response::fail(res, http::StatusInternalServerError, message),
     ok(existing) => {
       match existing {
         state => {
           match state.prediction_lock_at <= now {
-            true => response::fail(w, http::StatusConflict, "predictions are locked after kickoff"),
-            false => fetch_and_save(a, w, user_id, fixture_id, scores, now),
+            true => response::fail(res, http::StatusConflict, "predictions are locked after kickoff"),
+            false => fetch_and_save(a, res, user_id, fixture_id, scores, now),
           }
         },
-        _ => fetch_and_save(a, w, user_id, fixture_id, scores, now),
+        _ => fetch_and_save(a, res, user_id, fixture_id, scores, now),
       }
     },
   }
@@ -151,23 +151,23 @@ private fn check_existing_lock(
 
 private fn fetch_and_save(
   a: app::App,
-  w: mut dram::Response,
+  res: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
   now: Int64,
 ) {
   match api_football::fixture_by_id(a, fixture_id) {
-    err(message) => response::fail(w, http::StatusBadGateway, message),
+    err(message) => response::fail(res, http::StatusBadGateway, message),
     ok(found) => {
       match found {
         fixture => {
           match fixture.kickoff_at <= now {
-            true => response::fail(w, http::StatusConflict, "predictions are locked after kickoff"),
-            false => save_for_competition(a, w, user_id, fixture, scores, now),
+            true => response::fail(res, http::StatusConflict, "predictions are locked after kickoff"),
+            false => save_for_competition(a, res, user_id, fixture, scores, now),
           }
         },
-        _ => response::fail(w, http::StatusNotFound, "fixture not found"),
+        _ => response::fail(res, http::StatusNotFound, "fixture not found"),
       }
     },
   }
@@ -175,65 +175,65 @@ private fn fetch_and_save(
 
 private fn save_for_competition(
   a: app::App,
-  w: mut dram::Response,
+  res: mut dram::Response,
   user_id: Int,
   fixture: api_football::Fixture,
   scores: Scores,
   now: Int64,
 ) {
   match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
-    err(message) => response::fail(w, http::StatusInternalServerError, message),
+    err(message) => response::fail(res, http::StatusInternalServerError, message),
     ok(found) => {
       match found {
         competition => {
           match upsert_with_state(a, user_id, competition.id, fixture, scores.home, scores.away) {
-            ok(prediction) => response::json_response(w, http::StatusOK, prediction_json(prediction)),
+            ok(prediction) => response::json_response(res, http::StatusOK, prediction_json(prediction)),
             err(message) => {
               match message == "predictions are locked after kickoff" {
-                true => response::fail(w, http::StatusConflict, message),
-                false => response::fail(w, http::StatusInternalServerError, message),
+                true => response::fail(res, http::StatusConflict, message),
+                false => response::fail(res, http::StatusInternalServerError, message),
               }
             },
           }
         },
-        _ => response::fail(w, http::StatusNotFound, "fixture competition is not active"),
+        _ => response::fail(res, http::StatusNotFound, "fixture competition is not active"),
       }
     },
   }
 }
 
-private fn handle_group(a: app::App, w: mut dram::Response, r: dram::Request) {
-  let group_id = request_int_param(r, "groupId", "group id")
-  let fixture_id = request_int_param(r, "fixtureId", "fixture id")
+private fn handle_group(a: app::App, res: mut dram::Response, req: dram::Request) {
+  let group_id = request_int_param(req, "groupId", "group id")
+  let fixture_id = request_int_param(req, "fixtureId", "fixture id")
   match group_id {
     ok(group_value) => {
       match fixture_id {
         ok(fixture_value) => {
-          match auth::user_id(r) {
+          match auth::user_id(req) {
             user_id => {
               match groups::find_for_member(a, group_value, user_id) {
                 ok(found) => {
                   match found {
-                    _group => respond_group_predictions(a, w, group_value, fixture_value),
-                    _ => response::fail(w, http::StatusNotFound, "group not found"),
+                    _group => respond_group_predictions(a, res, group_value, fixture_value),
+                    _ => response::fail(res, http::StatusNotFound, "group not found"),
                   }
                 },
-                err(message) => response::fail(w, http::StatusInternalServerError, message),
+                err(message) => response::fail(res, http::StatusInternalServerError, message),
               }
             },
-            _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+            _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
           }
         },
-        err(message) => response::fail(w, http::StatusBadRequest, message),
+        err(message) => response::fail(res, http::StatusBadRequest, message),
       }
     },
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
 private fn respond_group_predictions(
   a: app::App,
-  w: mut dram::Response,
+  res: mut dram::Response,
   group_id: Int,
   fixture_id: Int,
 ) {
@@ -243,9 +243,9 @@ private fn respond_group_predictions(
       for prediction in predictions {
         payload.push(group_prediction_json(prediction))
       }
-      response::json_response(w, http::StatusOK, payload)
+      response::json_response(res, http::StatusOK, payload)
     },
-    err(message) => response::fail(w, http::StatusInternalServerError, message),
+    err(message) => response::fail(res, http::StatusInternalServerError, message),
   }
 }
 
@@ -451,8 +451,8 @@ private fn group_prediction_json(prediction: GroupPrediction) [Str: Any] {
   payload
 }
 
-private fn decode_scores(r: dram::Request) Scores!Str {
-  let body = Str::from(r.body)
+private fn decode_scores(req: dram::Request) Scores!Str {
+  let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
@@ -464,9 +464,9 @@ private fn decode_scores(r: dram::Request) Scores!Str {
   }
 }
 
-private fn request_int_param(r: dram::Request, name: Str, label: Str) Int!Str {
+private fn request_int_param(req: dram::Request, name: Str, label: Str) Int!Str {
   strconv::Atoi(
-    r.param(name).or(""),
+    req.param(name).or(""),
   ).map_err(
     fn(_: Str) {
       "{label} must be an integer"

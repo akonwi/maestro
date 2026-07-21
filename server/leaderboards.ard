@@ -23,40 +23,40 @@ fn register(router: mut dram::App, a: app::App) {
   protected.use(auth::middleware(a))
   protected.get(
     "/groups/:id/leaderboard/season",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_season(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_season(a, res, req)
     },
   )
   protected.get(
     "/groups/:id/leaderboard/week",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_week(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_week(a, res, req)
     },
   )
 }
 
-private fn handle_season(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match strconv::Atoi(r.param("id").or("")) {
-    err(_) => response::fail(w, http::StatusBadRequest, "group id must be an integer"),
+private fn handle_season(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match strconv::Atoi(req.param("id").or("")) {
+    err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
     ok(group_id) => {
-      match parse_competition(r) {
-        err(message) => response::fail(w, http::StatusBadRequest, message),
-        ok(competition_id) => authorize_and_respond(a, w, r, group_id, competition_id),
+      match parse_competition(req) {
+        err(message) => response::fail(res, http::StatusBadRequest, message),
+        ok(competition_id) => authorize_and_respond(a, res, req, group_id, competition_id),
       }
     },
   }
 }
 
-private fn handle_week(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match strconv::Atoi(r.param("id").or("")) {
-    err(_) => response::fail(w, http::StatusBadRequest, "group id must be an integer"),
+private fn handle_week(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match strconv::Atoi(req.param("id").or("")) {
+    err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
     ok(group_id) => {
-      match parse_competition(r) {
-        err(message) => response::fail(w, http::StatusBadRequest, message),
+      match parse_competition(req) {
+        err(message) => response::fail(res, http::StatusBadRequest, message),
         ok(competition_id) => {
-          match week::current(r.query("week").or("")) {
-            err(message) => response::fail(w, http::StatusBadRequest, message),
-            ok(bounds) => authorize_and_respond_week(a, w, r, group_id, competition_id, bounds),
+          match week::current(req.query("week").or("")) {
+            err(message) => response::fail(res, http::StatusBadRequest, message),
+            ok(bounds) => authorize_and_respond_week(a, res, req, group_id, competition_id, bounds),
           }
         },
       }
@@ -66,68 +66,68 @@ private fn handle_week(a: app::App, w: mut dram::Response, r: dram::Request) {
 
 private fn authorize_and_respond(
   a: app::App,
-  w: mut dram::Response,
-  r: dram::Request,
+  res: mut dram::Response,
+  req: dram::Request,
   group_id: Int,
   competition_id: Int?,
 ) {
-  match auth::user_id(r) {
+  match auth::user_id(req) {
     user_id => {
       match groups::find_for_member(a, group_id, user_id) {
-        err(message) => response::fail(w, http::StatusInternalServerError, message),
+        err(message) => response::fail(res, http::StatusInternalServerError, message),
         ok(found) => {
           match found {
-            _group => respond(a, w, group_id, competition_id),
-            _ => response::fail(w, http::StatusNotFound, "group not found"),
+            _group => respond(a, res, group_id, competition_id),
+            _ => response::fail(res, http::StatusNotFound, "group not found"),
           }
         },
       }
     },
-    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
   }
 }
 
 private fn authorize_and_respond_week(
   a: app::App,
-  w: mut dram::Response,
-  r: dram::Request,
+  res: mut dram::Response,
+  req: dram::Request,
   group_id: Int,
   competition_id: Int?,
   bounds: week::Bounds,
 ) {
-  match auth::user_id(r) {
+  match auth::user_id(req) {
     user_id => {
       match groups::find_for_member(a, group_id, user_id) {
-        err(message) => response::fail(w, http::StatusInternalServerError, message),
+        err(message) => response::fail(res, http::StatusInternalServerError, message),
         ok(found) => {
           match found {
-            _group => respond_week(a, w, group_id, competition_id, bounds),
-            _ => response::fail(w, http::StatusNotFound, "group not found"),
+            _group => respond_week(a, res, group_id, competition_id, bounds),
+            _ => response::fail(res, http::StatusNotFound, "group not found"),
           }
         },
       }
     },
-    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
   }
 }
 
-private fn respond(a: app::App, w: mut dram::Response, group_id: Int, competition_id: Int?) {
+private fn respond(a: app::App, res: mut dram::Response, group_id: Int, competition_id: Int?) {
   match season(a, group_id, competition_id) {
-    err(message) => response::fail(w, http::StatusInternalServerError, message),
-    ok(entries) => response::json_response(w, http::StatusOK, entries_json(entries)),
+    err(message) => response::fail(res, http::StatusInternalServerError, message),
+    ok(entries) => response::json_response(res, http::StatusOK, entries_json(entries)),
   }
 }
 
 private fn respond_week(
   a: app::App,
-  w: mut dram::Response,
+  res: mut dram::Response,
   group_id: Int,
   competition_id: Int?,
   bounds: week::Bounds,
 ) {
   match weekly(a, group_id, competition_id, bounds) {
-    err(message) => response::fail(w, http::StatusInternalServerError, message),
-    ok(entries) => response::json_response(w, http::StatusOK, entries_json(entries)),
+    err(message) => response::fail(res, http::StatusInternalServerError, message),
+    ok(entries) => response::json_response(res, http::StatusOK, entries_json(entries)),
   }
 }
 
@@ -235,8 +235,8 @@ private fn decode_entry(row: Any) Entry!Str {
   )
 }
 
-private fn parse_competition(r: dram::Request) Int?!Str {
-  let raw = r.query("competition_id").or("")
+private fn parse_competition(req: dram::Request) Int?!Str {
+  let raw = req.query("competition_id").or("")
   match raw.is_empty() {
     true => Result::ok(Maybe::new()),
     false => {

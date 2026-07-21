@@ -17,26 +17,26 @@ use go:strings
 fn register(router: mut dram::App, a: app::App) {
   router.post(
     "/auth/request",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_request(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_request(a, res, req)
     },
   )
   router.get(
     "/auth/verify",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_verify_redirect(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_verify_redirect(a, res, req)
     },
   )
   router.post(
     "/auth/verify",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_verify(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_verify(a, res, req)
     },
   )
   router.post(
     "/auth/logout",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_logout(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_logout(a, res, req)
     },
   )
 
@@ -44,8 +44,8 @@ fn register(router: mut dram::App, a: app::App) {
   protected.use(middleware(a))
   protected.get(
     "/auth/me",
-    fn(r: dram::Request, w: mut dram::Response) {
-      handle_me(a, w, r)
+    fn(req: dram::Request, res: mut dram::Response) {
+      handle_me(a, res, req)
     },
   )
 }
@@ -56,29 +56,29 @@ fn register(router: mut dram::App, a: app::App) {
 // codes in the shell, business logic in the do_* function.
 // -----------------------------------------------------------------------
 
-private fn handle_request(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match do_request(a, r) {
-    ok => response::no_content(w),
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+private fn handle_request(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match do_request(a, req) {
+    ok => response::no_content(res),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
-private fn handle_verify(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match do_verify(a, r) {
-    ok(payload) => response::json_response(w, http::StatusOK, payload),
-    err(message) => response::fail(w, http::StatusBadRequest, message),
+private fn handle_verify(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match do_verify(a, req) {
+    ok(payload) => response::json_response(res, http::StatusOK, payload),
+    err(message) => response::fail(res, http::StatusBadRequest, message),
   }
 }
 
-private fn handle_logout(a: app::App, w: mut dram::Response, r: dram::Request) {
-  let token = bearer_token(r)
+private fn handle_logout(a: app::App, res: mut dram::Response, req: dram::Request) {
+  let token = bearer_token(req)
   match token.is_empty() {
-    true => response::fail(w, http::StatusUnauthorized, "missing or invalid bearer token"),
+    true => response::fail(res, http::StatusUnauthorized, "missing or invalid bearer token"),
     false => {
       match sessions::delete(a, token) {
-        ok => response::no_content(w),
+        ok => response::no_content(res),
         err(message) => {
-          response::fail(w, http::StatusInternalServerError, "could not delete session: {message}")
+          response::fail(res, http::StatusInternalServerError, "could not delete session: {message}")
         },
       }
     },
@@ -86,14 +86,14 @@ private fn handle_logout(a: app::App, w: mut dram::Response, r: dram::Request) {
 }
 
 // GET /auth/verify?token=X -> 302 to the web app. Never consumes.
-private fn handle_verify_redirect(a: app::App, w: mut dram::Response, r: dram::Request) {
-  let token = r.query("token").or("")
+private fn handle_verify_redirect(a: app::App, res: mut dram::Response, req: dram::Request) {
+  let token = req.query("token").or("")
   match token.is_empty() {
-    true => response::fail(w, http::StatusBadRequest, "missing token"),
+    true => response::fail(res, http::StatusBadRequest, "missing token"),
     false => {
       let target = "{a.config.app_base_url}/auth/verify?token={token}"
-      w.header("Location", target)
-      w.status = http::StatusFound
+      res.header("Location", target)
+      res.status = http::StatusFound
     },
   }
 }
@@ -104,8 +104,8 @@ private fn handle_verify_redirect(a: app::App, w: mut dram::Response, r: dram::R
 
 // POST /auth/request { email }
 // We deliberately never leak whether the email is known.
-private fn do_request(a: app::App, r: dram::Request) Void!Str {
-  let addr = try decode_field(r, "email")
+private fn do_request(a: app::App, req: dram::Request) Void!Str {
+  let addr = try decode_field(req, "email")
   let token = try magic_links::create(a, addr)
   let link = "{a.config.server_base_url}/auth/verify?token={token}"
   let text = "Click the link to sign in to Maestro:\n\n{link}\n\nThe link expires soon and can only be used once."
@@ -122,8 +122,8 @@ private fn do_request(a: app::App, r: dram::Request) Void!Str {
 }
 
 // POST /auth/verify { token } -> { session_token, user }
-private fn do_verify(a: app::App, r: dram::Request) [Str: Any]!Str {
-  let token = try decode_field(r, "token")
+private fn do_verify(a: app::App, req: dram::Request) [Str: Any]!Str {
+  let token = try decode_field(req, "token")
   let addr = try magic_links::consume(a, token)
   let user = try users::get_or_create_by_email(a, addr)
   let session = try sessions::mint(a, user.id)
@@ -137,8 +137,8 @@ private fn do_verify(a: app::App, r: dram::Request) [Str: Any]!Str {
 
 // Authenticate a request for Dram middleware. Database failures are logged
 // server-side and intentionally collapse to an unauthenticated result.
-fn authenticate(a: app::App, r: dram::Request) Int? {
-  let token = bearer_token(r)
+fn authenticate(a: app::App, req: dram::Request) Int? {
+  let token = bearer_token(req)
   match token.is_empty() {
     true => Maybe::new(),
     false => {
@@ -165,26 +165,26 @@ private struct UserIdKey {
 let USER_ID_KEY = UserIdKey{marker: 0}
 
 fn middleware(a: app::App) dram::Middleware {
-  fn(r: dram::Request, w: mut dram::Response, next: dram::Next) {
-    match authenticate(a, r) {
+  fn(req: dram::Request, res: mut dram::Response, next: dram::Next) {
+    match authenticate(a, req) {
       user_id => {
-        let derived = context::with_value(r.context(), USER_ID_KEY, user_id)
-        next.run(r.with_context(derived), w)
+        let derived = context::with_value(req.context(), USER_ID_KEY, user_id)
+        next.run(req.with_context(derived), res)
       },
-      _ => response::fail(w, http::StatusUnauthorized, "missing, invalid, or expired bearer token"),
+      _ => response::fail(res, http::StatusUnauthorized, "missing, invalid, or expired bearer token"),
     }
   }
 }
 
-fn user_id(r: dram::Request) Int? {
-  match context::value(r.context(), USER_ID_KEY) {
+fn user_id(req: dram::Request) Int? {
+  match context::value(req.context(), USER_ID_KEY) {
     value => unsafe::cast<Int>(value),
     _ => Maybe::new(),
   }
 }
 
-private fn handle_me(a: app::App, w: mut dram::Response, r: dram::Request) {
-  match user_id(r) {
+private fn handle_me(a: app::App, res: mut dram::Response, req: dram::Request) {
+  match user_id(req) {
     user_id => {
       match users::find_by_id(a, user_id) {
         ok(found) => {
@@ -192,25 +192,25 @@ private fn handle_me(a: app::App, w: mut dram::Response, r: dram::Request) {
             user => {
               let payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
 
-              response::json_response(w, http::StatusOK, payload)
+              response::json_response(res, http::StatusOK, payload)
             },
-            _ => response::fail(w, http::StatusUnauthorized, "authenticated user no longer exists"),
+            _ => response::fail(res, http::StatusUnauthorized, "authenticated user no longer exists"),
           }
         },
         err(message) => {
-          response::fail(w, http::StatusInternalServerError, "could not load current user: {message}")
+          response::fail(res, http::StatusInternalServerError, "could not load current user: {message}")
         },
       }
     },
-    _ => response::fail(w, http::StatusUnauthorized, "unauthorized"),
+    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
   }
 }
 
 // Read a single string field from a JSON request body. All the M2 auth
 // bodies are simple `{ "field": "value" }` shapes. Every failure gets
 // the same `invalid request:` prefix so clients see a consistent shape.
-private fn decode_field(r: dram::Request, name: Str) Str!Str {
-  let body = try read_body(r).map_err(prefix_invalid_request)
+private fn decode_field(req: dram::Request, name: Str) Str!Str {
+  let body = try read_body(req).map_err(prefix_invalid_request)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
@@ -220,14 +220,14 @@ private fn decode_field(r: dram::Request, name: Str) Str!Str {
   }
 }
 
-private fn read_body(r: dram::Request) Str!Str {
-  Result::ok(Str::from(r.body))
+private fn read_body(req: dram::Request) Str!Str {
+  Result::ok(Str::from(req.body))
 }
 
 // Extract the token from a Bearer Authorization header. Returns "" if
 // the header is missing or malformed.
-private fn bearer_token(r: dram::Request) Str {
-  let auth = r.header("Authorization").or("")
+private fn bearer_token(req: dram::Request) Str {
+  let auth = req.header("Authorization").or("")
   match auth.starts_with("Bearer ") {
     true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
     false => "",
