@@ -133,23 +133,25 @@ private fn verify(a: app::App, token: Str) [Str: Any]!Str {
 // server-side and intentionally collapse to an unauthenticated result.
 fn authenticate(a: app::App, req: dram::Request) Int? {
   let token = bearer_token(req)
+
+  mut out = Maybe::new<Int>()
   match token.is_empty() {
-    true => Maybe::new(),
+    true => (),
     false => {
       match sessions::find_by_token(a, token) {
         ok(found) => {
           match found {
-            session => Maybe::new(session.user_id),
-            _ => Maybe::new(),
+            session => out.set(session.user_id),
+            _ => (),
           }
         },
         err(message) => {
           fmt::Println("session lookup failed: {message}")
-          Maybe::new()
         },
       }
     },
   }
+  out
 }
 
 private struct UserIdKey {
@@ -185,8 +187,8 @@ private fn decode_field(req: dram::Request, name: Str) Str!Str {
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
-      let data = try decode::from_json(body).map_err(prefix_invalid_request)
-      decode::run(data, decode::field(name, decode::string)).map_err(describe_body_error)
+      let data = try decode::from_json(body).map_err(fn(msg) { "invalid request: {msg}" })
+      decode::run(data, decode::field(name, decode::string)).map_err(fn(e) { "invalid request: {e.to_str()}" })
     },
   }
 }
@@ -199,12 +201,4 @@ private fn bearer_token(req: dram::Request) Str {
     true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
     false => "",
   }
-}
-
-private fn describe_body_error(e: decode::Error) Str {
-  "invalid request: {e.to_str()}"
-}
-
-private fn prefix_invalid_request(message: Str) Str {
-  "invalid request: {message}"
 }
