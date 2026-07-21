@@ -179,6 +179,13 @@ fn user_id(req: dram::Request) Int? {
   }
 }
 
+fn get_user_id(req: dram::Request) Int!Str {
+  match user_id(req) {
+    id => Result::ok(id),
+    _ => Result::err("unauthorized"),
+  }
+}
+
 // Read a single string field from a JSON request body. All the M2 auth
 // bodies are simple `{ "field": "value" }` shapes. Every failure gets
 // the same `invalid request:` prefix so clients see a consistent shape.

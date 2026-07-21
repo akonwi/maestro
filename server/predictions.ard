@@ -39,24 +39,17 @@ fn register(router: mut dram::App, a: app::App) {
   protected.get(
     "/fixtures/:id/prediction",
     fn(req: dram::Request, res: mut dram::Response) {
-      match request_int_param(req, "id", "fixture id") {
-        ok(fixture_id) => {
-          match auth::user_id(req) {
-            user_id => {
-              match find(a, user_id, fixture_id) {
-                ok(found) => {
-                  match found {
-                    prediction => res.json(http::StatusOK, prediction_json(prediction)),
-                    _ => res.json(http::StatusNotFound, ["error": "prediction not found"]),
-                  }
-                },
-                err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-              }
-            },
-            _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
+      let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ { res.json(http::StatusBadRequest, ["error": "id must be an integer"]) }
+      let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+
+      match find(a, user_id, fixture_id) {
+        ok(found) => {
+          match found {
+            prediction => res.json(http::StatusOK, prediction_json(prediction)),
+            _ => res.json(http::StatusNotFound, ["error": "prediction not found"]),
           }
         },
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
+        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
       }
     },
   )
