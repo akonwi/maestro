@@ -3,6 +3,14 @@
   "root": "root",
   "packages": [
     {
+      "id": "git:1e87c43dc8d1202a:025969f31010fdfeaf9ccdf9a6a4317bea9d02d2",
+      "name": "dram",
+      "git": "https://github.com/akonwi/dram.git",
+      "commit": "025969f31010fdfeaf9ccdf9a6a4317bea9d02d2",
+      "requested": "025969f",
+      "integrity": "sha256:b05f0fc9984c855f8c1a352e66919591eda31797892b56d499491865f9ad4f91"
+    },
+    {
       "id": "git:795eb0d192b4efcf:56deab7b5e09f2eecd083513a574b048a7c50593",
       "name": "sql",
       "git": "https://github.com/akonwi/ard-sql.git",
@@ -27,6 +35,7 @@
       "path": ".",
       "dependencies": {
         "decode": "git:c5125d0dd6cd13cc:e80c2d2178044f91b4b2e308a1f27ac1044cd3c4",
+        "dram": "git:1e87c43dc8d1202a:025969f31010fdfeaf9ccdf9a6a4317bea9d02d2",
         "sql": "git:795eb0d192b4efcf:56deab7b5e09f2eecd083513a574b048a7c50593"
       }
     }

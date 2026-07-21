@@ -6,7 +6,7 @@ Written in [Ard](https://github.com/akonwi/ard) and backed by SQLite.
 
 ## Stack
 
-- **Ard** compiles to Go; HTTP via the sibling `../../dram` filesystem dependency backed by `net/http`.
+- **Ard** compiles to Go; HTTP via a pinned [Dram](https://github.com/akonwi/dram) dependency backed by `net/http`.
 - **SQLite** via the external `ard-sql` dependency and its pure-Go driver.
 - **Migrations** via the published, CGO-free [`migr`](https://github.com/akonwi/migr)
   release with pure-Go SQLite. The Docker image downloads the platform-specific
@@ -31,7 +31,7 @@ server/
 
 ## Prerequisites
 
-- Latest unreleased [Ard compiler](https://github.com/akonwi/ard) on your `PATH` (`ard-dev`)
+- [Ard 0.30.0](https://github.com/akonwi/ard) or newer on your `PATH` (`ard`)
 - [`migr`](https://github.com/akonwi/migr) on your `PATH`
 - Go 1.26+ (the Ard toolchain shells out to it)
 - [Bun](https://bun.sh) for running the e2e API tests
@@ -61,13 +61,13 @@ migr down        # roll back the last batch
 Run the server (compiles and runs in one step):
 
 ```sh
-ard-dev run main.ard
+ard run main.ard
 ```
 
 Or build a binary:
 
 ```sh
-ard-dev build main.ard --out ./maestro-server
+ard build main.ard --out ./maestro-server
 ./maestro-server
 ```
 
@@ -111,12 +111,14 @@ database paths.
 
 ## Docker
 
-The Dockerfile uses Ard 0.29.0, but the current Dram API requires the latest
-`ard-dev` parser and still lives in the sibling `../../dram` checkout outside
-the Docker build context. Container builds remain blocked until the parser is
-released and Dram is available as a pinned Git dependency. The runtime image
-will continue to run `migr up` against `/data/maestro.db` once those build-time
-dependencies are available.
+```sh
+docker build -t maestro-server .
+docker run --rm -p 8080:8080 -v "$PWD/data:/data" maestro-server
+```
+
+The image uses Ard 0.30.0 and resolves Dram from its pinned Git commit. It runs
+`migr up` against `/data/maestro.db` before starting the server. Mount a volume
+at `/data` for persistence.
 
 ## Migrations
 
