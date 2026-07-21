@@ -50,11 +50,37 @@ function getFixture(id: number) {
   return request<Fixture>(`/fixtures/${id}`)
 }
 
+// Statuses that mean a fixture is in progress (scores can still change).
+const LIVE_STATUSES = new Set([
+  '1H',
+  'HT',
+  '2H',
+  'ET',
+  'BT',
+  'P',
+  'SUSP',
+  'INT',
+  'LIVE',
+])
+
+export function isLiveStatus(status: string) {
+  return LIVE_STATUSES.has(status)
+}
+
 /** A specific round by name, or the current matchday when name is omitted. */
 export function roundQuery(name?: string) {
   return queryOptions({
     queryKey: ['fixtures', 'round', name ?? 'current'],
     queryFn: () => getRound(name),
+    // Poll while any fixture in the round is in play so scores stay
+    // current. The server caches the upstream season fetch for 60s, so
+    // a matching interval avoids redundant work.
+    refetchInterval: query => {
+      const anyLive = query.state.data?.fixtures.some(fixture =>
+        LIVE_STATUSES.has(fixture.status),
+      )
+      return anyLive ? 60_000 : false
+    },
   })
 }
 
