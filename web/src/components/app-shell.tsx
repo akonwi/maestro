@@ -6,7 +6,7 @@ import { clearSessionToken, useSessionToken } from '@/lib/session'
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className='min-h-screen bg-background text-foreground'>
+    <div className='flex min-h-screen flex-col bg-background text-foreground'>
       <a className='skip-link' href='#main-content'>
         Skip to main content
       </a>
@@ -37,8 +37,27 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
-      {children}
+      <div className='flex-1'>{children}</div>
+      <SiteFooter />
     </div>
+  )
+}
+
+function SiteFooter() {
+  return (
+    <footer className='border-t border-border'>
+      <div className='mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
+        <span
+          className='text-sm font-semibold uppercase tracking-[0.16em] text-foreground'
+          translate='no'
+        >
+          Maestro
+        </span>
+        <div className='text-sm text-muted-foreground'>
+          © {new Date().getFullYear()} Ngoh Technology
+        </div>
+      </div>
+    </footer>
   )
 }
 
