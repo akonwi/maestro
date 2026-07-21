@@ -53,29 +53,24 @@ fn register(router: mut dram::App, a: app::App) {
     }
   })
   protected.put("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
-    match request_int_param(req, "id", "fixture id") {
-      ok(fixture_id) => {
-        match fixture_id <= 0 {
-          true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
-          false => {
-            match auth::user_id(req) {
-              user_id => {
-                match decode_scores(req) {
-                  ok(scores) => {
-                    match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-                      true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
-                      false => save_before_kickoff(a, res, user_id, fixture_id, scores),
-                    }
-                  },
-                  err(message) => res.json(http::StatusBadRequest, ["error": message]),
-                }
-              },
-              _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
+    let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ {
+      res.json(http::StatusBadRequest, ["error": "id must be an integer"])
+    }
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+
+    match fixture_id <= 0 {
+      true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
+      false => {
+        match decode_scores(req) {
+          ok(scores) => {
+            match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
+              true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
+              false => save_before_kickoff(a, res, user_id, fixture_id, scores),
             }
           },
+          err(message) => res.json(http::StatusBadRequest, ["error": message]),
         }
       },
-      err(message) => res.json(http::StatusBadRequest, ["error": message]),
     }
   })
   protected.get(
