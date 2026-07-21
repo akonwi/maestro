@@ -7,7 +7,6 @@ use go:fmt
 use maestro/app
 use maestro/email
 use maestro/magic_links
-use maestro/response
 use maestro/sessions
 use maestro/users
 use go:net/http
@@ -19,8 +18,8 @@ fn register(router: mut dram::App, a: app::App) {
     "/auth/request",
     fn(req: dram::Request, res: mut dram::Response) {
       match do_request(a, req) {
-        ok => response::no_content(res),
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        ok => { res.status = 204 },
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -30,7 +29,7 @@ fn register(router: mut dram::App, a: app::App) {
     fn(req: dram::Request, res: mut dram::Response) {
       let token = req.query("token").or("")
       match token.is_empty() {
-        true => response::fail(res, http::StatusBadRequest, "missing token"),
+        true => res.json(http::StatusBadRequest, ["error": "missing token"]),
         false => {
           let target = "{a.config.app_base_url}/auth/verify?token={token}"
           res.header("Location", target)
@@ -43,8 +42,8 @@ fn register(router: mut dram::App, a: app::App) {
     "/auth/verify",
     fn(req: dram::Request, res: mut dram::Response) {
       match do_verify(a, req) {
-        ok(payload) => response::json_response(res, http::StatusOK, payload),
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        ok(payload) => res.json(http::StatusOK, payload),
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -53,12 +52,12 @@ fn register(router: mut dram::App, a: app::App) {
     fn(req: dram::Request, res: mut dram::Response) {
       let token = bearer_token(req)
       match token.is_empty() {
-        true => response::fail(res, http::StatusUnauthorized, "missing or invalid bearer token"),
+        true => res.json(http::StatusUnauthorized, ["error": "missing or invalid bearer token"]),
         false => {
           match sessions::delete(a, token) {
-            ok => response::no_content(res),
+            ok => { res.status = 204 },
             err(message) => {
-              response::fail(res, http::StatusInternalServerError, "could not delete session: {message}")
+              res.json(http::StatusInternalServerError, ["error": "could not delete session: {message}"])
             },
           }
         },
@@ -79,17 +78,17 @@ fn register(router: mut dram::App, a: app::App) {
                 user => {
                   let payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
 
-                  response::json_response(res, http::StatusOK, payload)
+                  res.json(http::StatusOK, payload)
                 },
-                _ => response::fail(res, http::StatusUnauthorized, "authenticated user no longer exists"),
+                _ => res.json(http::StatusUnauthorized, ["error": "authenticated user no longer exists"]),
               }
             },
             err(message) => {
-              response::fail(res, http::StatusInternalServerError, "could not load current user: {message}")
+              res.json(http::StatusInternalServerError, ["error": "could not load current user: {message}"])
             },
           }
         },
-        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+        _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
       }
     },
   )
@@ -168,7 +167,7 @@ fn middleware(a: app::App) dram::Middleware {
         let derived = context::with_value(req.context(), USER_ID_KEY, user_id)
         next.run(req.with_context(derived), res)
       },
-      _ => response::fail(res, http::StatusUnauthorized, "missing, invalid, or expired bearer token"),
+      _ => res.json(http::StatusUnauthorized, ["error": "missing, invalid, or expired bearer token"]),
     }
   }
 }

@@ -6,7 +6,6 @@ use maestro/auth
 use maestro/competitions
 use go:maestro/ffi
 use maestro/groups
-use maestro/response
 use maestro/scoring_state
 use go:net/http
 use sql
@@ -47,17 +46,17 @@ fn register(router: mut dram::App, a: app::App) {
               match find(a, user_id, fixture_id) {
                 ok(found) => {
                   match found {
-                    prediction => response::json_response(res, http::StatusOK, prediction_json(prediction)),
-                    _ => response::fail(res, http::StatusNotFound, "prediction not found"),
+                    prediction => res.json(http::StatusOK, prediction_json(prediction)),
+                    _ => res.json(http::StatusNotFound, ["error": "prediction not found"]),
                   }
                 },
-                err(message) => response::fail(res, http::StatusInternalServerError, message),
+                err(message) => res.json(http::StatusInternalServerError, ["error": message]),
               }
             },
-            _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+            _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
           }
         },
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -67,26 +66,26 @@ fn register(router: mut dram::App, a: app::App) {
       match request_int_param(req, "id", "fixture id") {
         ok(fixture_id) => {
           match fixture_id <= 0 {
-            true => response::fail(res, http::StatusBadRequest, "fixture id must be positive"),
+            true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
             false => {
               match auth::user_id(req) {
                 user_id => {
                   match decode_scores(req) {
                     ok(scores) => {
                       match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-                        true => response::fail(res, http::StatusBadRequest, "scores must be between 0 and 99"),
+                        true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
                         false => save_before_kickoff(a, res, user_id, fixture_id, scores),
                       }
                     },
-                    err(message) => response::fail(res, http::StatusBadRequest, message),
+                    err(message) => res.json(http::StatusBadRequest, ["error": message]),
                   }
                 },
-                _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+                _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
               }
             },
           }
         },
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -105,19 +104,19 @@ fn register(router: mut dram::App, a: app::App) {
                     ok(found) => {
                       match found {
                         _group => respond_group_predictions(a, res, group_value, fixture_value),
-                        _ => response::fail(res, http::StatusNotFound, "group not found"),
+                        _ => res.json(http::StatusNotFound, ["error": "group not found"]),
                       }
                     },
-                    err(message) => response::fail(res, http::StatusInternalServerError, message),
+                    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
                   }
                 },
-                _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+                _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
               }
             },
-            err(message) => response::fail(res, http::StatusBadRequest, message),
+            err(message) => res.json(http::StatusBadRequest, ["error": message]),
           }
         },
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -137,7 +136,7 @@ private fn save_before_kickoff(
 ) {
   let now = time::Now().UnixMilli()
   match ffi::CacheAllow(a.cache, "prediction-write:{user_id}", 30, Int64::from(60 * 1000)) {
-    false => response::fail(res, http::StatusTooManyRequests, "too many prediction requests"),
+    false => res.json(http::StatusTooManyRequests, ["error": "too many prediction requests"]),
     true => check_existing_lock(a, res, user_id, fixture_id, scores, now),
   }
 }
@@ -151,12 +150,12 @@ private fn check_existing_lock(
   now: Int64,
 ) {
   match scoring_state::find(a, fixture_id) {
-    err(message) => response::fail(res, http::StatusInternalServerError, message),
+    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
     ok(existing) => {
       match existing {
         state => {
           match state.prediction_lock_at <= now {
-            true => response::fail(res, http::StatusConflict, "predictions are locked after kickoff"),
+            true => res.json(http::StatusConflict, ["error": "predictions are locked after kickoff"]),
             false => fetch_and_save(a, res, user_id, fixture_id, scores, now),
           }
         },
@@ -175,16 +174,16 @@ private fn fetch_and_save(
   now: Int64,
 ) {
   match api_football::fixture_by_id(a, fixture_id) {
-    err(message) => response::fail(res, http::StatusBadGateway, message),
+    err(message) => res.json(http::StatusBadGateway, ["error": message]),
     ok(found) => {
       match found {
         fixture => {
           match fixture.kickoff_at <= now {
-            true => response::fail(res, http::StatusConflict, "predictions are locked after kickoff"),
+            true => res.json(http::StatusConflict, ["error": "predictions are locked after kickoff"]),
             false => save_for_competition(a, res, user_id, fixture, scores, now),
           }
         },
-        _ => response::fail(res, http::StatusNotFound, "fixture not found"),
+        _ => res.json(http::StatusNotFound, ["error": "fixture not found"]),
       }
     },
   }
@@ -199,21 +198,21 @@ private fn save_for_competition(
   now: Int64,
 ) {
   match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
-    err(message) => response::fail(res, http::StatusInternalServerError, message),
+    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
     ok(found) => {
       match found {
         competition => {
           match upsert_with_state(a, user_id, competition.id, fixture, scores.home, scores.away) {
-            ok(prediction) => response::json_response(res, http::StatusOK, prediction_json(prediction)),
+            ok(prediction) => res.json(http::StatusOK, prediction_json(prediction)),
             err(message) => {
               match message == "predictions are locked after kickoff" {
-                true => response::fail(res, http::StatusConflict, message),
-                false => response::fail(res, http::StatusInternalServerError, message),
+                true => res.json(http::StatusConflict, ["error": message]),
+                false => res.json(http::StatusInternalServerError, ["error": message]),
               }
             },
           }
         },
-        _ => response::fail(res, http::StatusNotFound, "fixture competition is not active"),
+        _ => res.json(http::StatusNotFound, ["error": "fixture competition is not active"]),
       }
     },
   }
@@ -231,9 +230,9 @@ private fn respond_group_predictions(
       for prediction in predictions {
         payload.push(group_prediction_json(prediction))
       }
-      response::json_response(res, http::StatusOK, payload)
+      res.json(http::StatusOK, payload)
     },
-    err(message) => response::fail(res, http::StatusInternalServerError, message),
+    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
   }
 }
 

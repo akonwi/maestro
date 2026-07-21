@@ -6,7 +6,6 @@ use maestro/app
 use maestro/auth
 use maestro/email
 use maestro/magic_links
-use maestro/response
 use maestro/users
 use go:net/http
 use go:strconv
@@ -48,12 +47,12 @@ fn register(router: mut dram::App, a: app::App) {
               for group in groups {
                 payload.push(group_json(group))
               }
-              response::json_response(res, http::StatusOK, payload)
+              res.json(http::StatusOK, payload)
             },
-            err(message) => response::fail(res, http::StatusInternalServerError, message),
+            err(message) => res.json(http::StatusInternalServerError, ["error": message]),
           }
         },
-        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+        _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
       }
     },
   )
@@ -66,19 +65,19 @@ fn register(router: mut dram::App, a: app::App) {
             ok(raw_name) => {
               let name = strings::TrimSpace(raw_name)
               match name.is_empty() or name.size() > 80 {
-                true => response::fail(res, http::StatusBadRequest, "group name must be between 1 and 80 characters"),
+                true => res.json(http::StatusBadRequest, ["error": "group name must be between 1 and 80 characters"]),
                 false => {
                   match create(a, user_id, name) {
-                    ok(group) => response::json_response(res, http::StatusCreated, group_json(group)),
-                    err(message) => response::fail(res, http::StatusInternalServerError, message),
+                    ok(group) => res.json(http::StatusCreated, group_json(group)),
+                    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
                   }
                 },
               }
             },
-            err(message) => response::fail(res, http::StatusBadRequest, message),
+            err(message) => res.json(http::StatusBadRequest, ["error": message]),
           }
         },
-        _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+        _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
       }
     },
   )
@@ -97,21 +96,21 @@ fn register(router: mut dram::App, a: app::App) {
                         ok(group_members) => {
                           let payload: [Str: Any] = ["group": group_json(group), "members": members_json(group_members)]
 
-                          response::json_response(res, http::StatusOK, payload)
+                          res.json(http::StatusOK, payload)
                         },
-                        err(message) => response::fail(res, http::StatusInternalServerError, message),
+                        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
                       }
                     },
-                    _ => response::fail(res, http::StatusNotFound, "group not found"),
+                    _ => res.json(http::StatusNotFound, ["error": "group not found"]),
                   }
                 },
-                err(message) => response::fail(res, http::StatusInternalServerError, message),
+                err(message) => res.json(http::StatusInternalServerError, ["error": message]),
               }
             },
-            _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+            _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
           }
         },
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -126,16 +125,16 @@ fn register(router: mut dram::App, a: app::App) {
                 ok(found) => {
                   match found {
                     group => invite_to_group(a, res, req, group, inviter_id),
-                    _ => response::fail(res, http::StatusNotFound, "group not found"),
+                    _ => res.json(http::StatusNotFound, ["error": "group not found"]),
                   }
                 },
-                err(message) => response::fail(res, http::StatusInternalServerError, message),
+                err(message) => res.json(http::StatusInternalServerError, ["error": message]),
               }
             },
-            _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+            _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
           }
         },
-        err(message) => response::fail(res, http::StatusBadRequest, message),
+        err(message) => res.json(http::StatusBadRequest, ["error": message]),
       }
     },
   )
@@ -152,7 +151,7 @@ private fn invite_to_group(
     ok(raw_email) => {
       let address = strings::ToLower(strings::TrimSpace(raw_email))
       match address.is_empty() or not strings::Contains(address, "@") {
-        true => response::fail(res, http::StatusBadRequest, "enter a valid email address"),
+        true => res.json(http::StatusBadRequest, ["error": "enter a valid email address"]),
         false => {
           match add_invited_member(a, group, inviter_id, address) {
             ok(result) => {
@@ -162,14 +161,14 @@ private fn invite_to_group(
                 "invitation_sent": result.invitation_sent,
               ]
 
-              response::json_response(res, http::StatusOK, payload)
+              res.json(http::StatusOK, payload)
             },
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
       }
     },
-    err(message) => response::fail(res, http::StatusBadRequest, message),
+    err(message) => res.json(http::StatusBadRequest, ["error": message]),
   }
 }
 

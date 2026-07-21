@@ -3,7 +3,6 @@ use dram
 use maestro/app
 use maestro/auth
 use maestro/groups
-use maestro/response
 use maestro/week
 use go:net/http
 use go:strconv
@@ -25,10 +24,10 @@ fn register(router: mut dram::App, a: app::App) {
     "/groups/:id/leaderboard/season",
     fn(req: dram::Request, res: mut dram::Response) {
       match strconv::Atoi(req.param("id").or("")) {
-        err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
+        err(_) => res.json(http::StatusBadRequest, ["error": "group id must be an integer"]),
         ok(group_id) => {
           match parse_competition(req) {
-            err(message) => response::fail(res, http::StatusBadRequest, message),
+            err(message) => res.json(http::StatusBadRequest, ["error": message]),
             ok(competition_id) => authorize_and_respond(a, res, req, group_id, competition_id),
           }
         },
@@ -39,13 +38,13 @@ fn register(router: mut dram::App, a: app::App) {
     "/groups/:id/leaderboard/week",
     fn(req: dram::Request, res: mut dram::Response) {
       match strconv::Atoi(req.param("id").or("")) {
-        err(_) => response::fail(res, http::StatusBadRequest, "group id must be an integer"),
+        err(_) => res.json(http::StatusBadRequest, ["error": "group id must be an integer"]),
         ok(group_id) => {
           match parse_competition(req) {
-            err(message) => response::fail(res, http::StatusBadRequest, message),
+            err(message) => res.json(http::StatusBadRequest, ["error": message]),
             ok(competition_id) => {
               match week::current(req.query("week").or("")) {
-                err(message) => response::fail(res, http::StatusBadRequest, message),
+                err(message) => res.json(http::StatusBadRequest, ["error": message]),
                 ok(bounds) => authorize_and_respond_week(a, res, req, group_id, competition_id, bounds),
               }
             },
@@ -66,16 +65,16 @@ private fn authorize_and_respond(
   match auth::user_id(req) {
     user_id => {
       match groups::find_for_member(a, group_id, user_id) {
-        err(message) => response::fail(res, http::StatusInternalServerError, message),
+        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
         ok(found) => {
           match found {
             _group => respond(a, res, group_id, competition_id),
-            _ => response::fail(res, http::StatusNotFound, "group not found"),
+            _ => res.json(http::StatusNotFound, ["error": "group not found"]),
           }
         },
       }
     },
-    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+    _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
   }
 }
 
@@ -90,23 +89,23 @@ private fn authorize_and_respond_week(
   match auth::user_id(req) {
     user_id => {
       match groups::find_for_member(a, group_id, user_id) {
-        err(message) => response::fail(res, http::StatusInternalServerError, message),
+        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
         ok(found) => {
           match found {
             _group => respond_week(a, res, group_id, competition_id, bounds),
-            _ => response::fail(res, http::StatusNotFound, "group not found"),
+            _ => res.json(http::StatusNotFound, ["error": "group not found"]),
           }
         },
       }
     },
-    _ => response::fail(res, http::StatusUnauthorized, "unauthorized"),
+    _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
   }
 }
 
 private fn respond(a: app::App, res: mut dram::Response, group_id: Int, competition_id: Int?) {
   match season(a, group_id, competition_id) {
-    err(message) => response::fail(res, http::StatusInternalServerError, message),
-    ok(entries) => response::json_response(res, http::StatusOK, entries_json(entries)),
+    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    ok(entries) => res.json(http::StatusOK, entries_json(entries)),
   }
 }
 
@@ -118,8 +117,8 @@ private fn respond_week(
   bounds: week::Bounds,
 ) {
   match weekly(a, group_id, competition_id, bounds) {
-    err(message) => response::fail(res, http::StatusInternalServerError, message),
-    ok(entries) => response::json_response(res, http::StatusOK, entries_json(entries)),
+    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    ok(entries) => res.json(http::StatusOK, entries_json(entries)),
   }
 }
 

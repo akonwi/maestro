@@ -1,7 +1,6 @@
 use dram
 use maestro/api_football
 use maestro/app
-use maestro/response
 use go:net/http
 use go:strconv
 
@@ -18,14 +17,14 @@ fn register(router: mut dram::App, a: app::App) {
           match api_football::fixture_outlook(a, id) {
             ok(found) => {
               match found {
-                outlook => response::json_response(res, http::StatusOK, outlook_json(outlook)),
-                _ => response::fail(res, http::StatusNotFound, "no outlook available for this fixture"),
+                outlook => res.json(http::StatusOK, outlook_json(outlook)),
+                _ => res.json(http::StatusNotFound, ["error": "no outlook available for this fixture"]),
               }
             },
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
-        err(_) => response::fail(res, http::StatusBadRequest, "fixture id must be an integer"),
+        err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
       }
     },
   )
@@ -35,11 +34,11 @@ fn register(router: mut dram::App, a: app::App) {
       match strconv::Atoi(req.param("id").or("")) {
         ok(id) => {
           match match_json(a, id) {
-            ok(payload) => response::json_response(res, http::StatusOK, payload),
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            ok(payload) => res.json(http::StatusOK, payload),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
-        err(_) => response::fail(res, http::StatusBadRequest, "fixture id must be an integer"),
+        err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
       }
     },
   )

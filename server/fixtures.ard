@@ -2,7 +2,6 @@ use dram
 use maestro/api_football
 use maestro/app
 use maestro/competitions
-use maestro/response
 use go:net/http
 use go:strconv
 use go:strings
@@ -34,19 +33,19 @@ fn register(router: mut dram::App, a: app::App) {
       match raw_comp.is_empty() {
         true => {
           match upcoming(a, Maybe::new()) {
-            ok(list) => response::json_response(res, http::StatusOK, to_json_list(list)),
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            ok(list) => res.json(http::StatusOK, to_json_list(list)),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
         false => {
           match strconv::Atoi(raw_comp) {
             ok(id) => {
               match upcoming(a, Maybe::new(id)) {
-                ok(list) => response::json_response(res, http::StatusOK, to_json_list(list)),
-                err(message) => response::fail(res, http::StatusBadGateway, message),
+                ok(list) => res.json(http::StatusOK, to_json_list(list)),
+                err(message) => res.json(http::StatusBadGateway, ["error": message]),
               }
             },
-            err(_) => response::fail(res, http::StatusBadRequest, "competition_id must be an integer"),
+            err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
           }
         },
       }
@@ -64,19 +63,19 @@ fn register(router: mut dram::App, a: app::App) {
       match raw_comp.is_empty() {
         true => {
           match round_payload(a, Maybe::new(), name) {
-            ok(payload) => response::json_response(res, http::StatusOK, round_json(payload)),
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            ok(payload) => res.json(http::StatusOK, round_json(payload)),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
         false => {
           match strconv::Atoi(raw_comp) {
             ok(id) => {
               match round_payload(a, Maybe::new(id), name) {
-                ok(payload) => response::json_response(res, http::StatusOK, round_json(payload)),
-                err(message) => response::fail(res, http::StatusBadGateway, message),
+                ok(payload) => res.json(http::StatusOK, round_json(payload)),
+                err(message) => res.json(http::StatusBadGateway, ["error": message]),
               }
             },
-            err(_) => response::fail(res, http::StatusBadRequest, "competition_id must be an integer"),
+            err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
           }
         },
       }
@@ -89,19 +88,19 @@ fn register(router: mut dram::App, a: app::App) {
       match raw_comp.is_empty() {
         true => {
           match season_rounds(a, Maybe::new()) {
-            ok(payload) => response::json_response(res, http::StatusOK, payload),
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            ok(payload) => res.json(http::StatusOK, payload),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
         false => {
           match strconv::Atoi(raw_comp) {
             ok(id) => {
               match season_rounds(a, Maybe::new(id)) {
-                ok(payload) => response::json_response(res, http::StatusOK, payload),
-                err(message) => response::fail(res, http::StatusBadGateway, message),
+                ok(payload) => res.json(http::StatusOK, payload),
+                err(message) => res.json(http::StatusBadGateway, ["error": message]),
               }
             },
-            err(_) => response::fail(res, http::StatusBadRequest, "competition_id must be an integer"),
+            err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
           }
         },
       }
@@ -116,14 +115,14 @@ fn register(router: mut dram::App, a: app::App) {
           match by_id(a, id) {
             ok(found) => {
               match found {
-                f => response::json_response(res, http::StatusOK, to_json(f)),
-                _ => response::fail(res, http::StatusNotFound, "fixture not found"),
+                f => res.json(http::StatusOK, to_json(f)),
+                _ => res.json(http::StatusNotFound, ["error": "fixture not found"]),
               }
             },
-            err(message) => response::fail(res, http::StatusBadGateway, message),
+            err(message) => res.json(http::StatusBadGateway, ["error": message]),
           }
         },
-        err(_) => response::fail(res, http::StatusBadRequest, "fixture id must be an integer"),
+        err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
       }
     },
   )
