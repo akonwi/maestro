@@ -12,14 +12,19 @@ use maestro/users
 use go:net/http
 use go:strings
 
+fn set_error(res: mut dram::Response, err: Str) {
+  res.json(http::StatusBadRequest, ["error": err])
+}
+
 // Wire public auth endpoints and the middleware-protected current-user route.
 fn register(router: mut dram::App, a: app::App) {
   router.post(
     "/auth/request",
     fn(req: dram::Request, res: mut dram::Response) {
-      match do_request(a, req) {
+      let addr = try decode_field(req, "email") -> err { set_error(res, err) }
+      match send_magic_link(a, addr) {
         ok => { res.status = 204 },
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
+        err(message) => set_error(res, message),
       }
     },
   )
@@ -98,20 +103,18 @@ fn register(router: mut dram::App, a: app::App) {
 // do_* worker functions
 // -----------------------------------------------------------------------
 
-// POST /auth/request { email }
 // We deliberately never leak whether the email is known.
-private fn do_request(a: app::App, req: dram::Request) Void!Str {
-  let addr = try decode_field(req, "email")
-  let token = try magic_links::create(a, addr)
+private fn send_magic_link(a: app::App, address: Str) Void!Str {
+  let token = try magic_links::create(a, address)
   let link = "{a.config.server_base_url}/auth/verify?token={token}"
   let text = "Click the link to sign in to Maestro:\n\n{link}\n\nThe link expires soon and can only be used once."
   let html = "<p>Use the link below to sign in to Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
 
   // A send failure shouldn't leak upstream — the user can retry.
-  match email::send(a.config, addr, "Your Maestro sign-in link", text, html) {
+  match email::send(a.config, address, "Your Maestro sign-in link", text, html) {
     ok => Result::ok(()),
     err(message) => {
-      fmt::Println("email send failed for {addr}: {message}")
+      fmt::Println("email send failed for {address}: {message}")
       Result::ok(())
     },
   }
@@ -183,7 +186,7 @@ fn user_id(req: dram::Request) Int? {
 // bodies are simple `{ "field": "value" }` shapes. Every failure gets
 // the same `invalid request:` prefix so clients see a consistent shape.
 private fn decode_field(req: dram::Request, name: Str) Str!Str {
-  let body = try read_body(req).map_err(prefix_invalid_request)
+  let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
     false => {
@@ -191,10 +194,6 @@ private fn decode_field(req: dram::Request, name: Str) Str!Str {
       decode::run(data, decode::field(name, decode::string)).map_err(describe_body_error)
     },
   }
-}
-
-private fn read_body(req: dram::Request) Str!Str {
-  Result::ok(Str::from(req.body))
 }
 
 // Extract the token from a Bearer Authorization header. Returns "" if
