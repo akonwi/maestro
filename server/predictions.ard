@@ -66,7 +66,12 @@ fn register(router: mut dram::App, a: app::App) {
         let scores = try decode_scores(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
         match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
           true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
-          false => save_before_kickoff(a, res, user_id, fixture_id, scores),
+          false => {
+            match save_before_kickoff(a, user_id, fixture_id, scores) {
+              ok(prediction) => res.json(http::StatusOK, prediction_json(prediction)),
+              err(e) => res.json(e.status, ["error": e.message]),
+            }
+          }
         }
       },
     }
@@ -97,39 +102,41 @@ struct Scores {
   away: Int,
 }
 
+private struct HttpError {
+  status: Int,
+  message: Str
+}
+
 private fn save_before_kickoff(
   a: app::App,
-  res: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
-) {
-  let now = time::Now().UnixMilli()
+) Prediction!HttpError {
   match ffi::CacheAllow(a.cache, "prediction-write:{user_id}", 30, Int64::from(60 * 1000)) {
-    false => res.json(http::StatusTooManyRequests, ["error": "too many prediction requests"]),
-    true => check_existing_lock(a, res, user_id, fixture_id, scores, now),
+    false => Result::err(HttpError{status: http::StatusTooManyRequests, message: "too many prediction requests"}),
+    true => check_existing_lock(a, user_id, fixture_id, scores, time::Now().UnixMilli()),
   }
 }
 
 private fn check_existing_lock(
   a: app::App,
-  res: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
   now: Int64,
-) {
+) Prediction!HttpError {
   match scoring_state::find(a, fixture_id) {
-    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    err(message) => Result::err(HttpError{status: http::StatusInternalServerError, message: message}),
     ok(existing) => {
       match existing {
         state => {
           match state.prediction_lock_at <= now {
-            true => res.json(http::StatusConflict, ["error": "predictions are locked after kickoff"]),
-            false => fetch_and_save(a, res, user_id, fixture_id, scores, now),
+            true => Result::err(HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
+            false => fetch_and_save(a, user_id, fixture_id, scores, now),
           }
         },
-        _ => fetch_and_save(a, res, user_id, fixture_id, scores, now),
+        _ => fetch_and_save(a, user_id, fixture_id, scores, now),
       }
     },
   }
@@ -137,54 +144,46 @@ private fn check_existing_lock(
 
 private fn fetch_and_save(
   a: app::App,
-  res: mut dram::Response,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
   now: Int64,
-) {
-  match api_football::fixture_by_id(a, fixture_id) {
-    err(message) => res.json(http::StatusBadGateway, ["error": message]),
-    ok(found) => {
-      match found {
-        fixture => {
-          match fixture.kickoff_at <= now {
-            true => res.json(http::StatusConflict, ["error": "predictions are locked after kickoff"]),
-            false => save_for_competition(a, res, user_id, fixture, scores, now),
-          }
-        },
-        _ => res.json(http::StatusNotFound, ["error": "fixture not found"]),
+) Prediction!HttpError {
+  let found = try api_football::fixture_by_id(a, fixture_id) -> err { Result::err(HttpError{status: http::StatusBadGateway, message: err}) }
+
+  match found {
+    fixture => {
+      match fixture.kickoff_at <= now {
+        true => Result::err(HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
+        false => save_for_competition(a, user_id, fixture, scores),
       }
     },
+    _ => Result::err(HttpError{status: http::StatusNotFound, message: "fixture not found"}),
   }
 }
 
 private fn save_for_competition(
   a: app::App,
-  res: mut dram::Response,
   user_id: Int,
   fixture: api_football::Fixture,
   scores: Scores,
-  now: Int64,
-) {
-  match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
-    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-    ok(found) => {
-      match found {
-        competition => {
-          match upsert_with_state(a, user_id, competition.id, fixture, scores.home, scores.away) {
-            ok(prediction) => res.json(http::StatusOK, prediction_json(prediction)),
-            err(message) => {
-              match message == "predictions are locked after kickoff" {
-                true => res.json(http::StatusConflict, ["error": message]),
-                false => res.json(http::StatusInternalServerError, ["error": message]),
-              }
-            },
+) Prediction!HttpError {
+  let found = try competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) -> err {
+    Result::err(HttpError{status: http::StatusInternalServerError, message: err})
+  }
+  match found {
+    competition => {
+      match upsert_with_state(a, user_id, competition.id, fixture, scores.home, scores.away) {
+        ok(prediction) => Result::ok(prediction),
+        err(message) => {
+          match message == "predictions are locked after kickoff" {
+            true => Result::err(HttpError{status: http::StatusConflict, message: message}),
+            false => Result::err(HttpError{status: http::StatusInternalServerError, message: message}),
           }
         },
-        _ => res.json(http::StatusNotFound, ["error": "fixture competition is not active"]),
       }
     },
+    _ => Result::err(HttpError{status: http::StatusNotFound, message: "fixture competition is not active"}),
   }
 }
 
