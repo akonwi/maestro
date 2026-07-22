@@ -36,140 +36,80 @@ struct InviteResult {
 fn register(router: mut dram::App, a: app::App) {
   mut protected = router.group("/")
   protected.use(auth::middleware(a))
-  protected.get(
-    "/groups",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match auth::user_id(req) {
-        user_id => {
-          match list_for_user(a, user_id) {
-            ok(groups) => {
-              mut payload: [Any] = []
-              for group in groups {
-                payload.push(group_json(group))
-              }
-              res.json(http::StatusOK, payload)
-            },
-            err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-          }
-        },
-        _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-      }
-    },
-  )
-  protected.post(
-    "/groups",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match auth::user_id(req) {
-        user_id => {
-          match decode_string_field(req, "name") {
-            ok(raw_name) => {
-              let name = strings::TrimSpace(raw_name)
-              match name.is_empty() or name.size() > 80 {
-                true => res.json(http::StatusBadRequest, ["error": "group name must be between 1 and 80 characters"]),
-                false => {
-                  match create(a, user_id, name) {
-                    ok(group) => res.json(http::StatusCreated, group_json(group)),
-                    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-                  }
-                },
-              }
-            },
-            err(message) => res.json(http::StatusBadRequest, ["error": message]),
-          }
-        },
-        _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-      }
-    },
-  )
-  protected.get(
-    "/groups/:id",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match request_group_id(req) {
-        ok(group_id) => {
-          match auth::user_id(req) {
-            user_id => {
-              match find_for_member(a, group_id, user_id) {
-                ok(found) => {
-                  match found {
-                    group => {
-                      match members(a, group_id) {
-                        ok(group_members) => {
-                          let payload: [Str: Any] = ["group": group_json(group), "members": members_json(group_members)]
+  protected.get("/groups", fn(req: dram::Request, res: mut dram::Response) {
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
 
-                          res.json(http::StatusOK, payload)
-                        },
-                        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-                      }
-                    },
-                    _ => res.json(http::StatusNotFound, ["error": "group not found"]),
-                  }
-                },
-                err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-              }
-            },
-            _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-          }
-        },
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
-      }
-    },
-  )
-  protected.post(
-    "/groups/:id/invites",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match request_group_id(req) {
-        ok(group_id) => {
-          match auth::user_id(req) {
-            inviter_id => {
-              match find_for_member(a, group_id, inviter_id) {
-                ok(found) => {
-                  match found {
-                    group => invite_to_group(a, res, req, group, inviter_id),
-                    _ => res.json(http::StatusNotFound, ["error": "group not found"]),
-                  }
-                },
-                err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-              }
-            },
-            _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-          }
-        },
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
-      }
-    },
-  )
-}
+    match list_for_user(a, user_id) {
+      ok(groups) => {
+        mut payload: [Any] = []
+        for group in groups {
+          payload.push(group_json(group))
+        }
+        res.json(http::StatusOK, payload)
+      },
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
+  protected.post("/groups", fn(req: dram::Request, res: mut dram::Response) {
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let raw_name = try decode_string_field(req, "name") -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let name = strings::TrimSpace(raw_name)
 
-private fn invite_to_group(
-  a: app::App,
-  res: mut dram::Response,
-  req: dram::Request,
-  group: Group,
-  inviter_id: Int,
-) {
-  match decode_string_field(req, "email") {
-    ok(raw_email) => {
-      let address = strings::ToLower(strings::TrimSpace(raw_email))
-      match address.is_empty() or not strings::Contains(address, "@") {
-        true => res.json(http::StatusBadRequest, ["error": "enter a valid email address"]),
-        false => {
-          match add_invited_member(a, group, inviter_id, address) {
-            ok(result) => {
-              let payload: [Str: Any] = [
-                "member": member_json(result.member),
-                "member_added": result.member_added,
-                "invitation_sent": result.invitation_sent,
-              ]
+    match name.is_empty() or name.size() > 80 {
+      true => res.json(http::StatusBadRequest, ["error": "group name must be between 1 and 80 characters"]),
+      false => {
+        match create(a, user_id, name) {
+          ok(group) => res.json(http::StatusCreated, group_json(group)),
+          err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+        }
+      },
+    }
+  })
+  protected.get("/groups/:id", fn(req: dram::Request, res: mut dram::Response) {
+    let group_id = try request_group_id(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let maybe_group = try find_for_member(a, group_id, user_id) -> err {
+      res.json(http::StatusInternalServerError, ["error": err])
+    }
+    let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
-              res.json(http::StatusOK, payload)
-            },
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
-          }
-        },
-      }
-    },
-    err(message) => res.json(http::StatusBadRequest, ["error": message]),
-  }
+    match members(a, group_id) {
+      ok(group_members) => {
+        let payload: [Str: Any] = ["group": group_json(group), "members": members_json(group_members)]
+
+        res.json(http::StatusOK, payload)
+      },
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
+  protected.post("/groups/:id/invites", fn(req: dram::Request, res: mut dram::Response) {
+    let group_id = try request_group_id(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let inviter_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let maybe_group = try find_for_member(a, group_id, inviter_id) -> err {
+      res.json(http::StatusInternalServerError, ["error": err])
+    }
+    let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
+
+    let raw_email = try decode_string_field(req, "email") -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let address = strings::ToLower(strings::TrimSpace(raw_email))
+    match address.is_empty() or not strings::Contains(address, "@") {
+      true => res.json(http::StatusBadRequest, ["error": "enter a valid email address"]),
+      false => {
+        match add_invited_member(a, group, inviter_id, address) {
+          ok(result) => {
+            let payload: [Str: Any] = [
+              "member": member_json(result.member),
+              "member_added": result.member_added,
+              "invitation_sent": result.invitation_sent,
+            ]
+
+            res.json(http::StatusOK, payload)
+          },
+          err(message) => res.json(http::StatusBadGateway, ["error": message]),
+        }
+      },
+    }
+  })
 }
 
 private fn add_invited_member(a: app::App, group: Group, inviter_id: Int, address: Str) InviteResult!Str {

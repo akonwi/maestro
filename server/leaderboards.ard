@@ -20,106 +20,41 @@ struct Entry {
 fn register(router: mut dram::App, a: app::App) {
   mut protected = router.group("/")
   protected.use(auth::middleware(a))
-  protected.get(
-    "/groups/:id/leaderboard/season",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match strconv::Atoi(req.param("id").or("")) {
-        err(_) => res.json(http::StatusBadRequest, ["error": "group id must be an integer"]),
-        ok(group_id) => {
-          match parse_competition(req) {
-            err(message) => res.json(http::StatusBadRequest, ["error": message]),
-            ok(competition_id) => authorize_and_respond(a, res, req, group_id, competition_id),
-          }
-        },
-      }
-    },
-  )
-  protected.get(
-    "/groups/:id/leaderboard/week",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match strconv::Atoi(req.param("id").or("")) {
-        err(_) => res.json(http::StatusBadRequest, ["error": "group id must be an integer"]),
-        ok(group_id) => {
-          match parse_competition(req) {
-            err(message) => res.json(http::StatusBadRequest, ["error": message]),
-            ok(competition_id) => {
-              match week::current(req.query("week").or("")) {
-                err(message) => res.json(http::StatusBadRequest, ["error": message]),
-                ok(bounds) => authorize_and_respond_week(a, res, req, group_id, competition_id, bounds),
-              }
-            },
-          }
-        },
-      }
-    },
-  )
-}
 
-private fn authorize_and_respond(
-  a: app::App,
-  res: mut dram::Response,
-  req: dram::Request,
-  group_id: Int,
-  competition_id: Int?,
-) {
-  match auth::user_id(req) {
-    user_id => {
-      match groups::find_for_member(a, group_id, user_id) {
-        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-        ok(found) => {
-          match found {
-            _group => respond(a, res, group_id, competition_id),
-            _ => res.json(http::StatusNotFound, ["error": "group not found"]),
-          }
-        },
-      }
-    },
-    _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-  }
-}
+  protected.get("/groups/:id/leaderboard/season", fn(req: dram::Request, res: mut dram::Response) {
+    let group_id = try strconv::Atoi(req.param("id").or("")) -> _ {
+      res.json(http::StatusBadRequest, ["error": "group id must be an integer"])
+    }
+    let competition_id = try parse_competition(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let maybe_group = try groups::find_for_member(a, group_id, user_id) -> err {
+      res.json(http::StatusInternalServerError, ["error": err])
+    }
+    let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
-private fn authorize_and_respond_week(
-  a: app::App,
-  res: mut dram::Response,
-  req: dram::Request,
-  group_id: Int,
-  competition_id: Int?,
-  bounds: week::Bounds,
-) {
-  match auth::user_id(req) {
-    user_id => {
-      match groups::find_for_member(a, group_id, user_id) {
-        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-        ok(found) => {
-          match found {
-            _group => respond_week(a, res, group_id, competition_id, bounds),
-            _ => res.json(http::StatusNotFound, ["error": "group not found"]),
-          }
-        },
-      }
-    },
-    _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-  }
-}
+    match season(a, group_id, competition_id) {
+      ok(entries) => res.json(http::StatusOK, entries_json(entries)),
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
 
-private fn respond(a: app::App, res: mut dram::Response, group_id: Int, competition_id: Int?) {
-  match season(a, group_id, competition_id) {
-    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-    ok(entries) => res.json(http::StatusOK, entries_json(entries)),
-  }
-}
+  protected.get("/groups/:id/leaderboard/week", fn(req: dram::Request, res: mut dram::Response) {
+    let group_id = try strconv::Atoi(req.param("id").or("")) -> _ {
+      res.json(http::StatusBadRequest, ["error": "group id must be an integer"])
+    }
+    let competition_id = try parse_competition(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let bounds = try week::current(req.query("week").or("")) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let maybe_group = try groups::find_for_member(a, group_id, user_id) -> err {
+      res.json(http::StatusInternalServerError, ["error": err])
+    }
+    let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
-private fn respond_week(
-  a: app::App,
-  res: mut dram::Response,
-  group_id: Int,
-  competition_id: Int?,
-  bounds: week::Bounds,
-) {
-  match weekly(a, group_id, competition_id, bounds) {
-    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-    ok(entries) => res.json(http::StatusOK, entries_json(entries)),
-  }
+    match weekly(a, group_id, competition_id, bounds) {
+      ok(entries) => res.json(http::StatusOK, entries_json(entries)),
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
 }
 
 fn season(a: app::App, group_id: Int, competition_id: Int?) [Entry]!Str {

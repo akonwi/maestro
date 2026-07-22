@@ -93,7 +93,16 @@ fn register(router: mut dram::App, a: app::App) {
       }
       let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
-      respond_group_predictions(a, res, group_id, fixture_id)
+      match list_for_group(a, group_id, fixture_id) {
+        ok(predictions) => {
+          mut payload: [Any] = []
+          for prediction in predictions {
+            payload.push(group_prediction_json(prediction))
+          }
+          res.json(http::StatusOK, payload)
+        },
+        err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+      }
     },
   )
 }
@@ -180,24 +189,6 @@ private fn save_for_competition(
       }
     },
     _ => Result::err(errors::HttpError{status: http::StatusNotFound, message: "fixture competition is not active"}),
-  }
-}
-
-private fn respond_group_predictions(
-  a: app::App,
-  res: mut dram::Response,
-  group_id: Int,
-  fixture_id: Int,
-) {
-  match list_for_group(a, group_id, fixture_id) {
-    ok(predictions) => {
-      mut payload: [Any] = []
-      for prediction in predictions {
-        payload.push(group_prediction_json(prediction))
-      }
-      res.json(http::StatusOK, payload)
-    },
-    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
   }
 }
 
