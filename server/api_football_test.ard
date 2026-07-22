@@ -127,3 +127,29 @@ test fn injuries_dedup_per_player() Void!Str {
   try testing::assert(first.reason == "International duty", "keeps first record's reason")
   Result::ok(())
 }
+
+// Standings decode: expanded row fields + conference grouping.
+let STANDINGS_BODY: Str = "\{
+  \"response\": [
+    \{ \"league\": \{ \"standings\": [
+      [
+        \{ \"rank\": 1, \"team\": \{ \"id\": 1607, \"name\": \"Vancouver Whitecaps\" \}, \"points\": 32, \"goalsDiff\": 22, \"form\": \"WLWDD\", \"description\": \"Promotion - MLS (Play Offs)\", \"group\": \"Western Conference\", \"all\": \{ \"played\": 14, \"win\": 10, \"draw\": 2, \"lose\": 2, \"goals\": \{ \"for\": 34, \"against\": 12 \} \} \}
+      ],
+      [
+        \{ \"rank\": 1, \"team\": \{ \"id\": 1595, \"name\": \"Philadelphia Union\" \}, \"points\": 30, \"goalsDiff\": 14, \"form\": \"WWWDW\", \"description\": \"Promotion - MLS (Play Offs)\", \"group\": \"Eastern Conference\", \"all\": \{ \"played\": 15, \"win\": 9, \"draw\": 3, \"lose\": 3, \"goals\": \{ \"for\": 28, \"against\": 14 \} \} \}
+      ]
+    ] \} \}
+  ]
+\}"
+
+test fn parses_expanded_standings() Void!Str {
+  let rows = try api_football::parse_standings(STANDINGS_BODY)
+  try testing::assert(rows.size() == 2, "two rows across conferences")
+  let west = rows.at(0).expect("west")
+  try testing::assert(west.team_name == "Vancouver Whitecaps", "team name")
+  try testing::assert(west.played == 14 and west.win == 10, "played/win")
+  try testing::assert(west.goals_for == 34 and west.goals_against == 12, "goals")
+  try testing::assert(west.form == "WLWDD", "form")
+  try testing::assert(west.group == "Western Conference", "conference group")
+  Result::ok(())
+}

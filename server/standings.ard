@@ -1,0 +1,116 @@
+use dram
+use maestro/api_football
+use maestro/app
+use maestro/competitions
+use go:net/http
+use go:strconv
+
+// Public league table: a read-only proxy over API-Football standings,
+// grouped by conference. Rides the shared TTL cache in api_football.
+
+fn register(router: mut dram::App, a: app::App) {
+  router.get(
+    "/standings",
+    fn(req: dram::Request, res: mut dram::Response) {
+      let raw = req.query("competition_id").or("")
+      let competition_id: Int? = match raw == "" {
+        true => Maybe::new(),
+        false => {
+          match strconv::Atoi(raw) {
+            ok(id) => Maybe::new(id),
+            err(_) => Maybe::new(),
+          }
+        },
+      }
+      match standings_payload(a, competition_id) {
+        ok(payload) => res.json(http::StatusOK, payload),
+        err(message) => res.json(http::StatusBadGateway, ["error": message]),
+      }
+    },
+  )
+}
+
+fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
+  let comps = try competitions::list_active(a)
+  mut chosen: competitions::Competition? = Maybe::new()
+  for comp in comps {
+    let wanted = match competition_id {
+      id => id == comp.id,
+      _ => chosen.is_none(),
+    }
+    match wanted {
+      true => { chosen = Maybe::new(comp) },
+      false => (),
+    }
+  }
+
+  match chosen {
+    comp => {
+      let rows = try api_football::league_standings(a, comp.api_football_league_id, comp.season)
+      let payload: [Str: Any] = [
+        "competition_id": comp.id,
+        "season": comp.season,
+        "conferences": group_conferences(rows),
+      ]
+      Result::ok(payload)
+    },
+    _ => {
+      let empty: [Any] = []
+      let no_comp: Int? = Maybe::new()
+      let payload: [Str: Any] = ["competition_id": no_comp, "season": 0, "conferences": empty]
+      Result::ok(payload)
+    },
+  }
+}
+
+// Group rows into conferences in first-appearance order, preserving the
+// upstream (rank) order within each.
+fn group_conferences(rows: [api_football::StandingRow]) [Any] {
+  mut names: [Str] = []
+  for row in rows {
+    mut seen = false
+    for n in names {
+      match n == row.group {
+        true => { seen = true },
+        false => (),
+      }
+    }
+    match seen {
+      true => (),
+      false => names.push(row.group),
+    }
+  }
+
+  mut conferences: [Any] = []
+  for name in names {
+    mut group_rows: [Any] = []
+    for row in rows {
+      match row.group == name {
+        true => group_rows.push(standing_json(row)),
+        false => (),
+      }
+    }
+    let conference: [Str: Any] = ["name": name, "rows": group_rows]
+    conferences.push(conference)
+  }
+  conferences
+}
+
+private fn standing_json(row: api_football::StandingRow) [Str: Any] {
+  let payload: [Str: Any] = [
+    "rank": row.rank,
+    "team_id": row.team_id,
+    "team_name": row.team_name,
+    "played": row.played,
+    "win": row.win,
+    "draw": row.draw,
+    "lose": row.lose,
+    "goals_for": row.goals_for,
+    "goals_against": row.goals_against,
+    "goals_diff": row.goals_diff,
+    "points": row.points,
+    "form": row.form,
+    "description": row.description,
+  ]
+  payload
+}

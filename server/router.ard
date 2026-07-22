@@ -8,6 +8,7 @@ use maestro/groups
 use maestro/health
 use maestro/leaderboards
 use maestro/predictions
+use maestro/standings
 use go:time
 
 // Compose the full HTTP surface. Each domain owns its own routes; this
@@ -30,6 +31,7 @@ fn build(a: app::App) dram::App {
   groups::register(router, a)
   predictions::register(router, a)
   leaderboards::register(router, a)
+  standings::register(router, a)
 
   router
 }

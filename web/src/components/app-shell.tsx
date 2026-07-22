@@ -28,6 +28,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
             <Link
               activeProps={{ className: 'text-accent font-semibold' }}
+              to='/table'
+            >
+              Table
+            </Link>
+            <Link
+              activeProps={{ className: 'text-accent font-semibold' }}
               search={{ mode: 'season', week: undefined }}
               to='/groups'
             >

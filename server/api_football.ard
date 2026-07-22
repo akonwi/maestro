@@ -180,9 +180,18 @@ struct TeamOutlook {
 
 struct StandingRow {
   team_id: Int,
+  team_name: Str,
   rank: Int,
   points: Int,
+  played: Int,
+  win: Int,
+  draw: Int,
+  lose: Int,
+  goals_for: Int,
+  goals_against: Int,
   goals_diff: Int,
+  form: Str,               // last 5, e.g. "WWLDL"
+  description: Str,        // qualification note, e.g. "MLS Cup Play-offs"
   group: Str,              // e.g. "Western Conference"
 }
 
@@ -396,11 +405,37 @@ fn parse_standings(body: Str) [StandingRow]!Str {
 
 private fn decode_standing_row(item: Any) StandingRow!decode::Error {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let team_name = string_or(item, ["team", "name"], "")
   let rank = int_or(item, ["rank"], 0)
   let points = int_or(item, ["points"], 0)
+  let played = int_or(item, ["all", "played"], 0)
+  let win = int_or(item, ["all", "win"], 0)
+  let draw = int_or(item, ["all", "draw"], 0)
+  let lose = int_or(item, ["all", "lose"], 0)
+  let goals_for = int_or(item, ["all", "goals", "for"], 0)
+  let goals_against = int_or(item, ["all", "goals", "against"], 0)
   let goals_diff = int_or(item, ["goalsDiff"], 0)
+  let form = string_or(item, ["form"], "")
+  let description = string_or(item, ["description"], "")
   let group = string_or(item, ["group"], "")
-  Result::ok(StandingRow{team_id: team_id, rank: rank, points: points, goals_diff: goals_diff, group: group})
+  Result::ok(
+    StandingRow{
+      team_id: team_id,
+      team_name: team_name,
+      rank: rank,
+      points: points,
+      played: played,
+      win: win,
+      draw: draw,
+      lose: lose,
+      goals_for: goals_for,
+      goals_against: goals_against,
+      goals_diff: goals_diff,
+      form: form,
+      description: description,
+      group: group,
+    },
+  )
 }
 
 // ─── Injuries (/injuries) ────────────────────────────────────────────────
