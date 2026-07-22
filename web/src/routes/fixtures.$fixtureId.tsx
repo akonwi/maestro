@@ -10,6 +10,7 @@ import {
 import { type FormEvent, useEffect, useState } from 'react'
 import { FixtureOutlook } from '@/components/fixture-outlook'
 import { MatchDetailPanel } from '@/components/match-detail'
+
 import {
   Select,
   SelectContent,
@@ -18,7 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { matchDetailQuery, outlookQuery } from '@/lib/analysis'
+import {
+  conferenceShort,
+  matchDetailQuery,
+  outlookQuery,
+  type StandingEntry,
+} from '@/lib/analysis'
 import type { Fixture } from '@/lib/fixtures'
 import { fixtureQuery, fixtureStatusLabel, teamCrestUrl } from '@/lib/fixtures'
 import { groupsQuery } from '@/lib/groups'
@@ -112,7 +118,11 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
           </span>
         </header>
         <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-5 sm:px-6'>
-          <Team id={fixture.home_team.id} name={fixture.home_team.name} />
+          <Team
+            id={fixture.home_team.id}
+            name={fixture.home_team.name}
+            standing={outlook.data?.standings.home ?? null}
+          />
           <div className='text-center font-mono font-semibold tabular-nums'>
             {fixture.status === 'FT' &&
             fixture.home_score !== null &&
@@ -124,7 +134,12 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
               <span className='text-xs text-muted-foreground'>VS</span>
             )}
           </div>
-          <Team away id={fixture.away_team.id} name={fixture.away_team.name} />
+          <Team
+            away
+            id={fixture.away_team.id}
+            name={fixture.away_team.name}
+            standing={outlook.data?.standings.away ?? null}
+          />
         </div>
         {locked ? null : (
           <footer className='border-t border-border bg-muted px-4 py-2.5 text-center text-xs text-muted-foreground'>
@@ -553,10 +568,12 @@ function Team({
   away = false,
   id,
   name,
+  standing = null,
 }: {
   away?: boolean
   id: number
   name: string
+  standing?: StandingEntry | null
 }) {
   return (
     <div
@@ -572,7 +589,29 @@ function Team({
           width='48'
         />
       </span>
-      <h2 className='truncate text-sm font-semibold sm:text-lg'>{name}</h2>
+      <div className='min-w-0'>
+        <h2 className='truncate text-sm font-semibold sm:text-lg'>{name}</h2>
+        {standing ? (
+          <div className='truncate font-mono text-[.625rem] text-muted-foreground'>
+            {ordinal(standing.rank)} · {conferenceShort(standing.group)}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
+}
+
+function ordinal(n: number) {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`
+  switch (n % 10) {
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
+  }
 }

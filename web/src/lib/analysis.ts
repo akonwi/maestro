@@ -1,17 +1,36 @@
 import { queryOptions } from '@tanstack/react-query'
 
-export type ComparisonAxis = {
-  label: string
-  home: string // "62%"
-  away: string
-}
-
 export type TeamOutlook = {
   id: number
   name: string
   form: string // "DWWWW..." most recent last
   goals_for_avg: string
   goals_against_avg: string
+  goals_for_total: number
+  goals_against_total: number
+  wins: number
+  draws: number
+  losses: number
+  home_wins: number
+  home_draws: number
+  home_losses: number
+  away_wins: number
+  away_draws: number
+  away_losses: number
+  clean_sheets: number
+}
+
+export type StandingEntry = {
+  rank: number
+  points: number
+  goals_diff: number
+  group: string // e.g. "Eastern Conference"
+}
+
+export type InjuryEntry = {
+  player: string
+  kind: string // "Missing Fixture" | "Questionable"
+  reason: string // "Knee Injury" | "Suspended"
 }
 
 export type H2HResult = {
@@ -24,10 +43,11 @@ export type H2HResult = {
 
 export type Outlook = {
   percent: { home: string; draw: string; away: string }
-  comparison: ComparisonAxis[]
   home: TeamOutlook
   away: TeamOutlook
   h2h: H2HResult[]
+  standings: { home: StandingEntry | null; away: StandingEntry | null }
+  injuries: { home: InjuryEntry[]; away: InjuryEntry[] }
 }
 
 export type StatLine = {
@@ -160,4 +180,10 @@ const statLabels: Record<string, string> = {
 
 export function statLabel(label: string) {
   return statLabels[label] ?? label
+}
+
+/** "Eastern Conference" -> "East"; passes other group names through. */
+export function conferenceShort(group: string) {
+  const match = /^(\w+)ern Conference$/.exec(group)
+  return match ? match[1] : group
 }

@@ -158,19 +158,39 @@ private fn describe(e: decode::Error) Str {
 
 // ─── Pre-match outlook (/predictions) ───────────────────────────────
 
-// One home%/away% comparison axis (form, attack, defense, goals).
-struct Comparison {
-  label: Str,
-  home: Str,
-  away: Str,
-}
-
 struct TeamOutlook {
   id: Int,
   name: Str,
   form: Str,               // "DWWWW..." most recent last
   goals_for_avg: Str,      // per game, e.g. "2.5"
   goals_against_avg: Str,
+  goals_for_total: Int,
+  goals_against_total: Int,
+  wins: Int,
+  draws: Int,
+  losses: Int,
+  home_wins: Int,
+  home_draws: Int,
+  home_losses: Int,
+  away_wins: Int,
+  away_draws: Int,
+  away_losses: Int,
+  clean_sheets: Int,
+}
+
+struct StandingRow {
+  team_id: Int,
+  rank: Int,
+  points: Int,
+  goals_diff: Int,
+  group: Str,              // e.g. "Western Conference"
+}
+
+struct Injury {
+  team_id: Int,
+  player: Str,
+  kind: Str,               // "Missing Fixture" | "Questionable"
+  reason: Str,             // "Knee Injury" | "Suspended"
 }
 
 struct H2HResult {
@@ -185,7 +205,8 @@ struct Outlook {
   percent_home: Str,
   percent_draw: Str,
   percent_away: Str,
-  comparison: [Comparison],
+  league_id: Int,
+  season: Int,
   home: TeamOutlook,
   away: TeamOutlook,
   h2h: [H2HResult],
@@ -233,6 +254,13 @@ private fn opt_int(item: Any, names: [Str]) Int? {
   }
 }
 
+private fn int_or(item: Any, names: [Str], fallback: Int) Int {
+  match opt_int(item, names) {
+    v => v,
+    _ => fallback,
+  }
+}
+
 private fn string_or(item: Any, names: [Str], fallback: Str) Str {
   match opt_string(item, names) {
     v => v,
@@ -244,16 +272,8 @@ private fn decode_outlook(item: Any) Outlook!decode::Error {
   let percent_home = try decode::run(item, decode::path(["predictions", "percent", "home"], decode::string))
   let percent_draw = try decode::run(item, decode::path(["predictions", "percent", "draw"], decode::string))
   let percent_away = try decode::run(item, decode::path(["predictions", "percent", "away"], decode::string))
-
-  mut comparison: [Comparison] = []
-  let axes = [["form", "Form"], ["att", "Attack"], ["def", "Defense"], ["goals", "Goals"]]
-  for axis in axes {
-    let key = axis.at(0).expect("axis key")
-    let label = axis.at(1).expect("axis label")
-    let home = try decode::run(item, decode::path(["comparison", key, "home"], decode::string))
-    let away = try decode::run(item, decode::path(["comparison", key, "away"], decode::string))
-    comparison.push(Comparison{label: label, home: home, away: away})
-  }
+  let league_id = int_or(item, ["league", "id"], 0)
+  let season = int_or(item, ["league", "season"], 0)
 
   let home = try decode::run(item, decode::path(["teams", "home"], decode_team_outlook))
   let away = try decode::run(item, decode::path(["teams", "away"], decode_team_outlook))
@@ -264,7 +284,8 @@ private fn decode_outlook(item: Any) Outlook!decode::Error {
       percent_home: percent_home,
       percent_draw: percent_draw,
       percent_away: percent_away,
-      comparison: comparison,
+      league_id: league_id,
+      season: season,
       home: home,
       away: away,
       h2h: h2h,
@@ -278,7 +299,27 @@ private fn decode_team_outlook(item: Any) TeamOutlook!decode::Error {
   let form = string_or(item, ["league", "form"], "")
   let gf = string_or(item, ["league", "goals", "for", "average", "total"], "0")
   let ga = string_or(item, ["league", "goals", "against", "average", "total"], "0")
-  Result::ok(TeamOutlook{id: id, name: name, form: form, goals_for_avg: gf, goals_against_avg: ga})
+  Result::ok(
+    TeamOutlook{
+      id: id,
+      name: name,
+      form: form,
+      goals_for_avg: gf,
+      goals_against_avg: ga,
+      goals_for_total: int_or(item, ["league", "goals", "for", "total", "total"], 0),
+      goals_against_total: int_or(item, ["league", "goals", "against", "total", "total"], 0),
+      wins: int_or(item, ["league", "fixtures", "wins", "total"], 0),
+      draws: int_or(item, ["league", "fixtures", "draws", "total"], 0),
+      losses: int_or(item, ["league", "fixtures", "loses", "total"], 0),
+      home_wins: int_or(item, ["league", "fixtures", "wins", "home"], 0),
+      home_draws: int_or(item, ["league", "fixtures", "draws", "home"], 0),
+      home_losses: int_or(item, ["league", "fixtures", "loses", "home"], 0),
+      away_wins: int_or(item, ["league", "fixtures", "wins", "away"], 0),
+      away_draws: int_or(item, ["league", "fixtures", "draws", "away"], 0),
+      away_losses: int_or(item, ["league", "fixtures", "loses", "away"], 0),
+      clean_sheets: int_or(item, ["league", "clean_sheet", "total"], 0),
+    },
+  )
 }
 
 private fn decode_h2h_list(item: Any) [H2HResult] {
@@ -312,6 +353,82 @@ private fn decode_h2h(item: Any) H2HResult!decode::Error {
       away_goals: away_goals,
     },
   )
+}
+
+// ─── Standings (/standings) ──────────────────────────────────────────────
+
+fn league_standings(a: app::App, league_id: Int, season: Int) [StandingRow]!Str {
+  let body = try cached_body_ttl(a, "{BASE_URL}/standings?league={league_id}&season={season}", OUTLOOK_CACHE_TTL_MS)
+  parse_standings(body)
+}
+
+fn parse_standings(body: Str) [StandingRow]!Str {
+  let data = try decode::from_json(body)
+  // response[0].league.standings is a list of groups (conferences), each
+  // a list of rows. Flatten across groups.
+  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  mut out: [StandingRow] = []
+  match items.at(0) {
+    first => {
+      match decode::run(first, decode::path(["league", "standings"], decode::list(decode::any))) {
+        ok(groups) => {
+          for group in groups {
+            match decode::run(group, decode::list(decode::any)) {
+              ok(rows) => {
+                for row in rows {
+                  match decode::run(row, decode_standing_row) {
+                    ok(parsed) => out.push(parsed),
+                    err(_) => (),
+                  }
+                }
+              },
+              err(_) => (),
+            }
+          }
+        },
+        err(_) => (),
+      }
+    },
+    _ => (),
+  }
+  Result::ok(out)
+}
+
+private fn decode_standing_row(item: Any) StandingRow!decode::Error {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let rank = int_or(item, ["rank"], 0)
+  let points = int_or(item, ["points"], 0)
+  let goals_diff = int_or(item, ["goalsDiff"], 0)
+  let group = string_or(item, ["group"], "")
+  Result::ok(StandingRow{team_id: team_id, rank: rank, points: points, goals_diff: goals_diff, group: group})
+}
+
+// ─── Injuries (/injuries) ────────────────────────────────────────────────
+
+fn fixture_injuries(a: app::App, fixture_id: Int) [Injury]!Str {
+  let body = try cached_body_ttl(a, "{BASE_URL}/injuries?fixture={fixture_id}", OUTLOOK_CACHE_TTL_MS)
+  parse_injuries(body)
+}
+
+fn parse_injuries(body: Str) [Injury]!Str {
+  let data = try decode::from_json(body)
+  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  mut out: [Injury] = []
+  for item in items {
+    match decode::run(item, decode_injury) {
+      ok(injury) => out.push(injury),
+      err(_) => (),
+    }
+  }
+  Result::ok(out)
+}
+
+private fn decode_injury(item: Any) Injury!decode::Error {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let player = string_or(item, ["player", "name"], "")
+  let kind = string_or(item, ["player", "type"], "")
+  let reason = string_or(item, ["player", "reason"], "")
+  Result::ok(Injury{team_id: team_id, player: player, kind: kind, reason: reason})
 }
 
 // ─── Match detail (statistics, events, lineups, players) ─────────────────

@@ -1,6 +1,11 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useId, useState } from 'react'
-import type { H2HResult, Outlook, TeamOutlook } from '@/lib/analysis'
+import type {
+  H2HResult,
+  InjuryEntry,
+  Outlook,
+  TeamOutlook,
+} from '@/lib/analysis'
 import { percentValue } from '@/lib/analysis'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +42,7 @@ export function FixtureOutlook({
     <div className='mt-4 grid gap-4'>
       <OutlookProbabilities outlook={outlook} />
       <OutlookTabs kickoffAt={kickoffAt} outlook={outlook} />
+      <AvailabilityPanel outlook={outlook} />
     </div>
   )
 }
@@ -131,7 +137,7 @@ function OutlookTabs({
         ))}
       </div>
       <div id={`${baseId}-${active}`} role='tabpanel'>
-        {active === 'Overview' ? <ComparisonPanel outlook={outlook} /> : null}
+        {active === 'Overview' ? <NumbersPanel outlook={outlook} /> : null}
         {active === 'Team form' ? <TeamFormPanel outlook={outlook} /> : null}
         {active === 'Head-to-head' ? (
           <H2HPanel h2h={outlook.h2h} kickoffAt={kickoffAt} />
@@ -141,29 +147,130 @@ function OutlookTabs({
   )
 }
 
-function ComparisonPanel({ outlook }: { outlook: Outlook }) {
+type Better = 'home' | 'away' | null
+
+function betterSide(home: number, away: number, dir: 'high' | 'low'): Better {
+  if (home === away) return null
+  const homeWins = dir === 'high' ? home > away : home < away
+  return homeWins ? 'home' : 'away'
+}
+
+// The concrete "By the numbers" comparison. Each row shows both teams'
+// value with the stronger side subtly emphasized.
+function NumbersPanel({ outlook }: { outlook: Outlook }) {
+  const { home, away, standings } = outlook
+  const homePoints = standings.home?.points ?? null
+  const awayPoints = standings.away?.points ?? null
+
+  const rows: {
+    label: string
+    home: string
+    away: string
+    better: Better
+  }[] = [
+    {
+      label: 'Points',
+      home: homePoints === null ? '–' : String(homePoints),
+      away: awayPoints === null ? '–' : String(awayPoints),
+      better:
+        homePoints === null || awayPoints === null
+          ? null
+          : betterSide(homePoints, awayPoints, 'high'),
+    },
+    {
+      label: 'W-D-L',
+      home: `${home.wins}-${home.draws}-${home.losses}`,
+      away: `${away.wins}-${away.draws}-${away.losses}`,
+      better: betterSide(home.wins, away.wins, 'high'),
+    },
+    {
+      label: 'At venue',
+      home: `${home.home_wins}-${home.home_draws}-${home.home_losses} home`,
+      away: `${away.away_wins}-${away.away_draws}-${away.away_losses} away`,
+      better: betterSide(home.home_wins, away.away_wins, 'high'),
+    },
+    {
+      label: 'Goals for',
+      home: `${home.goals_for_avg} (${home.goals_for_total})`,
+      away: `${away.goals_for_avg} (${away.goals_for_total})`,
+      better: betterSide(
+        Number.parseFloat(home.goals_for_avg),
+        Number.parseFloat(away.goals_for_avg),
+        'high',
+      ),
+    },
+    {
+      label: 'Goals against',
+      home: `${home.goals_against_avg} (${home.goals_against_total})`,
+      away: `${away.goals_against_avg} (${away.goals_against_total})`,
+      better: betterSide(
+        Number.parseFloat(home.goals_against_avg),
+        Number.parseFloat(away.goals_against_avg),
+        'low',
+      ),
+    },
+    {
+      label: 'Clean sheets',
+      home: String(home.clean_sheets),
+      away: String(away.clean_sheets),
+      better: betterSide(home.clean_sheets, away.clean_sheets, 'high'),
+    },
+  ]
+
   return (
-    <div className='px-4 py-2'>
-      {outlook.comparison.map(axis => {
-        const home = percentValue(axis.home)
-        const away = percentValue(axis.away)
-        return (
-          <div className='my-3' key={axis.label}>
-            <div className='text-center text-[.625rem] font-semibold text-muted-foreground'>
-              {axis.label}
-            </div>
-            <div className='mt-1 grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 font-mono text-[.6875rem] font-semibold tabular-nums'>
-              <span>{axis.home}</span>
-              <div className='flex h-1.5 justify-between bg-border'>
-                <i className='bg-foreground' style={{ width: `${home}%` }} />
-                <i className='bg-accent' style={{ width: `${away}%` }} />
-              </div>
-              <span className='text-right'>{axis.away}</span>
-            </div>
-          </div>
-        )
-      })}
-    </div>
+    <table className='w-full text-xs'>
+      <caption className='sr-only'>
+        {home.name} versus {away.name} by the numbers
+      </caption>
+      <thead>
+        <tr className='border-b border-border'>
+          <th className='px-4 py-2 text-left font-semibold' scope='col'>
+            {home.name}
+          </th>
+          <th className='px-2 py-2 text-center font-medium text-[.625rem] uppercase tracking-wider text-muted-foreground'>
+            {''}
+          </th>
+          <th className='px-4 py-2 text-right font-semibold' scope='col'>
+            {away.name}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(row => (
+          <tr
+            className='border-b border-border last:border-b-0'
+            key={row.label}
+          >
+            <td
+              className={cn(
+                'px-4 py-2.5 text-left font-mono tabular-nums',
+                row.better === 'home'
+                  ? 'font-bold text-foreground'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {row.home}
+            </td>
+            <th
+              className='px-2 py-2.5 text-center font-medium text-[.625rem] uppercase tracking-wider text-muted-foreground'
+              scope='row'
+            >
+              {row.label}
+            </th>
+            <td
+              className={cn(
+                'px-4 py-2.5 text-right font-mono tabular-nums',
+                row.better === 'away'
+                  ? 'font-bold text-foreground'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {row.away}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
@@ -188,31 +295,94 @@ function TeamFormSection({
     <div className={cn(withDivider && 'border-t border-border')}>
       <header className='flex items-center justify-between border-b border-border px-4 py-3'>
         <h4 className='font-semibold'>{team.name}</h4>
-        <span className='font-mono text-[.5625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
-          Last {recent.length}
-        </span>
-      </header>
-      <div className='px-4 py-3 font-mono text-xs font-semibold tracking-[.2em]'>
-        {recent.map((result, index) => (
-          <span
-            className={cn(
-              result === 'W' && 'text-success',
-              result === 'L' && 'text-danger',
-              result === 'D' && 'text-muted-foreground',
-            )}
-            // biome-ignore lint/suspicious/noArrayIndexKey: static ordered letters
-            key={index}
-          >
-            {result}{' '}
+        {recent.length > 0 ? (
+          <span className='font-mono text-[.5625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
+            Last {recent.length}
           </span>
-        ))}
-      </div>
+        ) : null}
+      </header>
+      {recent.length > 0 ? (
+        <div className='px-4 py-3 font-mono text-xs font-semibold tracking-[.2em]'>
+          {recent.map((result, index) => (
+            <span
+              className={cn(
+                result === 'W' && 'text-success',
+                result === 'L' && 'text-danger',
+                result === 'D' && 'text-muted-foreground',
+              )}
+              // biome-ignore lint/suspicious/noArrayIndexKey: static ordered letters
+              key={index}
+            >
+              {result}{' '}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className='px-4 pb-3 text-xs text-muted-foreground'>
         Per game{' '}
         <b className='font-mono text-foreground'>{team.goals_for_avg}</b> scored
         · <b className='font-mono text-foreground'>{team.goals_against_avg}</b>{' '}
         conceded
       </div>
+      <div className='px-4 pb-3 text-xs text-muted-foreground'>
+        <span className='mr-3'>
+          Home{' '}
+          <b className='font-mono text-foreground'>
+            {team.home_wins}-{team.home_draws}-{team.home_losses}
+          </b>
+        </span>
+        <span>
+          Away{' '}
+          <b className='font-mono text-foreground'>
+            {team.away_wins}-{team.away_draws}-{team.away_losses}
+          </b>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function AvailabilityPanel({ outlook }: { outlook: Outlook }) {
+  const { home, away, injuries } = outlook
+  // Nothing to say if neither team reports absences.
+  if (injuries.home.length === 0 && injuries.away.length === 0) return null
+  return (
+    <section className='border border-border bg-surface'>
+      <header className='border-b border-border px-4 py-3'>
+        <h3 className='font-semibold'>Team news</h3>
+      </header>
+      <div className='grid grid-cols-2'>
+        <TeamAvailability injuries={injuries.home} name={home.name} />
+        <TeamAvailability away injuries={injuries.away} name={away.name} />
+      </div>
+    </section>
+  )
+}
+
+function TeamAvailability({
+  away = false,
+  injuries,
+  name,
+}: {
+  away?: boolean
+  injuries: InjuryEntry[]
+  name: string
+}) {
+  return (
+    <div className={cn('px-4 py-3', away && 'border-l border-border')}>
+      <h4 className='mb-2 text-[.6875rem] font-semibold'>{name}</h4>
+      {injuries.length === 0 ? (
+        <p className='text-xs text-muted-foreground'>Full squad available.</p>
+      ) : (
+        <ul className='grid gap-1.5'>
+          {injuries.map(injury => (
+            <li className='text-xs' key={`${injury.player}-${injury.reason}`}>
+              <span className='font-medium'>{injury.player}</span>
+              <span className='text-muted-foreground'> · {injury.reason}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

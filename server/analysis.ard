@@ -14,10 +14,10 @@ fn register(router: mut dram::App, a: app::App) {
     fn(req: dram::Request, res: mut dram::Response) {
       match strconv::Atoi(req.param("id").or("")) {
         ok(id) => {
-          match api_football::fixture_outlook(a, id) {
+          match outlook_payload(a, id) {
             ok(found) => {
               match found {
-                outlook => res.json(http::StatusOK, outlook_json(outlook)),
+                payload => res.json(http::StatusOK, payload),
                 _ => res.json(http::StatusNotFound, ["error": "no outlook available for this fixture"]),
               }
             },
@@ -46,12 +46,34 @@ fn register(router: mut dram::App, a: app::App) {
 
 // ─── JSON shaping ───────────────────────────────────────────────────────
 
-fn outlook_json(o: api_football::Outlook) [Str: Any] {
-  mut comparison: [Any] = []
-  for c in o.comparison {
-    let entry: [Str: Any] = ["label": c.label, "home": c.home, "away": c.away]
-    comparison.push(entry)
+// None when the upstream has no prediction data. Standings and injuries
+// are best-effort: a failure leaves them empty rather than failing the
+// whole outlook.
+fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
+  let outlook_opt = try api_football::fixture_outlook(a, fixture_id)
+  match outlook_opt {
+    outlook => {
+      mut standings: [api_football::StandingRow] = []
+      match api_football::league_standings(a, outlook.league_id, outlook.season) {
+        ok(v) => { standings = v },
+        err(_) => (),
+      }
+      mut injuries: [api_football::Injury] = []
+      match api_football::fixture_injuries(a, fixture_id) {
+        ok(v) => { injuries = v },
+        err(_) => (),
+      }
+      Result::ok(Maybe::new(outlook_json(outlook, standings, injuries)))
+    },
+    _ => Result::ok(Maybe::new()),
   }
+}
+
+fn outlook_json(
+  o: api_football::Outlook,
+  standings: [api_football::StandingRow],
+  injuries: [api_football::Injury],
+) [Str: Any] {
   mut h2h: [Any] = []
   for m in o.h2h {
     let entry: [Str: Any] = [
@@ -64,16 +86,56 @@ fn outlook_json(o: api_football::Outlook) [Str: Any] {
 
     h2h.push(entry)
   }
+
+  mut home_injuries: [Any] = []
+  mut away_injuries: [Any] = []
+  for inj in injuries {
+    let entry: [Str: Any] = ["player": inj.player, "kind": inj.kind, "reason": inj.reason]
+    match inj.team_id == o.home.id {
+      true => home_injuries.push(entry),
+      false => (),
+    }
+    match inj.team_id == o.away.id {
+      true => away_injuries.push(entry),
+      false => (),
+    }
+  }
+
   let percent: [Str: Any] = ["home": o.percent_home, "draw": o.percent_draw, "away": o.percent_away]
+  let standings_map: [Str: Any] = [
+    "home": standing_opt(standings, o.home.id),
+    "away": standing_opt(standings, o.away.id),
+  ]
+  let injuries_map: [Str: Any] = ["home": home_injuries, "away": away_injuries]
   let payload: [Str: Any] = [
     "percent": percent,
-    "comparison": comparison,
     "home": team_outlook_json(o.home),
     "away": team_outlook_json(o.away),
     "h2h": h2h,
+    "standings": standings_map,
+    "injuries": injuries_map,
   ]
 
   payload
+}
+
+private fn standing_opt(standings: [api_football::StandingRow], team_id: Int) Maybe<[Str: Any]> {
+  mut found: Maybe<[Str: Any]> = Maybe::new()
+  for row in standings {
+    match row.team_id == team_id {
+      true => {
+        let entry: [Str: Any] = [
+          "rank": row.rank,
+          "points": row.points,
+          "goals_diff": row.goals_diff,
+          "group": row.group,
+        ]
+        found = Maybe::new(entry)
+      },
+      false => (),
+    }
+  }
+  found
 }
 
 private fn team_outlook_json(t: api_football::TeamOutlook) [Str: Any] {
@@ -83,6 +145,18 @@ private fn team_outlook_json(t: api_football::TeamOutlook) [Str: Any] {
     "form": t.form,
     "goals_for_avg": t.goals_for_avg,
     "goals_against_avg": t.goals_against_avg,
+    "goals_for_total": t.goals_for_total,
+    "goals_against_total": t.goals_against_total,
+    "wins": t.wins,
+    "draws": t.draws,
+    "losses": t.losses,
+    "home_wins": t.home_wins,
+    "home_draws": t.home_draws,
+    "home_losses": t.home_losses,
+    "away_wins": t.away_wins,
+    "away_draws": t.away_draws,
+    "away_losses": t.away_losses,
+    "clean_sheets": t.clean_sheets,
   ]
 
   payload
