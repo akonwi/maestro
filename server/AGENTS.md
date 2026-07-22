@@ -30,7 +30,6 @@ server/
   config.ard        Config struct + env reading + startup validation
   app.ard           App struct, threaded to every handler
   router.ard        composes routes: calls each domain's register()
-  response.ard      JSON envelope + error helpers
   health.ard        health handler + register()
   auth.ard          magic-link handlers + register()
   users.ard         user store (queries -> typed structs) + User struct
@@ -71,8 +70,17 @@ struct App {
   // email: email::Client   (added in M2)
 }
 
-fn register(router: mut dram::App, app: App) {
-  router.post("/auth/request", fn(request, response) { handle_request(app, response, request) })
+fn register(router: mut dram::App, a: app::App) {
+  router.post(
+    "/auth/request",
+    fn(req: dram::Request, res: mut dram::Response) {
+      let addr = try decode_field(req, "email") -> err { set_error(res, err) }
+      match send_magic_link(a, addr) {
+        ok => { res.status = 204 },
+        err(message) => set_error(res, message),
+      }
+    },
+  )
 }
 ```
 
@@ -97,16 +105,75 @@ through `dram/context`, and continues with `next.run(request.with_context(ctx),
 response)`. Protected handlers read the typed value through `auth::user_id`.
 `/auth/*` and `/health` are public; everything else sits behind the middleware.
 
-### Responses: simple error envelope
-
-One `response.ard` with helpers used everywhere:
+### Responses: Dram's API directly
 
 ```ard
-fn json_response(response, status, value) // Content-Type: application/json
-fn fail(response, status, message)        // { "error": "message" }
+res.json(http::StatusOK, payload)               // JSON body
+res.json(status, ["error": message])            // flat { "error": "..." } envelope
+res.status = 204                                // no-content (body defaults to [])
+res.header("Location", target)                  // header
 ```
 
-Error envelope is `{ "error": "message" }`. Keep it flat for v1.
+The error envelope `{ "error": "message" }` is written inline. If one module
+repeats it a lot, a one-line local helper (`set_error(res, msg)`) is fine — but
+not a shared cross-module helper module. Note `["error": msg]` is a **map**;
+`["error", msg]` is a list and would serialize as a JSON array.
+
+### Handler & code style
+
+These crystallized from the M2 auth refactor. They favor directness over layering.
+
+- **Handlers are inline route closures.** The closure passed to
+  `router.<method>` *is* the handler — no private `handle_x(a, res, req)` shell
+  that just forwards. Reading a domain's `register()` top to bottom shows every
+  handler.
+- **Handlers stick to request/response; delegate the rest.** The route closure
+  parses the request (`req.query` / `req.param` / `decode_field`) into plain
+  typed values and shapes the response (`res.json`, `res.status`), and hands the
+  actual work to a business-logic or store function where possible. Those
+  functions take plain typed values and don't touch `dram::Request`/`Response`.
+  `send_magic_link(a, address)` and `verify(a, token)` are the reference shape.
+- **Prefer explicit repetition over thin abstractions.** A helper must earn its
+  keep. Wrapping a single native call, or a trivial two-line pattern, does not —
+  inline it (as a closure at the call site if needed). We deleted `response.ard`
+  and inlined `read_body` / `describe_body_error` / `no_content` for exactly this
+  reason. Dumb and repetitive beats a shallow indirection.
+- **Name for Dram, not borrowed frameworks.** Request/response params are
+  `req`/`res`. Dram's `Response` is a value you mutate, not a chi/gin
+  `ResponseWriter`, so `w`/`r` would mislead.
+- **Mirror a good pattern across siblings.** Once one endpoint reads well, give
+  its neighbors the same shape.
+
+#### Multi-status flows: propagate `HttpError`
+
+Most endpoints have one success and one error status, so the delegated function
+can return `T!Str` and the handler maps `err` to a single status. But some flows
+emit **different statuses at different steps** (the prediction upsert returns
+429 / 409 / 404 / 502 / 500 depending on where it fails). A plain `err(Str)`
+can't say *which* status, which otherwise forces either threading `res` through
+the business logic or a fragile `message == "..."` comparison to recover the
+status you already knew.
+
+For those flows, carry a typed error and let the handler map it to a status:
+
+```ard
+private struct HttpError { status: Int, message: Str }
+
+// business logic returns T!HttpError and never touches res
+fn save_before_kickoff(a, user_id, fixture_id, scores) Prediction!HttpError { ... }
+
+// handler owns the write
+match save_before_kickoff(a, user_id, fixture_id, scores) {
+  ok(prediction) => res.json(http::StatusOK, prediction_json(prediction)),
+  err(e)         => res.json(e.status, ["error": e.message]),
+}
+```
+
+The business-logic chain names the status (a small, localized HTTP leak) but
+never writes the response — `res` stays entirely in the handler. Reach for this
+only when an endpoint really has more than one error status; `T!Str` is fine for
+the common single-status case. (The one place a `message ==` compare survives is
+the boundary with a lower-level store that only returns `Str`.)
 
 ### Config
 
