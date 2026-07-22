@@ -36,6 +36,7 @@ struct GroupPrediction {
 fn register(router: mut dram::App, a: app::App) {
   mut protected = router.group("/")
   protected.use(auth::middleware(a))
+
   protected.get("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
     let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ {
       res.json(http::StatusBadRequest, ["error": "id must be an integer"])
@@ -52,6 +53,7 @@ fn register(router: mut dram::App, a: app::App) {
       err(message) => res.json(http::StatusInternalServerError, ["error": message]),
     }
   })
+
   protected.put("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
     let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ {
       res.json(http::StatusBadRequest, ["error": "id must be an integer"])
@@ -73,35 +75,23 @@ fn register(router: mut dram::App, a: app::App) {
       },
     }
   })
+
   protected.get(
     "/groups/:groupId/fixtures/:fixtureId/predictions",
     fn(req: dram::Request, res: mut dram::Response) {
-      let group_id = request_int_param(req, "groupId", "group id")
-      let fixture_id = request_int_param(req, "fixtureId", "fixture id")
-      match group_id {
-        ok(group_value) => {
-          match fixture_id {
-            ok(fixture_value) => {
-              match auth::user_id(req) {
-                user_id => {
-                  match groups::find_for_member(a, group_value, user_id) {
-                    ok(found) => {
-                      match found {
-                        _group => respond_group_predictions(a, res, group_value, fixture_value),
-                        _ => res.json(http::StatusNotFound, ["error": "group not found"]),
-                      }
-                    },
-                    err(message) => res.json(http::StatusInternalServerError, ["error": message]),
-                  }
-                },
-                _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-              }
-            },
-            err(message) => res.json(http::StatusBadRequest, ["error": message]),
-          }
-        },
-        err(message) => res.json(http::StatusBadRequest, ["error": message]),
+      let group_id = try strconv::Atoi(req.param("groupId").or("")) -> _ {
+        res.json(http::StatusBadRequest, ["error": "groupId must be an integer"])
       }
+      let fixture_id = try strconv::Atoi(req.param("fixtureId").or("")) -> _ {
+        res.json(http::StatusBadRequest, ["error": "fixtureId must be an integer"])
+      }
+      let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+      let maybe_group = try groups::find_for_member(a, group_id, user_id) -> err {
+        res.json(http::StatusInternalServerError, ["error": err])
+      }
+      let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
+
+      respond_group_predictions(a, res, group_id, fixture_id)
     },
   )
 }
@@ -437,14 +427,6 @@ private fn decode_scores(req: dram::Request) Scores!Str {
       Result::ok(Scores{home: home, away: away})
     },
   }
-}
-
-private fn request_int_param(req: dram::Request, name: Str, label: Str) Int!Str {
-  strconv::Atoi(
-    req.param(name).or(""),
-  ).map_err(fn(_: Str) {
-    "{label} must be an integer"
-  })
 }
 
 private fn int_field(row: Any, name: Str) Int!Str {
