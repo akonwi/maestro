@@ -63,14 +63,10 @@ fn register(router: mut dram::App, a: app::App) {
     match fixture_id <= 0 {
       true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
       false => {
-        match decode_scores(req) {
-          ok(scores) => {
-            match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
-              true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
-              false => save_before_kickoff(a, res, user_id, fixture_id, scores),
-            }
-          },
-          err(message) => res.json(http::StatusBadRequest, ["error": message]),
+        let scores = try decode_scores(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+        match scores.home < 0 or scores.away < 0 or scores.home > 99 or scores.away > 99 {
+          true => res.json(http::StatusBadRequest, ["error": "scores must be between 0 and 99"]),
+          false => save_before_kickoff(a, res, user_id, fixture_id, scores),
         }
       },
     }
