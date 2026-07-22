@@ -108,3 +108,22 @@ test fn incomplete_outlook_is_treated_as_absent() Void!Str {
   try testing::assert(outlook.is_none(), "incomplete outlook should be none")
   Result::ok(())
 }
+
+// Upstream lists the same player twice for one fixture (different injury
+// types); team news should see each player once.
+let DUP_INJURIES: Str = "\{
+  \"response\": [
+    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"A. Ahmed\", \"type\": \"Missing Fixture\", \"reason\": \"International duty\" \} \},
+    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"A. Ahmed\", \"type\": \"Questionable\", \"reason\": \"Injury\" \} \},
+    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"B. Smith\", \"type\": \"Missing Fixture\", \"reason\": \"Knee Injury\" \} \}
+  ]
+\}"
+
+test fn injuries_dedup_per_player() Void!Str {
+  let injuries = try api_football::parse_injuries(DUP_INJURIES)
+  try testing::assert(injuries.size() == 2, "expected 2 unique players, got {injuries.size()}")
+  let first = injuries.at(0).expect("first")
+  try testing::assert(first.player == "A. Ahmed", "keeps first record")
+  try testing::assert(first.reason == "International duty", "keeps first record's reason")
+  Result::ok(())
+}

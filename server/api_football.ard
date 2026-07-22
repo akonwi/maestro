@@ -413,10 +413,30 @@ fn fixture_injuries(a: app::App, fixture_id: Int) [Injury]!Str {
 fn parse_injuries(body: Str) [Injury]!Str {
   let data = try decode::from_json(body)
   let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  // Upstream can list the same player twice for one fixture (e.g. a
+  // "Missing Fixture" record plus a "Questionable" one). Keep the first
+  // record per player so team news shows each player once.
   mut out: [Injury] = []
+  mut seen: [Str] = []
   for item in items {
     match decode::run(item, decode_injury) {
-      ok(injury) => out.push(injury),
+      ok(injury) => {
+        let key = "{injury.team_id}|{injury.player}"
+        mut already = false
+        for k in seen {
+          match k == key {
+            true => { already = true },
+            false => (),
+          }
+        }
+        match already {
+          true => (),
+          false => {
+            seen.push(key)
+            out.push(injury)
+          },
+        }
+      },
       err(_) => (),
     }
   }
