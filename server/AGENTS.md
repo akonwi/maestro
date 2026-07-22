@@ -30,6 +30,7 @@ server/
   config.ard        Config struct + env reading + startup validation
   app.ard           App struct, threaded to every handler
   router.ard        composes routes: calls each domain's register()
+  errors.ard        HttpError: a business-logic error carrying an HTTP status
   health.ard        health handler + register()
   auth.ard          magic-link handlers + register()
   users.ard         user store (queries -> typed structs) + User struct
@@ -154,13 +155,14 @@ can't say *which* status, which otherwise forces either threading `res` through
 the business logic or a fragile `message == "..."` comparison to recover the
 status you already knew.
 
-For those flows, carry a typed error and let the handler map it to a status:
+For those flows, carry the shared `errors::HttpError` and let the handler map it
+to a status:
 
 ```ard
-private struct HttpError { status: Int, message: Str }
+// errors.ard: struct HttpError { status: Int, message: Str }
 
-// business logic returns T!HttpError and never touches res
-fn save_before_kickoff(a, user_id, fixture_id, scores) Prediction!HttpError { ... }
+// business logic returns T!errors::HttpError and never touches res
+fn save_before_kickoff(a, user_id, fixture_id, scores) Prediction!errors::HttpError { ... }
 
 // handler owns the write
 match save_before_kickoff(a, user_id, fixture_id, scores) {

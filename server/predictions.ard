@@ -4,6 +4,7 @@ use maestro/api_football
 use maestro/app
 use maestro/auth
 use maestro/competitions
+use maestro/errors
 use go:maestro/ffi
 use maestro/groups
 use maestro/scoring_state
@@ -102,19 +103,14 @@ struct Scores {
   away: Int,
 }
 
-private struct HttpError {
-  status: Int,
-  message: Str
-}
-
 private fn save_before_kickoff(
   a: app::App,
   user_id: Int,
   fixture_id: Int,
   scores: Scores,
-) Prediction!HttpError {
+) Prediction!errors::HttpError {
   match ffi::CacheAllow(a.cache, "prediction-write:{user_id}", 30, Int64::from(60 * 1000)) {
-    false => Result::err(HttpError{status: http::StatusTooManyRequests, message: "too many prediction requests"}),
+    false => Result::err(errors::HttpError{status: http::StatusTooManyRequests, message: "too many prediction requests"}),
     true => check_existing_lock(a, user_id, fixture_id, scores, time::Now().UnixMilli()),
   }
 }
@@ -125,14 +121,14 @@ private fn check_existing_lock(
   fixture_id: Int,
   scores: Scores,
   now: Int64,
-) Prediction!HttpError {
+) Prediction!errors::HttpError {
   match scoring_state::find(a, fixture_id) {
-    err(message) => Result::err(HttpError{status: http::StatusInternalServerError, message: message}),
+    err(message) => Result::err(errors::HttpError{status: http::StatusInternalServerError, message: message}),
     ok(existing) => {
       match existing {
         state => {
           match state.prediction_lock_at <= now {
-            true => Result::err(HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
+            true => Result::err(errors::HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
             false => fetch_and_save(a, user_id, fixture_id, scores, now),
           }
         },
@@ -148,17 +144,17 @@ private fn fetch_and_save(
   fixture_id: Int,
   scores: Scores,
   now: Int64,
-) Prediction!HttpError {
-  let found = try api_football::fixture_by_id(a, fixture_id) -> err { Result::err(HttpError{status: http::StatusBadGateway, message: err}) }
+) Prediction!errors::HttpError {
+  let found = try api_football::fixture_by_id(a, fixture_id) -> err { Result::err(errors::HttpError{status: http::StatusBadGateway, message: err}) }
 
   match found {
     fixture => {
       match fixture.kickoff_at <= now {
-        true => Result::err(HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
+        true => Result::err(errors::HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
         false => save_for_competition(a, user_id, fixture, scores),
       }
     },
-    _ => Result::err(HttpError{status: http::StatusNotFound, message: "fixture not found"}),
+    _ => Result::err(errors::HttpError{status: http::StatusNotFound, message: "fixture not found"}),
   }
 }
 
@@ -167,9 +163,9 @@ private fn save_for_competition(
   user_id: Int,
   fixture: api_football::Fixture,
   scores: Scores,
-) Prediction!HttpError {
+) Prediction!errors::HttpError {
   let found = try competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) -> err {
-    Result::err(HttpError{status: http::StatusInternalServerError, message: err})
+    Result::err(errors::HttpError{status: http::StatusInternalServerError, message: err})
   }
   match found {
     competition => {
@@ -177,13 +173,13 @@ private fn save_for_competition(
         ok(prediction) => Result::ok(prediction),
         err(message) => {
           match message == "predictions are locked after kickoff" {
-            true => Result::err(HttpError{status: http::StatusConflict, message: message}),
-            false => Result::err(HttpError{status: http::StatusInternalServerError, message: message}),
+            true => Result::err(errors::HttpError{status: http::StatusConflict, message: message}),
+            false => Result::err(errors::HttpError{status: http::StatusInternalServerError, message: message}),
           }
         },
       }
     },
-    _ => Result::err(HttpError{status: http::StatusNotFound, message: "fixture competition is not active"}),
+    _ => Result::err(errors::HttpError{status: http::StatusNotFound, message: "fixture competition is not active"}),
   }
 }
 

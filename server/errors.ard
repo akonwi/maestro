@@ -1,0 +1,17 @@
+// A business-logic error that carries the HTTP status it should map to.
+//
+// Return `T!HttpError` from a multi-step flow whose failures land on
+// different statuses; the handler unwraps it and writes the response, so
+// the business logic never touches `dram::Response`:
+//
+//   match save(a, ...) {
+//     ok(value) => res.json(http::StatusOK, to_json(value)),
+//     err(e)    => res.json(e.status, ["error": e.message]),
+//   }
+//
+// For single-status flows a plain `T!Str` is enough; reach for this only
+// when an endpoint genuinely emits more than one error status.
+struct HttpError {
+  status: Int,
+  message: Str,
+}
