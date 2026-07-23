@@ -124,9 +124,7 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
             standing={outlook.data?.standings.home ?? null}
           />
           <div className='text-center font-mono font-semibold tabular-nums'>
-            {fixture.status === 'FT' &&
-            fixture.home_score !== null &&
-            fixture.away_score !== null ? (
+            {fixture.home_score !== null && fixture.away_score !== null ? (
               <span className='text-lg'>
                 {fixture.home_score}–{fixture.away_score}
               </span>

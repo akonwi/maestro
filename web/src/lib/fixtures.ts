@@ -101,6 +101,11 @@ export function fixtureQuery(id: number) {
   return queryOptions({
     queryKey: ['fixtures', id],
     queryFn: () => getFixture(id),
+    // Keep the score current while the match is in play.
+    refetchInterval: query =>
+      query.state.data && isLiveStatus(query.state.data.status)
+        ? 60_000
+        : false,
   })
 }
 
