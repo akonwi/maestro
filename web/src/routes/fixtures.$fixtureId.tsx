@@ -9,7 +9,7 @@ import {
 } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useState } from 'react'
 import { FixtureOutlook } from '@/components/fixture-outlook'
-import { MatchDetailPanel } from '@/components/match-detail'
+import { MatchDetailPanel, PreMatchLineups } from '@/components/match-detail'
 
 import {
   Select,
@@ -93,10 +93,19 @@ function FixturePage() {
   )
 }
 
+// Confirmed lineups publish ~20-60 min before kickoff. Fetch match detail
+// pre-kickoff only inside this window so a Lineups section can appear
+// early, without burning API quota on far-future fixtures.
+const LINEUP_PREVIEW_WINDOW_MS = 2 * 60 * 60 * 1000
+
 function FixtureDetail({ fixture }: { fixture: Fixture }) {
   const locked = useKickoffLocked(fixture.kickoff_at)
+  const kickoffSoon =
+    !locked && fixture.kickoff_at - Date.now() <= LINEUP_PREVIEW_WINDOW_MS
   const outlook = useQuery(outlookQuery(fixture.id, !locked))
-  const matchDetail = useQuery(matchDetailQuery(fixture.id, locked))
+  const matchDetail = useQuery(
+    matchDetailQuery(fixture.id, locked || kickoffSoon),
+  )
   const showStatus =
     locked && fixture.status !== 'NS' && fixture.status !== 'TBD'
   return (
@@ -149,7 +158,12 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
       {locked ? (
         <MatchDetailPanel query={matchDetail} />
       ) : (
-        <FixtureOutlook kickoffAt={fixture.kickoff_at} query={outlook} />
+        <>
+          <FixtureOutlook kickoffAt={fixture.kickoff_at} query={outlook} />
+          {matchDetail.data ? (
+            <PreMatchLineups lineups={matchDetail.data.lineups} />
+          ) : null}
+        </>
       )}
     </>
   )

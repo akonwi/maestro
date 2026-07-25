@@ -155,6 +155,10 @@ export function matchDetailQuery(fixtureId: number, enabled: boolean) {
     queryFn: () => request<MatchDetail>(`/fixtures/${fixtureId}/match`),
     staleTime: 60 * 1000,
     enabled,
+    // Lineups publish shortly before kickoff; poll every 3 min until
+    // both are available so the Lineups section appears on its own.
+    refetchInterval: query =>
+      (query.state.data?.lineups.length ?? 0) >= 2 ? false : 3 * 60 * 1000,
   })
 }
 

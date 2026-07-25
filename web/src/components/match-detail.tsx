@@ -203,6 +203,23 @@ function eventDetail(event: MatchEvent) {
 
 // ─── Lineups ─────────────────────────────────────────────────────────────
 
+/**
+ * Standalone lineups card for the pre-match view, shown once confirmed
+ * XIs are published (~20–60 min before kickoff). Renders nothing until
+ * both lineups are available.
+ */
+export function PreMatchLineups({ lineups }: { lineups: Lineup[] }) {
+  if (lineups.length < 2) return null
+  return (
+    <section className='mt-4 border border-border bg-surface'>
+      <header className='border-b border-border px-4 py-3'>
+        <h2 className='font-semibold'>Lineups</h2>
+      </header>
+      <LineupsPanel lineups={lineups} />
+    </section>
+  )
+}
+
 function LineupsPanel({ lineups }: { lineups: Lineup[] }) {
   if (lineups.length < 2) return <EmptyPanel message='No lineups yet.' />
   const [home, away] = lineups
