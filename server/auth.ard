@@ -154,7 +154,7 @@ fn authenticate(a: app::App, req: dram::Request) Int? {
   out
 }
 
-private struct UserIdKey {
+struct UserIdKey {
   marker: Int,
 }
 
