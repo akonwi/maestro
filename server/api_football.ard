@@ -164,6 +164,8 @@ struct TeamOutlook {
   form: Str,               // "DWWWW..." most recent last
   goals_for_avg: Str,      // per game, e.g. "2.5"
   goals_against_avg: Str,
+  last5_for_avg: Str,      // per game over last 5
+  last5_against_avg: Str,
   goals_for_total: Int,
   goals_against_total: Int,
   wins: Int,
@@ -315,6 +317,8 @@ private fn decode_team_outlook(item: Any) TeamOutlook!decode::Error {
       form: form,
       goals_for_avg: gf,
       goals_against_avg: ga,
+      last5_for_avg: string_or(item, ["last_5", "goals", "for", "average"], "0"),
+      last5_against_avg: string_or(item, ["last_5", "goals", "against", "average"], "0"),
       goals_for_total: int_or(item, ["league", "goals", "for", "total", "total"], 0),
       goals_against_total: int_or(item, ["league", "goals", "against", "total", "total"], 0),
       wins: int_or(item, ["league", "fixtures", "wins", "total"], 0),
@@ -436,6 +440,151 @@ private fn decode_standing_row(item: Any) StandingRow!decode::Error {
       group: group,
     },
   )
+}
+
+// ─── Team venue goal splits (/teams/statistics) ──────────────────────────
+
+// Per-game goal averages split by venue for one team's season.
+struct TeamGoalSplits {
+  for_home: Str,
+  against_home: Str,
+  for_away: Str,
+  against_away: Str,
+}
+
+fn team_goal_splits(a: app::App, league_id: Int, season: Int, team_id: Int) TeamGoalSplits!Str {
+  let body = try cached_body_ttl(
+    a,
+    "{BASE_URL}/teams/statistics?league={league_id}&season={season}&team={team_id}",
+    OUTLOOK_CACHE_TTL_MS,
+  )
+  parse_team_goal_splits(body)
+}
+
+fn parse_team_goal_splits(body: Str) TeamGoalSplits!Str {
+  let data = try decode::from_json(body)
+  Result::ok(
+    TeamGoalSplits{
+      for_home: string_or(data, ["response", "goals", "for", "average", "home"], "0"),
+      against_home: string_or(data, ["response", "goals", "against", "average", "home"], "0"),
+      for_away: string_or(data, ["response", "goals", "for", "average", "away"], "0"),
+      against_away: string_or(data, ["response", "goals", "against", "average", "away"], "0"),
+    },
+  )
+}
+
+// ─── Key players (/players/topscorers + /topassists) ─────────────────────
+
+struct KeyPlayer {
+  team_id: Int,
+  player_id: Int,
+  name: Str,
+  goals: Int,
+  assists: Int,
+  rating: Str,
+  is_scorer: Bool,
+  is_assister: Bool,
+}
+
+// League scoring + assist leaders, merged per player (a player can lead in
+// both). Cached league-wide and reused across fixtures; the analysis layer
+// filters to a fixture's two teams.
+fn league_key_players(a: app::App, league_id: Int, season: Int) [KeyPlayer]!Str {
+  let scorers_body = try cached_body_ttl(
+    a,
+    "{BASE_URL}/players/topscorers?league={league_id}&season={season}",
+    OUTLOOK_CACHE_TTL_MS,
+  )
+  let assists_body = try cached_body_ttl(
+    a,
+    "{BASE_URL}/players/topassists?league={league_id}&season={season}",
+    OUTLOOK_CACHE_TTL_MS,
+  )
+  merge_key_players(scorers_body, assists_body)
+}
+
+fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
+  let scorers = try parse_leaders(scorers_body, true)
+  let assisters = try parse_leaders(assists_body, false)
+  mut out: [KeyPlayer] = []
+  for p in scorers {
+    out.push(p)
+  }
+  for p in assisters {
+    mut merged = false
+    mut updated: [KeyPlayer] = []
+    for existing in out {
+      // Merge on (player, team): a mid-season transfer can list a player
+      // once per team, and each belongs with its own club.
+      match existing.player_id == p.player_id and existing.team_id == p.team_id {
+        true => {
+          merged = true
+          updated.push(
+            KeyPlayer{
+              team_id: existing.team_id,
+              player_id: existing.player_id,
+              name: existing.name,
+              goals: existing.goals,
+              assists: existing.assists,
+              rating: existing.rating,
+              is_scorer: existing.is_scorer,
+              is_assister: true,
+            },
+          )
+        },
+        false => updated.push(existing),
+      }
+    }
+    match merged {
+      true => (),
+      false => updated.push(p),
+    }
+    out = updated
+  }
+  Result::ok(out)
+}
+
+private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
+  let data = try decode::from_json(body)
+  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  mut out: [KeyPlayer] = []
+  for item in items {
+    match decode_leaders(item, scorers) {
+      ok(players) => {
+        for p in players {
+          out.push(p)
+        }
+      },
+      err(_) => (),
+    }
+  }
+  Result::ok(out)
+}
+
+// One player entry can carry multiple statistics blocks (one per team the
+// player represented this season). Emit a KeyPlayer per team so each is
+// attributed correctly with that team's numbers.
+private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Error {
+  let player_id = try decode::run(item, decode::path(["player", "id"], decode::int))
+  let name = try decode::run(item, decode::path(["player", "name"], decode::string))
+  let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
+  mut out: [KeyPlayer] = []
+  for s in stats {
+    let team_id = int_or(s, ["team", "id"], 0)
+    out.push(
+      KeyPlayer{
+        team_id: team_id,
+        player_id: player_id,
+        name: name,
+        goals: int_or(s, ["goals", "total"], 0),
+        assists: int_or(s, ["goals", "assists"], 0),
+        rating: string_or(s, ["games", "rating"], ""),
+        is_scorer: scorers,
+        is_assister: not scorers,
+      },
+    )
+  }
+  Result::ok(out)
 }
 
 // ─── Injuries (/injuries) ────────────────────────────────────────────────

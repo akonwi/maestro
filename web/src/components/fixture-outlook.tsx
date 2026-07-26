@@ -1,8 +1,10 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import type {
+  GoalsPair,
   H2HResult,
   InjuryEntry,
+  KeyPlayer,
   Outlook,
   TeamOutlook,
 } from '@/lib/analysis'
@@ -137,7 +139,13 @@ function OutlookTabs({
         ))}
       </div>
       <div id={`${baseId}-${active}`} role='tabpanel'>
-        {active === 'Overview' ? <NumbersPanel outlook={outlook} /> : null}
+        {active === 'Overview' ? (
+          <>
+            <NumbersPanel outlook={outlook} />
+            <MatchupEdge outlook={outlook} />
+            <KeyPlayersPanel outlook={outlook} />
+          </>
+        ) : null}
         {active === 'Team form' ? <TeamFormPanel outlook={outlook} /> : null}
         {active === 'Head-to-head' ? (
           <H2HPanel h2h={outlook.h2h} kickoffAt={kickoffAt} />
@@ -158,7 +166,7 @@ function betterSide(home: number, away: number, dir: 'high' | 'low'): Better {
 // The concrete "By the numbers" comparison. Each row shows both teams'
 // value with the stronger side subtly emphasized.
 function NumbersPanel({ outlook }: { outlook: Outlook }) {
-  const { home, away, standings } = outlook
+  const { home, away, standings, goals } = outlook
   const homePoints = standings.home?.points ?? null
   const awayPoints = standings.away?.points ?? null
 
@@ -190,26 +198,6 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
       better: betterSide(home.home_wins, away.away_wins, 'high'),
     },
     {
-      label: 'Goals for',
-      home: `${home.goals_for_avg} (${home.goals_for_total})`,
-      away: `${away.goals_for_avg} (${away.goals_for_total})`,
-      better: betterSide(
-        Number.parseFloat(home.goals_for_avg),
-        Number.parseFloat(away.goals_for_avg),
-        'high',
-      ),
-    },
-    {
-      label: 'Goals against',
-      home: `${home.goals_against_avg} (${home.goals_against_total})`,
-      away: `${away.goals_against_avg} (${away.goals_against_total})`,
-      better: betterSide(
-        Number.parseFloat(home.goals_against_avg),
-        Number.parseFloat(away.goals_against_avg),
-        'low',
-      ),
-    },
-    {
       label: 'Clean sheets',
       home: String(home.clean_sheets),
       away: String(away.clean_sheets),
@@ -220,7 +208,8 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
   return (
     <table className='w-full text-xs'>
       <caption className='sr-only'>
-        {home.name} versus {away.name} by the numbers
+        {home.name} versus {away.name} by the numbers, including goals scored
+        and conceded per game
       </caption>
       <thead>
         <tr className='border-b border-border'>
@@ -269,9 +258,158 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
             </td>
           </tr>
         ))}
+        <tr className='border-b border-border'>
+          <td className='px-4 py-2.5 text-left font-mono font-bold tabular-nums'>
+            {home.goals_for_total} / {home.goals_against_total}
+          </td>
+          <th
+            className='px-2 py-2.5 text-center font-bold text-[.625rem] uppercase tracking-wider'
+            scope='row'
+          >
+            Goals (For/Against)
+          </th>
+          <td className='px-4 py-2.5 text-right font-mono font-bold tabular-nums'>
+            {away.goals_for_total} / {away.goals_against_total}
+          </td>
+        </tr>
+        {GOAL_SLICES.map(slice => (
+          <tr
+            className={cn(
+              'border-b border-border last:border-b-0',
+              slice.emphasize && 'bg-accent-muted',
+            )}
+            key={slice.key}
+          >
+            <GoalsPairCell
+              align='left'
+              emphasize={slice.emphasize}
+              pair={goals.home[slice.key]}
+            />
+            <th
+              className={cn(
+                'px-2 py-2.5 text-center align-middle font-medium text-[.625rem] uppercase tracking-wider',
+                slice.emphasize ? 'text-accent' : 'text-muted-foreground',
+              )}
+              scope='row'
+            >
+              {slice.label}
+            </th>
+            <GoalsPairCell align='right' pair={goals.away[slice.key]} />
+          </tr>
+        ))}
       </tbody>
     </table>
   )
+}
+
+// ─── Goals matrix ──────────────────────────────────────────────────────
+
+const GOAL_SLICES = [
+  { label: 'Season', key: 'season' as const, emphasize: false },
+  { label: 'At venue', key: 'venue' as const, emphasize: true },
+  { label: 'Last 5', key: 'last5' as const, emphasize: false },
+]
+
+function MatchupEdge({ outlook }: { outlook: Outlook }) {
+  const { home, away, goals } = outlook
+  return (
+    <p className='border-t border-border px-4 py-2.5 text-[.6875rem] leading-relaxed text-muted-foreground'>
+      Matchup edge: {home.name} score{' '}
+      <b className='font-mono text-foreground'>{goals.home.venue.for}</b> at
+      home; {away.name} concede{' '}
+      <b className='font-mono text-foreground'>{goals.away.venue.against}</b>{' '}
+      away.
+    </p>
+  )
+}
+
+function GoalsPairCell({
+  pair,
+  align,
+  emphasize = false,
+}: {
+  pair: GoalsPair
+  align: 'left' | 'right'
+  emphasize?: boolean
+}) {
+  return (
+    <td
+      className={cn(
+        'px-4 py-2.5 font-mono tabular-nums',
+        align === 'left' ? 'text-left' : 'text-right',
+        emphasize && 'border-l-2 border-l-accent',
+      )}
+    >
+      {pair.for} / {pair.against}
+    </td>
+  )
+}
+
+// ─── Key players ───────────────────────────────────────────────────────
+
+function KeyPlayersPanel({ outlook }: { outlook: Outlook }) {
+  const { home, away, key_players } = outlook
+  return (
+    <section className='border-t border-border'>
+      <header className='flex items-baseline justify-between px-4 py-3'>
+        <h4 className='font-semibold'>Key players</h4>
+        <span className='font-mono text-[.5625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
+          League leaders · season
+        </span>
+      </header>
+      <div className='grid grid-cols-2'>
+        <KeyPlayerList name={home.name} players={key_players.home} />
+        <KeyPlayerList away name={away.name} players={key_players.away} />
+      </div>
+    </section>
+  )
+}
+
+function KeyPlayerList({
+  away = false,
+  name,
+  players,
+}: {
+  away?: boolean
+  name: string
+  players: KeyPlayer[]
+}) {
+  return (
+    <div className={cn('px-4 py-3', away && 'border-l border-border')}>
+      <h5 className='mb-2 text-[.6875rem] font-semibold'>{name}</h5>
+      {players.length === 0 ? (
+        <p className='text-xs text-muted-foreground'>
+          No {name} players rank among the league leaders.
+        </p>
+      ) : (
+        <ul className='grid gap-2.5'>
+          {players.slice(0, 3).map(player => (
+            <li key={player.player_id}>
+              <div className='text-xs font-semibold'>{player.name}</div>
+              <div className='text-[.5625rem] uppercase tracking-wide text-muted-foreground'>
+                {playerRole(player)}
+              </div>
+              <div className='mt-0.5 flex gap-2.5 font-mono text-[.625rem] tabular-nums'>
+                <span>
+                  <b>{player.goals}</b> G
+                </span>
+                <span>
+                  <b>{player.assists}</b> A
+                </span>
+                <span className='text-accent'>{player.rating}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function playerRole(player: KeyPlayer) {
+  if (player.is_scorer && player.is_assister) return 'Top scorer · assister'
+  if (player.is_scorer) return 'Top scorer'
+  return 'Top assister'
 }
 
 function TeamFormPanel({ outlook }: { outlook: Outlook }) {

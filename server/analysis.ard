@@ -63,7 +63,23 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
         ok(v) => { injuries = v },
         err(_) => (),
       }
-      Result::ok(Maybe::new(outlook_json(outlook, standings, injuries)))
+      let empty_splits = api_football::TeamGoalSplits{for_home: "0", against_home: "0", for_away: "0", against_away: "0"}
+      mut home_splits = empty_splits
+      match api_football::team_goal_splits(a, outlook.league_id, outlook.season, outlook.home.id) {
+        ok(v) => { home_splits = v },
+        err(_) => (),
+      }
+      mut away_splits = empty_splits
+      match api_football::team_goal_splits(a, outlook.league_id, outlook.season, outlook.away.id) {
+        ok(v) => { away_splits = v },
+        err(_) => (),
+      }
+      mut key_players: [api_football::KeyPlayer] = []
+      match api_football::league_key_players(a, outlook.league_id, outlook.season) {
+        ok(v) => { key_players = v },
+        err(_) => (),
+      }
+      Result::ok(Maybe::new(outlook_json(outlook, standings, injuries, home_splits, away_splits, key_players)))
     },
     _ => Result::ok(Maybe::new()),
   }
@@ -73,6 +89,9 @@ fn outlook_json(
   o: api_football::Outlook,
   standings: [api_football::StandingRow],
   injuries: [api_football::Injury],
+  home_splits: api_football::TeamGoalSplits,
+  away_splits: api_football::TeamGoalSplits,
+  key_players: [api_football::KeyPlayer],
 ) [Str: Any] {
   mut h2h: [Any] = []
   for m in o.h2h {
@@ -107,6 +126,35 @@ fn outlook_json(
     "away": standing_opt(standings, o.away.id),
   ]
   let injuries_map: [Str: Any] = ["home": home_injuries, "away": away_injuries]
+
+  let goals_map: [Str: Any] = [
+    "home": team_goals_json(o.home, home_splits, true),
+    "away": team_goals_json(o.away, away_splits, false),
+  ]
+
+  mut home_players: [Any] = []
+  mut away_players: [Any] = []
+  for kp in key_players {
+    let entry: [Str: Any] = [
+      "player_id": kp.player_id,
+      "name": kp.name,
+      "goals": kp.goals,
+      "assists": kp.assists,
+      "rating": kp.rating,
+      "is_scorer": kp.is_scorer,
+      "is_assister": kp.is_assister,
+    ]
+    match kp.team_id == o.home.id {
+      true => home_players.push(entry),
+      false => (),
+    }
+    match kp.team_id == o.away.id {
+      true => away_players.push(entry),
+      false => (),
+    }
+  }
+  let key_players_map: [Str: Any] = ["home": home_players, "away": away_players]
+
   let payload: [Str: Any] = [
     "percent": percent,
     "home": team_outlook_json(o.home),
@@ -114,8 +162,30 @@ fn outlook_json(
     "h2h": h2h,
     "standings": standings_map,
     "injuries": injuries_map,
+    "goals": goals_map,
+    "key_players": key_players_map,
   ]
 
+  payload
+}
+
+private fn team_goals_json(
+  t: api_football::TeamOutlook,
+  splits: api_football::TeamGoalSplits,
+  is_home: Bool,
+) [Str: Any] {
+  let venue_for = match is_home {
+    true => splits.for_home,
+    false => splits.for_away,
+  }
+  let venue_against = match is_home {
+    true => splits.against_home,
+    false => splits.against_away,
+  }
+  let season: [Str: Any] = ["for": t.goals_for_avg, "against": t.goals_against_avg]
+  let venue: [Str: Any] = ["for": venue_for, "against": venue_against]
+  let last5: [Str: Any] = ["for": t.last5_for_avg, "against": t.last5_against_avg]
+  let payload: [Str: Any] = ["season": season, "venue": venue, "last5": last5]
   payload
 }
 

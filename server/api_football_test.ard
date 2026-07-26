@@ -153,3 +153,36 @@ test fn parses_expanded_standings() Void!Str {
   try testing::assert(west.group == "Western Conference", "conference group")
   Result::ok(())
 }
+
+let TOPSCORERS: Str = "\{
+  \"response\": [
+    \{ \"player\": \{ \"id\": 10, \"name\": \"L. Messi\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1609 \}, \"goals\": \{ \"total\": 35, \"assists\": 23 \}, \"games\": \{ \"rating\": \"8.6\" \} \}] \},
+    \{ \"player\": \{ \"id\": 20, \"name\": \"S. Surridge\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1602 \}, \"goals\": \{ \"total\": 25, \"assists\": 3 \}, \"games\": \{ \"rating\": \"7.4\" \} \}] \}
+  ]
+\}"
+
+let TOPASSISTS: Str = "\{
+  \"response\": [
+    \{ \"player\": \{ \"id\": 10, \"name\": \"L. Messi\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1609 \}, \"goals\": \{ \"total\": 35, \"assists\": 23 \}, \"games\": \{ \"rating\": \"8.6\" \} \}] \},
+    \{ \"player\": \{ \"id\": 30, \"name\": \"E. Gaddis\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1600 \}, \"goals\": \{ \"total\": 2, \"assists\": 12 \}, \"games\": \{ \"rating\": \"7.1\" \} \}] \}
+  ]
+\}"
+
+test fn merges_scorers_and_assisters_by_player() Void!Str {
+  let players = try api_football::merge_key_players(TOPSCORERS, TOPASSISTS)
+  try testing::assert(players.size() == 3, "3 unique players, got {players.size()}")
+  let messi = players.at(0).expect("messi")
+  try testing::assert(messi.name == "L. Messi", "messi first")
+  try testing::assert(messi.is_scorer and messi.is_assister, "messi leads both")
+  let gaddis = players.at(2).expect("gaddis")
+  try testing::assert((not gaddis.is_scorer) and gaddis.is_assister, "gaddis assist-only")
+  Result::ok(())
+}
+
+test fn parses_venue_goal_splits() Void!Str {
+  let body = "\{ \"response\": \{ \"goals\": \{ \"for\": \{ \"average\": \{ \"home\": \"1.9\", \"away\": \"1.1\" \} \}, \"against\": \{ \"average\": \{ \"home\": \"0.8\", \"away\": \"1.6\" \} \} \} \} \}"
+  let s = try api_football::parse_team_goal_splits(body)
+  try testing::assert(s.for_home == "1.9", "for home")
+  try testing::assert(s.against_away == "1.6", "against away")
+  Result::ok(())
+}

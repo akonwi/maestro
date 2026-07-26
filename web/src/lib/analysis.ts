@@ -41,6 +41,25 @@ export type H2HResult = {
   away_goals: number | null
 }
 
+// Per-game goal averages (strings, e.g. "1.3") for one slice.
+export type GoalsPair = { for: string; against: string }
+
+export type TeamGoals = {
+  season: GoalsPair
+  venue: GoalsPair // home team's home rate / away team's away rate
+  last5: GoalsPair
+}
+
+export type KeyPlayer = {
+  player_id: number
+  name: string
+  goals: number
+  assists: number
+  rating: string
+  is_scorer: boolean
+  is_assister: boolean
+}
+
 export type Outlook = {
   percent: { home: string; draw: string; away: string }
   home: TeamOutlook
@@ -48,6 +67,8 @@ export type Outlook = {
   h2h: H2HResult[]
   standings: { home: StandingEntry | null; away: StandingEntry | null }
   injuries: { home: InjuryEntry[]; away: InjuryEntry[] }
+  goals: { home: TeamGoals; away: TeamGoals }
+  key_players: { home: KeyPlayer[]; away: KeyPlayer[] }
 }
 
 export type StatLine = {
