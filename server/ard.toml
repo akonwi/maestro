@@ -2,6 +2,6 @@ name = "maestro"
 ard = ">= 0.30.0"
 
 [dependencies]
-decode = { git = "https://github.com/akonwi/ard-decode.git", commit = "917bf56" }
+decode = { git = "https://github.com/akonwi/ard-decode.git", commit = "784403f" }
 dram = { git = "https://github.com/akonwi/dram.git", commit = "6ecacab" }
-sql = { git = "https://github.com/akonwi/ard-sql.git", commit = "b622b65" }
+sql = { git = "https://github.com/akonwi/ard-sql.git", commit = "10c30d5" }

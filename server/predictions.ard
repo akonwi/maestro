@@ -402,13 +402,14 @@ private fn decode_scores(req: dram::Request) Scores!Str {
   let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
-    false => {
-      let data = try decode::from_json(body)
-      let home = try decode::run(data, decode::field("home_score", decode::int)).map_err(describe)
-      let away = try decode::run(data, decode::field("away_score", decode::int)).map_err(describe)
-      Result::ok(Scores{home: home, away: away})
-    },
+    false => decode::unmarshal(body, decode_scores_value).map_err(fn(e) { e.error() }),
   }
+}
+
+private fn decode_scores_value(data: Any) Scores!decode::Err {
+  let home = try decode::run(data, decode::field("home_score", decode::int))
+  let away = try decode::run(data, decode::field("away_score", decode::int))
+  Result::ok(Scores{home: home, away: away})
 }
 
 private fn int_field(row: Any, name: Str) Int!Str {

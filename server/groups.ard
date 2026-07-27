@@ -320,10 +320,7 @@ private fn decode_string_field(req: dram::Request, name: Str) Str!Str {
   let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
-    false => {
-      let data = try decode::from_json(body)
-      decode::run(data, decode::field(name, decode::string)).map_err(describe)
-    },
+    false => decode::unmarshal(body, decode::field(name, decode::string)).map_err(fn(e) { e.error() }),
   }
 }
 

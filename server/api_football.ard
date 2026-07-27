@@ -49,9 +49,8 @@ fn season_round_fixtures(a: app::App, league_id: Int, season: Int) [RoundFixture
 }
 
 fn parse_round_fixtures(body: Str) [RoundFixture]!Str {
-  let data = try decode::from_json(body)
-  decode::run(data, decode::field("response", decode::list(decode_round_fixture)))
-    .map_err(describe)
+  decode::unmarshal(body, decode::field("response", decode::list(decode_round_fixture)))
+    .map_err(describe_error)
 }
 
 fn fixture_by_id(a: app::App, fixture_id: Int) Fixture?!Str {
@@ -111,9 +110,8 @@ private fn get(cfg: config::Config, url: Str) Str!Str {
 
 // Exposed for testing: parse an API-Football /fixtures response body.
 fn parse_fixtures(body: Str) [Fixture]!Str {
-  let data = try decode::from_json(body)
-  decode::run(data, decode::field("response", decode::list(decode_fixture)))
-    .map_err(describe)
+  decode::unmarshal(body, decode::field("response", decode::list(decode_fixture)))
+    .map_err(describe_error)
 }
 
 private fn decode_round_fixture(item: Any) RoundFixture!decode::Err {
@@ -154,6 +152,10 @@ private fn decode_fixture(item: Any) Fixture!decode::Err {
 
 private fn describe(e: decode::Err) Str {
   "decoding api-football response: {e.to_str()}"
+}
+
+private fn describe_error(e: Error) Str {
+  "decoding api-football response: {e.error()}"
 }
 
 // ─── Pre-match outlook (/predictions) ───────────────────────────────
@@ -231,8 +233,8 @@ fn fixture_outlook(a: app::App, fixture_id: Int) Outlook?!Str {
 }
 
 fn parse_outlook(body: Str) Outlook?!Str {
-  let data = try decode::from_json(body)
-  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(describe_error)
   match items.at(0) {
     item => {
       // Incomplete prediction payloads (nulls while upstream is still
@@ -376,10 +378,10 @@ fn league_standings(a: app::App, league_id: Int, season: Int) [StandingRow]!Str 
 }
 
 fn parse_standings(body: Str) [StandingRow]!Str {
-  let data = try decode::from_json(body)
   // response[0].league.standings is a list of groups (conferences), each
   // a list of rows. Flatten across groups.
-  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(describe_error)
   mut out: [StandingRow] = []
   match items.at(0) {
     first => {
@@ -545,8 +547,8 @@ fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
 }
 
 private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
-  let data = try decode::from_json(body)
-  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(describe_error)
   mut out: [KeyPlayer] = []
   for item in items {
     match decode_leaders(item, scorers) {
@@ -595,8 +597,8 @@ fn fixture_injuries(a: app::App, fixture_id: Int) [Injury]!Str {
 }
 
 fn parse_injuries(body: Str) [Injury]!Str {
-  let data = try decode::from_json(body)
-  let items = try decode::run(data, decode::field("response", decode::list(decode::any))).map_err(describe)
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(describe_error)
   // Upstream can list the same player twice for one fixture (e.g. a
   // "Missing Fixture" record plus a "Questionable" one). Keep the first
   // record per player so team news shows each player once.
@@ -712,8 +714,7 @@ fn fixture_statistics(a: app::App, fixture_id: Int) [TeamStats]!Str {
 }
 
 fn parse_statistics(body: Str) [TeamStats]!Str {
-  let data = try decode::from_json(body)
-  decode::run(data, decode::field("response", decode::list(decode_team_stats))).map_err(describe)
+  decode::unmarshal(body, decode::field("response", decode::list(decode_team_stats))).map_err(describe_error)
 }
 
 private fn decode_team_stats(item: Any) TeamStats!decode::Err {
@@ -751,8 +752,7 @@ fn fixture_events(a: app::App, fixture_id: Int) [MatchEvent]!Str {
 }
 
 fn parse_events(body: Str) [MatchEvent]!Str {
-  let data = try decode::from_json(body)
-  decode::run(data, decode::field("response", decode::list(decode_event))).map_err(describe)
+  decode::unmarshal(body, decode::field("response", decode::list(decode_event))).map_err(describe_error)
 }
 
 private fn decode_event(item: Any) MatchEvent!decode::Err {
@@ -784,8 +784,7 @@ fn fixture_lineups(a: app::App, fixture_id: Int) [Lineup]!Str {
 }
 
 fn parse_lineups(body: Str) [Lineup]!Str {
-  let data = try decode::from_json(body)
-  decode::run(data, decode::field("response", decode::list(decode_lineup))).map_err(describe)
+  decode::unmarshal(body, decode::field("response", decode::list(decode_lineup))).map_err(describe_error)
 }
 
 private fn decode_lineup(item: Any) Lineup!decode::Err {
@@ -846,8 +845,7 @@ fn fixture_players(a: app::App, fixture_id: Int) [TeamPlayers]!Str {
 }
 
 fn parse_players(body: Str) [TeamPlayers]!Str {
-  let data = try decode::from_json(body)
-  decode::run(data, decode::field("response", decode::list(decode_team_players))).map_err(describe)
+  decode::unmarshal(body, decode::field("response", decode::list(decode_team_players))).map_err(describe_error)
 }
 
 private fn decode_team_players(item: Any) TeamPlayers!decode::Err {
