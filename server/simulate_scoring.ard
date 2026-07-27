@@ -207,4 +207,4 @@ private fn require_local_database(database_url: Str) Void!Str {
   }
 }
 
-private fn describe(e: decode::Error) Str { e.to_str() }
+private fn describe(e: decode::Err) Str { e.to_str() }

@@ -98,6 +98,6 @@ private fn nullable_int64(v: Int?) Int64? {
   }
 }
 
-private fn describe(e: decode::Error) Str {
+private fn describe(e: decode::Err) Str {
   "decoding magic_link row: {e.to_str()}"
 }

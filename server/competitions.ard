@@ -65,6 +65,6 @@ private fn decode_competition(row: Any) Competition!Str {
   )
 }
 
-private fn describe(e: decode::Error) Str {
+private fn describe(e: decode::Err) Str {
   "decoding competition row: {e.to_str()}"
 }

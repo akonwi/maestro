@@ -105,6 +105,6 @@ private fn decode_session(row: Any) Session!Str {
   )
 }
 
-private fn describe(e: decode::Error) Str {
+private fn describe(e: decode::Err) Str {
   "decoding session row: {e.to_str()}"
 }

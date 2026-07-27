@@ -81,6 +81,6 @@ private fn decode_user(row: Any) User!Str {
   )
 }
 
-private fn describe(e: decode::Error) Str {
+private fn describe(e: decode::Err) Str {
   "decoding user row: {e.to_str()}"
 }

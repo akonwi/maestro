@@ -178,6 +178,6 @@ private fn int_field(row: Any, name: Str) Int!Str {
   decode::run(row, decode::field(name, decode::int)).map_err(describe)
 }
 
-private fn describe(e: decode::Error) Str {
+private fn describe(e: decode::Err) Str {
   e.to_str()
 }

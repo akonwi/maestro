@@ -116,13 +116,13 @@ fn parse_fixtures(body: Str) [Fixture]!Str {
     .map_err(describe)
 }
 
-private fn decode_round_fixture(item: Any) RoundFixture!decode::Error {
+private fn decode_round_fixture(item: Any) RoundFixture!decode::Err {
   let fixture = try decode_fixture(item)
   let round = try decode::run(item, decode::path(["league", "round"], decode::string))
   Result::ok(RoundFixture{fixture: fixture, round: round})
 }
 
-private fn decode_fixture(item: Any) Fixture!decode::Error {
+private fn decode_fixture(item: Any) Fixture!decode::Err {
   let id = try decode::run(item, decode::path(["fixture", "id"], decode::int))
   let ts_secs = try decode::run(item, decode::path(["fixture", "timestamp"], decode::int))
   let status = try decode::run(item, decode::path(["fixture", "status", "short"], decode::string))
@@ -152,7 +152,7 @@ private fn decode_fixture(item: Any) Fixture!decode::Error {
   )
 }
 
-private fn describe(e: decode::Error) Str {
+private fn describe(e: decode::Err) Str {
   "decoding api-football response: {e.to_str()}"
 }
 
@@ -279,7 +279,7 @@ private fn string_or(item: Any, names: [Str], fallback: Str) Str {
   }
 }
 
-private fn decode_outlook(item: Any) Outlook!decode::Error {
+private fn decode_outlook(item: Any) Outlook!decode::Err {
   let percent_home = try decode::run(item, decode::path(["predictions", "percent", "home"], decode::string))
   let percent_draw = try decode::run(item, decode::path(["predictions", "percent", "draw"], decode::string))
   let percent_away = try decode::run(item, decode::path(["predictions", "percent", "away"], decode::string))
@@ -304,7 +304,7 @@ private fn decode_outlook(item: Any) Outlook!decode::Error {
   )
 }
 
-private fn decode_team_outlook(item: Any) TeamOutlook!decode::Error {
+private fn decode_team_outlook(item: Any) TeamOutlook!decode::Err {
   let id = try decode::run(item, decode::field("id", decode::int))
   let name = try decode::run(item, decode::field("name", decode::string))
   let form = string_or(item, ["league", "form"], "")
@@ -351,7 +351,7 @@ private fn decode_h2h_list(item: Any) [H2HResult] {
   }
 }
 
-private fn decode_h2h(item: Any) H2HResult!decode::Error {
+private fn decode_h2h(item: Any) H2HResult!decode::Err {
   let ts_secs = try decode::run(item, decode::path(["fixture", "timestamp"], decode::int))
   let home_name = try decode::run(item, decode::path(["teams", "home", "name"], decode::string))
   let away_name = try decode::run(item, decode::path(["teams", "away", "name"], decode::string))
@@ -407,7 +407,7 @@ fn parse_standings(body: Str) [StandingRow]!Str {
   Result::ok(out)
 }
 
-private fn decode_standing_row(item: Any) StandingRow!decode::Error {
+private fn decode_standing_row(item: Any) StandingRow!decode::Err {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let team_name = string_or(item, ["team", "name"], "")
   let rank = int_or(item, ["rank"], 0)
@@ -564,7 +564,7 @@ private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
 // One player entry can carry multiple statistics blocks (one per team the
 // player represented this season). Emit a KeyPlayer per team so each is
 // attributed correctly with that team's numbers.
-private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Error {
+private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
   let player_id = try decode::run(item, decode::path(["player", "id"], decode::int))
   let name = try decode::run(item, decode::path(["player", "name"], decode::string))
   let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
@@ -627,7 +627,7 @@ fn parse_injuries(body: Str) [Injury]!Str {
   Result::ok(out)
 }
 
-private fn decode_injury(item: Any) Injury!decode::Error {
+private fn decode_injury(item: Any) Injury!decode::Err {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let player = string_or(item, ["player", "name"], "")
   let kind = string_or(item, ["player", "type"], "")
@@ -716,21 +716,21 @@ fn parse_statistics(body: Str) [TeamStats]!Str {
   decode::run(data, decode::field("response", decode::list(decode_team_stats))).map_err(describe)
 }
 
-private fn decode_team_stats(item: Any) TeamStats!decode::Error {
+private fn decode_team_stats(item: Any) TeamStats!decode::Err {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
   let stats = try decode::run(item, decode::field("statistics", decode::list(decode_stat_line)))
   Result::ok(TeamStats{team_id: team_id, team_name: team_name, stats: stats})
 }
 
-private fn decode_stat_line(item: Any) StatLine!decode::Error {
+private fn decode_stat_line(item: Any) StatLine!decode::Err {
   let label = try decode::run(item, decode::field("type", decode::string))
   let value = try decode::run(item, decode::field("value", decode::nullable(loose_string)))
   Result::ok(StatLine{label: label, value: value})
 }
 
 // Accept a JSON string or number and render it as text.
-private fn loose_string(data: Any) Str!decode::Error {
+private fn loose_string(data: Any) Str!decode::Err {
   match decode::string(data) {
     ok(s) => Result::ok(s),
     err(_) => {
@@ -755,7 +755,7 @@ fn parse_events(body: Str) [MatchEvent]!Str {
   decode::run(data, decode::field("response", decode::list(decode_event))).map_err(describe)
 }
 
-private fn decode_event(item: Any) MatchEvent!decode::Error {
+private fn decode_event(item: Any) MatchEvent!decode::Err {
   let minute = try decode::run(item, decode::path(["time", "elapsed"], decode::int))
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let kind = try decode::run(item, decode::field("type", decode::string))
@@ -788,7 +788,7 @@ fn parse_lineups(body: Str) [Lineup]!Str {
   decode::run(data, decode::field("response", decode::list(decode_lineup))).map_err(describe)
 }
 
-private fn decode_lineup(item: Any) Lineup!decode::Error {
+private fn decode_lineup(item: Any) Lineup!decode::Err {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
   let formation = string_or(item, ["formation"], "")
@@ -828,7 +828,7 @@ private fn decode_lineup_players(item: Any, field: Str) [LineupPlayer] {
   }
 }
 
-private fn decode_lineup_player(item: Any) LineupPlayer!decode::Error {
+private fn decode_lineup_player(item: Any) LineupPlayer!decode::Err {
   let name = try decode::run(item, decode::path(["player", "name"], decode::string))
   let id = opt_int(item, ["player", "id"])
   let number = match opt_int(item, ["player", "number"]) {
@@ -850,7 +850,7 @@ fn parse_players(body: Str) [TeamPlayers]!Str {
   decode::run(data, decode::field("response", decode::list(decode_team_players))).map_err(describe)
 }
 
-private fn decode_team_players(item: Any) TeamPlayers!decode::Error {
+private fn decode_team_players(item: Any) TeamPlayers!decode::Err {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
   // Malformed individual players are skipped rather than failing the team.
@@ -865,17 +865,17 @@ private fn decode_team_players(item: Any) TeamPlayers!decode::Error {
   Result::ok(TeamPlayers{team_id: team_id, team_name: team_name, players: players})
 }
 
-private fn decode_player_line(item: Any) PlayerLine!decode::Error {
+private fn decode_player_line(item: Any) PlayerLine!decode::Err {
   let id = try decode::run(item, decode::path(["player", "id"], decode::int))
   let name = try decode::run(item, decode::path(["player", "name"], decode::string))
   let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
   match stats.at(0) {
     s => decode_player_stats(id, name, s),
-    _ => Result::err(decode::Error{expected: "player statistics", path: ["statistics"]}),
+    _ => Result::err(decode::Err{expected: "player statistics", path: ["statistics"]}),
   }
 }
 
-private fn decode_player_stats(id: Int, name: Str, s: Any) PlayerLine!decode::Error {
+private fn decode_player_stats(id: Int, name: Str, s: Any) PlayerLine!decode::Err {
   let position = opt_string(s, ["games", "position"])
   let rating = opt_string(s, ["games", "rating"])
   let minutes = opt_int(s, ["games", "minutes"])
