@@ -18,7 +18,7 @@ struct Entry {
 }
 
 fn register(router: mut dram::App, a: app::App) {
-  mut protected = router.group("/")
+  let protected = mut router.group("/")
   protected.use(auth::middleware(a))
 
   protected.get("/groups/:id/leaderboard/season", fn(req: dram::Request, res: mut dram::Response) {
@@ -92,15 +92,15 @@ private fn aggregate(
       "end_ms": end_ms,
     ],
   )
-  mut entries: [Entry] = []
+  let entries: mut [Entry] = mut []
   for row in rows {
     entries.push(try decode_entry(row))
   }
-  Result::ok(entries)
+  Result::ok(deref entries)
 }
 
 private fn entries_json(entries: [Entry]) [Any] {
-  mut payload: [Any] = []
+  let payload: mut [Any] = mut []
   mut position = 0
   mut rank = 0
   mut previous: Entry? = Maybe::new()
@@ -118,7 +118,7 @@ private fn entries_json(entries: [Entry]) [Any] {
     payload.push(entry_json(entry, rank))
     previous = Maybe::new(entry)
   }
-  payload
+  deref payload
 }
 
 private fn same_score(a: Entry, b: Entry) Bool {

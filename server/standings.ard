@@ -66,7 +66,7 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
 // Group rows into conferences in first-appearance order, preserving the
 // upstream (rank) order within each.
 fn group_conferences(rows: [api_football::StandingRow]) [Any] {
-  mut names: [Str] = []
+  let names: mut [Str] = mut []
   for row in rows {
     mut seen = false
     for n in names {
@@ -81,9 +81,9 @@ fn group_conferences(rows: [api_football::StandingRow]) [Any] {
     }
   }
 
-  mut conferences: [Any] = []
+  let conferences: mut [Any] = mut []
   for name in names {
-    mut group_rows: [Any] = []
+    let group_rows: mut [Any] = mut []
     for row in rows {
       match row.group == name {
         true => group_rows.push(standing_json(row)),
@@ -93,7 +93,7 @@ fn group_conferences(rows: [api_football::StandingRow]) [Any] {
     let conference: [Str: Any] = ["name": name, "rows": group_rows]
     conferences.push(conference)
   }
-  conferences
+  deref conferences
 }
 
 private fn standing_json(row: api_football::StandingRow) [Str: Any] {

@@ -29,7 +29,7 @@ fn main() {
   let application = app::App{db: db, config: cfg, cache: ffi::NewCache()}
   sessions::start_cleanup(application)
   let scoring = scoring_worker::start(application)
-  mut server = http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
+  let server = mut http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
 
   let interrupts = Chan::new<os::Signal>(1)
   signal::Notify(interrupts.sender(), syscall::SIGINT)

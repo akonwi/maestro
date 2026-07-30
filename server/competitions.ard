@@ -38,12 +38,12 @@ fn find_by_provider(a: app::App, league_id: Int, season: Int) Competition?!Str {
 }
 
 private fn decode_all(rows: [Any]) [Competition]!Str {
-  mut out: [Competition] = []
+  let out: mut [Competition] = mut []
   for row in rows {
     let comp = try decode_competition(row)
     out.push(comp)
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn decode_competition(row: Any) Competition!Str {

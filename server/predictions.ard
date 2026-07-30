@@ -35,7 +35,7 @@ struct GroupPrediction {
 }
 
 fn register(router: mut dram::App, a: app::App) {
-  mut protected = router.group("/")
+  let protected = mut router.group("/")
   protected.use(auth::middleware(a))
 
   protected.get("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
@@ -95,7 +95,7 @@ fn register(router: mut dram::App, a: app::App) {
 
       match list_for_group(a, group_id, fixture_id) {
         ok(predictions) => {
-          mut payload: [Any] = []
+          let payload: mut [Any] = mut []
           for prediction in predictions {
             payload.push(group_prediction_json(prediction))
           }
@@ -314,11 +314,11 @@ fn list_for_group(a: app::App, group_id: Int, fixture_id: Int) [GroupPrediction]
   let rows = try a.db.query(
     "SELECT u.id AS user_id, u.email, u.display_name, p.home_score, p.away_score, p.points, p.updated_at FROM predictions p JOIN group_members gm ON gm.user_id = p.user_id AND gm.group_id = @group_id JOIN users u ON u.id = p.user_id WHERE p.fixture_id = @fixture_id ORDER BY p.updated_at, u.id",
   ).all(["group_id": group_id, "fixture_id": fixture_id])
-  mut out: [GroupPrediction] = []
+  let out: mut [GroupPrediction] = mut []
   for row in rows {
     out.push(try decode_group_prediction(row))
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn decode_prediction(row: Any) Prediction!Str {

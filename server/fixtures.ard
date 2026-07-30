@@ -136,14 +136,14 @@ fn register(router: mut dram::App, a: app::App) {
 fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
   let all = try fetch(a, competition_id)
   let now = time::Now().UnixMilli()
-  mut out: [Fixture] = []
+  mut out: mut [Fixture] = mut []
   for f in all {
     match f.fixture.kickoff_at >= now {
       true => out.push(f),
       false => (),
     }
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 // Statuses that mean a fixture will not be played (as scheduled) anymore.
@@ -214,7 +214,7 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
       }
       match picked {
         name => {
-          mut out: [Fixture] = []
+          mut out: mut [Fixture] = mut []
           for f in list {
             match f.round == name {
               true => out.push(Fixture{competition_id: comp.id, fixture: f.fixture}),
@@ -225,7 +225,7 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
             CurrentRound{
               competition_id: Maybe::new(comp.id),
               name: Maybe::new(name),
-              fixtures: out,
+              fixtures: deref out,
             },
           )
         },
@@ -271,11 +271,11 @@ fn round_order_key(name: Str) Int {
 
 // Insertion sort by numeric round key (small lists: ~38 rounds).
 fn sort_round_names(names: [Str]) [Str] {
-  mut out: [Str] = []
+  mut out: mut [Str] = mut []
   for name in names {
     let key = round_order_key(name)
     mut inserted = false
-    mut result: [Str] = []
+    let result: mut [Str] = mut []
     for existing in out {
       let goes_before = (not inserted) and key < round_order_key(existing)
       match goes_before {
@@ -293,7 +293,7 @@ fn sort_round_names(names: [Str]) [Str] {
     }
     out = result
   }
-  out
+  deref out
 }
 
 // Every round name in the season, ordered by round number, plus the
@@ -303,7 +303,7 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
   match chosen {
     comp => {
       let list = try api_football::season_round_fixtures(a, comp.api_football_league_id, comp.season)
-      mut names: [Str] = []
+      let names: mut [Str] = mut []
       for f in list {
         mut seen = false
         for n in names {
@@ -317,8 +317,8 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
           false => names.push(f.round),
         }
       }
-      let ordered = sort_round_names(names)
-      mut rounds: [Any] = []
+      let ordered = sort_round_names(deref names)
+      let rounds: mut [Any] = mut []
       for n in ordered {
         rounds.push(n)
       }
@@ -350,7 +350,7 @@ fn by_id(a: app::App, id: Int) Fixture?!Str {
 
 private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
   let comps = try competitions::list_active(a)
-  mut out: [Fixture] = []
+  mut out: mut [Fixture] = mut []
   for comp in comps {
     let include = match competition_id {
       wanted => wanted == comp.id,
@@ -366,7 +366,7 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
       false => (),
     }
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn round_json(p: CurrentRound) [Str: Any] {
@@ -376,11 +376,11 @@ private fn round_json(p: CurrentRound) [Str: Any] {
 }
 
 private fn to_json_list(list: [Fixture]) [Any] {
-  mut payload: [Any] = []
+  let payload: mut [Any] = mut []
   for f in list {
     payload.push(to_json(f))
   }
-  payload
+  deref payload
 }
 
 private fn to_json(f: Fixture) [Str: Any] {

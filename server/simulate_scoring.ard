@@ -140,10 +140,10 @@ private fn ensure_two_rounds(rounds: [Str]) Void!Str {
 }
 
 private fn recent_rounds(fixtures: [api_football::RoundFixture]) [Str] {
-  mut ordered: [Str] = []
+  let ordered: mut [Str] = mut []
   let now = time::Now().UnixMilli()
   for item in fixtures {
-    match item.fixture.status == "FT" and item.fixture.kickoff_at < now and not contains(ordered, item.round) {
+    match item.fixture.status == "FT" and item.fixture.kickoff_at < now and not contains(deref ordered, item.round) {
       true => ordered.push(item.round),
       false => (),
     }
@@ -159,14 +159,14 @@ private fn selected_fixtures(
   fixtures: [api_football::RoundFixture],
   rounds: [Str],
 ) [api_football::RoundFixture] {
-  mut selected: [api_football::RoundFixture] = []
+  mut selected: mut [api_football::RoundFixture] = mut []
   for item in fixtures {
     match item.fixture.status == "FT" and contains(rounds, item.round) {
       true => selected.push(item),
       false => (),
     }
   }
-  selected
+  deref selected
 }
 
 private fn contains(values: [Str], wanted: Str) Bool {
