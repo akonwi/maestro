@@ -31,7 +31,7 @@ server/
 
 ## Prerequisites
 
-- [Ard 0.30.0](https://github.com/akonwi/ard) or newer on your `PATH` (`ard`)
+- [Ard 0.33.0](https://github.com/akonwi/ard) or newer on your `PATH` (`ard`)
 - [`migr`](https://github.com/akonwi/migr) on your `PATH`
 - Go 1.26+ (the Ard toolchain shells out to it)
 - [Bun](https://bun.sh) for running the e2e API tests
@@ -116,7 +116,7 @@ docker build -t maestro-server .
 docker run --rm -p 8080:8080 -v "$PWD/data:/data" maestro-server
 ```
 
-The image uses Ard 0.30.0 and resolves Dram from its pinned Git commit. It runs
+The image uses Ard 0.33.0 and resolves Dram from its pinned Git commit. It runs
 `migr up` against `/data/maestro.db` before starting the server. Mount a volume
 at `/data` for persistence.
 

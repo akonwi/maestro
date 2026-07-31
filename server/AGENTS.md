@@ -7,7 +7,7 @@ game. Read alongside `../docs/prediction-game-plan.md` (product + milestones).
 
 An Ard HTTP service on SQLite. Ard compiles to Go; the HTTP layer uses the
 pinned Dram Git dependency, which integrates with Go's `net/http`. The project
-requires the released Ard 0.30.0 compiler or newer.
+requires the released Ard 0.33.0 compiler or newer.
 
 ## Module system reality
 
