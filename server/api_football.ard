@@ -92,7 +92,7 @@ private fn get(cfg: config::Config, url: Str) Str!Str {
   mut req = try http::NewRequest("GET", url, http::NoBody)
   req.Header.Set("x-apisports-key", cfg.api_football_key)
 
-  mut client = http::Client{Timeout: 15 * time::Second}
+  let client = mut http::Client{Timeout: 15 * time::Second}
   let resp = try client.Do(req)
   match unsafe::is_nil(resp) {
     true => Result::err("api-football: nil response"),
@@ -340,14 +340,14 @@ private fn decode_team_outlook(item: Any) TeamOutlook!decode::Err {
 private fn decode_h2h_list(item: Any) [H2HResult] {
   match decode::run(item, decode::field("h2h", decode::list(decode::any))) {
     ok(items) => {
-      mut out: [H2HResult] = []
+      mut out: mut [H2HResult] = mut []
       for entry in items {
         match decode::run(entry, decode_h2h) {
           ok(meeting) => out.push(meeting),
           err(_) => (),
         }
       }
-      out
+      deref out
     },
     err(_) => [],
   }
@@ -382,7 +382,7 @@ fn parse_standings(body: Str) [StandingRow]!Str {
   // a list of rows. Flatten across groups.
   let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
     .map_err(describe_error)
-  mut out: [StandingRow] = []
+  mut out: mut [StandingRow] = mut []
   match items.at(0) {
     first => {
       match decode::run(first, decode::path(["league", "standings"], decode::list(decode::any))) {
@@ -406,7 +406,7 @@ fn parse_standings(body: Str) [StandingRow]!Str {
     },
     _ => (),
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn decode_standing_row(item: Any) StandingRow!decode::Err {
@@ -508,13 +508,13 @@ fn league_key_players(a: app::App, league_id: Int, season: Int) [KeyPlayer]!Str 
 fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
   let scorers = try parse_leaders(scorers_body, true)
   let assisters = try parse_leaders(assists_body, false)
-  mut out: [KeyPlayer] = []
+  mut out: mut [KeyPlayer] = mut []
   for p in scorers {
     out.push(p)
   }
   for p in assisters {
     mut merged = false
-    mut updated: [KeyPlayer] = []
+    let updated: mut [KeyPlayer] = mut []
     for existing in out {
       // Merge on (player, team): a mid-season transfer can list a player
       // once per team, and each belongs with its own club.
@@ -543,13 +543,13 @@ fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
     }
     out = updated
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
   let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
     .map_err(describe_error)
-  mut out: [KeyPlayer] = []
+  mut out: mut [KeyPlayer] = mut []
   for item in items {
     match decode_leaders(item, scorers) {
       ok(players) => {
@@ -560,7 +560,7 @@ private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
       err(_) => (),
     }
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 // One player entry can carry multiple statistics blocks (one per team the
@@ -570,7 +570,7 @@ private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
   let player_id = try decode::run(item, decode::path(["player", "id"], decode::int))
   let name = try decode::run(item, decode::path(["player", "name"], decode::string))
   let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
-  mut out: [KeyPlayer] = []
+  mut out: mut [KeyPlayer] = mut []
   for s in stats {
     let team_id = int_or(s, ["team", "id"], 0)
     out.push(
@@ -586,7 +586,7 @@ private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
       },
     )
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 // ─── Injuries (/injuries) ────────────────────────────────────────────────
@@ -602,8 +602,8 @@ fn parse_injuries(body: Str) [Injury]!Str {
   // Upstream can list the same player twice for one fixture (e.g. a
   // "Missing Fixture" record plus a "Questionable" one). Keep the first
   // record per player so team news shows each player once.
-  mut out: [Injury] = []
-  mut seen: [Str] = []
+  mut out: mut [Injury] = mut []
+  let seen: mut [Str] = mut []
   for item in items {
     match decode::run(item, decode_injury) {
       ok(injury) => {
@@ -626,7 +626,7 @@ fn parse_injuries(body: Str) [Injury]!Str {
       err(_) => (),
     }
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn decode_injury(item: Any) Injury!decode::Err {
@@ -814,14 +814,14 @@ private fn decode_lineup(item: Any) Lineup!decode::Err {
 private fn decode_lineup_players(item: Any, field: Str) [LineupPlayer] {
   match decode::run(item, decode::field(field, decode::list(decode::any))) {
     ok(items) => {
-      mut out: [LineupPlayer] = []
+      mut out: mut [LineupPlayer] = mut []
       for entry in items {
         match decode::run(entry, decode_lineup_player) {
           ok(player) => out.push(player),
           err(_) => (),
         }
       }
-      out
+      deref out
     },
     err(_) => [],
   }
@@ -853,14 +853,14 @@ private fn decode_team_players(item: Any) TeamPlayers!decode::Err {
   let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
   // Malformed individual players are skipped rather than failing the team.
   let entries = try decode::run(item, decode::field("players", decode::list(decode::any)))
-  mut players: [PlayerLine] = []
+  let players: mut [PlayerLine] = mut []
   for entry in entries {
     match decode::run(entry, decode_player_line) {
       ok(player) => players.push(player),
       err(_) => (),
     }
   }
-  Result::ok(TeamPlayers{team_id: team_id, team_name: team_name, players: players})
+  Result::ok(TeamPlayers{team_id: team_id, team_name: team_name, players: deref players})
 }
 
 private fn decode_player_line(item: Any) PlayerLine!decode::Err {

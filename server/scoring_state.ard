@@ -102,9 +102,9 @@ fn due(a: app::App, now: Int64, limit: Int) [State]!Str {
   let rows = try a.db
     .query("SELECT fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count FROM fixture_scoring_state WHERE state = 'pending' AND next_check_at IS NOT NULL AND next_check_at <= @now ORDER BY next_check_at, fixture_id LIMIT @limit")
     .all(["now": now, "limit": limit])
-  mut states: [State] = []
+  let states: mut [State] = mut []
   for row in rows { states.push(try decode_state(row)) }
-  Result::ok(states)
+  Result::ok(deref states)
 }
 
 fn reschedule_success(
@@ -145,11 +145,11 @@ fn missing_fixture_ids(a: app::App, limit: Int) [Int]!Str {
   let rows = try a.db
     .query("SELECT DISTINCT p.fixture_id FROM predictions p LEFT JOIN fixture_scoring_state s ON s.fixture_id = p.fixture_id WHERE p.points IS NULL AND s.fixture_id IS NULL ORDER BY p.fixture_id LIMIT @limit")
     .all(["limit": limit])
-  mut ids: [Int] = []
+  let ids: mut [Int] = mut []
   for row in rows {
     ids.push(try decode::run(row, decode::field("fixture_id", decode::int)).map_err(describe))
   }
-  Result::ok(ids)
+  Result::ok(deref ids)
 }
 
 private fn decode_state(row: Any) State!Str {

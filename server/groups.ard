@@ -34,14 +34,14 @@ struct InviteResult {
 }
 
 fn register(router: mut dram::App, a: app::App) {
-  mut protected = router.group("/")
+  let protected = mut router.group("/")
   protected.use(auth::middleware(a))
   protected.get("/groups", fn(req: dram::Request, res: mut dram::Response) {
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
 
     match list_for_user(a, user_id) {
       ok(groups) => {
-        mut payload: [Any] = []
+        let payload: mut [Any] = mut []
         for group in groups {
           payload.push(group_json(group))
         }
@@ -224,11 +224,11 @@ fn members(a: app::App, group_id: Int) [Member]!Str {
   let rows = try a.db.query(
     "SELECT u.id, u.email, u.display_name, gm.joined_at FROM group_members gm JOIN users u ON u.id = gm.user_id WHERE gm.group_id = @group_id ORDER BY gm.joined_at, u.id",
   ).all(["group_id": group_id])
-  mut out: [Member] = []
+  let out: mut [Member] = mut []
   for row in rows {
     out.push(try decode_member(row))
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn member_by_id(a: app::App, group_id: Int, user_id: Int) Member?!Str {
@@ -242,11 +242,11 @@ private fn member_by_id(a: app::App, group_id: Int, user_id: Int) Member?!Str {
 }
 
 private fn decode_groups(rows: [Any]) [Group]!Str {
-  mut out: [Group] = []
+  let out: mut [Group] = mut []
   for row in rows {
     out.push(try decode_group(row))
   }
-  Result::ok(out)
+  Result::ok(deref out)
 }
 
 private fn decode_group(row: Any) Group!Str {
@@ -294,11 +294,11 @@ private fn group_json(group: Group) [Str: Any] {
 }
 
 private fn members_json(group_members: [Member]) [Any] {
-  mut payload: [Any] = []
+  let payload: mut [Any] = mut []
   for member in group_members {
     payload.push(member_json(member))
   }
-  payload
+  deref payload
 }
 
 private fn member_json(member: Member) [Str: Any] {

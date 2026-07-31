@@ -93,7 +93,7 @@ fn outlook_json(
   away_splits: api_football::TeamGoalSplits,
   key_players: [api_football::KeyPlayer],
 ) [Str: Any] {
-  mut h2h: [Any] = []
+  let h2h: mut [Any] = mut []
   for m in o.h2h {
     let entry: [Str: Any] = [
       "kickoff_at": m.kickoff_at,
@@ -106,8 +106,8 @@ fn outlook_json(
     h2h.push(entry)
   }
 
-  mut home_injuries: [Any] = []
-  mut away_injuries: [Any] = []
+  let home_injuries: mut [Any] = mut []
+  let away_injuries: mut [Any] = mut []
   for inj in injuries {
     let entry: [Str: Any] = ["player": inj.player, "kind": inj.kind, "reason": inj.reason]
     match inj.team_id == o.home.id {
@@ -132,8 +132,8 @@ fn outlook_json(
     "away": team_goals_json(o.away, away_splits, false),
   ]
 
-  mut home_players: [Any] = []
-  mut away_players: [Any] = []
+  let home_players: mut [Any] = mut []
+  let away_players: mut [Any] = mut []
   for kp in key_players {
     let entry: [Str: Any] = [
       "player_id": kp.player_id,
@@ -274,9 +274,9 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
 
   try require_some_section(failures, last_error)
 
-  mut stats_json: [Any] = []
+  let stats_json: mut [Any] = mut []
   for t in stats {
-    mut lines: [Any] = []
+    let lines: mut [Any] = mut []
     for s in t.stats {
       let line: [Str: Any] = ["label": s.label, "value": s.value]
       lines.push(line)
@@ -285,7 +285,7 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
     stats_json.push(entry)
   }
 
-  mut events_json: [Any] = []
+  let events_json: mut [Any] = mut []
   for e in events {
     let entry: [Str: Any] = [
       "minute": e.minute,
@@ -301,7 +301,7 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
     events_json.push(entry)
   }
 
-  mut lineups_json: [Any] = []
+  let lineups_json: mut [Any] = mut []
   for l in lineups {
     let entry: [Str: Any] = [
       "team_id": l.team_id,
@@ -317,9 +317,9 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
     lineups_json.push(entry)
   }
 
-  mut players_json: [Any] = []
+  let players_json: mut [Any] = mut []
   for t in players {
-    mut lines: [Any] = []
+    let lines: mut [Any] = mut []
     for p in t.players {
       let line: [Str: Any] = [
         "id": p.id,
@@ -362,11 +362,11 @@ private fn require_some_section(failures: Int, last_error: Str) Void!Str {
 }
 
 private fn lineup_players_json(list: [api_football::LineupPlayer]) [Any] {
-  mut out: [Any] = []
+  let out: mut [Any] = mut []
   for p in list {
     let entry: [Str: Any] = ["id": p.id, "name": p.name, "number": p.number, "pos": p.pos, "grid": p.grid]
 
     out.push(entry)
   }
-  out
+  deref out
 }

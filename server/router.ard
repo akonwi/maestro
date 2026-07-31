@@ -14,7 +14,7 @@ use go:time
 // Compose the full HTTP surface. Each domain owns its own routes; this
 // module is just the wiring diagram.
 fn build(a: app::App) dram::App {
-  mut router = dram::App::new()
+  let router = mut dram::App::new()
 
   router.use(
     fn(request: dram::Request, response: mut dram::Response, next: dram::Next) {
@@ -33,5 +33,5 @@ fn build(a: app::App) dram::App {
   leaderboards::register(router, a)
   standings::register(router, a)
 
-  router
+  deref router
 }

@@ -71,7 +71,7 @@ fn register(router: mut dram::App, a: app::App) {
     },
   )
 
-  mut protected = router.group("/")
+  let protected = mut router.group("/")
   protected.use(middleware(a))
   protected.get(
     "/auth/me",
@@ -134,7 +134,7 @@ private fn verify(a: app::App, token: Str) [Str: Any]!Str {
 fn authenticate(a: app::App, req: dram::Request) Int? {
   let token = bearer_token(req)
 
-  mut out = Maybe::new<Int>()
+  let out = mut Maybe::new<Int>()
   match token.is_empty() {
     true => (),
     false => {
@@ -151,7 +151,7 @@ fn authenticate(a: app::App, req: dram::Request) Int? {
       }
     },
   }
-  out
+  deref out
 }
 
 struct UserIdKey {
