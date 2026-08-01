@@ -31,10 +31,10 @@ export function MatchdayNavigator({
   }))
 
   return (
-    <div className='flex items-stretch border border-border bg-surface'>
+    <div className='flex'>
       <button
         aria-label='Previous matchday'
-        className='grid h-auto w-11 shrink-0 place-items-center border-r border-border transition-colors hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent'
+        className='w-11 shrink-0 px-0'
         disabled={!hasPrev}
         onClick={() => hasPrev && onSelect(rounds[index - 1])}
         type='button'
@@ -49,8 +49,7 @@ export function MatchdayNavigator({
       >
         <SelectTrigger
           aria-label='Select matchday'
-          className='min-w-0 flex-1 justify-center border-0 text-center font-semibold'
-          size='lg'
+          className='h-9! min-w-0 flex-1 justify-center border-y border-x-0 border-border text-center font-semibold'
         >
           <SelectValue>
             {value =>
@@ -72,7 +71,7 @@ export function MatchdayNavigator({
 
       <button
         aria-label='Next matchday'
-        className='grid h-auto w-11 shrink-0 place-items-center border-l border-border transition-colors hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent'
+        className='w-11 shrink-0 px-0'
         disabled={!hasNext}
         onClick={() => hasNext && onSelect(rounds[index + 1])}
         type='button'
