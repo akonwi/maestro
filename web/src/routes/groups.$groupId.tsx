@@ -127,13 +127,10 @@ function InviteForm({ groupId }: { groupId: number }) {
       className='mt-8 grid gap-3 border border-border bg-muted p-4 sm:grid-cols-[1fr_auto] sm:items-end'
       onSubmit={submit}
     >
-      <div className='grid gap-2'>
-        <label className='text-sm font-semibold' htmlFor='invite-email'>
-          Invite by email
-        </label>
+      <m-vstack gap='xs'>
+        <label htmlFor='invite-email'>Invite by email</label>
         <input
           autoComplete='email'
-          className='h-11 border border-border bg-surface px-3 text-base'
           id='invite-email'
           inputMode='email'
           name='invite-email'
@@ -143,7 +140,7 @@ function InviteForm({ groupId }: { groupId: number }) {
           type='email'
           value={email}
         />
-      </div>
+      </m-vstack>
       <button className='primary' disabled={invite.isPending} type='submit'>
         {invite.isPending ? 'Sending invite…' : 'Invite Member'}
       </button>

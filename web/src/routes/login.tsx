@@ -58,42 +58,41 @@ function LoginPage() {
             </p>
           </div>
         ) : (
-          <form className='mt-8 grid gap-4' onSubmit={submit}>
-            <div className='grid gap-2'>
-              <label className='text-sm font-semibold' htmlFor='email'>
-                Email address
-              </label>
-              <input
-                autoComplete='email'
-                className='h-11 border border-border bg-surface px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
-                id='email'
-                inputMode='email'
-                name='email'
-                onChange={event => setEmail(event.target.value)}
-                required
-                spellCheck={false}
-                type='email'
-                value={email}
-              />
-            </div>
-            {requestLink.isError ? (
-              <p
-                aria-live='polite'
-                className='text-sm text-danger'
-                role='alert'
+          <form className='mt-8' onSubmit={submit}>
+            <m-vstack gap='md'>
+              <m-vstack gap='xs'>
+                <label htmlFor='email'>Email address</label>
+                <input
+                  autoComplete='email'
+                  id='email'
+                  inputMode='email'
+                  name='email'
+                  onChange={event => setEmail(event.target.value)}
+                  required
+                  spellCheck={false}
+                  type='email'
+                  value={email}
+                />
+              </m-vstack>
+              {requestLink.isError ? (
+                <p
+                  aria-live='polite'
+                  className='text-sm text-danger'
+                  role='alert'
+                >
+                  We couldn’t send the link. Check the address and try again.
+                </p>
+              ) : null}
+              <button
+                className='primary'
+                disabled={requestLink.isPending}
+                type='submit'
               >
-                We couldn’t send the link. Check the address and try again.
-              </p>
-            ) : null}
-            <button
-              className='primary'
-              disabled={requestLink.isPending}
-              type='submit'
-            >
-              {requestLink.isPending
-                ? 'Sending link…'
-                : 'Email me a sign-in link'}
-            </button>
+                {requestLink.isPending
+                  ? 'Sending link…'
+                  : 'Email me a sign-in link'}
+              </button>
+            </m-vstack>
           </form>
         )}
 

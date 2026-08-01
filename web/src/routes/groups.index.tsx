@@ -201,13 +201,10 @@ function CreateGroupForm() {
       className='mt-4 grid gap-3 border border-border bg-muted p-4 sm:grid-cols-[1fr_auto] sm:items-end'
       onSubmit={submit}
     >
-      <div className='grid gap-2'>
-        <label className='text-sm font-semibold' htmlFor='group-name'>
-          Group name
-        </label>
+      <m-vstack gap='xs'>
+        <label htmlFor='group-name'>Group name</label>
         <input
           autoComplete='off'
-          className='h-11 border border-border bg-surface px-3 text-base'
           id='group-name'
           maxLength={80}
           name='group-name'
@@ -215,7 +212,7 @@ function CreateGroupForm() {
           required
           value={name}
         />
-      </div>
+      </m-vstack>
       <button className='primary' disabled={create.isPending} type='submit'>
         {create.isPending ? 'Creating group…' : 'Create Group'}
       </button>
