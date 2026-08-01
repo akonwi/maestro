@@ -1,0 +1,171 @@
+/* Maestro-local elements — app-specific styles on mica tokens.
+   Everything here consumes mica's semantic roles and scales; no raw
+   values except structural dimensions unique to this app. Layout
+   composition belongs to mica primitives (m-vstack/m-hstack) in markup;
+   these classes cover repeated app patterns and bespoke elements. */
+
+/* --- page scaffold ----------------------------------------------- */
+.page {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 2.5rem 1rem;
+}
+.page.wide {
+  max-width: 72rem;
+}
+.page.narrow {
+  max-width: 56rem;
+}
+@media (min-width: 40rem) {
+  .page {
+    padding: 3.5rem 1.5rem;
+  }
+}
+
+.page-title {
+  margin-top: 0.75rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.page-subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.day-heading {
+  margin-bottom: 0.75rem;
+  font: 600 0.75rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* --- shared surfaces --------------------------------------------- */
+.card {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.empty-state {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.error-card {
+  border: 1px solid var(--color-danger-border);
+  background: var(--color-danger-surface);
+  padding: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-danger-text);
+}
+
+.skeleton {
+  block-size: 12rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* --- fixture row --------------------------------------------------- */
+.fixture-row {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr) 1.25rem;
+  align-items: center;
+  gap: var(--space-xs);
+  min-block-size: 5rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: border-color 0.15s;
+}
+.fixture-row:hover {
+  border-color: var(--color-text);
+}
+
+.fixture-row .kickoff {
+  white-space: nowrap;
+  font: 600 0.875rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.fixture-row .status {
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+.fixture-row .teams {
+  display: grid;
+  gap: var(--space-xs);
+}
+.fixture-row .score {
+  text-align: center;
+  font: 600 0.875rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.fixture-row .vs {
+  display: none;
+  text-align: center;
+  font: 400 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.fixture-team {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.fixture-team .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crest {
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+@media (min-width: 40rem) {
+  .fixture-row {
+    grid-template-columns: 6rem minmax(0, 1fr) 2rem;
+    gap: 0;
+    padding-block: 0;
+    padding-inline: var(--space-md);
+  }
+  .fixture-row .teams {
+    grid-template-columns: 1fr 3rem 1fr;
+    align-items: center;
+  }
+  .fixture-row .vs {
+    display: block;
+  }
+  .fixture-team.away {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+}
