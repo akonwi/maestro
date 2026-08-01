@@ -28,7 +28,6 @@ import {
   savePrediction,
 } from '@/lib/predictions'
 import { useSessionToken } from '@/lib/session'
-import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/fixtures/$fixtureId')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -452,17 +451,13 @@ function GroupPredictionList({
             </span>
             {prediction.points !== null ? (
               <span title={pointDescription(prediction.points)}>
-                <span
+                <m-badge
                   aria-hidden
-                  className={cn(
-                    'block min-w-7 text-right font-mono text-sm font-semibold tabular-nums',
-                    prediction.points > 0
-                      ? 'text-accent'
-                      : 'text-muted-foreground',
-                  )}
+                  count
+                  variant={badgeVariant(prediction.points)}
                 >
                   {prediction.points > 0 ? `+${prediction.points}` : '0'}
-                </span>
+                </m-badge>
                 <span className='sr-only'>
                   {pointDescription(prediction.points)}
                 </span>
@@ -479,6 +474,12 @@ function pointDescription(points: number) {
   if (points === 3) return '3 points, exact score'
   if (points === 1) return '1 point, correct outcome'
   return '0 points'
+}
+
+function badgeVariant(points: number) {
+  if (points === 3) return 'success' as const
+  if (points === 1) return 'primary' as const
+  return undefined
 }
 
 function PredictionSkeleton() {

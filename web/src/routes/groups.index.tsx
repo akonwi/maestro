@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
 import { GroupLeaderboardCard } from '@/components/group-leaderboard-card'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { currentUserQuery } from '@/lib/auth'
 import { createGroup, groupsQuery } from '@/lib/groups'
 import {
@@ -139,35 +138,47 @@ function PeriodControls({
 }) {
   return (
     <div className='mt-8 flex flex-wrap items-center gap-2 border-b border-border pb-4'>
-      <ToggleGroup
-        aria-label='Leaderboard period'
-        onValueChange={values => {
-          const value = values[0]
-          if (value === 'season' || value === 'week') onModeChange(value)
-        }}
-        spacing={0}
-        value={[mode]}
-        variant='outline'
-      >
-        <ToggleGroupItem value='season'>Season</ToggleGroupItem>
-        <ToggleGroupItem value='week'>Week</ToggleGroupItem>
-      </ToggleGroup>
+      <fieldset>
+        <legend className='sr-only'>Leaderboard period</legend>
+        <m-segmented>
+          <label>
+            <input
+              checked={mode === 'season'}
+              name='leaderboard-period'
+              onChange={() => onModeChange('season')}
+              type='radio'
+              value='season'
+            />{' '}
+            Season
+          </label>
+          <label>
+            <input
+              checked={mode === 'week'}
+              name='leaderboard-period'
+              onChange={() => onModeChange('week')}
+              type='radio'
+              value='week'
+            />{' '}
+            Week
+          </label>
+        </m-segmented>
+      </fieldset>
       {mode === 'week' ? (
-        <div className='flex items-center border border-border bg-surface'>
+        <div className='flex items-stretch'>
           <button
             aria-label='Previous week'
-            className='grid size-11 place-items-center border-r border-border'
+            className='w-11 shrink-0 px-0'
             onClick={() => onWeekChange(shiftWeek(week, -7))}
             type='button'
           >
             <CaretLeft aria-hidden />
           </button>
-          <span className='min-w-28 px-3 text-center font-mono text-xs font-semibold'>
+          <span className='flex min-w-28 items-center justify-center border-y border-border px-3 text-center font-mono text-xs font-semibold'>
             {weekLabel(week)}
           </span>
           <button
             aria-label='Next week'
-            className='grid size-11 place-items-center border-l border-border disabled:opacity-40'
+            className='w-11 shrink-0 px-0'
             disabled={week >= currentWeekKey()}
             onClick={() => onWeekChange(shiftWeek(week, 7))}
             type='button'
