@@ -19,12 +19,9 @@ export function MatchDetailPanel({
 }) {
   if (query.isPending) {
     return (
-      <div aria-live='polite' className='mt-4' role='status'>
+      <div aria-live='polite' role='status'>
         <span className='sr-only'>Loading match detail…</span>
-        <div
-          aria-hidden
-          className='h-56 animate-pulse border border-border bg-muted motion-reduce:animate-none'
-        />
+        <div aria-hidden className='skeleton' />
       </div>
     )
   }
@@ -48,19 +45,13 @@ function MatchTabs({ detail }: { detail: MatchDetail }) {
   const baseId = useId()
 
   return (
-    <section className='mt-4 border border-border bg-surface'>
+    <section className='card'>
       <m-tabs>
-        {' '}
-        <nav
-          aria-label='Match detail'
-          className='m-3 max-w-full overflow-x-auto'
-          role='tablist'
-        >
+        <nav aria-label='Match detail' className='tab-rail' role='tablist'>
           {MATCH_TABS.map(tab => (
             <button
               aria-controls={`${baseId}-${tab}`}
               aria-selected={active === tab}
-              className='whitespace-nowrap'
               key={tab}
               onClick={() => setActive(tab)}
               role='tab'
@@ -70,7 +61,11 @@ function MatchTabs({ detail }: { detail: MatchDetail }) {
             </button>
           ))}
         </nav>
-        <section className='py-0' id={`${baseId}-${active}`} role='tabpanel'>
+        <section
+          className='tab-panel'
+          id={`${baseId}-${active}`}
+          role='tabpanel'
+        >
           {active === 'Stats' ? (
             <StatsPanel statistics={detail.statistics} />
           ) : null}
@@ -116,17 +111,15 @@ function StatRow({ home, away }: { home: StatLine; away: StatLine | null }) {
   const awayShare = total > 0 ? (awayValue / total) * 100 : 0
 
   return (
-    <div className='border-b border-border px-4 py-2.5 last:border-b-0'>
-      <div className='flex items-baseline justify-between font-mono text-xs font-bold tabular-nums'>
+    <div className='stat-row'>
+      <div className='vals'>
         <span>{home.value ?? '0'}</span>
-        <span className='font-sans text-[.625rem] font-medium text-muted-foreground'>
-          {statLabel(home.label)}
-        </span>
+        <span className='label'>{statLabel(home.label)}</span>
         <span>{away?.value ?? '0'}</span>
       </div>
-      <div className='mt-1.5 flex h-1 justify-between bg-border'>
-        <i className='bg-foreground' style={{ width: `${homeShare}%` }} />
-        <i className='bg-accent' style={{ width: `${awayShare}%` }} />
+      <div className='twobar'>
+        <i className='home' style={{ width: `${homeShare}%` }} />
+        <i className='away' style={{ width: `${awayShare}%` }} />
       </div>
     </div>
   )
@@ -159,17 +152,17 @@ function EventsPanel({ detail }: { detail: MatchDetail }) {
 
 function EventRow({ event }: { event: MatchEvent }) {
   return (
-    <div className='grid grid-cols-[2.75rem_1.5rem_1fr] items-center gap-2.5 border-b border-border px-4 py-3 text-xs last:border-b-0'>
-      <time className='font-mono text-[.625rem] font-semibold text-muted-foreground'>
+    <div className='event-row'>
+      <time>
         {event.minute}
         {event.extra ? `+${event.extra}` : ''}′
       </time>
-      <span aria-hidden className='text-sm'>
+      <span aria-hidden className='icon'>
         {eventIcon(event)}
       </span>
-      <div className='min-w-0'>
-        <strong className='block truncate'>{eventHeadline(event)}</strong>
-        <small className='text-muted-foreground'>{eventDetail(event)}</small>
+      <div className='what'>
+        <strong>{eventHeadline(event)}</strong>
+        <small>{eventDetail(event)}</small>
       </div>
     </div>
   )
@@ -211,10 +204,10 @@ function eventDetail(event: MatchEvent) {
 export function PreMatchLineups({ lineups }: { lineups: Lineup[] }) {
   if (lineups.length < 2) return null
   return (
-    <section className='mt-4 border border-border bg-surface'>
-      <header className='border-b border-border px-4 py-3'>
-        <h2 className='font-semibold'>Lineups</h2>
-      </header>
+    <section className='card'>
+      <div className='panel-head'>
+        <h2 className='panel-title'>Lineups</h2>
+      </div>
       <LineupsPanel lineups={lineups} />
     </section>
   )
@@ -226,37 +219,25 @@ function LineupsPanel({ lineups }: { lineups: Lineup[] }) {
 
   return (
     <div>
-      <div className='grid grid-cols-2 border-b border-border'>
+      <div className='lineup-grid head'>
         <TeamLineupMeta lineup={home} />
-        <TeamLineupMeta away lineup={away} />
+        <TeamLineupMeta lineup={away} />
       </div>
       <Pitch away={away} home={home} />
-      <div className='grid grid-cols-2 border-t border-border'>
+      <div className='lineup-grid foot'>
         <BenchList lineup={home} />
-        <BenchList away lineup={away} />
+        <BenchList lineup={away} />
       </div>
     </div>
   )
 }
 
-function TeamLineupMeta({
-  away = false,
-  lineup,
-}: {
-  away?: boolean
-  lineup: Lineup
-}) {
+function TeamLineupMeta({ lineup }: { lineup: Lineup }) {
   return (
-    <div
-      className={cn('px-4 py-3', away && 'border-l border-border text-right')}
-    >
-      <strong className='block text-xs'>{lineup.team_name}</strong>
-      <div className='mt-0.5 font-mono text-base font-bold'>
-        {lineup.formation}
-      </div>
-      <small className='mt-0.5 block text-muted-foreground'>
-        Coach · {lineup.coach}
-      </small>
+    <div className='lineup-team'>
+      <strong>{lineup.team_name}</strong>
+      <div className='formation'>{lineup.formation}</div>
+      <small>Coach · {lineup.coach}</small>
     </div>
   )
 }
@@ -289,20 +270,13 @@ function formationLines(lineup: Lineup) {
 /**
  * Responsive pitch: vertical on mobile (away attacks down from the top,
  * home attacks up from the bottom), horizontal on md+ (home attacks
- * left-to-right).
+ * left-to-right). Direction flips live in app.css (.pitch-half/.pitch-line).
  */
 function Pitch({ home, away }: { home: Lineup; away: Lineup }) {
   return (
-    <div className='relative m-3 flex h-[37.5rem] flex-col border border-border bg-muted md:h-[27rem] md:flex-row'>
-      {/* halfway line */}
-      <div
-        aria-hidden
-        className='absolute inset-x-0 top-1/2 border-t border-border md:inset-x-auto md:inset-y-0 md:left-1/2 md:border-l md:border-t-0'
-      />
-      <div
-        aria-hidden
-        className='absolute left-1/2 top-1/2 size-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border'
-      />
+    <div className='pitch'>
+      <div aria-hidden className='halfway' />
+      <div aria-hidden className='circle' />
       <PitchHalf away lineup={away} />
       <PitchHalf lineup={home} />
     </div>
@@ -318,25 +292,9 @@ function PitchHalf({
 }) {
   const lines = formationLines(lineup)
   return (
-    <div
-      className={cn(
-        'z-[1] flex flex-1 p-1.5',
-        // Vertical: away on top reading GK→attack downward; home on the
-        // bottom reading attack→GK downward (GK nearest own goal).
-        // Horizontal: home reads GK→attack left-to-right; away mirrored.
-        away ? 'flex-col md:flex-row-reverse' : 'flex-col-reverse md:flex-row',
-      )}
-    >
+    <div className={cn('pitch-half', away ? 'away' : 'home')}>
       {lines.map(players => (
-        <div
-          className={cn(
-            'flex flex-1 items-center justify-around',
-            away
-              ? 'flex-row-reverse md:flex-col-reverse'
-              : 'flex-row md:flex-col',
-          )}
-          key={players[0]?.grid ?? 'line'}
-        >
+        <div className='pitch-line' key={players[0]?.grid ?? 'line'}>
           {players.map(player => (
             <PitchPlayer key={player.number} lineup={lineup} player={player} />
           ))}
@@ -356,41 +314,28 @@ function PitchPlayer({
   const kit = lineup.color_primary ? `#${lineup.color_primary}` : undefined
   const number = lineup.color_number ? `#${lineup.color_number}` : undefined
   return (
-    <div className='w-14 text-center'>
+    <div className='pitch-player'>
       <span
-        className='mx-auto mb-0.5 grid h-6 w-7 place-items-center border border-border bg-foreground font-mono text-[.625rem] font-bold text-background'
+        className='kit'
         style={
           kit ? { backgroundColor: kit, color: number ?? '#fff' } : undefined
         }
       >
         {player.number}
       </span>
-      <span className='block truncate text-[.5625rem] font-semibold'>
-        {player.name}
-      </span>
+      <span className='name'>{player.name}</span>
     </div>
   )
 }
 
-function BenchList({
-  away = false,
-  lineup,
-}: {
-  away?: boolean
-  lineup: Lineup
-}) {
+function BenchList({ lineup }: { lineup: Lineup }) {
   return (
-    <div className={cn('px-4 py-3', away && 'border-l border-border')}>
-      <h4 className='mb-2 text-[.6875rem] font-semibold'>
-        {lineup.team_name} bench
-      </h4>
-      <ul className='grid gap-1'>
+    <div>
+      <h4 className='small-title'>{lineup.team_name} bench</h4>
+      <ul className='bench-list'>
         {lineup.bench.map(player => (
-          <li
-            className='text-[.625rem] text-muted-foreground'
-            key={`${player.number}-${player.name}`}
-          >
-            <b className='mr-1.5 font-mono text-foreground'>{player.number}</b>
+          <li key={`${player.number}-${player.name}`}>
+            <b>{player.number}</b>
             {player.name}
           </li>
         ))}
@@ -407,12 +352,7 @@ function PlayersPanel({ teams }: { teams: TeamPlayers[] }) {
     <div>
       {teams.map((team, index) => (
         <div key={team.team_id}>
-          <header
-            className={cn(
-              'border-b border-border bg-muted px-4 py-2 text-[.6875rem] font-semibold',
-              index > 0 && 'border-t',
-            )}
-          >
+          <header className={cn('team-strip', index > 0 && 'subsequent')}>
             {team.team_name}
           </header>
           {rankedPlayers(team).map(player => (
@@ -435,18 +375,16 @@ function rankedPlayers(team: TeamPlayers) {
 
 function PlayerRow({ player }: { player: TeamPlayers['players'][number] }) {
   return (
-    <div className='grid grid-cols-[2.5rem_1fr_auto] items-center gap-2.5 border-b border-border px-4 py-2.5 text-xs last:border-b-0'>
-      <b className='font-mono tabular-nums'>{player.rating ?? '–'}</b>
-      <span className='min-w-0 truncate'>
+    <div className='rated-row'>
+      <b>{player.rating ?? '–'}</b>
+      <span className='summary'>
         {player.name}
-        <span className='text-muted-foreground'>
+        <span>
           {' '}
           · {player.minutes ?? 0} min{playerScoreline(player)}
         </span>
       </span>
-      <span className='font-mono text-[.625rem] text-muted-foreground'>
-        {playerHighlight(player)}
-      </span>
+      <span className='aside'>{playerHighlight(player)}</span>
     </div>
   )
 }
@@ -468,5 +406,5 @@ function playerHighlight(player: TeamPlayers['players'][number]) {
 }
 
 function EmptyPanel({ message }: { message: string }) {
-  return <p className='p-4 text-sm text-muted-foreground'>{message}</p>
+  return <p className='panel-body meta'>{message}</p>
 }
