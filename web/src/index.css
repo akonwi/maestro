@@ -1,3 +1,6 @@
+/* mica first: its @layer declarations come earliest, so Tailwind's layers
+   (declared later) and all unlayered app CSS win during the migration. */
+@import "./vendor/mica.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -6,59 +9,68 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ------------------------------------------------------------------ *
+ * Theme: mica knobs. Mica's defaults (hue 263, chroma .21, neutral
+ * grays, square radii) already ARE this app's palette — only the fonts
+ * need setting.
+ * ------------------------------------------------------------------ */
 :root {
-  font-family: "Geist Variable", sans-serif;
-  --background: #ffffff;
-  --foreground: #111111;
-  --muted: #f4f4f4;
-  --muted-foreground: #666666;
-  --border: #e5e5e5;
-  --accent: #2563eb;
-  --accent-muted: #dbeafe;
-  --warning: #f97316;
-  --warning-strong: #c2410c;
-  --danger: #dc2626;
-  --danger-muted: #fee2e2;
-  --success: #15803d;
-  --surface: #ffffff;
-  --primary: #111111;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f4;
-  --secondary-foreground: #111111;
-  --popover: #ffffff;
-  --popover-foreground: #111111;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
-  --input: #e5e5e5;
-  --ring: #2563eb;
+  --font-body: "Geist Variable", sans-serif;
+  --font-mono: "JetBrains Mono Variable", monospace;
+  font-family: var(--font-body);
+}
+
+/* ------------------------------------------------------------------ *
+ * Migration bridge: the legacy shadcn-convention tokens now DERIVE from
+ * mica's semantic roles, so existing Tailwind utilities render mica
+ * colors (and get dark mode from light-dark() for free). Deleted in
+ * Phase 3 once no Tailwind utilities reference them.
+ * ------------------------------------------------------------------ */
+:root {
+  /* NB: Tailwind's @theme emits --color-X: var(--X) for these names, so a
+     bridge var must never reference its own same-named --color-X role —
+     that's a var() cycle (computed: invalid → transparent/currentColor).
+     Cycle-prone names reference mica's SCALE steps (--neutral-*,
+     --accent-*) or restate the status formula instead of the role. */
+  --background: var(--neutral-1);
+  --foreground: var(--color-text);
+  --muted: var(--color-surface-raised);
+  --muted-foreground: var(--color-text-muted);
+  --border: var(--neutral-6);
+  --accent: var(--accent-9);
+  --accent-muted: var(--accent-3);
+  --warning: var(--color-warn);
+  --warning-strong: var(--color-warn-text);
+  --danger: light-dark(
+    oklch(52% var(--status-chroma) var(--danger-hue)),
+    oklch(70% var(--status-chroma) var(--danger-hue))
+  );
+  --danger-muted: var(--color-danger-surface);
+  --success: light-dark(
+    oklch(52% var(--status-chroma) var(--success-hue)),
+    oklch(70% var(--status-chroma) var(--success-hue))
+  );
+  --surface: var(--neutral-1);
+  --primary: var(--neutral-12);
+  --primary-foreground: var(--color-on-primary);
+  --secondary: var(--color-surface-raised);
+  --secondary-foreground: var(--color-text);
+  --popover: var(--color-surface-overlay);
+  --popover-foreground: var(--color-text);
+  --accent-foreground: var(--color-on-accent);
+  --destructive: light-dark(
+    oklch(52% var(--status-chroma) var(--danger-hue)),
+    oklch(70% var(--status-chroma) var(--danger-hue))
+  );
+  --input: var(--neutral-6);
+  --ring: var(--accent-9);
   --radius: 0px;
 }
 
+/* Dark mode: mica resolves colors via light-dark(); the class only pins
+   the scheme (and keeps Tailwind dark: variants working until Phase 3). */
 .dark {
   color-scheme: dark;
-  --background: #0b0b0b;
-  --foreground: #f4f4f4;
-  --muted: #141414;
-  --muted-foreground: #a3a3a3;
-  --border: #2a2a2a;
-  --accent: #2563eb;
-  --accent-muted: #172554;
-  --warning: #fdba74;
-  --warning-strong: #f97316;
-  --danger: #f87171;
-  --danger-muted: #3b0b0b;
-  --success: #86efac;
-  --surface: #111111;
-  --primary: #f4f4f4;
-  --primary-foreground: #0b0b0b;
-  --secondary: #141414;
-  --secondary-foreground: #f4f4f4;
-  --popover: #111111;
-  --popover-foreground: #f4f4f4;
-  --accent-foreground: #ffffff;
-  --destructive: #f87171;
-  --input: color-mix(in srgb, #ffffff 15%, transparent);
-  --ring: #2563eb;
 }
 
 @theme inline {
