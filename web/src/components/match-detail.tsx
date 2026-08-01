@@ -1,4 +1,5 @@
 import type { UseQueryResult } from '@tanstack/react-query'
+import { clsx } from 'clsx'
 import { useId, useState } from 'react'
 import type {
   Lineup,
@@ -9,7 +10,6 @@ import type {
   TeamPlayers,
 } from '@/lib/analysis'
 import { statLabel } from '@/lib/analysis'
-import { cn } from '@/lib/utils'
 
 /** Live/finished analysis: stats, events, lineups, and player ratings. */
 export function MatchDetailPanel({
@@ -292,7 +292,7 @@ function PitchHalf({
 }) {
   const lines = formationLines(lineup)
   return (
-    <div className={cn('pitch-half', away ? 'away' : 'home')}>
+    <div className={clsx('pitch-half', away ? 'away' : 'home')}>
       {lines.map(players => (
         <div className='pitch-line' key={players[0]?.grid ?? 'line'}>
           {players.map(player => (
@@ -352,7 +352,7 @@ function PlayersPanel({ teams }: { teams: TeamPlayers[] }) {
     <div>
       {teams.map((team, index) => (
         <div key={team.team_id}>
-          <header className={cn('team-strip', index > 0 && 'subsequent')}>
+          <header className={clsx('team-strip', index > 0 && 'subsequent')}>
             {team.team_name}
           </header>
           {rankedPlayers(team).map(player => (

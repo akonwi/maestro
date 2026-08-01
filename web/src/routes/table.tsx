@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { clsx } from 'clsx'
 import type { StandingRow } from '@/lib/standings'
 import { conferenceLabel, playoffCutoff, standingsQuery } from '@/lib/standings'
-import { cn } from '@/lib/utils'
 
 type TableSearch = { c?: number }
 
@@ -184,7 +184,7 @@ function TableRow({
 }) {
   return (
     <tr
-      className={cn(
+      className={clsx(
         inPlayoffs && 'in-playoffs',
         showPlayoffLine && 'playoff-line',
       )}
@@ -225,7 +225,7 @@ function Form({ value }: { value: string }) {
     <span className='form-letters' style={{ padding: 0 }}>
       {value.split('').map((result, index) => (
         <span
-          className={cn(
+          className={clsx(
             result === 'W' && 'w',
             result === 'D' && 'd',
             result === 'L' && 'l',

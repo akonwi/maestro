@@ -1,4 +1,5 @@
 import type { UseQueryResult } from '@tanstack/react-query'
+import { clsx } from 'clsx'
 import { useId, useState } from 'react'
 import type {
   GoalsPair,
@@ -10,7 +11,6 @@ import type {
   TeamStrength,
 } from '@/lib/analysis'
 import { ordinal, percentValue } from '@/lib/analysis'
-import { cn } from '@/lib/utils'
 
 const h2hDateFormatter = new Intl.DateTimeFormat(undefined, {
   month: 'short',
@@ -219,11 +219,11 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
       <tbody>
         {rows.map(row => (
           <tr key={row.label}>
-            <td className={cn(row.better === 'home' && 'strong')}>
+            <td className={clsx(row.better === 'home' && 'strong')}>
               {row.home}
             </td>
             <th scope='row'>{row.label}</th>
-            <td className={cn(row.better === 'away' && 'strong')}>
+            <td className={clsx(row.better === 'away' && 'strong')}>
               {row.away}
             </td>
           </tr>
@@ -238,7 +238,7 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
           </td>
         </tr>
         {GOAL_SLICES.map(slice => (
-          <tr className={cn(slice.emphasize && 'emph')} key={slice.key}>
+          <tr className={clsx(slice.emphasize && 'emph')} key={slice.key}>
             <GoalsPairCell pair={goals.home[slice.key]} />
             <th scope='row'>{slice.label}</th>
             <GoalsPairCell pair={goals.away[slice.key]} />
@@ -367,7 +367,7 @@ function TeamFormSection({
         <div className='form-letters'>
           {recent.map((result, index) => (
             <span
-              className={cn(
+              className={clsx(
                 result === 'W' && 'w',
                 result === 'L' && 'l',
                 result === 'D' && 'd',

@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { clsx } from 'clsx'
 import type { Group } from '@/lib/groups'
 import type { LeaderboardEntry } from '@/lib/leaderboards'
 import {
   seasonLeaderboardQuery,
   weeklyLeaderboardQuery,
 } from '@/lib/leaderboards'
-import { cn } from '@/lib/utils'
 
 export function GroupLeaderboardCard({
   group,
@@ -111,7 +111,7 @@ function Summary({
           const isCurrent = entry.user.id === userId
           return (
             <tr
-              className={cn(index === 3 && 'appended', isCurrent && 'me')}
+              className={clsx(index === 3 && 'appended', isCurrent && 'me')}
               key={entry.user.id}
             >
               <td className='rank'>{entry.rank}</td>
