@@ -49,40 +49,40 @@ function MatchTabs({ detail }: { detail: MatchDetail }) {
 
   return (
     <section className='mt-4 border border-border bg-surface'>
-      <div
-        aria-label='Match detail'
-        className='flex overflow-x-auto border-b border-border'
-        role='tablist'
-      >
-        {MATCH_TABS.map(tab => (
-          <button
-            aria-controls={`${baseId}-${tab}`}
-            aria-selected={active === tab}
-            className={cn(
-              'whitespace-nowrap border-r border-border px-4 py-3 text-xs font-bold',
-              active === tab
-                ? 'text-accent shadow-[inset_0_-2px_var(--color-accent)]'
-                : 'text-muted-foreground',
-            )}
-            key={tab}
-            onClick={() => setActive(tab)}
-            role='tab'
-            type='button'
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-      <div id={`${baseId}-${active}`} role='tabpanel'>
-        {active === 'Stats' ? (
-          <StatsPanel statistics={detail.statistics} />
-        ) : null}
-        {active === 'Events' ? <EventsPanel detail={detail} /> : null}
-        {active === 'Lineups' ? (
-          <LineupsPanel lineups={detail.lineups} />
-        ) : null}
-        {active === 'Players' ? <PlayersPanel teams={detail.players} /> : null}
-      </div>
+      <m-tabs>
+        {' '}
+        <nav
+          aria-label='Match detail'
+          className='m-3 max-w-full overflow-x-auto'
+          role='tablist'
+        >
+          {MATCH_TABS.map(tab => (
+            <button
+              aria-controls={`${baseId}-${tab}`}
+              aria-selected={active === tab}
+              className='whitespace-nowrap'
+              key={tab}
+              onClick={() => setActive(tab)}
+              role='tab'
+              type='button'
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+        <section className='py-0' id={`${baseId}-${active}`} role='tabpanel'>
+          {active === 'Stats' ? (
+            <StatsPanel statistics={detail.statistics} />
+          ) : null}
+          {active === 'Events' ? <EventsPanel detail={detail} /> : null}
+          {active === 'Lineups' ? (
+            <LineupsPanel lineups={detail.lineups} />
+          ) : null}
+          {active === 'Players' ? (
+            <PlayersPanel teams={detail.players} />
+          ) : null}
+        </section>
+      </m-tabs>
     </section>
   )
 }

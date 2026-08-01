@@ -227,7 +227,7 @@ button:focus-visible {
     margin: 0;
   }
 
-  :where([role="tab"], [role="combobox"], button.plain) {
+  :where([role="combobox"], button.plain) {
     block-size: auto;
     background: transparent;
     border: 0;

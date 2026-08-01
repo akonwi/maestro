@@ -115,43 +115,41 @@ function OutlookTabs({
 
   return (
     <section className='border border-border bg-surface'>
-      <div
-        aria-label='Pre-match analysis'
-        className='flex overflow-x-auto border-b border-border'
-        role='tablist'
-      >
-        {OUTLOOK_TABS.map(tab => (
-          <button
-            aria-controls={`${baseId}-${tab}`}
-            aria-selected={active === tab}
-            className={cn(
-              'whitespace-nowrap border-r border-border px-4 py-3 text-xs font-bold',
-              active === tab
-                ? 'text-accent shadow-[inset_0_-2px_var(--color-accent)]'
-                : 'text-muted-foreground',
-            )}
-            key={tab}
-            onClick={() => setActive(tab)}
-            role='tab'
-            type='button'
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-      <div id={`${baseId}-${active}`} role='tabpanel'>
-        {active === 'Overview' ? (
-          <>
-            <NumbersPanel outlook={outlook} />
-            <MatchupEdge outlook={outlook} />
-            <KeyPlayersPanel outlook={outlook} />
-          </>
-        ) : null}
-        {active === 'Team form' ? <TeamFormPanel outlook={outlook} /> : null}
-        {active === 'Head-to-head' ? (
-          <H2HPanel h2h={outlook.h2h} kickoffAt={kickoffAt} />
-        ) : null}
-      </div>
+      <m-tabs>
+        {' '}
+        <nav
+          aria-label='Pre-match analysis'
+          className='m-3 max-w-full overflow-x-auto'
+          role='tablist'
+        >
+          {OUTLOOK_TABS.map(tab => (
+            <button
+              aria-controls={`${baseId}-${tab}`}
+              aria-selected={active === tab}
+              className='whitespace-nowrap'
+              key={tab}
+              onClick={() => setActive(tab)}
+              role='tab'
+              type='button'
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+        <section className='py-0' id={`${baseId}-${active}`} role='tabpanel'>
+          {active === 'Overview' ? (
+            <>
+              <NumbersPanel outlook={outlook} />
+              <MatchupEdge outlook={outlook} />
+              <KeyPlayersPanel outlook={outlook} />
+            </>
+          ) : null}
+          {active === 'Team form' ? <TeamFormPanel outlook={outlook} /> : null}
+          {active === 'Head-to-head' ? (
+            <H2HPanel h2h={outlook.h2h} kickoffAt={kickoffAt} />
+          ) : null}
+        </section>
+      </m-tabs>
     </section>
   )
 }

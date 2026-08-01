@@ -34,6 +34,7 @@ declare module 'react' {
       'm-switcher': MicaElement<{ threshold?: MicaSize; gap?: MicaGap }>
       'm-reel': MicaElement<{ gap?: MicaGap }>
       'm-segmented': MicaElement
+      'm-tabs': MicaElement
       'm-badge': MicaElement<{
         variant?: 'primary' | 'success' | 'warning' | 'danger'
         count?: boolean
