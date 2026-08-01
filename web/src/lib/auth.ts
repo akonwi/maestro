@@ -11,6 +11,22 @@ type VerifyResponse = {
   user: User
 }
 
+/** API error carrying the HTTP status so callers can tell a definitive
+ * auth rejection (401/403) apart from a transient failure. */
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+export function isAuthRejection(error: unknown) {
+  return (
+    error instanceof ApiError && (error.status === 401 || error.status === 403)
+  )
+}
+
 async function authRequest<T>(
   path: string,
   options: { body?: unknown; token?: string } = {},
@@ -30,8 +46,9 @@ async function authRequest<T>(
     const body = (await response.json().catch(() => null)) as {
       error?: string
     } | null
-    throw new Error(
+    throw new ApiError(
       body?.error ?? `Request failed with status ${response.status}`,
+      response.status,
     )
   }
 
