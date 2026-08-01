@@ -6,6 +6,13 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://media.api-sports.io" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <!-- mica before the bundled app css: the app's layer-order statement
+         appends its own layer after mica's, and unlayered app rules win. -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@akonwi/mica@0.2.2/mica.css"
+    />
     <title>Maestro</title>
     <!-- Dark mode needs no script: mica sets color-scheme: light dark and
          resolves every color via light-dark(), following the OS. -->
