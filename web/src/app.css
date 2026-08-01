@@ -17,6 +17,9 @@
 .page.narrow {
   max-width: 56rem;
 }
+.page.slim {
+  max-width: 28rem;
+}
 @media (min-width: 40rem) {
   .page {
     padding: 3.5rem 1.5rem;
@@ -841,6 +844,78 @@
 .rated-row .aside {
   font: 400 0.625rem var(--font-mono);
   color: var(--color-text-muted);
+}
+
+/* --- groups --------------------------------------------------------- */
+.two-col {
+  display: grid;
+  gap: var(--space-md);
+}
+@media (min-width: 64rem) {
+  .two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.period-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Arrow button in a pager strip: fixed width, mica look otherwise. */
+.pager-arrow {
+  inline-size: 2.75rem;
+  flex-shrink: 0;
+  padding-inline: 0;
+}
+
+.matchday-select {
+  min-inline-size: 0;
+  flex: 1;
+  border-inline: 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.week-pager {
+  display: flex;
+  align-items: stretch;
+}
+.week-label {
+  display: flex;
+  min-inline-size: 7rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-sm);
+  border-block: 1px solid var(--color-border);
+  font: 600 0.75rem var(--font-mono);
+  text-align: center;
+}
+
+.form-card {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+@media (min-width: 40rem) {
+  .form-card {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+  .form-card .span-all {
+    grid-column: 1 / -1;
+  }
+}
+
+.divider-top {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-xl);
 }
 
 /* --- standings table ------------------------------------------------ */

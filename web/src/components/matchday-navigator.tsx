@@ -19,10 +19,10 @@ export function MatchdayNavigator({
   const hasNext = index >= 0 && index < rounds.length - 1
 
   return (
-    <div className='flex'>
+    <m-hstack align='stretch' gap='none'>
       <button
         aria-label='Previous matchday'
-        className='w-11 shrink-0 px-0'
+        className='pager-arrow'
         disabled={!hasPrev}
         onClick={() => hasPrev && onSelect(rounds[index - 1])}
         type='button'
@@ -32,7 +32,7 @@ export function MatchdayNavigator({
 
       <select
         aria-label='Select matchday'
-        className='min-w-0 flex-1 border-x-0 text-center font-semibold'
+        className='matchday-select'
         onChange={event => onSelect(event.target.value)}
         value={current}
       >
@@ -45,13 +45,13 @@ export function MatchdayNavigator({
 
       <button
         aria-label='Next matchday'
-        className='w-11 shrink-0 px-0'
+        className='pager-arrow'
         disabled={!hasNext}
         onClick={() => hasNext && onSelect(rounds[index + 1])}
         type='button'
       >
         <CaretRight aria-hidden size={16} />
       </button>
-    </div>
+    </m-hstack>
   )
 }

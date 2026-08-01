@@ -36,91 +36,78 @@ function GroupsPage() {
   if (!token) return <SignInRequired />
 
   return (
-    <main
-      className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
-      id='main-content'
-    >
-      <div className='section-kicker'>Private competitions</div>
-      <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
-        Your Groups
-      </h1>
-      <p className='mt-2 text-pretty text-sm text-muted-foreground'>
-        Predict scores with friends and compare results after each matchday.
-      </p>
-
-      {groups.data?.length && !currentUser.isPending ? (
-        <>
-          <PeriodControls
-            mode={search.mode}
-            onModeChange={mode =>
-              navigate({
-                search: {
-                  mode,
-                  week: mode === 'week' ? selectedWeek : undefined,
-                },
-              })
-            }
-            onWeekChange={week => navigate({ search: { mode: 'week', week } })}
-            week={selectedWeek}
-          />
-          <section
-            aria-label='Group standings'
-            className='mt-5 grid gap-4 lg:grid-cols-2'
-          >
-            {groups.data.map(group => (
-              <GroupLeaderboardCard
-                group={group}
-                key={group.id}
-                mode={search.mode}
-                userId={currentUser.data?.id}
-                week={selectedWeek}
-              />
-            ))}
-          </section>
-        </>
-      ) : null}
-
-      {groups.isPending || (groups.data?.length && currentUser.isPending) ? (
-        <GroupsSkeleton />
-      ) : null}
-      {currentUser.isError ? (
-        <p
-          className='mt-5 border border-danger bg-danger-muted p-4 text-sm text-danger'
-          role='alert'
-        >
-          Your account could not be loaded, so personal standings are
-          unavailable.
-        </p>
-      ) : null}
-      {groups.isError ? (
-        <div
-          className='mt-8 border border-danger bg-danger-muted p-4 text-sm text-danger'
-          role='alert'
-        >
-          <p>Groups are unavailable. Check your connection and try again.</p>
-          <button
-            className='mt-3'
-            onClick={() => groups.refetch()}
-            type='button'
-          >
-            Retry Groups
-          </button>
+    <main className='page' id='main-content'>
+      <m-vstack align='stretch' gap='lg'>
+        <div>
+          <div className='section-kicker'>Private competitions</div>
+          <h1 className='page-title'>Your Groups</h1>
+          <p className='page-subtitle'>
+            Predict scores with friends and compare results after each matchday.
+          </p>
         </div>
-      ) : null}
-      {groups.data?.length === 0 ? <EmptyGroups /> : null}
 
-      <section
-        className='mt-12 border-t border-border pt-8'
-        aria-labelledby='create-group-heading'
-      >
-        <h2 className='text-lg font-semibold' id='create-group-heading'>
-          Create a Group
-        </h2>
-        <p className='mt-1 text-sm text-muted-foreground'>
-          Invite friends and start a private table.
-        </p>
-        <CreateGroupForm />
-      </section>
+        {groups.data?.length && !currentUser.isPending ? (
+          <m-vstack align='stretch' gap='md'>
+            <PeriodControls
+              mode={search.mode}
+              onModeChange={mode =>
+                navigate({
+                  search: {
+                    mode,
+                    week: mode === 'week' ? selectedWeek : undefined,
+                  },
+                })
+              }
+              onWeekChange={week =>
+                navigate({ search: { mode: 'week', week } })
+              }
+              week={selectedWeek}
+            />
+            <section aria-label='Group standings' className='two-col'>
+              {groups.data.map(group => (
+                <GroupLeaderboardCard
+                  group={group}
+                  key={group.id}
+                  mode={search.mode}
+                  userId={currentUser.data?.id}
+                  week={selectedWeek}
+                />
+              ))}
+            </section>
+          </m-vstack>
+        ) : null}
+
+        {groups.isPending || (groups.data?.length && currentUser.isPending) ? (
+          <GroupsSkeleton />
+        ) : null}
+        {currentUser.isError ? (
+          <p className='error-card' role='alert'>
+            Your account could not be loaded, so personal standings are
+            unavailable.
+          </p>
+        ) : null}
+        {groups.isError ? (
+          <div className='error-card' role='alert'>
+            <m-vstack align='start' gap='sm'>
+              <p>
+                Groups are unavailable. Check your connection and try again.
+              </p>
+              <button onClick={() => groups.refetch()} type='button'>
+                Retry Groups
+              </button>
+            </m-vstack>
+          </div>
+        ) : null}
+        {groups.data?.length === 0 ? <EmptyGroups /> : null}
+
+        <section aria-labelledby='create-group-heading' className='divider-top'>
+          <h2 className='panel-title' id='create-group-heading'>
+            Create a Group
+          </h2>
+          <p className='hint'>Invite friends and start a private table.</p>
+          <CreateGroupForm />
+        </section>
+      </m-vstack>
     </main>
   )
 }
@@ -137,7 +124,7 @@ function PeriodControls({
   week: string
 }) {
   return (
-    <div className='mt-8 flex flex-wrap items-center gap-2 border-b border-border pb-4'>
+    <div className='period-bar'>
       <fieldset>
         <legend className='sr-only'>Leaderboard period</legend>
         <m-segmented>
@@ -164,21 +151,19 @@ function PeriodControls({
         </m-segmented>
       </fieldset>
       {mode === 'week' ? (
-        <div className='flex items-stretch'>
+        <div className='week-pager'>
           <button
             aria-label='Previous week'
-            className='w-11 shrink-0 px-0'
+            className='pager-arrow'
             onClick={() => onWeekChange(shiftWeek(week, -7))}
             type='button'
           >
             <CaretLeft aria-hidden />
           </button>
-          <span className='flex min-w-28 items-center justify-center border-y border-border px-3 text-center font-mono text-xs font-semibold'>
-            {weekLabel(week)}
-          </span>
+          <span className='week-label'>{weekLabel(week)}</span>
           <button
             aria-label='Next week'
-            className='w-11 shrink-0 px-0'
+            className='pager-arrow'
             disabled={week >= currentWeekKey()}
             onClick={() => onWeekChange(shiftWeek(week, 7))}
             type='button'
@@ -208,10 +193,7 @@ function CreateGroupForm() {
   }
 
   return (
-    <form
-      className='mt-4 grid gap-3 border border-border bg-muted p-4 sm:grid-cols-[1fr_auto] sm:items-end'
-      onSubmit={submit}
-    >
+    <form className='form-card' onSubmit={submit}>
       <m-vstack gap='xs'>
         <label htmlFor='group-name'>Group name</label>
         <input
@@ -228,7 +210,7 @@ function CreateGroupForm() {
         {create.isPending ? 'Creating group…' : 'Create Group'}
       </button>
       {create.isError ? (
-        <p className='text-sm text-danger sm:col-span-2' role='alert'>
+        <p className='form-error span-all' role='alert'>
           We couldn’t create the group. Check the name and try again.
         </p>
       ) : null}
@@ -238,18 +220,10 @@ function CreateGroupForm() {
 
 function GroupsSkeleton() {
   return (
-    <div
-      aria-live='polite'
-      className='mt-10 grid gap-4 lg:grid-cols-2'
-      role='status'
-    >
+    <div aria-live='polite' className='two-col' role='status'>
       <span className='sr-only'>Loading groups…</span>
       {[0, 1].map(card => (
-        <div
-          aria-hidden
-          className='h-64 animate-pulse border border-border bg-muted motion-reduce:animate-none'
-          key={card}
-        />
+        <div aria-hidden className='skeleton tall' key={card} />
       ))}
     </div>
   )
@@ -257,9 +231,9 @@ function GroupsSkeleton() {
 
 function EmptyGroups() {
   return (
-    <div className='mt-10 border border-border bg-surface p-8 text-center'>
-      <h2 className='font-semibold'>No Groups Yet</h2>
-      <p className='mt-2 text-sm text-muted-foreground'>
+    <div className='empty-state'>
+      <h2>No Groups Yet</h2>
+      <p className='page-subtitle'>
         Create the first group below and invite people by email.
       </p>
     </div>
@@ -268,15 +242,17 @@ function EmptyGroups() {
 
 function SignInRequired() {
   return (
-    <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
-      <div className='border border-border bg-surface p-6 text-center'>
-        <h1 className='text-xl font-semibold'>Sign In to View Groups</h1>
-        <p className='mt-2 text-sm text-muted-foreground'>
-          Groups and predictions are tied to your Maestro account.
-        </p>
-        <Link className='btn primary mt-5 inline-flex items-center' to='/login'>
-          Sign In
-        </Link>
+    <main className='page slim' id='main-content'>
+      <div className='empty-state'>
+        <m-vstack align='center' gap='sm'>
+          <h1>Sign In to View Groups</h1>
+          <p className='page-subtitle'>
+            Groups and predictions are tied to your Maestro account.
+          </p>
+          <Link className='btn primary' to='/login'>
+            Sign In
+          </Link>
+        </m-vstack>
       </div>
     </main>
   )
