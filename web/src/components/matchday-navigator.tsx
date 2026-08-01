@@ -34,7 +34,7 @@ export function MatchdayNavigator({
     <div className='flex items-stretch border border-border bg-surface'>
       <button
         aria-label='Previous matchday'
-        className='grid w-11 shrink-0 place-items-center border-r border-border transition-colors hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent'
+        className='grid h-auto w-11 shrink-0 place-items-center border-r border-border transition-colors hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent'
         disabled={!hasPrev}
         onClick={() => hasPrev && onSelect(rounds[index - 1])}
         type='button'
@@ -72,7 +72,7 @@ export function MatchdayNavigator({
 
       <button
         aria-label='Next matchday'
-        className='grid w-11 shrink-0 place-items-center border-l border-border transition-colors hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent'
+        className='grid h-auto w-11 shrink-0 place-items-center border-l border-border transition-colors hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent'
         disabled={!hasNext}
         onClick={() => hasNext && onSelect(rounds[index + 1])}
         type='button'

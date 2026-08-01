@@ -19,6 +19,7 @@
       "!dist",
       "!src/routeTree.gen.ts",
       "!src/vendor",
+      "!artifacts",
       "!mockups"
     ]
   }
