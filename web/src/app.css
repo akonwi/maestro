@@ -367,9 +367,10 @@
 
 /* --- tabs chrome ---------------------------------------------------- */
 .tab-rail {
+  /* overflow handling lives in mica's m-tabs nav; the rail only inset-s
+     the track inside a card */
   margin: 0.75rem;
   max-inline-size: calc(100% - 1.5rem);
-  overflow-x: auto;
 }
 .tab-panel {
   padding-block: 0;

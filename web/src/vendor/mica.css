@@ -1,4 +1,4 @@
-/* Vendored from https://github.com/akonwi/mica v0.2.0 (e526f30). Refresh by re-copying; the diff is the upgrade review. */
+/* Vendored from https://github.com/akonwi/mica v0.2.0 + 2e27c62 (tabs graceful collapse). Refresh by re-copying; the diff is the upgrade review. */
 /*! mica — custom elements, native behavior, nearly no JavaScript. */
 
 /* Layer order. User's unlayered CSS always wins over all of it. */
@@ -1444,7 +1444,18 @@
     background: var(--neutral-3);
     border-radius: var(--radius-md);
 
+    /* Graceful collapse: labels never wrap inside a tab — when the rail
+       is narrower than its tabs it scrolls horizontally instead. The
+       thin scrollbar is the overflow affordance on platforms that show
+       one; scroll chaining stays contained. */
+    max-inline-size: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+
     & > :where(button) {
+      flex-shrink: 0;
+      white-space: nowrap;
       block-size: var(--control-height-sm);
       padding-inline: var(--space-sm);
       border: 0;
