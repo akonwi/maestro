@@ -1,13 +1,30 @@
 import { useMutation } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { type FormEvent, useState } from 'react'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { type FormEvent, useEffect, useState } from 'react'
 import { requestMagicLink } from '@/lib/auth'
+import { createAuthChannel, isAuthMessage } from '@/lib/auth-channel'
 
 export const Route = createFileRoute('/login')({ component: LoginPage })
 
 function LoginPage() {
   const [email, setEmail] = useState('')
   const requestLink = useMutation({ mutationFn: requestMagicLink })
+  const navigate = useNavigate()
+
+  // If the magic link is verified in another tab, that tab writes the
+  // session (localStorage) and broadcasts. Ack it and take over here so
+  // this tab — the one the user was already looking at — becomes the app.
+  useEffect(() => {
+    const channel = createAuthChannel()
+    if (!channel) return
+    channel.onmessage = event => {
+      if (isAuthMessage(event.data) && event.data.type === 'signed-in') {
+        channel.postMessage({ type: 'ack' })
+        navigate({ to: '/', replace: true })
+      }
+    }
+    return () => channel.close()
+  }, [navigate])
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -36,7 +53,8 @@ function LoginPage() {
           >
             <h2 className='font-semibold text-success'>Check your inbox</h2>
             <p className='mt-2 break-words text-muted-foreground'>
-              Open the link sent to {email}. You can close this page.
+              Open the link sent to {email}. Keep this tab open — it signs you
+              in automatically once you do.
             </p>
           </div>
         ) : (
