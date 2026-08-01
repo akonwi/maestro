@@ -86,7 +86,7 @@ function LoginPage() {
               </p>
             ) : null}
             <button
-              className='ui-button ui-button-primary'
+              className='primary'
               disabled={requestLink.isPending}
               type='submit'
             >

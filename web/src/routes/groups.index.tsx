@@ -100,7 +100,7 @@ function GroupsPage() {
         >
           <p>Groups are unavailable. Check your connection and try again.</p>
           <button
-            className='ui-button mt-3'
+            className='mt-3'
             onClick={() => groups.refetch()}
             type='button'
           >
@@ -216,11 +216,7 @@ function CreateGroupForm() {
           value={name}
         />
       </div>
-      <button
-        className='ui-button ui-button-primary'
-        disabled={create.isPending}
-        type='submit'
-      >
+      <button className='primary' disabled={create.isPending} type='submit'>
         {create.isPending ? 'Creating group…' : 'Create Group'}
       </button>
       {create.isError ? (
@@ -270,10 +266,7 @@ function SignInRequired() {
         <p className='mt-2 text-sm text-muted-foreground'>
           Groups and predictions are tied to your Maestro account.
         </p>
-        <Link
-          className='ui-button ui-button-primary mt-5 inline-flex items-center'
-          to='/login'
-        >
+        <Link className='btn primary mt-5 inline-flex items-center' to='/login'>
           Sign In
         </Link>
       </div>

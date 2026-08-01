@@ -11,37 +11,40 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
       <header className='app-header'>
-        <div className='app-header-inner mx-auto max-w-6xl'>
+        <m-hstack
+          align='center'
+          className='app-header-inner mx-auto max-w-6xl'
+          justify='between'
+        >
           <Link className='app-wordmark' to='/' translate='no'>
             Maestro
           </Link>
-          <nav
-            aria-label='Primary navigation'
-            className='flex items-center gap-5 text-sm'
-          >
-            <Link
-              activeProps={{ className: 'text-accent font-semibold' }}
-              activeOptions={{ exact: true }}
-              to='/'
-            >
-              Fixtures
-            </Link>
-            <Link
-              activeProps={{ className: 'text-accent font-semibold' }}
-              to='/table'
-            >
-              Table
-            </Link>
-            <Link
-              activeProps={{ className: 'text-accent font-semibold' }}
-              search={{ mode: 'season', week: undefined }}
-              to='/groups'
-            >
-              Groups
-            </Link>
-            <AuthControls />
+          <nav aria-label='Primary navigation' className='text-sm'>
+            <m-hstack align='center' gap='md'>
+              <Link
+                activeProps={{ className: 'text-accent font-semibold' }}
+                activeOptions={{ exact: true }}
+                to='/'
+              >
+                Fixtures
+              </Link>
+              <Link
+                activeProps={{ className: 'text-accent font-semibold' }}
+                to='/table'
+              >
+                Table
+              </Link>
+              <Link
+                activeProps={{ className: 'text-accent font-semibold' }}
+                search={{ mode: 'season', week: undefined }}
+                to='/groups'
+              >
+                Groups
+              </Link>
+              <AuthControls />
+            </m-hstack>
           </nav>
-        </div>
+        </m-hstack>
       </header>
       <div className='flex-1'>{children}</div>
       <SiteFooter />
@@ -52,7 +55,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 function SiteFooter() {
   return (
     <footer className='border-t border-border'>
-      <div className='mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
+      <m-hstack
+        align='center'
+        className='mx-auto max-w-6xl px-4 py-6 sm:px-6'
+        gap='sm'
+        justify='between'
+        wrap
+      >
         <span
           className='text-sm font-semibold uppercase tracking-[0.16em] text-foreground'
           translate='no'
@@ -62,7 +71,7 @@ function SiteFooter() {
         <div className='text-sm text-muted-foreground'>
           © {new Date().getFullYear()} Ngoh Technology
         </div>
-      </div>
+      </m-hstack>
     </footer>
   )
 }

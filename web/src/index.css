@@ -1,7 +1,25 @@
-/* mica first: its @layer declarations come earliest, so Tailwind's layers
-   (declared later) and all unlayered app CSS win during the migration. */
+/* Migration layer order. Top-level layers can't interleave another
+   layer's sublayers (mica.* sorts as one 'mica' block), so Tailwind is
+   imported in parts AROUND mica to get:
+     theme < base(preflight) < mica.* < components < utilities
+   - preflight declared before mica: mica.elements styles native
+     buttons/inputs over the reset.
+   - mica.preset's flow rhythm would also beat preflight, so the
+     components layer re-zeroes content margins until Phase 3.
+   - utilities stay on top: Tailwind classes win during the migration. */
+@layer theme,
+  base,
+  mica.tokens,
+  mica.preset,
+  mica.elements,
+  mica.layout,
+  components,
+  utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "./vendor/mica.css";
-@import "tailwindcss";
+@import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
@@ -163,9 +181,6 @@ button:focus-visible {
 }
 .app-header-inner {
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 0 0.75rem;
 }
 .app-wordmark {
@@ -180,24 +195,42 @@ button:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.ui-button {
-  min-height: 2.5rem;
-  border: 1px solid var(--foreground);
-  background: transparent;
-  color: var(--foreground);
-  padding: 0 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.ui-button:hover {
-  background: var(--muted);
-}
-.ui-button-primary {
-  background: var(--foreground);
-  color: var(--background);
-}
-.ui-button-primary:hover {
-  opacity: 0.88;
-  background: var(--foreground);
+/* Phase 2 interim: mica.elements now styles every native button, but
+   these components keep their hand-rolled look until their own
+   conversion step (tabs → mica tabs, selects → mica select). In the
+   components layer: beats mica.elements, loses to utilities. Delete
+   when those conversions land. */
+@layer components {
+  /* Re-zero mica.preset's flow rhythm: current layouts were written
+     against preflight's zero margins. Utilities (mt-*, mb-*) still win.
+     Deleted in Phase 3 when markup becomes mica-idiomatic. */
+  :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    ol,
+    ul,
+    dl,
+    dd,
+    blockquote,
+    pre,
+    table,
+    figure,
+    fieldset,
+    details,
+    address
+  ) {
+    margin: 0;
+  }
+
+  :where([role="tab"], [role="combobox"], button.plain) {
+    block-size: auto;
+    background: transparent;
+    border: 0;
+    font-weight: inherit;
+  }
 }

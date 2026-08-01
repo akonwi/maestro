@@ -50,7 +50,7 @@ function GroupPage() {
             It may not exist, or you may not be a member.
           </p>
           <button
-            className='ui-button mt-4'
+            className='mt-4'
             onClick={() => detail.refetch()}
             type='button'
           >
@@ -144,11 +144,7 @@ function InviteForm({ groupId }: { groupId: number }) {
           value={email}
         />
       </div>
-      <button
-        className='ui-button ui-button-primary'
-        disabled={invite.isPending}
-        type='submit'
-      >
+      <button className='primary' disabled={invite.isPending} type='submit'>
         {invite.isPending ? 'Sending invite…' : 'Invite Member'}
       </button>
       {invite.isSuccess ? (
@@ -189,10 +185,7 @@ function SignInRequired() {
   return (
     <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
       <h1 className='text-xl font-semibold'>Sign In to View This Group</h1>
-      <Link
-        className='ui-button ui-button-primary mt-5 inline-flex items-center'
-        to='/login'
-      >
+      <Link className='btn primary mt-5 inline-flex items-center' to='/login'>
         Sign In
       </Link>
     </main>
@@ -204,7 +197,7 @@ function InvalidGroup() {
     <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
       <h1 className='text-xl font-semibold'>Invalid Group</h1>
       <Link
-        className='ui-button mt-5 inline-flex items-center'
+        className='btn mt-5 inline-flex items-center'
         search={{ mode: 'season', week: undefined }}
         to='/groups'
       >

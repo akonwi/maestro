@@ -63,7 +63,7 @@ export function GroupLeaderboardCard({
         >
           <p className='text-sm text-danger'>Standings unavailable.</p>
           <button
-            className='ui-button mx-auto'
+            className='mx-auto'
             onClick={() => leaderboard.refetch()}
             type='button'
           >

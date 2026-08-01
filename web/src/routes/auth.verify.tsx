@@ -99,7 +99,7 @@ function VerifyPage() {
               continue.
             </p>
             <Link
-              className='ui-button ui-button-primary mt-5 inline-flex items-center'
+              className='btn primary mt-5 inline-flex items-center'
               to='/login'
             >
               Request another link
@@ -151,7 +151,7 @@ function InvalidLink() {
       >
         <h1 className='font-semibold'>Invalid sign-in link</h1>
         <p className='mt-2 text-sm'>Request a new link to sign in.</p>
-        <Link className='ui-button mt-5 inline-flex items-center' to='/login'>
+        <Link className='btn mt-5 inline-flex items-center' to='/login'>
           Go to sign in
         </Link>
       </div>

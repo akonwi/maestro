@@ -343,7 +343,7 @@ function ErrorState({
         <summary>Technical details</summary>
         <p className='break-words'>{message}</p>
       </details>
-      <button className='ui-button mt-4' onClick={retry} type='button'>
+      <button className='mt-4' onClick={retry} type='button'>
         Retry standings
       </button>
     </div>

@@ -226,10 +226,7 @@ function PredictionArea({
     return (
       <section className='mt-6 border border-border bg-surface p-6 text-center'>
         <h2 className='font-semibold'>Sign In to Make a Prediction</h2>
-        <Link
-          className='ui-button ui-button-primary mt-4 inline-flex items-center'
-          to='/login'
-        >
+        <Link className='btn primary mt-4 inline-flex items-center' to='/login'>
           Sign In
         </Link>
       </section>
@@ -317,7 +314,7 @@ function PredictionArea({
           <div className='p-5 text-sm'>
             <p>Create a group to compare predictions with other people.</p>
             <Link
-              className='ui-button mt-4 inline-flex items-center'
+              className='btn mt-4 inline-flex items-center'
               search={{ mode: 'season', week: undefined }}
               to='/groups'
             >
@@ -398,7 +395,7 @@ function PredictionForm({
             </p>
           ) : null}
           <button
-            className='ui-button ui-button-primary w-full'
+            className='primary w-full'
             disabled={save.isPending}
             type='submit'
           >
@@ -549,7 +546,7 @@ function FixtureRouteError({ reset }: { reset: () => void }) {
       >
         <h1 className='font-semibold'>Fixture Unavailable</h1>
         <p className='mt-2 text-sm'>Check your connection and try again.</p>
-        <button className='ui-button mt-4' onClick={reset} type='button'>
+        <button className='mt-4' onClick={reset} type='button'>
           Retry Fixture
         </button>
       </div>
@@ -568,7 +565,7 @@ function InvalidFixture() {
         <p className='mt-2 text-sm'>
           Choose a fixture from the upcoming schedule.
         </p>
-        <Link className='ui-button mt-4 inline-flex items-center' to='/'>
+        <Link className='btn mt-4 inline-flex items-center' to='/'>
           View Upcoming Fixtures
         </Link>
       </div>
