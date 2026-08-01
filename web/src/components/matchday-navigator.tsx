@@ -1,12 +1,4 @@
 import { CaretLeft, CaretRight } from '@phosphor-icons/react'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { roundLabel } from '@/lib/fixtures'
 
 /**
@@ -25,10 +17,6 @@ export function MatchdayNavigator({
   const index = rounds.indexOf(current)
   const hasPrev = index > 0
   const hasNext = index >= 0 && index < rounds.length - 1
-  const options = rounds.map(round => ({
-    label: roundLabel(round),
-    value: round,
-  }))
 
   return (
     <div className='flex'>
@@ -42,32 +30,18 @@ export function MatchdayNavigator({
         <CaretLeft aria-hidden size={16} />
       </button>
 
-      <Select
-        items={options}
-        onValueChange={round => round !== null && onSelect(round)}
+      <select
+        aria-label='Select matchday'
+        className='min-w-0 flex-1 border-x-0 text-center font-semibold'
+        onChange={event => onSelect(event.target.value)}
         value={current}
       >
-        <SelectTrigger
-          aria-label='Select matchday'
-          className='h-9! min-w-0 flex-1 justify-center border-y border-x-0 border-border text-center font-semibold'
-        >
-          <SelectValue>
-            {value =>
-              options.find(option => option.value === value)?.label ??
-              roundLabel(current)
-            }
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent align='center'>
-          <SelectGroup>
-            {options.map(option => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+        {rounds.map(round => (
+          <option key={round} value={round}>
+            {roundLabel(round)}
+          </option>
+        ))}
+      </select>
 
       <button
         aria-label='Next matchday'

@@ -12,14 +12,6 @@ import { FixtureOutlook } from '@/components/fixture-outlook'
 import { MatchDetailPanel, PreMatchLineups } from '@/components/match-detail'
 
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   conferenceShort,
   matchDetailQuery,
   outlookQuery,
@@ -267,45 +259,30 @@ function PredictionArea({
             </p>
           </div>
           {selectedGroup ? (
-            <div className='flex min-w-0 items-stretch bg-surface'>
+            <div className='flex min-w-0 items-stretch'>
               <span
-                className='flex h-10 items-center border border-r-0 border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'
+                className='flex items-center border border-r-0 border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'
                 id='prediction-group-label'
               >
                 Group
               </span>
-              <Select
-                items={groupOptions}
-                onValueChange={groupId => {
-                  if (groupId === null) return
+              <select
+                aria-labelledby='prediction-group-label'
+                className='min-w-44 font-semibold'
+                onChange={event => {
+                  const groupId = Number(event.target.value)
                   navigate({
                     search: previous => ({ ...previous, group: groupId }),
                   })
                 }}
                 value={selectedGroup.id}
               >
-                <SelectTrigger
-                  aria-labelledby='prediction-group-label'
-                  className='min-w-44 bg-surface px-3 text-sm font-semibold'
-                  size='lg'
-                >
-                  <SelectValue>
-                    {groupId =>
-                      groupOptions.find(group => group.value === groupId)
-                        ?.label ?? ''
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent align='end'>
-                  <SelectGroup>
-                    {groupOptions.map(group => (
-                      <SelectItem key={group.value} value={group.value}>
-                        {group.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                {groupOptions.map(group => (
+                  <option key={group.value} value={group.value}>
+                    {group.label}
+                  </option>
+                ))}
+              </select>
             </div>
           ) : null}
         </div>
