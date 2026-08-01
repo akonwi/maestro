@@ -6,18 +6,16 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://media.api-sports.io" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <!-- mica before the bundled app css: the app's layer-order statement
+         appends its own layer after mica's, and unlayered app rules win. -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@akonwi/mica@0.2.2/mica.css"
+    />
     <title>Maestro</title>
-    <script>
-      // Follow the OS color scheme. Inline (pre-render) so the correct
-      // theme applies before first paint — no flash of the wrong theme.
-      ;(() => {
-        const media = window.matchMedia('(prefers-color-scheme: dark)')
-        const apply = () =>
-          document.documentElement.classList.toggle('dark', media.matches)
-        apply()
-        media.addEventListener('change', apply)
-      })()
-    </script>
+    <!-- Dark mode needs no script: mica sets color-scheme: light dark and
+         resolves every color via light-dark(), following the OS. -->
   </head>
   <body>
     <div id="root"></div>

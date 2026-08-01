@@ -82,40 +82,29 @@ function VerifyPage() {
   if (handedOff) return <HandedOff />
 
   return (
-    <main
-      className='mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center px-4 py-10'
-      id='main-content'
-    >
+    <main className='auth-page' id='main-content'>
       <div
         aria-live='polite'
-        className='w-full border border-border bg-surface p-6 text-center'
+        className='notice-card centered-card'
         role='status'
       >
         {verify.isError ? (
-          <>
-            <h1 className='text-xl font-semibold'>Sign-in link unavailable</h1>
-            <p className='mt-2 text-sm text-muted-foreground'>
+          <m-vstack align='center' gap='sm'>
+            <h1>Sign-in link unavailable</h1>
+            <p className='page-subtitle'>
               The link may be expired or already used. Request a new one to
               continue.
             </p>
-            <Link
-              className='ui-button ui-button-primary mt-5 inline-flex items-center'
-              to='/login'
-            >
+            <Link className='btn primary' to='/login'>
               Request another link
             </Link>
-          </>
+          </m-vstack>
         ) : (
-          <>
-            <div
-              aria-hidden
-              className='mx-auto size-8 animate-pulse border border-accent bg-accent-muted motion-reduce:animate-none'
-            />
-            <h1 className='mt-5 text-xl font-semibold'>Signing you in…</h1>
-            <p className='mt-2 text-sm text-muted-foreground'>
-              Verifying your one-time link.
-            </p>
-          </>
+          <m-vstack align='center' gap='sm'>
+            <div aria-hidden className='pulse-square' />
+            <h1>Signing you in…</h1>
+            <p className='page-subtitle'>Verifying your one-time link.</p>
+          </m-vstack>
         )}
       </div>
     </main>
@@ -124,17 +113,14 @@ function VerifyPage() {
 
 function HandedOff() {
   return (
-    <main
-      className='mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center px-4 py-10'
-      id='main-content'
-    >
+    <main className='auth-page' id='main-content'>
       <div
         aria-live='polite'
-        className='w-full border border-success bg-surface p-6 text-center'
+        className='notice-card success centered-card'
         role='status'
       >
-        <h1 className='text-xl font-semibold text-success'>You’re signed in</h1>
-        <p className='mt-2 text-sm text-muted-foreground'>
+        <h1>You’re signed in</h1>
+        <p className='body'>
           You can close this tab and return to Maestro in your other tab.
         </p>
       </div>
@@ -144,16 +130,15 @@ function HandedOff() {
 
 function InvalidLink() {
   return (
-    <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
-      <div
-        className='border border-danger bg-danger-muted p-5 text-danger'
-        role='alert'
-      >
-        <h1 className='font-semibold'>Invalid sign-in link</h1>
-        <p className='mt-2 text-sm'>Request a new link to sign in.</p>
-        <Link className='ui-button mt-5 inline-flex items-center' to='/login'>
-          Go to sign in
-        </Link>
+    <main className='auth-page' id='main-content'>
+      <div className='error-card' role='alert'>
+        <m-vstack align='start' gap='sm'>
+          <h1>Invalid sign-in link</h1>
+          <p>Request a new link to sign in.</p>
+          <Link className='btn' to='/login'>
+            Go to sign in
+          </Link>
+        </m-vstack>
       </div>
     </main>
   )

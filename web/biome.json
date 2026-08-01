@@ -1,8 +1,23 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
-  "linter": { "enabled": true, "rules": { "preset": "recommended" } },
-  "formatter": { "enabled": true, "indentWidth": 2, "indentStyle": "space" },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended"
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentWidth": 2,
+    "indentStyle": "space"
+  },
   "javascript": {
     "formatter": {
       "arrowParentheses": "asNeeded",
@@ -11,14 +26,36 @@
       "semicolons": "asNeeded"
     }
   },
-  "css": { "parser": { "tailwindDirectives": true } },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "files": {
     "includes": [
       "**",
       "!node_modules",
       "!dist",
       "!src/routeTree.gen.ts",
+      "!src/vendor",
+      "!artifacts",
       "!mockups"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/components/fixture-outlook.tsx",
+        "src/components/match-detail.tsx",
+        "src/routes/table.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noNoninteractiveElementToInteractiveRole": "off"
+          }
+        }
+      }
+    }
+  ]
 }

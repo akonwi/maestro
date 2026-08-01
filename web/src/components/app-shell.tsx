@@ -1,49 +1,45 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type ReactNode, useEffect } from 'react'
-import { currentUserQuery, logout } from '@/lib/auth'
+import { currentUserQuery, isAuthRejection, logout } from '@/lib/auth'
 import { clearSessionToken, useSessionToken } from '@/lib/session'
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className='flex min-h-screen flex-col bg-background text-foreground'>
+    <div className='app-root'>
       <a className='skip-link' href='#main-content'>
         Skip to main content
       </a>
       <header className='app-header'>
-        <div className='app-header-inner mx-auto max-w-6xl'>
+        <m-hstack align='center' className='app-header-inner' justify='between'>
           <Link className='app-wordmark' to='/' translate='no'>
             Maestro
           </Link>
-          <nav
-            aria-label='Primary navigation'
-            className='flex items-center gap-5 text-sm'
-          >
-            <Link
-              activeProps={{ className: 'text-accent font-semibold' }}
-              activeOptions={{ exact: true }}
-              to='/'
-            >
-              Fixtures
-            </Link>
-            <Link
-              activeProps={{ className: 'text-accent font-semibold' }}
-              to='/table'
-            >
-              Table
-            </Link>
-            <Link
-              activeProps={{ className: 'text-accent font-semibold' }}
-              search={{ mode: 'season', week: undefined }}
-              to='/groups'
-            >
-              Groups
-            </Link>
-            <AuthControls />
+          <nav aria-label='Primary navigation' className='app-nav'>
+            <m-hstack align='center' gap='md'>
+              <Link
+                activeProps={{ className: 'nav-active' }}
+                activeOptions={{ exact: true }}
+                to='/'
+              >
+                Fixtures
+              </Link>
+              <Link activeProps={{ className: 'nav-active' }} to='/table'>
+                Table
+              </Link>
+              <Link
+                activeProps={{ className: 'nav-active' }}
+                search={{ mode: 'season', week: undefined }}
+                to='/groups'
+              >
+                Groups
+              </Link>
+              <AuthControls />
+            </m-hstack>
           </nav>
-        </div>
+        </m-hstack>
       </header>
-      <div className='flex-1'>{children}</div>
+      <div className='app-content'>{children}</div>
       <SiteFooter />
     </div>
   )
@@ -51,18 +47,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function SiteFooter() {
   return (
-    <footer className='border-t border-border'>
-      <div className='mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
-        <span
-          className='text-sm font-semibold uppercase tracking-[0.16em] text-foreground'
-          translate='no'
-        >
+    <footer className='site-footer'>
+      <m-hstack
+        align='center'
+        className='inner'
+        gap='sm'
+        justify='between'
+        wrap
+      >
+        <span className='wordmark' translate='no'>
           Maestro
         </span>
-        <div className='text-sm text-muted-foreground'>
-          © {new Date().getFullYear()} Ngoh Technology
-        </div>
-      </div>
+        <div className='meta'>© {new Date().getFullYear()} Ngoh Technology</div>
+      </m-hstack>
     </footer>
   )
 }
@@ -72,11 +69,14 @@ function AuthControls() {
   const queryClient = useQueryClient()
   const user = useQuery(currentUserQuery(token))
   useEffect(() => {
-    if (!user.isError) return
+    // Only a definitive rejection (401/403) invalidates the session.
+    // Transient failures (network, 5xx, slow server) must never sign
+    // the user out.
+    if (!user.isError || !isAuthRejection(user.error)) return
     clearSessionToken()
     queryClient.removeQueries({ queryKey: ['auth'] })
     queryClient.removeQueries({ queryKey: ['groups'] })
-  }, [queryClient, user.isError])
+  }, [queryClient, user.isError, user.error])
 
   const signOut = useMutation({
     mutationFn: () => (token ? logout(token) : Promise.resolve()),
@@ -98,7 +98,7 @@ function AuthControls() {
   return (
     <button
       aria-label={`Sign out${user.data?.email ? ` ${user.data.email}` : ''}`}
-      className='max-w-32 truncate border-0 bg-transparent p-0 text-sm font-semibold hover:text-accent'
+      className='signout plain'
       disabled={signOut.isPending}
       onClick={() => signOut.mutate()}
       title={user.data?.email ?? 'Sign out'}

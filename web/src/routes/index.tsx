@@ -27,7 +27,7 @@ const dayFormatter = new Intl.DateTimeFormat(undefined, {
 
 function FixturesRoutePending() {
   return (
-    <main className='mx-auto w-full max-w-5xl px-4 py-14' id='main-content'>
+    <main className='page' id='main-content'>
       <FixtureSkeleton />
     </main>
   )
@@ -41,7 +41,7 @@ function FixturesRouteError({
   reset: () => void
 }) {
   return (
-    <main className='mx-auto w-full max-w-5xl px-4 py-14' id='main-content'>
+    <main className='page' id='main-content'>
       <ErrorState message={error.message} retry={reset} />
     </main>
   )
@@ -65,43 +65,40 @@ function FixturesPage() {
   }
 
   return (
-    <main
-      className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
-      id='main-content'
-    >
-      <div className='mb-6'>
-        <div className='section-kicker'>{modeKicker(mode)}</div>
-        <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
-          {viewed ? roundLabel(viewed) : 'Fixtures'}
-        </h1>
-        <p className='mt-2 text-sm text-muted-foreground'>
-          {mode === 'results'
-            ? 'Final scores and how the matchday played out.'
-            : 'Make your picks before kickoff. Exact score earns three points.'}
-        </p>
-      </div>
+    <main className='page' id='main-content'>
+      <m-vstack gap='lg'>
+        <div>
+          <div className='section-kicker'>{modeKicker(mode)}</div>
+          <h1 className='page-title'>
+            {viewed ? roundLabel(viewed) : 'Fixtures'}
+          </h1>
+          <p className='page-subtitle'>
+            {mode === 'results'
+              ? 'Final scores and how the matchday played out.'
+              : 'Make your picks before kickoff. Exact score earns three points.'}
+          </p>
+        </div>
 
-      {season.data && season.data.rounds.length > 0 && viewed ? (
-        <div className='mb-8'>
+        {season.data && season.data.rounds.length > 0 && viewed ? (
           <MatchdayNavigator
             current={viewed}
             onSelect={selectRound}
             rounds={season.data.rounds}
           />
-        </div>
-      ) : null}
+        ) : null}
 
-      {round.isPending ? <FixtureSkeleton /> : null}
-      {round.isError ? (
-        <ErrorState
-          message={round.error.message}
-          retry={() => round.refetch()}
-        />
-      ) : null}
-      {round.data?.fixtures.length === 0 ? <EmptyState /> : null}
-      {round.data && round.data.fixtures.length > 0 ? (
-        <FixtureGroups fixtures={round.data.fixtures} />
-      ) : null}
+        {round.isPending ? <FixtureSkeleton /> : null}
+        {round.isError ? (
+          <ErrorState
+            message={round.error.message}
+            retry={() => round.refetch()}
+          />
+        ) : null}
+        {round.data?.fixtures.length === 0 ? <EmptyState /> : null}
+        {round.data && round.data.fixtures.length > 0 ? (
+          <FixtureGroups fixtures={round.data.fixtures} />
+        ) : null}
+      </m-vstack>
     </main>
   )
 }
@@ -135,20 +132,18 @@ function FixtureGroups({ fixtures }: { fixtures: Fixture[] }) {
     else groups.set(day, [fixture])
   }
   return (
-    <div className='space-y-8'>
+    <m-vstack gap='xl'>
       {[...groups].map(([day, dayFixtures]) => (
         <section key={day}>
-          <h2 className='mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-            {day}
-          </h2>
-          <div className='grid gap-2'>
+          <h2 className='day-heading'>{day}</h2>
+          <m-vstack gap='xs'>
             {dayFixtures.map(fixture => (
               <FixtureRow fixture={fixture} key={fixture.id} />
             ))}
-          </div>
+          </m-vstack>
         </section>
       ))}
-    </div>
+    </m-vstack>
   )
 }
 
@@ -156,19 +151,16 @@ function FixtureSkeleton() {
   return (
     <div aria-live='polite' role='status'>
       <span className='sr-only'>Loading fixtures…</span>
-      <div
-        aria-hidden
-        className='h-48 animate-pulse border border-border bg-muted motion-reduce:animate-none'
-      />
+      <div aria-hidden className='skeleton' />
     </div>
   )
 }
 
 function EmptyState() {
   return (
-    <div className='border border-border bg-surface p-8 text-center'>
-      <h2 className='font-semibold'>No matchday scheduled</h2>
-      <p className='mt-2 text-sm text-muted-foreground'>
+    <div className='empty-state'>
+      <h2>No matchday scheduled</h2>
+      <p className='page-subtitle'>
         The season has no remaining fixtures. Check back when the next one kicks
         off.
       </p>
@@ -184,19 +176,20 @@ function ErrorState({
   retry: () => void
 }) {
   return (
-    <div
-      className='border border-danger bg-danger-muted p-4 text-sm text-danger'
-      role='alert'
-    >
-      <strong>Fixtures unavailable.</strong> Check your connection and try
-      again.
-      <details className='mt-2 text-xs'>
-        <summary>Technical details</summary>
-        <p className='break-words'>{message}</p>
-      </details>
-      <button className='ui-button mt-4' onClick={retry} type='button'>
-        Retry fixtures
-      </button>
+    <div className='error-card' role='alert'>
+      <m-vstack align='start' gap='sm'>
+        <span>
+          <strong>Fixtures unavailable.</strong> Check your connection and try
+          again.
+        </span>
+        <details>
+          <summary>Technical details</summary>
+          <p>{message}</p>
+        </details>
+        <button onClick={retry} type='button'>
+          Retry fixtures
+        </button>
+      </m-vstack>
     </div>
   )
 }

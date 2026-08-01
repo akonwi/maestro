@@ -1,0 +1,1534 @@
+/* Maestro-local elements — app-specific styles on mica tokens.
+   Everything here consumes mica's semantic roles and scales; no raw
+   values except structural dimensions unique to this app. Layout
+   composition belongs to mica primitives (m-vstack/m-hstack) in markup;
+   these classes cover repeated app patterns and bespoke elements. */
+
+/* --- page scaffold ----------------------------------------------- */
+.page {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 2.5rem 1rem;
+}
+.page.wide {
+  max-width: 72rem;
+}
+.page.narrow {
+  max-width: 56rem;
+}
+.page.slim {
+  max-width: 28rem;
+}
+@media (min-width: 40rem) {
+  .page {
+    padding: 3.5rem 1.5rem;
+  }
+}
+
+.page-title {
+  margin-top: 0.75rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.page-subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.day-heading {
+  margin-bottom: 0.75rem;
+  font: 600 0.75rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* --- shared surfaces --------------------------------------------- */
+.card {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.empty-state {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.error-card {
+  border: 1px solid var(--color-danger-border);
+  background: var(--color-danger-surface);
+  padding: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-danger-text);
+}
+
+.panel-title {
+  font-weight: 600;
+}
+
+.panel-body {
+  padding: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.hint {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.chip {
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  font-size: 0.875rem;
+  color: var(--color-danger-text);
+}
+
+.scoreline {
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Label fused to the left edge of a select. */
+.select-affix {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+}
+.select-affix > span {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-right: 0;
+  background: var(--color-surface-raised);
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.select-affix > select {
+  min-inline-size: 11rem;
+  font-weight: 600;
+}
+
+.skeleton {
+  block-size: 12rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.skeleton.short {
+  block-size: 6rem;
+}
+.skeleton.tall {
+  block-size: 18rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* --- shared chrome ------------------------------------------------- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.back-link:hover {
+  color: var(--color-text);
+}
+
+.status-chip {
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.meta {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* Card section header: title left, affordance right, hairline below. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.panel-head :is(h2, h3, h4) {
+  font-weight: 600;
+}
+.panel-head.plain {
+  border-bottom: 0;
+}
+
+.panel-foot {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.strip {
+  padding: 0.625rem var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* --- matchup header ------------------------------------------------ */
+.matchup-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+@media (min-width: 40rem) {
+  .matchup-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.matchup-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 1.25rem var(--space-md);
+}
+@media (min-width: 40rem) {
+  .matchup-grid {
+    padding-inline: var(--space-lg);
+  }
+}
+
+.matchup-score {
+  text-align: center;
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.matchup-vs {
+  text-align: center;
+  font: 400 0.75rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.matchup-team {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.matchup-team.away {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.matchup-team .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+@media (min-width: 40rem) {
+  .matchup-team .name {
+    font-size: 1.125rem;
+  }
+}
+.matchup-team .standing {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.crest.large {
+  inline-size: 3rem;
+  block-size: 3rem;
+  padding: 0.375rem;
+}
+
+/* --- prediction form ----------------------------------------------- */
+.prediction-layout {
+  display: grid;
+  align-items: start;
+  gap: var(--space-md);
+}
+@media (min-width: 64rem) {
+  .prediction-layout {
+    grid-template-columns: minmax(0, 5fr) minmax(20rem, 4fr);
+  }
+}
+
+.prediction-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: var(--space-md);
+  padding: var(--space-lg) 1.25rem;
+}
+@media (min-width: 40rem) {
+  .prediction-grid {
+    gap: var(--space-xl);
+    padding-inline: var(--space-2xl);
+  }
+}
+.prediction-grid .dash {
+  padding-bottom: 1.25rem;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.score-field {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.score-field .team {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.score-field input {
+  inline-size: 4rem;
+  block-size: 4rem;
+  appearance: none;
+  border: 1px solid var(--color-text);
+  background: var(--color-surface);
+  padding: 0;
+  text-align: center;
+  font: 600 1.5rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.score-field input::-webkit-inner-spin-button,
+.score-field input::-webkit-outer-spin-button {
+  appearance: none;
+}
+@media (min-width: 40rem) {
+  .score-field input {
+    inline-size: 5rem;
+    block-size: 5rem;
+  }
+}
+
+/* --- prediction lists ---------------------------------------------- */
+.pick-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.pick-row:last-child {
+  border-bottom: 0;
+}
+.pick-row .who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.pick-row .scoreline {
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- tabs chrome ---------------------------------------------------- */
+.tab-rail {
+  /* overflow handling lives in mica's m-tabs nav; the rail only inset-s
+     the track inside a card */
+  margin: 0.75rem;
+  max-inline-size: calc(100% - 1.5rem);
+}
+.tab-panel {
+  padding-block: 0;
+}
+
+/* --- outlook: probability bar -------------------------------------- */
+.prob-bar {
+  display: flex;
+  block-size: 2rem;
+  inline-size: 100%;
+  font: 700 0.625rem var(--font-mono);
+}
+.prob-bar > span {
+  display: grid;
+  place-items: center;
+}
+.prob-bar > .home {
+  background: var(--neutral-12);
+  color: var(--neutral-1);
+}
+.prob-bar > .draw {
+  background: var(--neutral-9);
+  color: var(--neutral-1);
+}
+.prob-bar > .away {
+  background: var(--accent-9);
+  color: var(--color-on-accent);
+}
+.prob-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-top: 0.375rem;
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+}
+.prob-legend > :first-child,
+.prob-legend > :last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prob-legend > :nth-child(2) {
+  text-align: center;
+}
+.prob-legend > :last-child {
+  text-align: right;
+}
+
+/* --- comparison table (numbers panel, goals matrix) ----------------- */
+.compare-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.compare-table :is(thead, tbody) tr {
+  border-bottom: 1px solid var(--color-border);
+}
+.compare-table tbody tr:last-child {
+  border-bottom: 0;
+}
+.compare-table th[scope="col"] {
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+.compare-table th[scope="col"]:first-child {
+  text-align: left;
+}
+.compare-table th[scope="col"]:last-child {
+  text-align: right;
+}
+.compare-table th[scope="row"] {
+  padding: 0.625rem 0.5rem;
+  vertical-align: middle;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.compare-table td {
+  padding: 0.625rem 1rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+.compare-table td:first-child {
+  text-align: left;
+}
+.compare-table td:last-child {
+  text-align: right;
+}
+.compare-table td.strong {
+  font-weight: 700;
+  color: var(--color-text);
+}
+.compare-table tr.total :is(td, th) {
+  font-weight: 700;
+  color: var(--color-text);
+}
+.compare-table tr.emph {
+  background: var(--accent-3);
+}
+.compare-table tr.emph th[scope="row"] {
+  color: var(--color-accent);
+}
+.compare-table tr.emph td:first-child {
+  border-left: 2px solid var(--color-accent);
+  padding-left: 0.875rem;
+}
+
+.edge-note {
+  padding: 0.625rem 1rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.6875rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+.edge-note b,
+.note-line b {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* --- two-column team split (key players, team news) ----------------- */
+.split-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.split-2 > * {
+  padding: 0.75rem 1rem;
+}
+.split-2 > :last-child {
+  border-left: 1px solid var(--color-border);
+}
+.small-title {
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.player-line .who {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.player-line .role {
+  font-size: 0.5625rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.player-line .stats {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 0.125rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+}
+.player-line .rating {
+  color: var(--color-accent);
+}
+
+/* --- team form / h2h ------------------------------------------------ */
+.form-letters {
+  padding: 0.75rem 1rem;
+  font: 600 0.75rem var(--font-mono);
+  letter-spacing: 0.2em;
+}
+.form-letters .w {
+  color: var(--color-success);
+}
+.form-letters .l {
+  color: var(--color-danger);
+}
+.form-letters .d {
+  color: var(--color-text-muted);
+}
+
+.note-line {
+  padding: 0 1rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.note-line + .note-line span + span {
+  margin-left: 0;
+}
+.note-line .gap {
+  margin-right: 0.75rem;
+}
+
+.h2h-row {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+}
+.h2h-row:last-child {
+  border-bottom: 0;
+}
+.h2h-row time {
+  font: 400 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+.h2h-row .match {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.h2h-row b {
+  font: 700 0.8125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- match detail: stats bars --------------------------------------- */
+.stat-row {
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.stat-row:last-child {
+  border-bottom: 0;
+}
+.stat-row .vals {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font: 700 0.75rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.stat-row .vals .label {
+  font: 500 0.625rem var(--font-body);
+  color: var(--color-text-muted);
+}
+.stat-row .twobar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.375rem;
+  block-size: 0.25rem;
+  background: var(--color-border);
+}
+.stat-row .twobar .home {
+  background: var(--neutral-12);
+}
+.stat-row .twobar .away {
+  background: var(--accent-9);
+}
+
+/* --- match detail: events ------------------------------------------- */
+.event-row {
+  display: grid;
+  grid-template-columns: 2.75rem 1.5rem 1fr;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+}
+.event-row:last-child {
+  border-bottom: 0;
+}
+.event-row time {
+  font: 600 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+.event-row .icon {
+  font-size: 0.875rem;
+}
+.event-row .what {
+  min-width: 0;
+}
+.event-row strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-row small {
+  color: var(--color-text-muted);
+}
+
+/* --- match detail: lineups + pitch ---------------------------------- */
+.lineup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.lineup-grid.head {
+  border-bottom: 1px solid var(--color-border);
+}
+.lineup-grid.foot {
+  border-top: 1px solid var(--color-border);
+}
+.lineup-grid > * {
+  padding: 0.75rem 1rem;
+}
+.lineup-grid > :last-child {
+  border-left: 1px solid var(--color-border);
+}
+.lineup-grid.head > :last-child {
+  text-align: right;
+}
+.lineup-team strong {
+  display: block;
+  font-size: 0.75rem;
+}
+.lineup-team .formation {
+  margin-top: 0.125rem;
+  font: 700 1rem var(--font-mono);
+}
+.lineup-team small {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--color-text-muted);
+}
+
+.bench-list {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bench-list li {
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+}
+.bench-list b {
+  margin-right: 0.375rem;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+.pitch {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  block-size: 37.5rem;
+  margin: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+.pitch .halfway {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  border-top: 1px solid var(--color-border);
+}
+.pitch .circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  inline-size: 4rem;
+  block-size: 4rem;
+  translate: -50% -50%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+.pitch-half {
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  padding: 0.375rem;
+}
+/* Vertical: away on top reading GK→attack downward; home on the bottom
+   reading attack→GK downward (GK nearest own goal). */
+.pitch-half.home {
+  flex-direction: column-reverse;
+}
+.pitch-half.away {
+  flex-direction: column;
+}
+.pitch-line {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-around;
+}
+.pitch-half.away .pitch-line {
+  flex-direction: row-reverse;
+}
+@media (min-width: 48rem) {
+  .pitch {
+    flex-direction: row;
+    block-size: 27rem;
+  }
+  .pitch .halfway {
+    inset-inline: auto;
+    inset-block: 0;
+    left: 50%;
+    border-top: 0;
+    border-left: 1px solid var(--color-border);
+  }
+  /* Horizontal: home reads GK→attack left-to-right; away mirrored. */
+  .pitch-half.home {
+    flex-direction: row;
+  }
+  .pitch-half.away {
+    flex-direction: row-reverse;
+  }
+  .pitch-line {
+    flex-direction: column;
+  }
+  .pitch-half.away .pitch-line {
+    flex-direction: column-reverse;
+  }
+}
+
+.pitch-player {
+  inline-size: 3.5rem;
+  text-align: center;
+}
+.pitch-player .kit {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 0.125rem;
+  inline-size: 1.75rem;
+  block-size: 1.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--neutral-12);
+  color: var(--neutral-1);
+  font: 700 0.625rem var(--font-mono);
+}
+.pitch-player .name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.5625rem;
+  font-weight: 600;
+}
+
+/* --- match detail: player ratings ----------------------------------- */
+.team-strip {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+.team-strip.subsequent {
+  border-top: 1px solid var(--color-border);
+}
+
+.rated-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+}
+.rated-row:last-child {
+  border-bottom: 0;
+}
+.rated-row > b {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.rated-row .summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rated-row .summary span {
+  color: var(--color-text-muted);
+}
+.rated-row .aside {
+  font: 400 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+/* ------------------------------------------------------------------ *
+ * App policies in the components layer: they must beat mica.preset and
+ * mica.elements but stay below the unlayered element styles in this
+ * file.
+ * ------------------------------------------------------------------ */
+@layer components {
+  /* This app is component-styled, not flow-styled: mica.preset's
+     vertical rhythm (content margins) is deliberately switched off.
+     Components own their own spacing via app classes and m-vstack. */
+  :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    ol,
+    ul,
+    dl,
+    dd,
+    blockquote,
+    pre,
+    table,
+    figure,
+    fieldset,
+    details,
+    address
+  ) {
+    margin: 0;
+  }
+
+  /* Headings size with their context (the old preflight behavior this
+     app's components were designed against); display sizes are opted
+     into via classes like .page-title. */
+  :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: 600;
+  }
+
+  /* Opt a button out of mica's control chrome (e.g. the sign-out
+     button rendered as plain text in the header nav). */
+  :where(button.plain) {
+    block-size: auto;
+    background: transparent;
+    border: 0;
+    font-weight: inherit;
+  }
+}
+
+/* --- skip link + header chrome -------------------------------------- */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 50;
+  translate: 0 -200%;
+  border: 1px solid var(--color-text);
+  background: var(--color-surface);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  translate: 0;
+}
+
+.app-header {
+  height: 3rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.app-header-inner {
+  height: 100%;
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: 0 0.75rem;
+}
+.app-wordmark {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.section-kicker {
+  color: var(--color-accent);
+  font: 600 0.6875rem / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* --- app shell ------------------------------------------------------ */
+.app-root {
+  display: flex;
+  min-block-size: 100vh;
+  flex-direction: column;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.app-root > .app-content {
+  flex: 1;
+}
+.app-nav {
+  font-size: 0.875rem;
+}
+.site-footer {
+  border-top: 1px solid var(--color-border);
+}
+.site-footer .inner {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: var(--space-lg) var(--space-md);
+}
+.wordmark {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* --- auth screens --------------------------------------------------- */
+.auth-page {
+  display: flex;
+  inline-size: 100%;
+  max-inline-size: 28rem;
+  margin-inline: auto;
+  min-block-size: calc(100vh - 3rem);
+  align-items: flex-start;
+  padding: var(--space-2xl) var(--space-md);
+}
+@media (min-width: 40rem) {
+  .auth-page {
+    align-items: center;
+    padding-block: var(--space-xl);
+  }
+}
+.auth-page > * {
+  inline-size: 100%;
+}
+
+.notice-card {
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.875rem;
+}
+.notice-card.success {
+  border-color: var(--color-success-border);
+}
+.notice-card.centered-card {
+  text-align: center;
+}
+.notice-card h1,
+.notice-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.notice-card.success :is(h1, h2) {
+  color: var(--color-success-text);
+}
+.notice-card .body {
+  margin-top: 0.5rem;
+  overflow-wrap: break-word;
+  color: var(--color-text-muted);
+}
+
+.pulse-square {
+  margin-inline: auto;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid var(--color-accent);
+  background: var(--accent-3);
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-square {
+    animation: none;
+  }
+}
+
+.subtle-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.subtle-link:hover {
+  color: var(--color-text);
+}
+
+/* --- groups --------------------------------------------------------- */
+.two-col {
+  display: grid;
+  gap: var(--space-md);
+}
+@media (min-width: 64rem) {
+  .two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.period-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Arrow button in a pager strip: fixed width, mica look otherwise. */
+.pager-arrow {
+  inline-size: 2.75rem;
+  flex-shrink: 0;
+  padding-inline: 0;
+}
+
+.matchday-select {
+  min-inline-size: 0;
+  flex: 1;
+  border-inline: 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.week-pager {
+  display: flex;
+  align-items: stretch;
+}
+.week-label {
+  display: flex;
+  min-inline-size: 7rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-sm);
+  border-block: 1px solid var(--color-border);
+  font: 600 0.75rem var(--font-mono);
+  text-align: center;
+}
+
+.form-card {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+@media (min-width: 40rem) {
+  .form-card {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+  .form-card .span-all {
+    grid-column: 1 / -1;
+  }
+}
+
+.form-success {
+  font-size: 0.875rem;
+  color: var(--color-success-text);
+}
+
+.member-row {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.member-row:last-child {
+  border-bottom: 0;
+}
+.member-row .who-block {
+  min-width: 0;
+}
+.member-row .who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.member-row .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.member-row .joined {
+  align-self: center;
+  font: 400 0.6875rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+@media (min-width: 40rem) {
+  .member-row {
+    grid-template-columns: 1fr auto;
+    gap: var(--space-md);
+  }
+  .member-row .joined {
+    text-align: right;
+  }
+}
+
+.divider-top {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-xl);
+}
+
+/* --- group leaderboard card ------------------------------------------ */
+.board-card {
+  display: flex;
+  min-block-size: 16rem;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.board-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.board-card > header .lead {
+  min-width: 0;
+}
+.board-card > header h2 a:hover {
+  text-decoration: underline;
+}
+.board-card .manage {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.board-card .manage:hover {
+  color: var(--color-text);
+}
+.board-card .centered {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.board {
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.board thead {
+  background: var(--color-surface-raised);
+}
+.board thead th {
+  padding: 0.5rem 0.75rem;
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+.board col.rank {
+  width: 3rem;
+}
+.board col.points {
+  width: 4rem;
+}
+.board thead th:last-child {
+  text-align: right;
+}
+.board td,
+.board th[scope="row"] {
+  border-top: 1px solid var(--color-border);
+  padding: 0.75rem;
+}
+.board th[scope="row"] {
+  min-width: 0;
+  padding-inline: 0.25rem;
+  text-align: left;
+}
+.board td.rank {
+  border-left: 2px solid transparent;
+  font: 600 0.875rem var(--font-mono);
+}
+.board tr.me td.rank {
+  border-left-color: var(--color-accent);
+}
+.board tr.me {
+  background: var(--accent-2);
+}
+.board tr.appended {
+  border-top: 2px solid var(--color-border);
+}
+.board .member-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.board .you {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-accent);
+}
+.board .my-detail {
+  margin-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+.board td.points {
+  text-align: right;
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows-skeleton {
+  display: grid;
+  gap: 1px;
+  background: var(--color-border);
+}
+.rows-skeleton > div {
+  block-size: 3.5rem;
+  background: var(--color-surface-raised);
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rows-skeleton > div {
+    animation: none;
+  }
+}
+
+/* --- standings table ------------------------------------------------ */
+.standings {
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.standings thead tr {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+.standings thead th {
+  padding: 0.625rem 0.25rem;
+  font: 500 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.standings thead th.club {
+  padding-inline: 0;
+  text-align: left;
+}
+.standings thead th.form-col {
+  padding-inline: 0.75rem;
+  text-align: left;
+}
+.standings tbody tr {
+  border-bottom: 1px solid var(--color-border);
+}
+.standings tbody tr:last-child {
+  border-bottom: 0;
+}
+.standings tbody tr.playoff-line {
+  border-top: 2px solid var(--color-accent);
+}
+.standings td.num {
+  padding: 0.625rem 0.25rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+.standings td.num.pts {
+  font-weight: 700;
+  color: var(--color-text);
+}
+.standings td.rank {
+  border-left: 2px solid transparent;
+}
+.standings tr.in-playoffs td.rank {
+  border-left-color: var(--color-accent);
+}
+.standings th.club-cell {
+  min-width: 0;
+  padding-block: 0.5rem;
+  text-align: left;
+  font-weight: 500;
+}
+.standings .club-inner {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.standings .club-inner img {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.standings .club-inner .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.standings td.form-cell {
+  padding: 0.5rem 0.75rem;
+  font: 600 0.6875rem var(--font-mono);
+  letter-spacing: 0.12em;
+}
+
+/* responsive columns: hidden below their breakpoint */
+.standings :is(col, th, td).bp-sm,
+.standings :is(col, th, td).bp-md,
+.standings :is(col, th, td).bp-lg {
+  display: none;
+}
+@media (min-width: 40rem) {
+  .standings col.bp-sm {
+    display: table-column;
+  }
+  .standings :is(th, td).bp-sm {
+    display: table-cell;
+  }
+}
+@media (min-width: 48rem) {
+  .standings col.bp-md {
+    display: table-column;
+  }
+  .standings :is(th, td).bp-md {
+    display: table-cell;
+  }
+}
+@media (min-width: 64rem) {
+  .standings col.bp-lg {
+    display: table-column;
+  }
+  .standings :is(th, td).bp-lg {
+    display: table-cell;
+  }
+}
+
+.standings col.col-rank {
+  width: 2.25rem;
+}
+.standings col.col-n {
+  width: 2.75rem;
+}
+.standings col.col-pts {
+  width: 3rem;
+}
+.standings col.col-form {
+  width: 6rem;
+}
+@media (min-width: 40rem) {
+  .standings col.col-rank {
+    width: 3rem;
+  }
+}
+
+.legend-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.legend-line .tick {
+  block-size: 0.75rem;
+  inline-size: 2px;
+  background: var(--color-accent);
+}
+
+/* --- fixture row --------------------------------------------------- */
+.fixture-row {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr) 1.25rem;
+  align-items: center;
+  gap: var(--space-xs);
+  min-block-size: 5rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: border-color 0.15s;
+}
+.fixture-row:hover {
+  border-color: var(--color-text);
+}
+
+.fixture-row .kickoff {
+  white-space: nowrap;
+  font: 600 0.875rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.fixture-row .status {
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+.fixture-row .teams {
+  display: grid;
+  gap: var(--space-xs);
+}
+.fixture-row .score {
+  text-align: center;
+  font: 600 0.875rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.fixture-row .vs {
+  display: none;
+  text-align: center;
+  font: 400 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.fixture-team {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.fixture-team .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crest {
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+@media (min-width: 40rem) {
+  .fixture-row {
+    grid-template-columns: 6rem minmax(0, 1fr) 2rem;
+    gap: 0;
+    padding-block: 0;
+    padding-inline: var(--space-md);
+  }
+  .fixture-row .teams {
+    grid-template-columns: 1fr 3rem 1fr;
+    align-items: center;
+  }
+  .fixture-row .vs {
+    display: block;
+  }
+  .fixture-team.away {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+}
+
+.nav-active {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.signout {
+  max-inline-size: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.signout:hover {
+  color: var(--color-accent);
+}
