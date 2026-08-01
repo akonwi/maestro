@@ -846,6 +846,103 @@
   color: var(--color-text-muted);
 }
 
+/* --- app shell ------------------------------------------------------ */
+.app-root {
+  display: flex;
+  min-block-size: 100vh;
+  flex-direction: column;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.app-root > .app-content {
+  flex: 1;
+}
+.app-nav {
+  font-size: 0.875rem;
+}
+.site-footer {
+  border-top: 1px solid var(--color-border);
+}
+.site-footer .inner {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: var(--space-lg) var(--space-md);
+}
+.wordmark {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* --- auth screens --------------------------------------------------- */
+.auth-page {
+  display: flex;
+  inline-size: 100%;
+  max-inline-size: 28rem;
+  margin-inline: auto;
+  min-block-size: calc(100vh - 3rem);
+  align-items: flex-start;
+  padding: var(--space-2xl) var(--space-md);
+}
+@media (min-width: 40rem) {
+  .auth-page {
+    align-items: center;
+    padding-block: var(--space-xl);
+  }
+}
+.auth-page > * {
+  inline-size: 100%;
+}
+
+.notice-card {
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.875rem;
+}
+.notice-card.success {
+  border-color: var(--color-success-border);
+}
+.notice-card.centered-card {
+  text-align: center;
+}
+.notice-card h1,
+.notice-card h2 {
+  font-weight: 600;
+}
+.notice-card.success :is(h1, h2) {
+  color: var(--color-success-text);
+}
+.notice-card .body {
+  margin-top: 0.5rem;
+  overflow-wrap: break-word;
+  color: var(--color-text-muted);
+}
+
+.pulse-square {
+  margin-inline: auto;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid var(--color-accent);
+  background: var(--accent-3);
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-square {
+    animation: none;
+  }
+}
+
+.subtle-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.subtle-link:hover {
+  color: var(--color-text);
+}
+
 /* --- groups --------------------------------------------------------- */
 .two-col {
   display: grid;
@@ -913,9 +1010,183 @@
   }
 }
 
+.form-success {
+  font-size: 0.875rem;
+  color: var(--color-success-text);
+}
+
+.member-row {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.member-row:last-child {
+  border-bottom: 0;
+}
+.member-row .who-block {
+  min-width: 0;
+}
+.member-row .who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.member-row .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.member-row .joined {
+  align-self: center;
+  font: 400 0.6875rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+@media (min-width: 40rem) {
+  .member-row {
+    grid-template-columns: 1fr auto;
+    gap: var(--space-md);
+  }
+  .member-row .joined {
+    text-align: right;
+  }
+}
+
 .divider-top {
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-xl);
+}
+
+/* --- group leaderboard card ------------------------------------------ */
+.board-card {
+  display: flex;
+  min-block-size: 16rem;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.board-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.board-card > header .lead {
+  min-width: 0;
+}
+.board-card > header h2 a:hover {
+  text-decoration: underline;
+}
+.board-card .manage {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.board-card .manage:hover {
+  color: var(--color-text);
+}
+.board-card .centered {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.board {
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.board thead {
+  background: var(--color-surface-raised);
+}
+.board thead th {
+  padding: 0.5rem 0.75rem;
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+.board col.rank {
+  width: 3rem;
+}
+.board col.points {
+  width: 4rem;
+}
+.board thead th:last-child {
+  text-align: right;
+}
+.board td,
+.board th[scope="row"] {
+  border-top: 1px solid var(--color-border);
+  padding: 0.75rem;
+}
+.board th[scope="row"] {
+  min-width: 0;
+  padding-inline: 0.25rem;
+  text-align: left;
+}
+.board td.rank {
+  border-left: 2px solid transparent;
+  font: 600 0.875rem var(--font-mono);
+}
+.board tr.me td.rank {
+  border-left-color: var(--color-accent);
+}
+.board tr.me {
+  background: var(--accent-2);
+}
+.board tr.appended {
+  border-top: 2px solid var(--color-border);
+}
+.board .member-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.board .you {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-accent);
+}
+.board .my-detail {
+  margin-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 0.625rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+.board td.points {
+  text-align: right;
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows-skeleton {
+  display: grid;
+  gap: 1px;
+  background: var(--color-border);
+}
+.rows-skeleton > div {
+  block-size: 3.5rem;
+  background: var(--color-surface-raised);
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rows-skeleton > div {
+    animation: none;
+  }
 }
 
 /* --- standings table ------------------------------------------------ */
@@ -1150,4 +1421,21 @@
     flex-direction: row-reverse;
     justify-content: flex-start;
   }
+}
+
+.nav-active {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.signout {
+  max-inline-size: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.signout:hover {
+  color: var(--color-accent);
 }

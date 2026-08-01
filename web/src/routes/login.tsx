@@ -32,33 +32,28 @@ function LoginPage() {
   }
 
   return (
-    <main
-      className='mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-start px-4 py-16 sm:items-center sm:py-10'
-      id='main-content'
-    >
-      <div className='w-full'>
-        <div className='section-kicker'>Private groups / score predictions</div>
-        <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
-          Sign in to Maestro
-        </h1>
-        <p className='mt-2 text-pretty text-sm text-muted-foreground'>
-          Enter your email and we’ll send you a one-time sign-in link.
-        </p>
+    <main className='auth-page' id='main-content'>
+      <m-vstack align='stretch' gap='lg'>
+        <div>
+          <div className='section-kicker'>
+            Private groups / score predictions
+          </div>
+          <h1 className='page-title'>Sign in to Maestro</h1>
+          <p className='page-subtitle'>
+            Enter your email and we’ll send you a one-time sign-in link.
+          </p>
+        </div>
 
         {requestLink.isSuccess ? (
-          <div
-            aria-live='polite'
-            className='mt-8 border border-success bg-surface p-5 text-sm'
-            role='status'
-          >
-            <h2 className='font-semibold text-success'>Check your inbox</h2>
-            <p className='mt-2 break-words text-muted-foreground'>
+          <div aria-live='polite' className='notice-card success' role='status'>
+            <h2>Check your inbox</h2>
+            <p className='body'>
               Open the link sent to {email}. Keep this tab open — it signs you
               in automatically once you do.
             </p>
           </div>
         ) : (
-          <form className='mt-8' onSubmit={submit}>
+          <form onSubmit={submit}>
             <m-vstack gap='md'>
               <m-vstack gap='xs'>
                 <label htmlFor='email'>Email address</label>
@@ -75,11 +70,7 @@ function LoginPage() {
                 />
               </m-vstack>
               {requestLink.isError ? (
-                <p
-                  aria-live='polite'
-                  className='text-sm text-danger'
-                  role='alert'
-                >
+                <p aria-live='polite' className='form-error' role='alert'>
                   We couldn’t send the link. Check the address and try again.
                 </p>
               ) : null}
@@ -96,13 +87,10 @@ function LoginPage() {
           </form>
         )}
 
-        <Link
-          className='mt-6 inline-block text-sm text-muted-foreground hover:text-foreground'
-          to='/'
-        >
+        <Link className='subtle-link' style={{ alignSelf: 'start' }} to='/'>
           Continue without signing in
         </Link>
-      </div>
+      </m-vstack>
     </main>
   )
 }

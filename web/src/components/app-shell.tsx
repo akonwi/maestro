@@ -6,36 +6,29 @@ import { clearSessionToken, useSessionToken } from '@/lib/session'
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className='flex min-h-screen flex-col bg-background text-foreground'>
+    <div className='app-root'>
       <a className='skip-link' href='#main-content'>
         Skip to main content
       </a>
       <header className='app-header'>
-        <m-hstack
-          align='center'
-          className='app-header-inner mx-auto max-w-6xl'
-          justify='between'
-        >
+        <m-hstack align='center' className='app-header-inner' justify='between'>
           <Link className='app-wordmark' to='/' translate='no'>
             Maestro
           </Link>
-          <nav aria-label='Primary navigation' className='text-sm'>
+          <nav aria-label='Primary navigation' className='app-nav'>
             <m-hstack align='center' gap='md'>
               <Link
-                activeProps={{ className: 'text-accent font-semibold' }}
+                activeProps={{ className: 'nav-active' }}
                 activeOptions={{ exact: true }}
                 to='/'
               >
                 Fixtures
               </Link>
-              <Link
-                activeProps={{ className: 'text-accent font-semibold' }}
-                to='/table'
-              >
+              <Link activeProps={{ className: 'nav-active' }} to='/table'>
                 Table
               </Link>
               <Link
-                activeProps={{ className: 'text-accent font-semibold' }}
+                activeProps={{ className: 'nav-active' }}
                 search={{ mode: 'season', week: undefined }}
                 to='/groups'
               >
@@ -46,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </m-hstack>
       </header>
-      <div className='flex-1'>{children}</div>
+      <div className='app-content'>{children}</div>
       <SiteFooter />
     </div>
   )
@@ -54,23 +47,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function SiteFooter() {
   return (
-    <footer className='border-t border-border'>
+    <footer className='site-footer'>
       <m-hstack
         align='center'
-        className='mx-auto max-w-6xl px-4 py-6 sm:px-6'
+        className='inner'
         gap='sm'
         justify='between'
         wrap
       >
-        <span
-          className='text-sm font-semibold uppercase tracking-[0.16em] text-foreground'
-          translate='no'
-        >
+        <span className='wordmark' translate='no'>
           Maestro
         </span>
-        <div className='text-sm text-muted-foreground'>
-          © {new Date().getFullYear()} Ngoh Technology
-        </div>
+        <div className='meta'>© {new Date().getFullYear()} Ngoh Technology</div>
       </m-hstack>
     </footer>
   )
@@ -110,7 +98,7 @@ function AuthControls() {
   return (
     <button
       aria-label={`Sign out${user.data?.email ? ` ${user.data.email}` : ''}`}
-      className='max-w-32 truncate border-0 bg-transparent p-0 text-sm font-semibold hover:text-accent'
+      className='signout plain'
       disabled={signOut.isPending}
       onClick={() => signOut.mutate()}
       title={user.data?.email ?? 'Sign out'}

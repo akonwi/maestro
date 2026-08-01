@@ -27,80 +27,65 @@ function GroupPage() {
   if (!Number.isInteger(id) || id <= 0) return <InvalidGroup />
 
   return (
-    <main
-      className='mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14'
-      id='main-content'
-    >
-      <Link
-        className='mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground'
-        search={{ mode: 'season', week: undefined }}
-        to='/groups'
-      >
-        <ArrowLeft aria-hidden size={16} /> Your Groups
-      </Link>
-
-      {detail.isPending ? <GroupSkeleton /> : null}
-      {detail.isError ? (
-        <div
-          className='border border-danger bg-danger-muted p-5 text-danger'
-          role='alert'
+    <main className='page' id='main-content'>
+      <m-vstack align='stretch' gap='lg'>
+        <Link
+          className='back-link'
+          search={{ mode: 'season', week: undefined }}
+          style={{ alignSelf: 'start' }}
+          to='/groups'
         >
-          <h1 className='font-semibold'>Group unavailable</h1>
-          <p className='mt-2 text-sm'>
-            It may not exist, or you may not be a member.
-          </p>
-          <button
-            className='mt-4'
-            onClick={() => detail.refetch()}
-            type='button'
-          >
-            Retry Group
-          </button>
-        </div>
-      ) : null}
-      {detail.data ? (
-        <>
-          <div className='section-kicker'>Group members</div>
-          <h1 className='mt-3 text-balance text-3xl font-semibold tracking-tight'>
-            {detail.data.group.name}
-          </h1>
-          <p className='mt-2 text-sm text-muted-foreground'>
-            {detail.data.group.member_count}{' '}
-            {detail.data.group.member_count === 1 ? 'member' : 'members'}
-          </p>
+          <ArrowLeft aria-hidden size={16} /> Your Groups
+        </Link>
 
-          <InviteForm groupId={id} />
-
-          <section className='mt-10' aria-labelledby='members-heading'>
-            <h2
-              className='font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground'
-              id='members-heading'
-            >
-              Members
-            </h2>
-            <div className='mt-3 border border-border bg-surface'>
-              {detail.data.members.map(member => (
-                <div
-                  className='grid gap-2 border-b border-border p-4 last:border-b-0 sm:grid-cols-[1fr_auto] sm:gap-4'
-                  key={member.id}
-                >
-                  <div className='min-w-0'>
-                    <div className='truncate font-semibold'>
-                      {member.display_name ?? member.email}
-                    </div>
-                    <div className='truncate text-sm text-muted-foreground'>
-                      {member.email}
-                    </div>
-                  </div>
-                  <div className='self-center font-mono text-[.6875rem] text-muted-foreground sm:text-right'>
-                    Joined {joinedFormatter.format(member.joined_at)}
-                  </div>
-                </div>
-              ))}
+        {detail.isPending ? <GroupSkeleton /> : null}
+        {detail.isError ? (
+          <div className='error-card' role='alert'>
+            <m-vstack align='start' gap='sm'>
+              <h1>Group unavailable</h1>
+              <p>It may not exist, or you may not be a member.</p>
+              <button onClick={() => detail.refetch()} type='button'>
+                Retry Group
+              </button>
+            </m-vstack>
+          </div>
+        ) : null}
+        {detail.data ? (
+          <m-vstack align='stretch' gap='lg'>
+            <div>
+              <div className='section-kicker'>Group members</div>
+              <h1 className='page-title'>{detail.data.group.name}</h1>
+              <p className='page-subtitle'>
+                {detail.data.group.member_count}{' '}
+                {detail.data.group.member_count === 1 ? 'member' : 'members'}
+              </p>
             </div>
-          </section>
-        </>
-      ) : null}
+
+            <InviteForm groupId={id} />
+
+            <section aria-labelledby='members-heading'>
+              <h2 className='day-heading' id='members-heading'>
+                Members
+              </h2>
+              <div className='card'>
+                {detail.data.members.map(member => (
+                  <div className='member-row' key={member.id}>
+                    <div className='who-block'>
+                      <div className='who'>
+                        {member.display_name ?? member.email}
+                      </div>
+                      <div className='sub'>{member.email}</div>
+                    </div>
+                    <div className='joined'>
+                      Joined {joinedFormatter.format(member.joined_at)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </m-vstack>
+        ) : null}
+      </m-vstack>
     </main>
   )
 }
@@ -123,10 +108,7 @@ function InviteForm({ groupId }: { groupId: number }) {
   }
 
   return (
-    <form
-      className='mt-8 grid gap-3 border border-border bg-muted p-4 sm:grid-cols-[1fr_auto] sm:items-end'
-      onSubmit={submit}
-    >
+    <form className='form-card' onSubmit={submit}>
       <m-vstack gap='xs'>
         <label htmlFor='invite-email'>Invite by email</label>
         <input
@@ -145,11 +127,7 @@ function InviteForm({ groupId }: { groupId: number }) {
         {invite.isPending ? 'Sending invite…' : 'Invite Member'}
       </button>
       {invite.isSuccess ? (
-        <p
-          aria-live='polite'
-          className='text-sm text-success sm:col-span-2'
-          role='status'
-        >
+        <p aria-live='polite' className='form-success span-all' role='status'>
           {invite.data.invitation_sent
             ? 'Member added and invitation sent.'
             : invite.data.member_added
@@ -158,7 +136,7 @@ function InviteForm({ groupId }: { groupId: number }) {
         </p>
       ) : null}
       {invite.isError ? (
-        <p className='text-sm text-danger sm:col-span-2' role='alert'>
+        <p className='form-error span-all' role='alert'>
           {invite.error.message}
         </p>
       ) : null}
@@ -170,36 +148,37 @@ function GroupSkeleton() {
   return (
     <div aria-live='polite' role='status'>
       <span className='sr-only'>Loading group…</span>
-      <div
-        aria-hidden
-        className='h-72 animate-pulse border border-border bg-muted motion-reduce:animate-none'
-      />
+      <div aria-hidden className='skeleton tall' />
     </div>
   )
 }
 
 function SignInRequired() {
   return (
-    <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
-      <h1 className='text-xl font-semibold'>Sign In to View This Group</h1>
-      <Link className='btn primary mt-5 inline-flex items-center' to='/login'>
-        Sign In
-      </Link>
+    <main className='page slim' id='main-content'>
+      <m-vstack align='start' gap='sm'>
+        <h1 className='panel-title'>Sign In to View This Group</h1>
+        <Link className='btn primary' to='/login'>
+          Sign In
+        </Link>
+      </m-vstack>
     </main>
   )
 }
 
 function InvalidGroup() {
   return (
-    <main className='mx-auto w-full max-w-md px-4 py-16' id='main-content'>
-      <h1 className='text-xl font-semibold'>Invalid Group</h1>
-      <Link
-        className='btn mt-5 inline-flex items-center'
-        search={{ mode: 'season', week: undefined }}
-        to='/groups'
-      >
-        View Your Groups
-      </Link>
+    <main className='page slim' id='main-content'>
+      <m-vstack align='start' gap='sm'>
+        <h1 className='panel-title'>Invalid Group</h1>
+        <Link
+          className='btn'
+          search={{ mode: 'season', week: undefined }}
+          to='/groups'
+        >
+          View Your Groups
+        </Link>
+      </m-vstack>
     </main>
   )
 }

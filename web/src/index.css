@@ -182,6 +182,8 @@ button:focus-visible {
 }
 .app-header-inner {
   height: 100%;
+  max-inline-size: 72rem;
+  margin-inline: auto;
   padding: 0 0.75rem;
 }
 .app-wordmark {

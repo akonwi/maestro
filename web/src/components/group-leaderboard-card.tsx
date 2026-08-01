@@ -28,26 +28,22 @@ export function GroupLeaderboardCard({
   return (
     <article
       aria-labelledby={`group-${group.id}-heading`}
-      className='flex min-h-64 flex-col border border-border bg-surface'
+      className='board-card'
     >
-      <header className='flex items-start justify-between gap-4 border-b border-border p-4'>
-        <div className='min-w-0'>
-          <h2 className='font-semibold' id={`group-${group.id}-heading`}>
-            <Link
-              className='hover:underline'
-              params={{ groupId: String(group.id) }}
-              to='/groups/$groupId'
-            >
+      <header>
+        <div className='lead'>
+          <h2 className='panel-title' id={`group-${group.id}-heading`}>
+            <Link params={{ groupId: String(group.id) }} to='/groups/$groupId'>
               {group.name}
             </Link>
           </h2>
-          <p className='mt-1 text-xs text-muted-foreground'>
+          <p className='hint'>
             {group.member_count}{' '}
             {group.member_count === 1 ? 'member' : 'members'}
           </p>
         </div>
         <Link
-          className='shrink-0 text-sm text-muted-foreground hover:text-foreground'
+          className='manage'
           params={{ groupId: String(group.id) }}
           to='/groups/$groupId'
         >
@@ -57,16 +53,9 @@ export function GroupLeaderboardCard({
 
       {leaderboard.isPending ? <RowsSkeleton /> : null}
       {leaderboard.isError ? (
-        <div
-          className='grid flex-1 place-content-center gap-3 p-5 text-center'
-          role='alert'
-        >
-          <p className='text-sm text-danger'>Standings unavailable.</p>
-          <button
-            className='mx-auto'
-            onClick={() => leaderboard.refetch()}
-            type='button'
-          >
+        <div className='centered' role='alert'>
+          <p className='form-error'>Standings unavailable.</p>
+          <button onClick={() => leaderboard.refetch()} type='button'>
             Retry Standings
           </button>
         </div>
@@ -87,9 +76,9 @@ function Summary({
 }) {
   if (entries.length === 0) {
     return (
-      <div className='grid flex-1 place-content-center p-6 text-center'>
-        <p className='font-semibold'>No scored predictions yet</p>
-        <p className='mt-1 text-sm text-muted-foreground'>
+      <div className='centered'>
+        <p className='panel-title'>No scored predictions yet</p>
+        <p className='hint'>
           Standings appear after the first fixture is settled.
         </p>
       </div>
@@ -104,18 +93,17 @@ function Summary({
       : leaders
 
   return (
-    <table className='w-full table-fixed border-collapse'>
-      <thead className='bg-muted font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
+    <table className='board'>
+      <colgroup>
+        <col className='rank' />
+        <col />
+        <col className='points' />
+      </colgroup>
+      <thead>
         <tr>
-          <th className='w-12 px-3 py-2 text-left' scope='col'>
-            Rank
-          </th>
-          <th className='px-1 py-2 text-left' scope='col'>
-            Member
-          </th>
-          <th className='w-16 px-3 py-2 text-right' scope='col'>
-            Points
-          </th>
+          <th scope='col'>Rank</th>
+          <th scope='col'>Member</th>
+          <th scope='col'>Points</th>
         </tr>
       </thead>
       <tbody>
@@ -123,42 +111,23 @@ function Summary({
           const isCurrent = entry.user.id === userId
           return (
             <tr
-              className={cn(
-                index === 3 && 'border-t-2 border-t-border',
-                isCurrent && 'bg-accent-muted/40',
-              )}
+              className={cn(index === 3 && 'appended', isCurrent && 'me')}
               key={entry.user.id}
             >
-              <td
-                className={cn(
-                  'w-12 border-t border-border px-3 py-3 font-mono text-sm font-semibold',
-                  isCurrent && 'border-l-2 border-l-accent',
-                )}
-              >
-                {entry.rank}
-              </td>
-              <th
-                className='min-w-0 border-t border-border px-1 py-3 text-left'
-                scope='row'
-              >
-                <div className='truncate font-semibold'>
+              <td className='rank'>{entry.rank}</td>
+              <th scope='row'>
+                <div className='member-name'>
                   {entry.user.display_name ?? entry.user.email}
-                  {isCurrent ? (
-                    <span className='ml-2 text-xs font-normal text-accent'>
-                      You
-                    </span>
-                  ) : null}
+                  {isCurrent ? <span className='you'>You</span> : null}
                 </div>
                 {isCurrent ? (
-                  <div className='mt-1 truncate font-mono text-[.625rem] font-normal text-muted-foreground'>
+                  <div className='my-detail'>
                     {entry.exact_count} exact · {entry.outcome_count} outcome ·{' '}
                     {entry.played} played
                   </div>
                 ) : null}
               </th>
-              <td className='w-16 border-t border-border px-3 py-3 text-right font-mono text-lg font-semibold tabular-nums'>
-                {entry.total_points}
-              </td>
+              <td className='points'>{entry.total_points}</td>
             </tr>
           )
         })}
@@ -169,17 +138,9 @@ function Summary({
 
 function RowsSkeleton() {
   return (
-    <div
-      aria-label='Loading standings'
-      className='grid gap-px bg-border'
-      role='status'
-    >
+    <div aria-label='Loading standings' className='rows-skeleton' role='status'>
       {[0, 1, 2].map(row => (
-        <div
-          aria-hidden
-          className='h-14 animate-pulse bg-muted motion-reduce:animate-none'
-          key={row}
-        />
+        <div aria-hidden key={row} />
       ))}
     </div>
   )
