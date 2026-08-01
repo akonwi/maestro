@@ -847,6 +847,97 @@
   color: var(--color-text-muted);
 }
 
+/* ------------------------------------------------------------------ *
+ * App policies in the components layer: they must beat mica.preset and
+ * mica.elements but stay below the unlayered element styles in this
+ * file.
+ * ------------------------------------------------------------------ */
+@layer components {
+  /* This app is component-styled, not flow-styled: mica.preset's
+     vertical rhythm (content margins) is deliberately switched off.
+     Components own their own spacing via app classes and m-vstack. */
+  :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    ol,
+    ul,
+    dl,
+    dd,
+    blockquote,
+    pre,
+    table,
+    figure,
+    fieldset,
+    details,
+    address
+  ) {
+    margin: 0;
+  }
+
+  /* Headings size with their context (the old preflight behavior this
+     app's components were designed against); display sizes are opted
+     into via classes like .page-title. */
+  :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: 600;
+  }
+
+  /* Opt a button out of mica's control chrome (e.g. the sign-out
+     button rendered as plain text in the header nav). */
+  :where(button.plain) {
+    block-size: auto;
+    background: transparent;
+    border: 0;
+    font-weight: inherit;
+  }
+}
+
+/* --- skip link + header chrome -------------------------------------- */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 50;
+  translate: 0 -200%;
+  border: 1px solid var(--color-text);
+  background: var(--color-surface);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  translate: 0;
+}
+
+.app-header {
+  height: 3rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.app-header-inner {
+  height: 100%;
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: 0 0.75rem;
+}
+.app-wordmark {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.section-kicker {
+  color: var(--color-accent);
+  font: 600 0.6875rem / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 /* --- app shell ------------------------------------------------------ */
 .app-root {
   display: flex;
@@ -910,6 +1001,7 @@
 }
 .notice-card h1,
 .notice-card h2 {
+  font-size: 1.25rem;
   font-weight: 600;
 }
 .notice-card.success :is(h1, h2) {

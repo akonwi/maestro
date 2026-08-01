@@ -1,5 +1,10 @@
 # Mica Migration Plan
 
+> **Status: COMPLETE.** All three phases shipped on the ux.mica branch.
+> Tailwind, shadcn, base-ui, tailwind-merge, the token bridge, and the
+> .dark script are gone; the app renders from vendored mica (v0.2.1 line)
+> + a fonts-only theme + app.css. Dark mode is pure light-dark()/OS.
+
 Migrate the web app (`web/`) fully off Tailwind v4 + shadcn/base-ui onto
 [mica](https://github.com/akonwi/mica) — the in-house custom-elements
 design system. Hard migration: Tailwind, `@base-ui/react`,
