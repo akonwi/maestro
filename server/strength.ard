@@ -1,0 +1,174 @@
+use ard/list as List
+use maestro/api_football
+use maestro/app
+
+// League-relative team strength: points-per-game over each team's last N
+// results, ranked across the competition. Derived entirely from the
+// season fixtures we already cache for the round navigator — no extra
+// upstream call, and recomputation is a cheap pass over that cached data.
+
+let RECENT_WINDOW = 10
+let MIN_GAMES = 7
+let RESULT_STATUSES = ["FT", "AET", "PEN"]
+
+struct Ranking {
+  team_id: Int,
+  ppg: Float64,
+  games: Int,
+  rank: Int,      // 1 = best recent form in the league
+}
+
+// One completed result from a single team's perspective.
+struct GameEntry {
+  team_id: Int,
+  kickoff: Int64,
+  points: Int,
+}
+
+fn team_rankings(a: app::App, league_id: Int, season: Int) [Ranking]!Str {
+  let fixtures = try api_football::season_round_fixtures(a, league_id, season)
+  Result::ok(compute_rankings(fixtures))
+}
+
+// Pure: last-N PPG per team, ranked by PPG descending. Teams below the
+// sample-size floor are omitted entirely.
+fn compute_rankings(fixtures: [api_football::RoundFixture]) [Ranking] {
+  let games: mut [GameEntry] = mut []
+  for rf in fixtures {
+    let f = rf.fixture
+    match has_result(f.status) and f.home_score.is_some() and f.away_score.is_some() {
+      true => {
+        let hg = f.home_score.expect("home goals")
+        let ag = f.away_score.expect("away goals")
+        games.push(GameEntry{team_id: f.home_team_id, kickoff: f.kickoff_at, points: result_points(hg, ag)})
+        games.push(GameEntry{team_id: f.away_team_id, kickoff: f.kickoff_at, points: result_points(ag, hg)})
+      },
+      false => (),
+    }
+  }
+
+  let team_ids: mut [Int] = mut []
+  for g in games {
+    let contains_team_id = List::find(deref team_ids, fn(x) { x == g.team_id}).is_some()
+    match contains_team_id {
+      true => (),
+      false => team_ids.push(g.team_id),
+    }
+  }
+
+  let prelim: mut [Ranking] = mut []
+  for tid in team_ids {
+    let team_fixtures = List::keep(deref games, fn(g) { g.team_id == tid})
+    let recent = first_n(sort_desc(team_fixtures), RECENT_WINDOW)
+    match recent.size() >= MIN_GAMES {
+      true => {
+        mut pts = 0
+        for e in recent {
+          pts = pts + e.points
+        }
+        let ppg = pts.to_f64() / recent.size().to_f64()
+        prelim.push(Ranking{team_id: tid, ppg: ppg, games: recent.size(), rank: 0})
+      },
+      false => (),
+    }
+  }
+
+  assign_ranks(deref prelim)
+}
+
+fn find_ranking(rankings: [Ranking], team_id: Int) Ranking? {
+  List::find(rankings, fn(r) { r.team_id == team_id })
+}
+
+private fn has_result(status: Str) Bool {
+  mut ok = false
+  for s in RESULT_STATUSES {
+    match s == status {
+      true => { ok = true },
+      false => (),
+    }
+  }
+  ok
+}
+
+private fn result_points(gf: Int, ga: Int) Int {
+  match {
+    gf > ga => 3,
+    gf == ga => 1,
+    _ => 0
+  }
+}
+
+// Insertion sort, most recent kickoff first.
+private fn sort_desc(entries: [GameEntry]) [GameEntry] {
+  mut out: mut [GameEntry] = mut []
+  for e in entries {
+    mut inserted = false
+    let result: mut [GameEntry] = mut []
+    for existing in out {
+      let before = (not inserted) and (e.kickoff > existing.kickoff)
+      match before {
+        true => {
+          result.push(e)
+          inserted = true
+        },
+        false => (),
+      }
+      result.push(existing)
+    }
+    match inserted {
+      true => (),
+      false => result.push(e),
+    }
+    out = result
+  }
+  deref out
+}
+
+private fn first_n(entries: [GameEntry], n: Int) [GameEntry] {
+  let out: mut [GameEntry] = mut []
+  mut i = 0
+  for e in entries {
+    match i < n {
+      true => {
+        out.push(e)
+        i = i + 1
+      },
+      false => (),
+    }
+  }
+  deref out
+}
+
+// Sort by PPG descending and assign 1-based ranks.
+private fn assign_ranks(prelim: [Ranking]) [Ranking] {
+  mut sorted: mut [Ranking] = mut []
+  for r in prelim {
+    mut inserted = false
+    let result: mut [Ranking] = mut []
+    for existing in sorted {
+      let before = (not inserted) and (r.ppg > existing.ppg)
+      match before {
+        true => {
+          result.push(r)
+          inserted = true
+        },
+        false => (),
+      }
+      result.push(existing)
+    }
+    match inserted {
+      true => (),
+      false => result.push(r),
+    }
+    sorted = result
+  }
+
+  let ranked: mut [Ranking] = mut []
+  mut idx = 0
+  for r in sorted {
+    idx = idx + 1
+    ranked.push(Ranking{team_id: r.team_id, ppg: r.ppg, games: r.games, rank: idx})
+  }
+  deref ranked
+}

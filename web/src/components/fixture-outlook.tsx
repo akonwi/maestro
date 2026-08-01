@@ -7,8 +7,9 @@ import type {
   KeyPlayer,
   Outlook,
   TeamOutlook,
+  TeamStrength,
 } from '@/lib/analysis'
-import { percentValue } from '@/lib/analysis'
+import { ordinal, percentValue } from '@/lib/analysis'
 import { cn } from '@/lib/utils'
 
 const h2hDateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -157,6 +158,12 @@ function OutlookTabs({
 
 type Better = 'home' | 'away' | null
 
+// "1.80 · 4th of 30" — raw PPG plus league rank, or "–" below the floor.
+function strengthLabel(strength: TeamStrength | null, total: number): string {
+  if (strength === null) return '–'
+  return `${strength.ppg.toFixed(2)} · ${ordinal(strength.rank)} of ${total}`
+}
+
 function betterSide(home: number, away: number, dir: 'high' | 'low'): Better {
   if (home === away) return null
   const homeWins = dir === 'high' ? home > away : home < away
@@ -166,9 +173,11 @@ function betterSide(home: number, away: number, dir: 'high' | 'low'): Better {
 // The concrete "By the numbers" comparison. Each row shows both teams'
 // value with the stronger side subtly emphasized.
 function NumbersPanel({ outlook }: { outlook: Outlook }) {
-  const { home, away, standings, goals } = outlook
+  const { home, away, standings, goals, strength } = outlook
   const homePoints = standings.home?.points ?? null
   const awayPoints = standings.away?.points ?? null
+  const homeStrength = strength.home
+  const awayStrength = strength.away
 
   const rows: {
     label: string
@@ -184,6 +193,15 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
         homePoints === null || awayPoints === null
           ? null
           : betterSide(homePoints, awayPoints, 'high'),
+    },
+    {
+      label: 'PPG (last 10)',
+      home: strengthLabel(homeStrength, strength.total),
+      away: strengthLabel(awayStrength, strength.total),
+      better:
+        homeStrength === null || awayStrength === null
+          ? null
+          : betterSide(homeStrength.ppg, awayStrength.ppg, 'high'),
     },
     {
       label: 'W-D-L',

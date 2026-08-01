@@ -1,6 +1,8 @@
 use dram
 use maestro/api_football
 use maestro/app
+use maestro/strength
+use go:fmt
 use go:net/http
 use go:strconv
 
@@ -53,33 +55,41 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
   let outlook_opt = try api_football::fixture_outlook(a, fixture_id)
   match outlook_opt {
     outlook => {
+      // Each supporting section is best-effort: a failure logs and leaves
+      // that section empty rather than failing the whole outlook, so one
+      // flaky upstream can't blank out the entire pre-match analysis.
       mut standings: [api_football::StandingRow] = []
       match api_football::league_standings(a, outlook.league_id, outlook.season) {
         ok(v) => { standings = v },
-        err(_) => (),
+        err(message) => log_section("standings", fixture_id, message),
       }
       mut injuries: [api_football::Injury] = []
       match api_football::fixture_injuries(a, fixture_id) {
         ok(v) => { injuries = v },
-        err(_) => (),
+        err(message) => log_section("injuries", fixture_id, message),
       }
       let empty_splits = api_football::TeamGoalSplits{for_home: "0", against_home: "0", for_away: "0", against_away: "0"}
       mut home_splits = empty_splits
       match api_football::team_goal_splits(a, outlook.league_id, outlook.season, outlook.home.id) {
         ok(v) => { home_splits = v },
-        err(_) => (),
+        err(message) => log_section("home venue splits", fixture_id, message),
       }
       mut away_splits = empty_splits
       match api_football::team_goal_splits(a, outlook.league_id, outlook.season, outlook.away.id) {
         ok(v) => { away_splits = v },
-        err(_) => (),
+        err(message) => log_section("away venue splits", fixture_id, message),
       }
       mut key_players: [api_football::KeyPlayer] = []
       match api_football::league_key_players(a, outlook.league_id, outlook.season) {
         ok(v) => { key_players = v },
-        err(_) => (),
+        err(message) => log_section("key players", fixture_id, message),
       }
-      Result::ok(Maybe::new(outlook_json(outlook, standings, injuries, home_splits, away_splits, key_players)))
+      mut rankings: [strength::Ranking] = []
+      match strength::team_rankings(a, outlook.league_id, outlook.season) {
+        ok(v) => { rankings = v },
+        err(message) => log_section("strength", fixture_id, message),
+      }
+      Result::ok(Maybe::new(outlook_json(outlook, standings, injuries, home_splits, away_splits, key_players, rankings)))
     },
     _ => Result::ok(Maybe::new()),
   }
@@ -92,6 +102,7 @@ fn outlook_json(
   home_splits: api_football::TeamGoalSplits,
   away_splits: api_football::TeamGoalSplits,
   key_players: [api_football::KeyPlayer],
+  rankings: [strength::Ranking],
 ) [Str: Any] {
   let h2h: mut [Any] = mut []
   for m in o.h2h {
@@ -155,6 +166,12 @@ fn outlook_json(
   }
   let key_players_map: [Str: Any] = ["home": home_players, "away": away_players]
 
+  let strength_map: [Str: Any] = [
+    "home": ranking_opt(rankings, o.home.id),
+    "away": ranking_opt(rankings, o.away.id),
+    "total": rankings.size(),
+  ]
+
   let payload: [Str: Any] = [
     "percent": percent,
     "home": team_outlook_json(o.home),
@@ -164,9 +181,24 @@ fn outlook_json(
     "injuries": injuries_map,
     "goals": goals_map,
     "key_players": key_players_map,
+    "strength": strength_map,
   ]
 
   payload
+}
+
+private fn log_section(section: Str, fixture_id: Int, message: Str) {
+  fmt::Println("outlook: {section} failed for fixture {fixture_id}: {message}")
+}
+
+private fn ranking_opt(rankings: [strength::Ranking], team_id: Int) Maybe<[Str: Any]> {
+  match strength::find_ranking(rankings, team_id) {
+    r => {
+      let entry: [Str: Any] = ["ppg": r.ppg, "rank": r.rank, "games": r.games]
+      Maybe::new(entry)
+    },
+    _ => Maybe::new(),
+  }
 }
 
 private fn team_goals_json(

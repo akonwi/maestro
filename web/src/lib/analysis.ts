@@ -27,6 +27,30 @@ export type StandingEntry = {
   group: string // e.g. "Eastern Conference"
 }
 
+// League-relative strength: points-per-game over a team's last ~10 games,
+// with its rank across the competition. null when the team is below the
+// server's sample-size floor.
+export type TeamStrength = {
+  ppg: number
+  rank: number
+  games: number
+}
+
+export function ordinal(n: number): string {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`
+  switch (n % 10) {
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
+  }
+}
+
 export type InjuryEntry = {
   player: string
   kind: string // "Missing Fixture" | "Questionable"
@@ -69,6 +93,11 @@ export type Outlook = {
   injuries: { home: InjuryEntry[]; away: InjuryEntry[] }
   goals: { home: TeamGoals; away: TeamGoals }
   key_players: { home: KeyPlayer[]; away: KeyPlayer[] }
+  strength: {
+    home: TeamStrength | null
+    away: TeamStrength | null
+    total: number
+  }
 }
 
 export type StatLine = {

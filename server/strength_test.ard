@@ -1,0 +1,66 @@
+use ard/testing
+
+use maestro/api_football
+use maestro/strength
+
+fn rf(id: Int, kickoff_secs: Int, status: Str, home: Int, away: Int, hs: Int, as_: Int) api_football::RoundFixture {
+  api_football::RoundFixture{
+    fixture: api_football::Fixture{
+      id: id,
+      kickoff_at: Int64::from(kickoff_secs) * 1000,
+      status: status,
+      api_football_league_id: 253,
+      season: 2026,
+      home_team_id: home,
+      home_team_name: "H",
+      away_team_id: away,
+      away_team_name: "A",
+      home_score: Maybe::new(hs),
+      away_score: Maybe::new(as_),
+    },
+    round: "Regular Season - 1",
+  }
+}
+
+// Team 1 wins 7, team 2 loses 7 -> team 1 ranks above team 2; teams with
+// fewer than the minimum games are excluded.
+test fn ranks_teams_by_recent_ppg() Void!Str {
+  mut fixtures: mut [api_football::RoundFixture] = mut []
+  mut i = 0
+  for _ in [0, 0, 0, 0, 0, 0, 0] {
+    fixtures.push(rf(i, 1000 + i, "FT", 1, 2, 2, 0))
+    i = i + 1
+  }
+  // teams 3 & 4 only played 3 games -> below the floor
+  fixtures.push(rf(100, 5000, "FT", 3, 4, 1, 0))
+  fixtures.push(rf(101, 5001, "FT", 3, 4, 1, 0))
+  fixtures.push(rf(102, 5002, "FT", 3, 4, 1, 0))
+
+  let rankings = strength::compute_rankings(deref fixtures)
+  try testing::assert(rankings.size() == 2, "only teams 1 and 2 qualify, got {rankings.size()}")
+
+  match strength::find_ranking(rankings, 1) {
+    r1 => {
+      try testing::assert(r1.rank == 1, "team 1 is rank 1")
+      try testing::assert(r1.ppg == 3.0, "team 1 ppg is 3.0")
+    },
+    _ => testing::fail("team 1 missing"),
+  }
+  match strength::find_ranking(rankings, 2) {
+    r2 => try testing::assert(r2.rank == 2, "team 2 is rank 2"),
+    _ => testing::fail("team 2 missing"),
+  }
+  try testing::assert(strength::find_ranking(rankings, 3).is_none(), "team 3 below floor")
+  Result::ok(())
+}
+
+test fn ignores_unfinished_fixtures() Void!Str {
+  mut fixtures: mut [api_football::RoundFixture] = mut []
+  mut i = 0
+  for _ in [0, 0, 0, 0, 0, 0, 0] {
+    fixtures.push(rf(i, 1000 + i, "NS", 1, 2, 0, 0))
+    i = i + 1
+  }
+  try testing::assert(strength::compute_rankings(deref fixtures).size() == 0, "no finished games -> no rankings")
+  Result::ok(())
+}
