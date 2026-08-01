@@ -46,7 +46,8 @@
     {
       "includes": [
         "src/components/fixture-outlook.tsx",
-        "src/components/match-detail.tsx"
+        "src/components/match-detail.tsx",
+        "src/routes/table.tsx"
       ],
       "linter": {
         "rules": {

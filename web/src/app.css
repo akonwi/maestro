@@ -843,6 +843,152 @@
   color: var(--color-text-muted);
 }
 
+/* --- standings table ------------------------------------------------ */
+.standings {
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.standings thead tr {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+.standings thead th {
+  padding: 0.625rem 0.25rem;
+  font: 500 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.standings thead th.club {
+  padding-inline: 0;
+  text-align: left;
+}
+.standings thead th.form-col {
+  padding-inline: 0.75rem;
+  text-align: left;
+}
+.standings tbody tr {
+  border-bottom: 1px solid var(--color-border);
+}
+.standings tbody tr:last-child {
+  border-bottom: 0;
+}
+.standings tbody tr.playoff-line {
+  border-top: 2px solid var(--color-accent);
+}
+.standings td.num {
+  padding: 0.625rem 0.25rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+.standings td.num.pts {
+  font-weight: 700;
+  color: var(--color-text);
+}
+.standings td.rank {
+  border-left: 2px solid transparent;
+}
+.standings tr.in-playoffs td.rank {
+  border-left-color: var(--color-accent);
+}
+.standings th.club-cell {
+  min-width: 0;
+  padding-block: 0.5rem;
+  text-align: left;
+  font-weight: 500;
+}
+.standings .club-inner {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.standings .club-inner img {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.standings .club-inner .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.standings td.form-cell {
+  padding: 0.5rem 0.75rem;
+  font: 600 0.6875rem var(--font-mono);
+  letter-spacing: 0.12em;
+}
+
+/* responsive columns: hidden below their breakpoint */
+.standings :is(col, th, td).bp-sm,
+.standings :is(col, th, td).bp-md,
+.standings :is(col, th, td).bp-lg {
+  display: none;
+}
+@media (min-width: 40rem) {
+  .standings col.bp-sm {
+    display: table-column;
+  }
+  .standings :is(th, td).bp-sm {
+    display: table-cell;
+  }
+}
+@media (min-width: 48rem) {
+  .standings col.bp-md {
+    display: table-column;
+  }
+  .standings :is(th, td).bp-md {
+    display: table-cell;
+  }
+}
+@media (min-width: 64rem) {
+  .standings col.bp-lg {
+    display: table-column;
+  }
+  .standings :is(th, td).bp-lg {
+    display: table-cell;
+  }
+}
+
+.standings col.col-rank {
+  width: 2.25rem;
+}
+.standings col.col-n {
+  width: 2.75rem;
+}
+.standings col.col-pts {
+  width: 3rem;
+}
+.standings col.col-form {
+  width: 6rem;
+}
+@media (min-width: 40rem) {
+  .standings col.col-rank {
+    width: 3rem;
+  }
+}
+
+.legend-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.legend-line .tick {
+  block-size: 0.75rem;
+  inline-size: 2px;
+  background: var(--color-accent);
+}
+
 /* --- fixture row --------------------------------------------------- */
 .fixture-row {
   display: grid;
