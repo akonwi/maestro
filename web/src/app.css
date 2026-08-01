@@ -65,6 +65,61 @@
   color: var(--color-danger-text);
 }
 
+.panel-title {
+  font-weight: 600;
+}
+
+.panel-body {
+  padding: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.hint {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.chip {
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  font-size: 0.875rem;
+  color: var(--color-danger-text);
+}
+
+.scoreline {
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Label fused to the left edge of a select. */
+.select-affix {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+}
+.select-affix > span {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-right: 0;
+  background: var(--color-surface-raised);
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.select-affix > select {
+  min-inline-size: 11rem;
+  font-weight: 600;
+}
+
 .skeleton {
   block-size: 12rem;
   border: 1px solid var(--color-border);
@@ -76,10 +131,232 @@
     opacity: 0.5;
   }
 }
+.skeleton.short {
+  block-size: 6rem;
+}
+.skeleton.tall {
+  block-size: 18rem;
+}
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
   }
+}
+
+/* --- shared chrome ------------------------------------------------- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.back-link:hover {
+  color: var(--color-text);
+}
+
+.status-chip {
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.meta {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* Card section header: title left, affordance right, hairline below. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.panel-head :is(h2, h3, h4) {
+  font-weight: 600;
+}
+
+.panel-foot {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.strip {
+  padding: 0.625rem var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* --- matchup header ------------------------------------------------ */
+.matchup-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+@media (min-width: 40rem) {
+  .matchup-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.matchup-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 1.25rem var(--space-md);
+}
+@media (min-width: 40rem) {
+  .matchup-grid {
+    padding-inline: var(--space-lg);
+  }
+}
+
+.matchup-score {
+  text-align: center;
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.matchup-vs {
+  text-align: center;
+  font: 400 0.75rem var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.matchup-team {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.matchup-team.away {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.matchup-team .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+@media (min-width: 40rem) {
+  .matchup-team .name {
+    font-size: 1.125rem;
+  }
+}
+.matchup-team .standing {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.crest.large {
+  inline-size: 3rem;
+  block-size: 3rem;
+  padding: 0.375rem;
+}
+
+/* --- prediction form ----------------------------------------------- */
+.prediction-layout {
+  display: grid;
+  align-items: start;
+  gap: var(--space-md);
+}
+@media (min-width: 64rem) {
+  .prediction-layout {
+    grid-template-columns: minmax(0, 5fr) minmax(20rem, 4fr);
+  }
+}
+
+.prediction-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: var(--space-md);
+  padding: var(--space-lg) 1.25rem;
+}
+@media (min-width: 40rem) {
+  .prediction-grid {
+    gap: var(--space-xl);
+    padding-inline: var(--space-2xl);
+  }
+}
+.prediction-grid .dash {
+  padding-bottom: 1.25rem;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.score-field {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.score-field .team {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.score-field input {
+  inline-size: 4rem;
+  block-size: 4rem;
+  appearance: none;
+  border: 1px solid var(--color-text);
+  background: var(--color-surface);
+  padding: 0;
+  text-align: center;
+  font: 600 1.5rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.score-field input::-webkit-inner-spin-button,
+.score-field input::-webkit-outer-spin-button {
+  appearance: none;
+}
+@media (min-width: 40rem) {
+  .score-field input {
+    inline-size: 5rem;
+    block-size: 5rem;
+  }
+}
+
+/* --- prediction lists ---------------------------------------------- */
+.pick-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.pick-row:last-child {
+  border-bottom: 0;
+}
+.pick-row .who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.pick-row .scoreline {
+  font: 600 1.125rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- fixture row --------------------------------------------------- */

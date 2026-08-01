@@ -59,27 +59,20 @@ function FixturePage() {
   const fixture = useQuery(fixtureQuery(id))
 
   return (
-    <main
-      className='mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10'
-      id='main-content'
-    >
-      <Link
-        className='mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground'
-        to='/'
-      >
-        <ArrowLeft aria-hidden size={16} /> Upcoming Fixtures
-      </Link>
+    <main className='page wide' id='main-content'>
+      <m-vstack align='stretch' gap='lg'>
+        <Link className='back-link' style={{ alignSelf: 'start' }} to='/'>
+          <ArrowLeft aria-hidden size={16} /> Upcoming Fixtures
+        </Link>
 
-      {fixture.isPending ? <FixtureSkeleton /> : null}
-      {fixture.isError ? (
-        <div
-          className='border border-danger bg-danger-muted p-4 text-danger'
-          role='alert'
-        >
-          Fixture unavailable. Return to fixtures and try again.
-        </div>
-      ) : null}
-      {fixture.data ? <FixtureDetail fixture={fixture.data} /> : null}
+        {fixture.isPending ? <FixtureSkeleton /> : null}
+        {fixture.isError ? (
+          <div className='error-card' role='alert'>
+            Fixture unavailable. Return to fixtures and try again.
+          </div>
+        ) : null}
+        {fixture.data ? <FixtureDetail fixture={fixture.data} /> : null}
+      </m-vstack>
     </main>
   )
 }
@@ -101,37 +94,35 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
     locked && fixture.status !== 'NS' && fixture.status !== 'TBD'
   return (
     <>
-      <article className='border border-border bg-surface'>
-        <header className='flex flex-col gap-2 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
+      <article className='card'>
+        <header className='matchup-head'>
           <h1 className='sr-only'>
             {fixture.home_team.name} vs {fixture.away_team.name}
           </h1>
           {showStatus ? (
-            <span className='font-mono text-[.625rem] font-semibold uppercase tracking-wider text-accent'>
+            <span className='status-chip'>
               {fixtureStatusLabel(fixture.status)}
             </span>
           ) : (
             <span aria-hidden />
           )}
-          <span className='text-sm text-muted-foreground'>
+          <span className='meta'>
             {kickoffFormatter.format(fixture.kickoff_at)}
           </span>
         </header>
-        <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-5 sm:px-6'>
+        <div className='matchup-grid'>
           <Team
             id={fixture.home_team.id}
             name={fixture.home_team.name}
             standing={outlook.data?.standings.home ?? null}
           />
-          <div className='text-center font-mono font-semibold tabular-nums'>
-            {fixture.home_score !== null && fixture.away_score !== null ? (
-              <span className='text-lg'>
-                {fixture.home_score}–{fixture.away_score}
-              </span>
-            ) : (
-              <span className='text-xs text-muted-foreground'>VS</span>
-            )}
-          </div>
+          {fixture.home_score !== null && fixture.away_score !== null ? (
+            <span className='matchup-score'>
+              {fixture.home_score}–{fixture.away_score}
+            </span>
+          ) : (
+            <span className='matchup-vs'>VS</span>
+          )}
           <Team
             away
             id={fixture.away_team.id}
@@ -140,9 +131,7 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
           />
         </div>
         {locked ? null : (
-          <footer className='border-t border-border bg-muted px-4 py-2.5 text-center text-xs text-muted-foreground'>
-            Predictions are open until kickoff.
-          </footer>
+          <footer className='strip'>Predictions are open until kickoff.</footer>
         )}
       </article>
       <PredictionArea fixture={fixture} locked={locked} />
@@ -215,19 +204,21 @@ function PredictionArea({
 
   if (!token) {
     return (
-      <section className='mt-6 border border-border bg-surface p-6 text-center'>
-        <h2 className='font-semibold'>Sign In to Make a Prediction</h2>
-        <Link className='btn primary mt-4 inline-flex items-center' to='/login'>
-          Sign In
-        </Link>
+      <section className='empty-state'>
+        <m-vstack align='center' gap='sm'>
+          <h2>Sign In to Make a Prediction</h2>
+          <Link className='btn primary' to='/login'>
+            Sign In
+          </Link>
+        </m-vstack>
       </section>
     )
   }
 
   return (
     <section
-      className='mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(20rem,4fr)]'
       aria-labelledby='predictions-heading'
+      className='prediction-layout'
     >
       <h2 className='sr-only' id='predictions-heading'>
         Predictions
@@ -244,30 +235,19 @@ function PredictionArea({
         ) : null}
       </div>
 
-      <section
-        className='border border-border bg-surface'
-        aria-labelledby='group-predictions-heading'
-      >
-        <div className='flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
+      <section aria-labelledby='group-predictions-heading' className='card'>
+        <div className='matchup-head'>
           <div>
-            <h3 className='font-semibold' id='group-predictions-heading'>
+            <h3 className='panel-title' id='group-predictions-heading'>
               Predictions
             </h3>
-            <p className='mt-0.5 text-xs text-muted-foreground'>
-              Visible as submitted.
-            </p>
+            <p className='hint'>Visible as submitted.</p>
           </div>
           {selectedGroup ? (
-            <div className='flex min-w-0 items-stretch'>
-              <span
-                className='flex items-center border border-r-0 border-border bg-muted px-3 font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'
-                id='prediction-group-label'
-              >
-                Group
-              </span>
+            <div className='select-affix'>
+              <span id='prediction-group-label'>Group</span>
               <select
                 aria-labelledby='prediction-group-label'
-                className='min-w-44 font-semibold'
                 onChange={event => {
                   const groupId = Number(event.target.value)
                   navigate({
@@ -287,15 +267,17 @@ function PredictionArea({
         </div>
         {groups.isPending ? <PredictionSkeleton /> : null}
         {groups.data?.length === 0 ? (
-          <div className='p-5 text-sm'>
-            <p>Create a group to compare predictions with other people.</p>
-            <Link
-              className='btn mt-4 inline-flex items-center'
-              search={{ mode: 'season', week: undefined }}
-              to='/groups'
-            >
-              Create a Group
-            </Link>
+          <div className='panel-body'>
+            <m-vstack align='start' gap='sm'>
+              <p>Create a group to compare predictions with other people.</p>
+              <Link
+                className='btn'
+                search={{ mode: 'season', week: undefined }}
+                to='/groups'
+              >
+                Create a Group
+              </Link>
+            </m-vstack>
           </div>
         ) : null}
         {selectedGroup ? (
@@ -337,16 +319,14 @@ function PredictionForm({
   }
 
   return (
-    <form className='border border-border bg-surface' onSubmit={submit}>
-      <div className='flex items-center justify-between border-b border-border px-5 py-3'>
-        <h3 className='font-semibold'>Your Prediction</h3>
+    <form className='card' onSubmit={submit}>
+      <div className='panel-head'>
+        <h3>Your Prediction</h3>
         {locked || !initial ? (
-          <span className='font-mono text-[.625rem] font-semibold uppercase tracking-wider text-muted-foreground'>
-            {locked ? 'Locked' : 'Not submitted'}
-          </span>
+          <span className='chip'>{locked ? 'Locked' : 'Not submitted'}</span>
         ) : null}
       </div>
-      <div className='grid grid-cols-[1fr_auto_1fr] items-end gap-4 px-5 py-6 sm:gap-8 sm:px-10'>
+      <div className='prediction-grid'>
         <ScoreInput
           disabled={locked || save.isPending}
           label={fixture.home_team.name}
@@ -354,7 +334,7 @@ function PredictionForm({
           onChange={setHomeScore}
           value={homeScore}
         />
-        <span className='pb-5 font-mono text-muted-foreground'>—</span>
+        <span className='dash'>—</span>
         <ScoreInput
           disabled={locked || save.isPending}
           label={fixture.away_team.name}
@@ -364,26 +344,24 @@ function PredictionForm({
         />
       </div>
       {locked ? null : (
-        <div className='border-t border-border p-4'>
-          {save.isError ? (
-            <p className='mb-3 text-sm text-danger' role='alert'>
-              {save.error.message}
+        <div className='panel-foot'>
+          <m-vstack align='stretch' gap='sm'>
+            {save.isError ? (
+              <p className='form-error' role='alert'>
+                {save.error.message}
+              </p>
+            ) : null}
+            <button className='primary' disabled={save.isPending} type='submit'>
+              {save.isPending
+                ? 'Saving prediction…'
+                : initial
+                  ? 'Update Prediction'
+                  : 'Save Prediction'}
+            </button>
+            <p className='hint' style={{ textAlign: 'center' }}>
+              Open until kickoff
             </p>
-          ) : null}
-          <button
-            className='primary w-full'
-            disabled={save.isPending}
-            type='submit'
-          >
-            {save.isPending
-              ? 'Saving prediction…'
-              : initial
-                ? 'Update Prediction'
-                : 'Save Prediction'}
-          </button>
-          <p className='mt-3 text-center text-xs text-muted-foreground'>
-            Open until kickoff
-          </p>
+          </m-vstack>
         </div>
       )}
     </form>
@@ -404,11 +382,10 @@ function ScoreInput({
   value: string
 }) {
   return (
-    <label className='grid min-w-0 justify-items-center gap-3 text-sm font-semibold'>
-      <span className='w-full truncate text-center'>{label}</span>
+    <label className='score-field'>
+      <span className='team'>{label}</span>
       <input
         autoComplete='off'
-        className='size-16 appearance-none sm:size-20 border border-foreground bg-surface text-center font-mono text-2xl font-semibold tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
         disabled={disabled}
         inputMode='numeric'
         max='99'
@@ -432,21 +409,16 @@ function GroupPredictionList({
   if (query.isPending) return <PredictionSkeleton />
   if (query.isError) return <PredictionError />
   if (query.data.length === 0)
-    return (
-      <p className='p-5 text-sm text-muted-foreground'>No predictions yet.</p>
-    )
+    return <p className='panel-body meta'>No predictions yet.</p>
   return (
-    <div className='bg-surface'>
+    <div>
       {query.data.map(prediction => (
-        <div
-          className='grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border p-4 last:border-b-0'
-          key={prediction.user.id}
-        >
-          <div className='min-w-0 truncate font-semibold'>
+        <div className='pick-row' key={prediction.user.id}>
+          <div className='who'>
             {prediction.user.display_name ?? prediction.user.email}
           </div>
-          <div className='flex items-baseline gap-3'>
-            <span className='font-mono text-lg font-semibold tabular-nums'>
+          <m-hstack align='center' gap='sm'>
+            <span className='scoreline'>
               {prediction.home_score}–{prediction.away_score}
             </span>
             {prediction.points !== null ? (
@@ -463,7 +435,7 @@ function GroupPredictionList({
                 </span>
               </span>
             ) : null}
-          </div>
+          </m-hstack>
         </div>
       ))}
     </div>
@@ -486,7 +458,7 @@ function PredictionSkeleton() {
   return (
     <div
       aria-label='Loading predictions'
-      className='mt-4 h-24 animate-pulse border border-border bg-muted motion-reduce:animate-none'
+      className='skeleton short'
       role='status'
     />
   )
@@ -494,10 +466,7 @@ function PredictionSkeleton() {
 
 function PredictionError() {
   return (
-    <p
-      className='mt-4 border border-danger bg-danger-muted p-4 text-sm text-danger'
-      role='alert'
-    >
+    <p className='error-card' role='alert'>
       Predictions are unavailable. Try again shortly.
     </p>
   )
@@ -507,26 +476,22 @@ function FixtureSkeleton() {
   return (
     <div aria-live='polite' role='status'>
       <span className='sr-only'>Loading fixture…</span>
-      <div
-        aria-hidden
-        className='h-72 animate-pulse border border-border bg-muted motion-reduce:animate-none'
-      />
+      <div aria-hidden className='skeleton tall' />
     </div>
   )
 }
 
 function FixtureRouteError({ reset }: { reset: () => void }) {
   return (
-    <main className='mx-auto w-full max-w-4xl px-4 py-14' id='main-content'>
-      <div
-        className='border border-danger bg-danger-muted p-5 text-danger'
-        role='alert'
-      >
-        <h1 className='font-semibold'>Fixture Unavailable</h1>
-        <p className='mt-2 text-sm'>Check your connection and try again.</p>
-        <button className='mt-4' onClick={reset} type='button'>
-          Retry Fixture
-        </button>
+    <main className='page narrow' id='main-content'>
+      <div className='error-card' role='alert'>
+        <m-vstack align='start' gap='sm'>
+          <h1>Fixture Unavailable</h1>
+          <p>Check your connection and try again.</p>
+          <button onClick={reset} type='button'>
+            Retry Fixture
+          </button>
+        </m-vstack>
       </div>
     </main>
   )
@@ -534,18 +499,15 @@ function FixtureRouteError({ reset }: { reset: () => void }) {
 
 function InvalidFixture() {
   return (
-    <main className='mx-auto w-full max-w-4xl px-4 py-14' id='main-content'>
-      <div
-        className='border border-danger bg-danger-muted p-5 text-danger'
-        role='alert'
-      >
-        <h1 className='font-semibold'>Invalid Fixture</h1>
-        <p className='mt-2 text-sm'>
-          Choose a fixture from the upcoming schedule.
-        </p>
-        <Link className='btn mt-4 inline-flex items-center' to='/'>
-          View Upcoming Fixtures
-        </Link>
+    <main className='page narrow' id='main-content'>
+      <div className='error-card' role='alert'>
+        <m-vstack align='start' gap='sm'>
+          <h1>Invalid Fixture</h1>
+          <p>Choose a fixture from the upcoming schedule.</p>
+          <Link className='btn' to='/'>
+            View Upcoming Fixtures
+          </Link>
+        </m-vstack>
       </div>
     </main>
   )
@@ -563,23 +525,20 @@ function Team({
   standing?: StandingEntry | null
 }) {
   return (
-    <div
-      className={`flex min-w-0 items-center gap-3 ${away ? 'flex-row-reverse text-right' : ''}`}
-    >
-      <span className='grid size-10 shrink-0 place-items-center border border-border bg-muted p-1.5 sm:size-12'>
+    <div className={away ? 'matchup-team away' : 'matchup-team'}>
+      <span className='crest large'>
         <img
           alt={`${name} crest`}
-          className='max-h-full max-w-full'
           decoding='async'
           height='48'
           src={teamCrestUrl(id)}
           width='48'
         />
       </span>
-      <div className='min-w-0'>
-        <h2 className='truncate text-sm font-semibold sm:text-lg'>{name}</h2>
+      <div style={{ minWidth: 0 }}>
+        <h2 className='name'>{name}</h2>
         {standing ? (
-          <div className='truncate font-mono text-[.625rem] text-muted-foreground'>
+          <div className='standing'>
             {ordinal(standing.rank)} · {conferenceShort(standing.group)}
           </div>
         ) : null}
