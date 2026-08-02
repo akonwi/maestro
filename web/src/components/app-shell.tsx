@@ -89,7 +89,7 @@ function AuthControls() {
 
   if (!token) {
     return (
-      <Link className='font-semibold' to='/login'>
+      <Link className='signin' to='/login'>
         Sign in
       </Link>
     )
