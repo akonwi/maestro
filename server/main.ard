@@ -7,6 +7,7 @@ use go:net/http
 use go:os
 use go:os/signal
 use go:syscall
+use go:strings
 use maestro/app
 use maestro/config
 use maestro/router
@@ -20,9 +21,17 @@ fn main() {
     err(message) => panic("config error: {message}"),
   }
 
-  let db = match sql::open(cfg.database_url) {
+  let sqlite_url = match strings::Contains(cfg.database_url, "?") {
+    true => "{cfg.database_url}&_pragma=foreign_keys(1)",
+    false => "{cfg.database_url}?_pragma=foreign_keys(1)",
+  }
+  let db = match sql::open(sqlite_url) {
     ok(database) => database,
     err(message) => panic("failed to open database at {cfg.database_url}: {message}"),
+  }
+  match db.exec("PRAGMA foreign_keys = ON;") {
+    ok => (),
+    err(message) => panic("failed to enable SQLite foreign keys: {message}"),
   }
   fmt::Println("database ready at {cfg.database_url}")
 
