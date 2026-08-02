@@ -14,12 +14,49 @@ struct User {
   created_at: Int64,
 }
 
-// Find-or-create by email. Idempotent; safe to call on every verify.
+fn normalize_email(email: Str) Str {
+  strings::ToLower(strings::TrimSpace(email))
+}
+
+// Find-or-create by normalized email. The conflict-safe insert handles
+// concurrent verification and invitation requests for the same address.
 fn get_or_create_by_email(a: app::App, email: Str) User!Str {
-  let existing = try find_by_email(a, email)
+  let normalized = normalize_email(email)
+  let existing = try find_by_email(a, normalized)
   match existing {
     user => Result::ok(user),
-    _ => create(a, email),
+    _ => {
+      let now = time::Now().UnixMilli()
+      let display_name = display_name_for(normalized)
+      try a.db.query(
+        "INSERT INTO users (email, display_name, created_at) VALUES (@email, @display_name, @created_at) ON CONFLICT DO NOTHING",
+      ).run(["email": normalized, "display_name": display_name, "created_at": now])
+      let found = try find_by_email(a, normalized)
+      match found {
+        user => Result::ok(user),
+        _ => Result::err("inserted user vanished for {normalized}"),
+      }
+    },
+  }
+}
+
+fn get_or_create_by_email_tx(tx: sql::Transaction, email: Str) User!Str {
+  let normalized = normalize_email(email)
+  let existing = try find_by_email_tx(tx, normalized)
+  match existing {
+    user => Result::ok(user),
+    _ => {
+      let now = time::Now().UnixMilli()
+      let display_name = display_name_for(normalized)
+      try tx.query(
+        "INSERT INTO users (email, display_name, created_at) VALUES (@email, @display_name, @created_at) ON CONFLICT DO NOTHING",
+      ).run(["email": normalized, "display_name": display_name, "created_at": now])
+      let found = try find_by_email_tx(tx, normalized)
+      match found {
+        user => Result::ok(user),
+        _ => Result::err("inserted user vanished for {normalized}"),
+      }
+    },
   }
 }
 
@@ -31,25 +68,24 @@ fn find_by_id(a: app::App, id: Int) User?!Str {
 }
 
 fn find_by_email(a: app::App, email: Str) User?!Str {
+  let normalized = normalize_email(email)
   let rows = try a.db
-    .query("SELECT id, email, display_name, created_at FROM users WHERE email = @email LIMIT 1")
+    .query("SELECT id, email, display_name, created_at FROM users WHERE lower(trim(email)) = @email LIMIT 1")
+    .all(["email": normalized])
+  first_user(rows)
+}
+
+private fn find_by_email_tx(tx: sql::Transaction, email: Str) User?!Str {
+  let rows = try tx
+    .query("SELECT id, email, display_name, created_at FROM users WHERE lower(trim(email)) = @email LIMIT 1")
     .all(["email": email])
   first_user(rows)
 }
 
-private fn create(a: app::App, email: Str) User!Str {
-  let now = time::Now().UnixMilli()
-  let display_name = match strings::Split(email, "@").at(0) {
+private fn display_name_for(email: Str) Str {
+  match strings::Split(email, "@").at(0) {
     name => name,
     _ => email,
-  }
-  try a.db
-    .query("INSERT INTO users (email, display_name, created_at) VALUES (@email, @display_name, @created_at)")
-    .run(["email": email, "display_name": display_name, "created_at": now])
-  let found = try find_by_email(a, email)
-  match found {
-    user => Result::ok(user),
-    _ => Result::err("inserted user vanished for {email}"),
   }
 }
 

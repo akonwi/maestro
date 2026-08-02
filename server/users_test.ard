@@ -15,6 +15,31 @@ test fn get_or_create_is_idempotent() Void!Str {
   testing::pass()
 }
 
+test fn email_identity_is_trimmed_and_case_insensitive() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let first = try users::get_or_create_by_email(app, "  Ada@Example.COM ")
+  let again = try users::get_or_create_by_email(app, "ada@example.com")
+
+  try testing::assert(first.id == again.id, "normalized variants should return the same user")
+  try testing::assert(first.email == "ada@example.com", "stored email should be normalized")
+  testing::pass()
+}
+
+test fn legacy_mixed_case_email_resolves_to_existing_identity() Void!Str {
+  let app = try test_helpers::build_app()
+  try app.db.query(
+    "INSERT INTO users (email, display_name, created_at) VALUES (@email, @display_name, @created_at)",
+  ).run(["email": "Ada@Example.COM", "display_name": "Ada", "created_at": Int64::from(1)])
+
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let rows = try app.db.query("SELECT id FROM users").all([:])
+
+  try testing::assert(user.email == "Ada@Example.COM", "legacy user should be reused")
+  try testing::assert(rows.size() == 1, "normalization must not duplicate a legacy identity")
+  testing::pass()
+}
+
 test fn different_emails_get_different_ids() Void!Str {
   let app = try test_helpers::build_app()
 
