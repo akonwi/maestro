@@ -11,6 +11,7 @@ use go:net/http
 use go:strconv
 use go:strings
 use go:time
+use sql
 
 struct Group {
   id: Int,
@@ -91,7 +92,7 @@ fn register(router: mut dram::App, a: app::App) {
     let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
     let raw_email = try decode_string_field(req, "email") -> err { res.json(http::StatusBadRequest, ["error": err]) }
-    let address = strings::ToLower(strings::TrimSpace(raw_email))
+    let address = users::normalize_email(raw_email)
     match address.is_empty() or not strings::Contains(address, "@") {
       true => res.json(http::StatusBadRequest, ["error": "enter a valid email address"]),
       false => {
@@ -114,18 +115,18 @@ fn register(router: mut dram::App, a: app::App) {
 
 private fn add_invited_member(a: app::App, group: Group, inviter_id: Int, address: Str) InviteResult!Str {
   let invited = try users::get_or_create_by_email(a, address)
-  let existing = try member_by_id(a, group.id, invited.id)
-  match existing {
-    member => {
-      Result::ok(
-        InviteResult{
-          member: member,
-          member_added: false,
-          invitation_sent: false,
-        },
-      )
-    },
-    _ => add_and_notify_member(a, group, inviter_id, invited, address),
+  let added = try add_member_if_new(a, group.id, invited.id)
+  let found = try member_by_id(a, group.id, invited.id)
+  let member = try found -> _ { Result::err("invited member vanished") }
+  match added {
+    true => add_and_notify_member(a, group, inviter_id, member, address),
+    false => Result::ok(
+      InviteResult{
+        member: member,
+        member_added: false,
+        invitation_sent: false,
+      },
+    ),
   }
 }
 
@@ -133,57 +134,83 @@ private fn add_and_notify_member(
   a: app::App,
   group: Group,
   inviter_id: Int,
-  invited: users::User,
+  member: Member,
   address: Str,
 ) InviteResult!Str {
-  try add_member(a, group.id, invited.id)
-  let inviter = try users::find_by_id(a, inviter_id)
-  let inviter_name = match inviter {
-    user => user.display_name.or(user.email),
-    _ => "A group member",
-  }
-  let token = try magic_links::create(a, address)
-  let link = "{a.config.server_base_url}/auth/verify?token={token}"
-  let text = "{inviter_name} added you to {group.name} on Maestro.\n\nSign in to join the predictions:\n{link}\n\nThis link expires soon and can only be used once."
-  let safe_group = html::EscapeString(group.name)
-  let safe_inviter = html::EscapeString(inviter_name)
-  let body = "<p><strong>{safe_inviter}</strong> added you to <strong>{safe_group}</strong> on Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
-  match email::send(a.config, address, "You've been added to {group.name} on Maestro", text, body) {
-    ok => {
-      let joined = try member_by_id(a, group.id, invited.id)
-      match joined {
-        member => {
-          Result::ok(
-            InviteResult{
-              member: member,
-              member_added: true,
-              invitation_sent: a.config.email_enabled,
+  let invitation_sent = send_invitation(a, group, inviter_id, address)
+  Result::ok(
+    InviteResult{
+      member: member,
+      member_added: true,
+      invitation_sent: invitation_sent,
+    },
+  )
+}
+
+// Membership is authoritative. Notification failures are logged but never
+// remove the member or make a successful membership write look unsuccessful.
+private fn send_invitation(a: app::App, group: Group, inviter_id: Int, address: Str) Bool {
+  match users::find_by_id(a, inviter_id) {
+    ok(inviter) => {
+      let inviter_name = match inviter {
+        user => user.display_name.or(user.email),
+        _ => "A group member",
+      }
+      match magic_links::create(a, address) {
+        ok(token) => {
+          let link = "{a.config.server_base_url}/auth/verify?token={token}"
+          let text = "{inviter_name} added you to {group.name} on Maestro.\n\nSign in to join the predictions:\n{link}\n\nThis link expires soon and can only be used once."
+          let safe_group = html::EscapeString(group.name)
+          let safe_inviter = html::EscapeString(inviter_name)
+          let body = "<p><strong>{safe_inviter}</strong> added you to <strong>{safe_group}</strong> on Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
+          match email::send(a.config, address, "You've been added to {group.name} on Maestro", text, body) {
+            ok => a.config.email_enabled,
+            err(message) => {
+              fmt::Println("group invitation email failed for {address}: {message}")
+              false
             },
-          )
+          }
         },
-        _ => Result::err("invited member vanished"),
+        err(message) => {
+          fmt::Println("group invitation link creation failed for {address}: {message}")
+          false
+        },
       }
     },
     err(message) => {
-      fmt::Println("group invitation email failed for {address}: {message}")
-      try remove_member(a, group.id, invited.id)
-      Result::err("invitation email could not be sent; membership was not added")
+      fmt::Println("group invitation inviter lookup failed for user {inviter_id}: {message}")
+      false
     },
   }
 }
 
 fn create(a: app::App, owner_id: Int, name: Str) Group!Str {
+  let tx = try a.db.begin()
+  match create_tx(tx, owner_id, name) {
+    ok(group) => {
+      match tx.commit() {
+        ok => Result::ok(group),
+        err(message) => Result::err("committing group creation: {message}"),
+      }
+    },
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
+  }
+}
+
+private fn create_tx(tx: sql::Transaction, owner_id: Int, name: Str) Group!Str {
   let now = time::Now().UnixMilli()
-  try a.db.query(
-    "INSERT INTO groups (name, owner_id, created_at) VALUES (@name, @owner_id, @created_at)",
-  ).run(["name": name, "owner_id": owner_id, "created_at": now])
-  let rows = try a.db.query(
-    "SELECT id FROM groups WHERE owner_id = @owner_id ORDER BY id DESC LIMIT 1",
-  ).all(["owner_id": owner_id])
-  let row = rows.at(0).expect("inserted group has id")
+  let rows = try tx.query(
+    "INSERT INTO groups (name, owner_id, created_at) VALUES (@name, @owner_id, @created_at) RETURNING id",
+  ).all(["name": name, "owner_id": owner_id, "created_at": now])
+  let row = try rows.at(0) -> _ { Result::err("inserted group did not return an id") }
   let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
-  try add_member(a, id, owner_id)
-  let found = try find_for_member(a, id, owner_id)
+  try add_member_tx(tx, id, owner_id)
+  let found = try find_for_member_tx(tx, id, owner_id)
   match found {
     group => Result::ok(group),
     _ => Result::err("inserted group vanished"),
@@ -191,16 +218,23 @@ fn create(a: app::App, owner_id: Int, name: Str) Group!Str {
 }
 
 fn add_member(a: app::App, group_id: Int, user_id: Int) Void!Str {
-  let now = time::Now().UnixMilli()
-  a.db.query(
-    "INSERT INTO group_members (group_id, user_id, joined_at) VALUES (@group_id, @user_id, @joined_at) ON CONFLICT(group_id, user_id) DO NOTHING",
-  ).run(["group_id": group_id, "user_id": user_id, "joined_at": now])
+  try add_member_if_new(a, group_id, user_id)
+  Result::ok(())
 }
 
-private fn remove_member(a: app::App, group_id: Int, user_id: Int) Void!Str {
-  a.db.query(
-    "DELETE FROM group_members WHERE group_id = @group_id AND user_id = @user_id",
-  ).run(["group_id": group_id, "user_id": user_id])
+private fn add_member_if_new(a: app::App, group_id: Int, user_id: Int) Bool!Str {
+  let now = time::Now().UnixMilli()
+  let rows = try a.db.query(
+    "INSERT INTO group_members (group_id, user_id, joined_at) VALUES (@group_id, @user_id, @joined_at) ON CONFLICT(group_id, user_id) DO NOTHING RETURNING user_id",
+  ).all(["group_id": group_id, "user_id": user_id, "joined_at": now])
+  Result::ok(rows.size() == 1)
+}
+
+private fn add_member_tx(tx: sql::Transaction, group_id: Int, user_id: Int) Void!Str {
+  let now = time::Now().UnixMilli()
+  tx.query(
+    "INSERT INTO group_members (group_id, user_id, joined_at) VALUES (@group_id, @user_id, @joined_at)",
+  ).run(["group_id": group_id, "user_id": user_id, "joined_at": now])
 }
 
 fn list_for_user(a: app::App, user_id: Int) [Group]!Str {
@@ -212,6 +246,16 @@ fn list_for_user(a: app::App, user_id: Int) [Group]!Str {
 
 fn find_for_member(a: app::App, group_id: Int, user_id: Int) Group?!Str {
   let rows = try a.db.query(
+    "SELECT g.id, g.name, g.owner_id, g.created_at, COUNT(all_members.user_id) AS member_count FROM groups g JOIN group_members mine ON mine.group_id = g.id AND mine.user_id = @user_id LEFT JOIN group_members all_members ON all_members.group_id = g.id WHERE g.id = @group_id GROUP BY g.id LIMIT 1",
+  ).all(["group_id": group_id, "user_id": user_id])
+  match rows.at(0) {
+    row => Result::ok(Maybe::new(try decode_group(row))),
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+private fn find_for_member_tx(tx: sql::Transaction, group_id: Int, user_id: Int) Group?!Str {
+  let rows = try tx.query(
     "SELECT g.id, g.name, g.owner_id, g.created_at, COUNT(all_members.user_id) AS member_count FROM groups g JOIN group_members mine ON mine.group_id = g.id AND mine.user_id = @user_id LEFT JOIN group_members all_members ON all_members.group_id = g.id WHERE g.id = @group_id GROUP BY g.id LIMIT 1",
   ).all(["group_id": group_id, "user_id": user_id])
   match rows.at(0) {
