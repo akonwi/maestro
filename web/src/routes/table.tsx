@@ -107,7 +107,7 @@ function ConferenceTable({
       className='card'
     >
       <table className='standings'>
-        <caption className='sr-only'>
+        <caption data-visually-hidden>
           {conferenceLabel(name)} Conference standings
         </caption>
         <colgroup>
@@ -243,7 +243,7 @@ function Form({ value }: { value: string }) {
 function TableSkeleton() {
   return (
     <div aria-live='polite' role='status'>
-      <span className='sr-only'>Loading standings…</span>
+      <span data-visually-hidden>Loading standings…</span>
       <div aria-hidden className='skeleton tall' />
     </div>
   )

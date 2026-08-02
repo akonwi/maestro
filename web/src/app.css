@@ -4,25 +4,6 @@
    composition belongs to mica primitives (m-vstack/m-hstack) in markup;
    these classes cover repeated app patterns and bespoke elements. */
 
-/* --- utilities ---------------------------------------------------- */
-
-/* Visually hidden but exposed to assistive tech. Tailwind supplied this
-   before the mica migration; mica has no equivalent yet. Used for
-   loading announcements, table captions, and headings that the visual
-   design conveys structurally. */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border-width: 0;
-}
-
 /* --- page scaffold ----------------------------------------------- */
 .page {
   width: 100%;
@@ -917,20 +898,21 @@
 }
 
 /* --- skip link + header chrome -------------------------------------- */
-.skip-link {
+
+/* Hiding is mica's [data-visually-hidden="focusable"]; on focus that rule
+   stops matching and these styles take over. Everything lives under
+   :focus deliberately — app.css is unlayered, so a base-state rule here
+   would outrank mica's layered hidden state and break the hiding. */
+.skip-link:focus {
   position: fixed;
   top: 0.5rem;
   left: 0.5rem;
   z-index: 50;
-  translate: 0 -200%;
   border: 1px solid var(--color-text);
   background: var(--color-surface);
   padding: 0.625rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 600;
-}
-.skip-link:focus {
-  translate: 0;
 }
 
 .app-header {

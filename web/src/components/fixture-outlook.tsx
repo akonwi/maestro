@@ -29,7 +29,7 @@ export function FixtureOutlook({
   if (query.isPending) {
     return (
       <div aria-live='polite' role='status'>
-        <span className='sr-only'>Loading match outlook…</span>
+        <span data-visually-hidden>Loading match outlook…</span>
         <div aria-hidden className='skeleton' />
       </div>
     )
@@ -205,7 +205,7 @@ function NumbersPanel({ outlook }: { outlook: Outlook }) {
 
   return (
     <table className='compare-table'>
-      <caption className='sr-only'>
+      <caption data-visually-hidden>
         {home.name} versus {away.name} by the numbers, including goals scored
         and conceded per game
       </caption>

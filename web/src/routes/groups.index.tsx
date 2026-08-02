@@ -126,7 +126,7 @@ function PeriodControls({
   return (
     <div className='period-bar'>
       <fieldset>
-        <legend className='sr-only'>Leaderboard period</legend>
+        <legend data-visually-hidden>Leaderboard period</legend>
         <m-segmented>
           <label>
             <input
@@ -221,7 +221,7 @@ function CreateGroupForm() {
 function GroupsSkeleton() {
   return (
     <div aria-live='polite' className='two-col' role='status'>
-      <span className='sr-only'>Loading groups…</span>
+      <span data-visually-hidden>Loading groups…</span>
       {[0, 1].map(card => (
         <div aria-hidden className='skeleton tall' key={card} />
       ))}

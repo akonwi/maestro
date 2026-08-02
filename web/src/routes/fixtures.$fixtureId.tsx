@@ -96,7 +96,7 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
     <>
       <article className='card'>
         <header className='matchup-head'>
-          <h1 className='sr-only'>
+          <h1 data-visually-hidden>
             {fixture.home_team.name} vs {fixture.away_team.name}
           </h1>
           {showStatus ? (
@@ -220,7 +220,7 @@ function PredictionArea({
       aria-labelledby='predictions-heading'
       className='prediction-layout'
     >
-      <h2 className='sr-only' id='predictions-heading'>
+      <h2 data-visually-hidden id='predictions-heading'>
         Predictions
       </h2>
       <div>
@@ -430,7 +430,7 @@ function GroupPredictionList({
                 >
                   {prediction.points > 0 ? `+${prediction.points}` : '0'}
                 </m-badge>
-                <span className='sr-only'>
+                <span data-visually-hidden>
                   {pointDescription(prediction.points)}
                 </span>
               </span>
@@ -475,7 +475,7 @@ function PredictionError() {
 function FixtureSkeleton() {
   return (
     <div aria-live='polite' role='status'>
-      <span className='sr-only'>Loading fixture…</span>
+      <span data-visually-hidden>Loading fixture…</span>
       <div aria-hidden className='skeleton tall' />
     </div>
   )

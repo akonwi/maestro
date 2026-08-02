@@ -7,7 +7,11 @@ import { clearSessionToken, useSessionToken } from '@/lib/session'
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className='app-root'>
-      <a className='skip-link' href='#main-content'>
+      <a
+        className='skip-link'
+        data-visually-hidden='focusable'
+        href='#main-content'
+      >
         Skip to main content
       </a>
       <header className='app-header'>

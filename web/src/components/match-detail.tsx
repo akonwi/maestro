@@ -20,7 +20,7 @@ export function MatchDetailPanel({
   if (query.isPending) {
     return (
       <div aria-live='polite' role='status'>
-        <span className='sr-only'>Loading match detail…</span>
+        <span data-visually-hidden>Loading match detail…</span>
         <div aria-hidden className='skeleton' />
       </div>
     )

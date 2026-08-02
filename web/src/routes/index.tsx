@@ -150,7 +150,7 @@ function FixtureGroups({ fixtures }: { fixtures: Fixture[] }) {
 function FixtureSkeleton() {
   return (
     <div aria-live='polite' role='status'>
-      <span className='sr-only'>Loading fixtures…</span>
+      <span data-visually-hidden>Loading fixtures…</span>
       <div aria-hidden className='skeleton' />
     </div>
   )

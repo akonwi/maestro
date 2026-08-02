@@ -147,7 +147,7 @@ function InviteForm({ groupId }: { groupId: number }) {
 function GroupSkeleton() {
   return (
     <div aria-live='polite' role='status'>
-      <span className='sr-only'>Loading group…</span>
+      <span data-visually-hidden>Loading group…</span>
       <div aria-hidden className='skeleton tall' />
     </div>
   )
