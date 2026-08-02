@@ -11,6 +11,7 @@ use maestro/sessions
 use maestro/users
 use go:net/http
 use go:strings
+use sql
 
 fn set_error(res: mut dram::Response, err: Str) {
   res.json(http::StatusBadRequest, ["error": err])
@@ -21,8 +22,9 @@ fn register(router: mut dram::App, a: app::App) {
   router.post(
     "/auth/request",
     fn(req: dram::Request, res: mut dram::Response) {
-      let addr = try decode_field(req, "email") -> err { set_error(res, err) }
-      match send_magic_link(a, addr) {
+      let raw_address = try decode_field(req, "email") -> err { set_error(res, err) }
+      let address = users::normalize_email(raw_address)
+      match send_magic_link(a, address) {
         ok => { res.status = 204 },
         err(message) => set_error(res, message),
       }
@@ -117,13 +119,30 @@ private fn send_magic_link(a: app::App, address: Str) Void!Str {
   }
 }
 
-private fn verify(a: app::App, token: Str) [Str: Any]!Str {
-  let addr = try magic_links::consume(a, token)
-  let user = try users::get_or_create_by_email(a, addr)
-  let session = try sessions::mint(a, user.id)
+fn verify(a: app::App, token: Str) [Str: Any]!Str {
+  let tx = try a.db.begin()
+  match verify_tx(a, tx, token) {
+    ok(payload) => {
+      match tx.commit() {
+        ok => Result::ok(payload),
+        err(message) => Result::err("committing verification: {message}"),
+      }
+    },
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
+  }
+}
+
+private fn verify_tx(a: app::App, tx: sql::Transaction, token: Str) [Str: Any]!Str {
+  let addr = try magic_links::consume_tx(tx, token)
+  let user = try users::get_or_create_by_email_tx(tx, addr)
+  let session = try sessions::mint_tx(tx, a, user.id)
 
   let user_payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
-
   let payload: [Str: Any] = ["session_token": session.token, "user": user_payload]
 
   Result::ok(payload)

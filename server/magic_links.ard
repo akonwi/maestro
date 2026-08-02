@@ -6,13 +6,6 @@ use sql
 
 // A one-shot email->token record used to bootstrap sessions.
 
-struct MagicLink {
-  token: Str,
-  email: Str,
-  expires_at: Int64,
-  consumed_at: Int64?,
-}
-
 // Mint a new magic link for `email`. Returns the token to embed in the
 // verification URL.
 fn create(a: app::App, email: Str) Str!Str {
@@ -27,74 +20,59 @@ fn create(a: app::App, email: Str) Str!Str {
   Result::ok(token)
 }
 
-// Single-use redemption. Returns the email the link was minted for, or an
-// error if the token is unknown, expired, or already consumed.
+// Single-use redemption. The conditional update is the claim: even concurrent
+// requests cannot both receive the email for one token.
 fn consume(a: app::App, token: Str) Str!Str {
-  let found = try find(a, token)
-  match found {
-    link => {
-      try guard_unused(link)
-      try guard_fresh(link)
-      let now = time::Now().UnixMilli()
-      try a.db
-        .query("UPDATE magic_links SET consumed_at = @now WHERE token = @token AND consumed_at IS NULL")
-        .run(["now": now, "token": token])
-      Result::ok(link.email)
+  let tx = try a.db.begin()
+  match consume_tx(tx, token) {
+    ok(email) => {
+      match tx.commit() {
+        ok => Result::ok(email),
+        err(message) => Result::err("committing magic link consumption: {message}"),
+      }
     },
-    _ => Result::err("invalid or unknown magic link"),
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
   }
 }
 
-private fn guard_unused(link: MagicLink) Void!Str {
-  match link.consumed_at.is_some() {
-    true => Result::err("magic link already used"),
-    false => Result::ok(()),
-  }
-}
-
-private fn guard_fresh(link: MagicLink) Void!Str {
+fn consume_tx(tx: sql::Transaction, token: Str) Str!Str {
   let now = time::Now().UnixMilli()
-  match link.expires_at <= now {
-    true => Result::err("magic link expired"),
-    false => Result::ok(()),
+  let rows = try tx.query(
+    "UPDATE magic_links SET consumed_at = @now WHERE token = @token AND consumed_at IS NULL AND expires_at > @now RETURNING email",
+  ).all(["now": now, "token": token])
+  match rows.at(0) {
+    row => decode::run(row, decode::field("email", decode::string)).map_err(describe),
+    _ => describe_unclaimable(tx, token, now),
   }
 }
 
-private fn find(a: app::App, token: Str) MagicLink?!Str {
-  let rows = try a.db
-    .query("SELECT token, email, expires_at, consumed_at FROM magic_links WHERE token = @token LIMIT 1")
-    .all(["token": token])
+private fn describe_unclaimable(tx: sql::Transaction, token: Str, now: Int64) Str!Str {
+  let rows = try tx.query(
+    "SELECT expires_at, consumed_at FROM magic_links WHERE token = @token LIMIT 1",
+  ).all(["token": token])
   match rows.at(0) {
     row => {
-      let link = try decode_link(row)
-      Result::ok(Maybe::new(link))
+      let expires_at = try decode::run(row, decode::field("expires_at", decode::int)).map_err(describe)
+      let consumed_at = try decode::run(
+        row,
+        decode::field("consumed_at", decode::nullable(decode::int)),
+      ).map_err(describe)
+      match consumed_at.is_some() {
+        true => Result::err("magic link already used"),
+        false => {
+          match Int64::from(expires_at) <= now {
+            true => Result::err("magic link expired"),
+            false => Result::err("magic link could not be consumed"),
+          }
+        },
+      }
     },
-    _ => Result::ok(Maybe::new()),
-  }
-}
-
-private fn decode_link(row: Any) MagicLink!Str {
-  let token = try decode::run(row, decode::field("token", decode::string)).map_err(describe)
-  let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
-  let expires_at_int = try decode::run(row, decode::field("expires_at", decode::int)).map_err(describe)
-  let consumed_at = try decode::run(
-    row,
-    decode::field("consumed_at", decode::nullable(decode::int)),
-  ).map_err(describe)
-  Result::ok(
-    MagicLink{
-      token: token,
-      email: email,
-      expires_at: Int64::from(expires_at_int),
-      consumed_at: nullable_int64(consumed_at),
-    },
-  )
-}
-
-private fn nullable_int64(v: Int?) Int64? {
-  match v {
-    x => Maybe::new(Int64::from(x)),
-    _ => Maybe::new(),
+    _ => Result::err("invalid or unknown magic link"),
   }
 }
 

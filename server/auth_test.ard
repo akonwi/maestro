@@ -1,0 +1,25 @@
+use ard/testing
+
+use maestro/auth
+use maestro/magic_links
+use maestro/test_helpers
+
+// Verification is one transaction: a downstream session failure must not burn
+// the one-shot magic link.
+test fn failed_session_insert_rolls_back_magic_link_consumption() Void!Str {
+  let app = try test_helpers::build_app()
+  let token = try magic_links::create(app, "ada@example.com")
+  try app.db.exec(
+    "CREATE TRIGGER fail_session_insert BEFORE INSERT ON sessions BEGIN SELECT RAISE(FAIL, 'forced session failure'); END;",
+  )
+
+  let failed = match auth::verify(app, token) {
+    ok(_) => false,
+    err(_) => true,
+  }
+  try testing::assert(failed, "verification should fail when session insertion fails")
+
+  try app.db.exec("DROP TRIGGER fail_session_insert;")
+  try auth::verify(app, token)
+  testing::pass()
+}
