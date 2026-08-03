@@ -1,0 +1,35 @@
+use ard/testing
+
+use maestro/magic_links
+use maestro/maintenance_worker
+use maestro/sessions
+use maestro/test_helpers
+use maestro/users
+
+test fn cleanup_removes_stale_rows_and_keeps_current_rows() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let expired_session = try sessions::mint(app, user.id)
+  let active_session = try sessions::mint(app, user.id)
+  let expired_link = try magic_links::create(app, "expired@example.com")
+  let old_consumed_link = try magic_links::create(app, "consumed@example.com")
+  let active_link = try magic_links::create(app, "active@example.com")
+  let now = Int64::from(100000000)
+
+  try app.db.query("UPDATE sessions SET expires_at = 0 WHERE token = @token").run(["token": expired_session.token])
+  try app.db.query("UPDATE magic_links SET expires_at = 0 WHERE token = @token").run(["token": expired_link])
+  try app.db.query("UPDATE magic_links SET consumed_at = 1 WHERE token = @token").run(["token": old_consumed_link])
+
+  maintenance_worker::run_once_at(app, now)
+
+  let session_rows = try app.db.query("SELECT token FROM sessions").all([:])
+  try testing::assert(session_rows.size() == 1, "cleanup leaves only the active session")
+  let found_active_session = try sessions::find_by_token(app, active_session.token)
+  try testing::assert(found_active_session.is_some(), "active session remains findable")
+
+  let link_rows = try app.db.query("SELECT token FROM magic_links").all([:])
+  try testing::assert(link_rows.size() == 1, "cleanup leaves only the active magic link")
+  let active_rows = try app.db.query("SELECT token FROM magic_links WHERE token = @token").all(["token": active_link])
+  try testing::assert(active_rows.size() == 1, "active magic link remains")
+  testing::pass()
+}

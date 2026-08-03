@@ -23,7 +23,10 @@ fn register(router: mut dram::App, a: app::App) {
                 _ => res.json(http::StatusNotFound, ["error": "no outlook available for this fixture"]),
               }
             },
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
+            err(message) => {
+              fmt::Println("fixture outlook failed for fixture {id}: {message}")
+              res.json(http::StatusBadGateway, ["error": "fixture analysis is temporarily unavailable"])
+            },
           }
         },
         err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
@@ -37,7 +40,10 @@ fn register(router: mut dram::App, a: app::App) {
         ok(id) => {
           match match_json(a, id) {
             ok(payload) => res.json(http::StatusOK, payload),
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
+            err(message) => {
+              fmt::Println("fixture match analysis failed for fixture {id}: {message}")
+              res.json(http::StatusBadGateway, ["error": "fixture analysis is temporarily unavailable"])
+            },
           }
         },
         err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),

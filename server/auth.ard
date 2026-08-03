@@ -26,7 +26,10 @@ fn register(router: mut dram::App, a: app::App) {
       let address = users::normalize_email(raw_address)
       match send_magic_link(a, address) {
         ok => { res.status = 204 },
-        err(message) => set_error(res, message),
+        err(message) => {
+          fmt::Println("magic-link request failed for {address}: {message}")
+          res.json(http::StatusInternalServerError, ["error": "could not request sign-in link"])
+        },
       }
     },
   )
@@ -51,7 +54,15 @@ fn register(router: mut dram::App, a: app::App) {
       let token = try decode_field(req, "token") -> err { set_error(res, err) }
       match verify(a, token) {
         ok(payload) => res.json(http::StatusOK, payload),
-        err(message) => set_error(res, message),
+        err(message) => {
+          match is_magic_link_error(message) {
+            true => set_error(res, "sign-in link is invalid or expired"),
+            false => {
+              fmt::Println("auth verification failed: {message}")
+              res.json(http::StatusInternalServerError, ["error": "could not verify sign-in link"])
+            },
+          }
+        },
       }
     },
   )
@@ -65,7 +76,8 @@ fn register(router: mut dram::App, a: app::App) {
           match sessions::delete(a, token) {
             ok => { res.status = 204 },
             err(message) => {
-              res.json(http::StatusInternalServerError, ["error": "could not delete session: {message}"])
+              fmt::Println("session deletion failed during logout: {message}")
+              res.json(http::StatusInternalServerError, ["error": "could not log out"])
             },
           }
         },
@@ -92,7 +104,8 @@ fn register(router: mut dram::App, a: app::App) {
               }
             },
             err(message) => {
-              res.json(http::StatusInternalServerError, ["error": "could not load current user: {message}"])
+              fmt::Println("current user lookup failed for user {user_id}: {message}")
+              res.json(http::StatusInternalServerError, ["error": "could not load current user"])
             },
           }
         },
@@ -100,6 +113,10 @@ fn register(router: mut dram::App, a: app::App) {
       }
     },
   )
+}
+
+private fn is_magic_link_error(message: Str) Bool {
+  message == "magic link already used" or message == "magic link expired" or message == "invalid or unknown magic link"
 }
 
 // We deliberately never leak whether the email is known.

@@ -1,6 +1,5 @@
 use ard/async
 
-use go:context
 use go:fmt
 use go:maestro/ffi
 use go:net/http
@@ -8,11 +7,12 @@ use go:os
 use go:os/signal
 use go:syscall
 use go:strings
+use go:time
 use maestro/app
 use maestro/config
+use maestro/maintenance_worker
 use maestro/router
 use maestro/scoring_worker
-use maestro/sessions
 use sql
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
   fmt::Println("database ready at {cfg.database_url}")
 
   let application = app::App{db: db, config: cfg, cache: ffi::NewCache()}
-  sessions::start_cleanup(application)
+  let maintenance = maintenance_worker::start(application)
   let scoring = scoring_worker::start(application)
   let server = mut http::Server{Addr: cfg.listen_addr, Handler: router::build(application)}
 
@@ -62,10 +62,19 @@ fn main() {
   interrupts.recv()
 
   fmt::Println("shutting down")
-  match server.Shutdown(context::Background()) {
+  maintenance_worker::request_stop(maintenance)
+  scoring_worker::request_stop(scoring)
+  match ffi::ShutdownServer(server, 10 * time::Second) {
     ok => (),
     err(message) => fmt::Println("HTTP shutdown failed: {message}"),
   }
-  scoring_worker::shutdown(scoring)
+  match maintenance_worker::await_shutdown(maintenance, 5 * time::Second) {
+    true => (),
+    false => fmt::Println("maintenance worker shutdown timed out"),
+  }
+  match scoring_worker::await_shutdown(scoring, 5 * time::Second) {
+    true => (),
+    false => fmt::Println("scoring worker shutdown timed out"),
+  }
   fmt::Println("goodbye")
 }

@@ -62,7 +62,7 @@ test fn delete_expired_removes_only_expired_sessions() Void!Str {
   try app.db
     .query("UPDATE sessions SET expires_at = 0 WHERE token = @token")
     .run(["token": expired.token])
-  try sessions::delete_expired(app)
+  try sessions::delete_expired_at(app, Int64::from(1))
 
   let rows = try app.db.query("SELECT token FROM sessions").all([:])
   try testing::assert(rows.size() == 1, "cleanup leaves only the active session")

@@ -193,8 +193,8 @@ describe("POST /auth/verify", () => {
 
     const res = await harness.api("POST", "/auth/verify", { body: { token } });
     expect(res.status).toBe(400);
-    expect(res.json).toMatchObject({
-      error: expect.stringContaining("already used"),
+    expect(res.json).toEqual({
+      error: "sign-in link is invalid or expired",
     });
   });
 
@@ -203,8 +203,8 @@ describe("POST /auth/verify", () => {
       body: { token: "not-a-token" },
     });
     expect(res.status).toBe(400);
-    expect(res.json).toMatchObject({
-      error: expect.stringContaining("invalid or unknown"),
+    expect(res.json).toEqual({
+      error: "sign-in link is invalid or expired",
     });
   });
 

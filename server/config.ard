@@ -4,6 +4,8 @@ use go:strconv
 // All configuration comes from environment variables. Read once at startup;
 // required values fail the process before any HTTP surface is up.
 
+let MAX_TTL_SECONDS = 315360000
+
 struct Config {
   database_url: Str,
   listen_addr: Str,
@@ -21,14 +23,14 @@ struct Config {
 fn load() Config!Str {
   let database_url = getenv_or("DATABASE_URL", "maestro.db")
   let port = getenv_or("PORT", "8080")
-  let email_enabled = parse_bool_env("EMAIL_ENABLED", false)
+  let email_enabled = try parse_bool("EMAIL_ENABLED", os::Getenv("EMAIL_ENABLED"), false)
   let cloudflare_account_id = try require_when(email_enabled, "CLOUDFLARE_ACCOUNT_ID")
   let cloudflare_email_api_token = try require_when(email_enabled, "CLOUDFLARE_EMAIL_API_TOKEN")
   let email_from = try require_when(email_enabled, "EMAIL_FROM")
   let server_base_url = getenv_or("SERVER_BASE_URL", "http://localhost:{port}")
   let app_base_url = try require("APP_BASE_URL")
-  let magic_link_ttl_secs = try parse_int_env("MAGIC_LINK_TTL_SECONDS", 900)
-  let session_ttl_secs = try parse_int_env("SESSION_TTL_SECONDS", 2592000)
+  let magic_link_ttl_secs = try parse_ttl("MAGIC_LINK_TTL_SECONDS", os::Getenv("MAGIC_LINK_TTL_SECONDS"), 900)
+  let session_ttl_secs = try parse_ttl("SESSION_TTL_SECONDS", os::Getenv("SESSION_TTL_SECONDS"), 2592000)
   let api_football_key = try require("API_FOOTBALL_KEY")
 
   Result::ok(
@@ -74,31 +76,42 @@ private fn require_when(needed: Bool, name: Str) Str!Str {
 
 // Parses "true"/"1"/"yes" as true; "false"/"0"/"no" as false; empty as
 // the fallback. Any other value is an error.
-private fn parse_bool_env(name: Str, fallback: Bool) Bool {
-  let raw = os::Getenv(name)
+fn parse_bool(name: Str, raw: Str, fallback: Bool) Bool!Str {
   match raw.is_empty() {
-    true => fallback,
+    true => Result::ok(fallback),
     false => {
       match raw {
-        "true" => true,
-        "1" => true,
-        "yes" => true,
-        "false" => false,
-        "0" => false,
-        "no" => false,
-        _ => fallback,
+        "true" => Result::ok(true),
+        "1" => Result::ok(true),
+        "yes" => Result::ok(true),
+        "false" => Result::ok(false),
+        "0" => Result::ok(false),
+        "no" => Result::ok(false),
+        _ => Result::err("{name} must be one of true, false, 1, 0, yes, or no"),
       }
     },
   }
 }
 
-private fn parse_int_env(name: Str, fallback: Int) Int!Str {
-  let raw = os::Getenv(name)
+fn parse_ttl(name: Str, raw: Str, fallback: Int) Int!Str {
+  let value = try parse_positive_int(name, raw, fallback)
+  match value <= MAX_TTL_SECONDS {
+    true => Result::ok(value),
+    false => Result::err("{name} must not exceed {MAX_TTL_SECONDS} seconds"),
+  }
+}
+
+fn parse_positive_int(name: Str, raw: Str, fallback: Int) Int!Str {
   match raw.is_empty() {
     true => Result::ok(fallback),
     false => {
       match strconv::Atoi(raw) {
-        ok(value) => Result::ok(value),
+        ok(value) => {
+          match value > 0 {
+            true => Result::ok(value),
+            false => Result::err("{name} must be greater than zero"),
+          }
+        },
         err(message) => Result::err("{name} must be an integer: {message}"),
       }
     },

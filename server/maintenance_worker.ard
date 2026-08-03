@@ -1,0 +1,61 @@
+use ard/async
+
+use go:fmt
+use go:time
+use maestro/app
+use maestro/magic_links
+use maestro/sessions
+
+let CLEANUP_INTERVAL = time::Hour
+let CONSUMED_LINK_RETENTION_MS = Int64::from(24 * 60 * 60 * 1000)
+
+struct Worker {
+  stop: Sender<Bool>,
+  done: Receiver<Bool>,
+}
+
+fn start(a: app::App) Worker {
+  let stop = Chan::new<Bool>(1)
+  let done = Chan::new<Bool>()
+  async::start(fn() { run(a, stop.receiver(), done.sender()) })
+  Worker{stop: stop.sender(), done: done.receiver()}
+}
+
+fn request_stop(worker: Worker) {
+  worker.stop.send(true)
+}
+
+fn await_shutdown(worker: Worker, timeout: time::Duration) Bool {
+  mut stopped = false
+  select {
+    worker.done.recv() => { stopped = true },
+    time::After(timeout).recv() => (),
+  }
+  stopped
+}
+
+private fn run(a: app::App, stop: Receiver<Bool>, done: Sender<Bool>) {
+  fmt::Println("maintenance worker started")
+  mut running = true
+  while running {
+    run_once_at(a, time::Now().UnixMilli())
+    select {
+      stop.recv() => { running = false },
+      time::After(CLEANUP_INTERVAL).recv() => (),
+    }
+  }
+  fmt::Println("maintenance worker stopped")
+  done.send(true)
+}
+
+fn run_once_at(a: app::App, now: Int64) {
+  match sessions::delete_expired_at(a, now) {
+    ok => (),
+    err(message) => fmt::Println("expired session cleanup failed: {message}"),
+  }
+  let consumed_before = now - CONSUMED_LINK_RETENTION_MS
+  match magic_links::delete_stale_at(a, now, consumed_before) {
+    ok => (),
+    err(message) => fmt::Println("stale magic-link cleanup failed: {message}"),
+  }
+}

@@ -1,4 +1,5 @@
 use dram
+use go:fmt
 use maestro/api_football
 use maestro/app
 use maestro/competitions
@@ -24,7 +25,10 @@ fn register(router: mut dram::App, a: app::App) {
       }
       match standings_payload(a, competition_id) {
         ok(payload) => res.json(http::StatusOK, payload),
-        err(message) => res.json(http::StatusBadGateway, ["error": message]),
+        err(message) => {
+          fmt::Println("standings request failed: {message}")
+          res.json(http::StatusBadGateway, ["error": "standings are temporarily unavailable"])
+        },
       }
     },
   )

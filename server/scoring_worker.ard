@@ -25,15 +25,23 @@ enum FixtureAction {
 }
 
 fn start(a: app::App) Worker {
-  let stop = Chan::new<Bool>()
+  let stop = Chan::new<Bool>(1)
   let done = Chan::new<Bool>()
   async::start(fn() { run(a, stop.receiver(), done.sender()) })
   Worker{stop: stop.sender(), done: done.receiver()}
 }
 
-fn shutdown(worker: Worker) {
+fn request_stop(worker: Worker) {
   worker.stop.send(true)
-  let _ = worker.done.recv()
+}
+
+fn await_shutdown(worker: Worker, timeout: time::Duration) Bool {
+  mut stopped = false
+  select {
+    worker.done.recv() => { stopped = true },
+    time::After(timeout).recv() => (),
+  }
+  stopped
 }
 
 private fn run(a: app::App, stop: Receiver<Bool>, done: Sender<Bool>) {

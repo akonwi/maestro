@@ -1,4 +1,5 @@
 use dram
+use go:fmt
 use maestro/api_football
 use maestro/app
 use maestro/competitions
@@ -14,6 +15,11 @@ use go:time
 struct Fixture {
   competition_id: Int,
   fixture: api_football::Fixture,
+}
+
+private fn set_provider_error(res: mut dram::Response, message: Str) {
+  fmt::Println("fixture request failed: {message}")
+  res.json(http::StatusBadGateway, ["error": "fixture data is temporarily unavailable"])
 }
 
 // The "current round" (matchday) of one competition: the round containing
@@ -34,7 +40,7 @@ fn register(router: mut dram::App, a: app::App) {
         true => {
           match upcoming(a, Maybe::new()) {
             ok(list) => res.json(http::StatusOK, to_json_list(list)),
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
+            err(message) => set_provider_error(res, message),
           }
         },
         false => {
@@ -42,7 +48,7 @@ fn register(router: mut dram::App, a: app::App) {
             ok(id) => {
               match upcoming(a, Maybe::new(id)) {
                 ok(list) => res.json(http::StatusOK, to_json_list(list)),
-                err(message) => res.json(http::StatusBadGateway, ["error": message]),
+                err(message) => set_provider_error(res, message),
               }
             },
             err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
@@ -64,7 +70,7 @@ fn register(router: mut dram::App, a: app::App) {
         true => {
           match round_payload(a, Maybe::new(), name) {
             ok(payload) => res.json(http::StatusOK, round_json(payload)),
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
+            err(message) => set_provider_error(res, message),
           }
         },
         false => {
@@ -72,7 +78,7 @@ fn register(router: mut dram::App, a: app::App) {
             ok(id) => {
               match round_payload(a, Maybe::new(id), name) {
                 ok(payload) => res.json(http::StatusOK, round_json(payload)),
-                err(message) => res.json(http::StatusBadGateway, ["error": message]),
+                err(message) => set_provider_error(res, message),
               }
             },
             err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
@@ -89,7 +95,7 @@ fn register(router: mut dram::App, a: app::App) {
         true => {
           match season_rounds(a, Maybe::new()) {
             ok(payload) => res.json(http::StatusOK, payload),
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
+            err(message) => set_provider_error(res, message),
           }
         },
         false => {
@@ -97,7 +103,7 @@ fn register(router: mut dram::App, a: app::App) {
             ok(id) => {
               match season_rounds(a, Maybe::new(id)) {
                 ok(payload) => res.json(http::StatusOK, payload),
-                err(message) => res.json(http::StatusBadGateway, ["error": message]),
+                err(message) => set_provider_error(res, message),
               }
             },
             err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
@@ -119,7 +125,7 @@ fn register(router: mut dram::App, a: app::App) {
                 _ => res.json(http::StatusNotFound, ["error": "fixture not found"]),
               }
             },
-            err(message) => res.json(http::StatusBadGateway, ["error": message]),
+            err(message) => set_provider_error(res, message),
           }
         },
         err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),

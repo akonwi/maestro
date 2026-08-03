@@ -48,7 +48,10 @@ fn register(router: mut dram::App, a: app::App) {
         }
         res.json(http::StatusOK, payload)
       },
-      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+      err(message) => {
+        fmt::Println("group list failed for user {user_id}: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not load groups"])
+      },
     }
   })
   protected.post("/groups", fn(req: dram::Request, res: mut dram::Response) {
@@ -61,7 +64,10 @@ fn register(router: mut dram::App, a: app::App) {
       false => {
         match create(a, user_id, name) {
           ok(group) => res.json(http::StatusCreated, group_json(group)),
-          err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+          err(message) => {
+            fmt::Println("group creation failed for user {user_id}: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not create group"])
+          },
         }
       },
     }
@@ -70,7 +76,8 @@ fn register(router: mut dram::App, a: app::App) {
     let group_id = try request_group_id(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let maybe_group = try find_for_member(a, group_id, user_id) -> err {
-      res.json(http::StatusInternalServerError, ["error": err])
+      fmt::Println("group lookup failed for group {group_id}, user {user_id}: {err}")
+      res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
@@ -80,14 +87,18 @@ fn register(router: mut dram::App, a: app::App) {
 
         res.json(http::StatusOK, payload)
       },
-      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+      err(message) => {
+        fmt::Println("group member list failed for group {group_id}: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not load group members"])
+      },
     }
   })
   protected.post("/groups/:id/invites", fn(req: dram::Request, res: mut dram::Response) {
     let group_id = try request_group_id(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let inviter_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let maybe_group = try find_for_member(a, group_id, inviter_id) -> err {
-      res.json(http::StatusInternalServerError, ["error": err])
+      fmt::Println("group lookup failed for group {group_id}, user {inviter_id}: {err}")
+      res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
@@ -106,7 +117,10 @@ fn register(router: mut dram::App, a: app::App) {
 
             res.json(http::StatusOK, payload)
           },
-          err(message) => res.json(http::StatusBadGateway, ["error": message]),
+          err(message) => {
+            fmt::Println("group invitation failed for group {group_id}, inviter {inviter_id}: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not add group member"])
+          },
         }
       },
     }

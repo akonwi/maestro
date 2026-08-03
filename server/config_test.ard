@@ -1,0 +1,70 @@
+use ard/testing
+
+use maestro/config
+
+test fn parses_supported_boolean_values() Void!Str {
+  try testing::assert(try config::parse_bool("FLAG", "", true), "empty uses fallback")
+  try testing::assert(try config::parse_bool("FLAG", "true", false), "true is accepted")
+  try testing::assert(try config::parse_bool("FLAG", "1", false), "1 is accepted")
+  try testing::assert(try config::parse_bool("FLAG", "yes", false), "yes is accepted")
+  try testing::assert(not try config::parse_bool("FLAG", "false", true), "false is accepted")
+  try testing::assert(not try config::parse_bool("FLAG", "0", true), "0 is accepted")
+  try testing::assert(not try config::parse_bool("FLAG", "no", true), "no is accepted")
+  testing::pass()
+}
+
+test fn rejects_invalid_boolean_values() Void!Str {
+  match config::parse_bool("FLAG", "sometimes", false) {
+    ok(_) => testing::fail("invalid boolean should fail"),
+    err(message) => {
+      try testing::assert(message == "FLAG must be one of true, false, 1, 0, yes, or no", "error identifies accepted values")
+      testing::pass()
+    },
+  }
+}
+
+test fn parses_positive_integer_values() Void!Str {
+  try testing::assert((try config::parse_positive_int("TTL", "", 10)) == 10, "empty uses fallback")
+  try testing::assert((try config::parse_positive_int("TTL", "1", 10)) == 1, "positive value is accepted")
+  testing::pass()
+}
+
+test fn rejects_malformed_integer_value() Void!Str {
+  match config::parse_positive_int("TTL", "many", 10) {
+    ok(_) => testing::fail("malformed integer should fail"),
+    err(message) => {
+      try testing::assert(message.contains("TTL must be an integer"), "malformed error is stable")
+      testing::pass()
+    },
+  }
+}
+
+test fn rejects_ttl_above_safe_maximum() Void!Str {
+  match config::parse_ttl("TTL", "315360001", 10) {
+    ok(_) => testing::fail("oversized TTL should fail"),
+    err(message) => {
+      try testing::assert(message == "TTL must not exceed 315360000 seconds", "maximum error is stable")
+      testing::pass()
+    },
+  }
+}
+
+test fn rejects_zero_integer_value() Void!Str {
+  match config::parse_positive_int("TTL", "0", 10) {
+    ok(_) => testing::fail("zero should fail"),
+    err(message) => {
+      try testing::assert(message == "TTL must be greater than zero", "zero error is stable")
+      testing::pass()
+    },
+  }
+}
+
+test fn rejects_negative_integer_value() Void!Str {
+  match config::parse_positive_int("TTL", "-1", 10) {
+    ok(_) => testing::fail("negative value should fail"),
+    err(message) => {
+      try testing::assert(message == "TTL must be greater than zero", "negative error is stable")
+      testing::pass()
+    },
+  }
+}

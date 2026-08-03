@@ -51,6 +51,12 @@ fn consume_tx(tx: sql::Transaction, token: Str) Str!Str {
   }
 }
 
+fn delete_stale_at(a: app::App, now: Int64, consumed_before: Int64) Void!Str {
+  a.db.query(
+    "DELETE FROM magic_links WHERE expires_at <= @now OR (consumed_at IS NOT NULL AND consumed_at <= @consumed_before)",
+  ).run(["now": now, "consumed_before": consumed_before])
+}
+
 private fn describe_unclaimable(tx: sql::Transaction, token: Str, now: Int64) Str!Str {
   let rows = try tx.query(
     "SELECT expires_at, consumed_at FROM magic_links WHERE token = @token LIMIT 1",

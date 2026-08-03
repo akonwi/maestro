@@ -1,5 +1,6 @@
 use decode
 use dram
+use go:fmt
 use maestro/app
 use maestro/auth
 use maestro/groups
@@ -28,13 +29,17 @@ fn register(router: mut dram::App, a: app::App) {
     let competition_id = try parse_competition(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let maybe_group = try groups::find_for_member(a, group_id, user_id) -> err {
-      res.json(http::StatusInternalServerError, ["error": err])
+      fmt::Println("leaderboard group lookup failed for group {group_id}, user {user_id}: {err}")
+      res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
     match season(a, group_id, competition_id) {
       ok(entries) => res.json(http::StatusOK, entries_json(entries)),
-      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+      err(message) => {
+        fmt::Println("season leaderboard failed for group {group_id}: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not load leaderboard"])
+      },
     }
   })
 
@@ -46,13 +51,17 @@ fn register(router: mut dram::App, a: app::App) {
     let bounds = try week::current(req.query("week").or("")) -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let maybe_group = try groups::find_for_member(a, group_id, user_id) -> err {
-      res.json(http::StatusInternalServerError, ["error": err])
+      fmt::Println("leaderboard group lookup failed for group {group_id}, user {user_id}: {err}")
+      res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
 
     match weekly(a, group_id, competition_id, bounds) {
       ok(entries) => res.json(http::StatusOK, entries_json(entries)),
-      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+      err(message) => {
+        fmt::Println("weekly leaderboard failed for group {group_id}: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not load leaderboard"])
+      },
     }
   })
 }

@@ -1,7 +1,4 @@
-use ard/async
-
 use decode
-use go:fmt
 use go:time
 use maestro/app
 use maestro/crypto
@@ -95,25 +92,7 @@ fn delete(a: app::App, token: Str) Void!Str {
   a.db.query("DELETE FROM sessions WHERE token = @token").run(["token": token])
 }
 
-// Start one low-frequency cleanup goroutine for expired session rows.
-// Expiration checks still happen on reads, so cleanup cadence never extends
-// access; it only bounds stale database records.
-fn start_cleanup(a: app::App) {
-  async::start(
-    fn() {
-      while {
-        time::Sleep(time::Hour)
-        match delete_expired(a) {
-          ok => (),
-          err(message) => fmt::Println("session cleanup failed: {message}"),
-        }
-      }
-    },
-  )
-}
-
-fn delete_expired(a: app::App) Void!Str {
-  let now = time::Now().UnixMilli()
+fn delete_expired_at(a: app::App, now: Int64) Void!Str {
   a.db.query("DELETE FROM sessions WHERE expires_at <= @now").run(["now": now])
 }
 
