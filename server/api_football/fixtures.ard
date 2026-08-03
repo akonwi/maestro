@@ -1,0 +1,100 @@
+use decode
+use maestro/api_football
+use maestro/api_football/decoding
+use maestro/app
+
+// One fixture as we care about it. Timestamps are unix ms. Scores are
+// none until the match has started.
+struct RoundFixture {
+  fixture: Fixture,
+  round: Str,
+}
+
+struct Fixture {
+  id: Int,
+  kickoff_at: Int64,
+  status: Str,       // NS, 1H, HT, 2H, FT, PST, ...
+  api_football_league_id: Int,
+  season: Int,
+  home_team_id: Int,
+  home_team_name: Str,
+  away_team_id: Int,
+  away_team_name: Str,
+  home_score: Int?,
+  away_score: Int?,
+}
+
+// Fetch every fixture for a league season. API-Football returns the
+// full season in one response for /fixtures?league=&season=. Raw JSON
+// is cached by URL; all callers within the TTL share one upstream call.
+fn season_fixtures(a: app::App, league_id: Int, season: Int) [Fixture]!Str {
+  parse_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}"))
+}
+
+fn season_round_fixtures(a: app::App, league_id: Int, season: Int) [RoundFixture]!Str {
+  parse_round_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}"))
+}
+
+fn parse_round_fixtures(body: Str) [RoundFixture]!Str {
+  decode::unmarshal(body, decode::field("response", decode::list(decode_round_fixture)))
+    .map_err(decoding::describe_error)
+}
+
+fn fixture_by_id(a: app::App, fixture_id: Int) Fixture?!Str {
+  let fixtures = try parse_fixtures(try api_football::cached_get(a, "/fixtures?id={fixture_id}"))
+  Result::ok(find_fixture(fixtures, fixture_id))
+}
+
+fn find_fixture(fixtures: [Fixture], fixture_id: Int) Fixture? {
+  mut found: Fixture? = Maybe::new()
+  for fixture in fixtures {
+    match fixture.id == fixture_id {
+      true => { found = Maybe::new(fixture) },
+      false => {},
+    }
+  }
+  found
+}
+
+// Exposed for testing: parse an API-Football /fixtures response body.
+fn parse_fixtures(body: Str) [Fixture]!Str {
+  decode::unmarshal(body, decode::field("response", decode::list(decode_fixture)))
+    .map_err(decoding::describe_error)
+}
+
+private fn decode_round_fixture(item: Any) RoundFixture!decode::Err {
+  let fixture = try decode_fixture(item)
+  let round = try decode::run(item, decode::path(["league", "round"], decode::string))
+  Result::ok(RoundFixture{fixture: fixture, round: round})
+}
+
+private fn decode_fixture(item: Any) Fixture!decode::Err {
+  let id = try decode::run(item, decode::path(["fixture", "id"], decode::int))
+  let ts_secs = try decode::run(item, decode::path(["fixture", "timestamp"], decode::int))
+  let status = try decode::run(item, decode::path(["fixture", "status", "short"], decode::string))
+  let league_id = try decode::run(item, decode::path(["league", "id"], decode::int))
+  let season = try decode::run(item, decode::path(["league", "season"], decode::int))
+  let home_id = try decode::run(item, decode::path(["teams", "home", "id"], decode::int))
+  let home_name = try decode::run(item, decode::path(["teams", "home", "name"], decode::string))
+  let away_id = try decode::run(item, decode::path(["teams", "away", "id"], decode::int))
+  let away_name = try decode::run(item, decode::path(["teams", "away", "name"], decode::string))
+  let home_score = try decode::run(item, decode::path(["goals", "home"], decode::nullable(decode::int)))
+  let away_score = try decode::run(item, decode::path(["goals", "away"], decode::nullable(decode::int)))
+
+  Result::ok(
+    Fixture{
+      id: id,
+      kickoff_at: Int64::from(ts_secs) * 1000,
+      status: status,
+      api_football_league_id: league_id,
+      season: season,
+      home_team_id: home_id,
+      home_team_name: home_name,
+      away_team_id: away_id,
+      away_team_name: away_name,
+      home_score: home_score,
+      away_score: away_score,
+    },
+  )
+}
+

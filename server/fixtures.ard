@@ -1,6 +1,6 @@
 use dram
 use go:fmt
-use maestro/api_football
+use maestro/api_football/fixtures
 use maestro/app
 use maestro/competitions
 use go:net/http
@@ -14,7 +14,7 @@ use go:time
 
 struct Fixture {
   competition_id: Int,
-  fixture: api_football::Fixture,
+  fixture: fixtures::Fixture,
 }
 
 private fn set_provider_error(res: mut dram::Response, message: Str) {
@@ -173,7 +173,7 @@ fn is_settled(status: Str) Bool {
 // must not drag the matchday navigator back to the historical round.
 let MAX_ROUND_SPAN_MS = Int64::from(14 * 24 * 60 * 60 * 1000)
 
-private fn is_detached_reschedule(candidate: api_football::RoundFixture, list: [api_football::RoundFixture]) Bool {
+private fn is_detached_reschedule(candidate: fixtures::RoundFixture, list: [fixtures::RoundFixture]) Bool {
   let awaiting_kickoff = candidate.fixture.status == "NS" or candidate.fixture.status == "TBD"
   mut settled_count = 0
   mut playable_count = 0
@@ -212,7 +212,7 @@ private fn is_detached_reschedule(candidate: api_football::RoundFixture, list: [
 // The round of the earliest fixture that is still playable (not started,
 // in play, or awaiting kickoff), excluding detached reschedules from old
 // rounds. None when every fixture is settled.
-fn pick_round(list: [api_football::RoundFixture]) Str? {
+fn pick_round(list: [fixtures::RoundFixture]) Str? {
   mut best_kickoff = Int64::from(0)
   mut best_round: Str? = Maybe::new()
   mut fallback_kickoff = Int64::from(0)
@@ -273,7 +273,7 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
   let chosen = try active_competition(a, competition_id)
   match chosen {
     comp => {
-      let list = try api_football::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+      let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
       let picked: Str? = match requested {
         name => Maybe::new(name),
         _ => pick_round(list),
@@ -368,7 +368,7 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
   let chosen = try active_competition(a, competition_id)
   match chosen {
     comp => {
-      let list = try api_football::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+      let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
       let names: mut [Str] = mut []
       for f in list {
         mut seen = false
@@ -424,7 +424,7 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
     }
     match include {
       true => {
-        let list = try api_football::season_fixtures(a, comp.api_football_league_id, comp.season)
+        let list = try fixtures::season_fixtures(a, comp.api_football_league_id, comp.season)
         for item in list {
           out.push(Fixture{competition_id: comp.id, fixture: item})
         }

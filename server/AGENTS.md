@@ -37,7 +37,8 @@ server/
   sessions.ard      session store, token mint/verify + Session struct
   magic_links.ard   magic-link store, single-use consume
   email.ard         Cloudflare Email Service REST client
-  api_football.ard  API-Football client + cached response decoding
+  api_football.ard  API-Football authenticated transport + raw response cache
+  api_football/     provider endpoint modules (fixtures, outlook, match details)
   competitions.ard  competitions store (which leagues/seasons to fetch)
   fixtures.ard      cached API-Football proxy + public read endpoints
   groups.ard        group membership, detail, and email-invite endpoints

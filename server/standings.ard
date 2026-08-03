@@ -1,6 +1,6 @@
 use dram
 use go:fmt
-use maestro/api_football
+use maestro/api_football/prematch
 use maestro/app
 use maestro/competitions
 use go:net/http
@@ -50,7 +50,7 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
 
   match chosen {
     comp => {
-      let rows = try api_football::league_standings(a, comp.api_football_league_id, comp.season)
+      let rows = try prematch::league_standings(a, comp.api_football_league_id, comp.season)
       let payload: [Str: Any] = [
         "competition_id": comp.id,
         "season": comp.season,
@@ -69,7 +69,7 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
 
 // Group rows into conferences in first-appearance order, preserving the
 // upstream (rank) order within each.
-fn group_conferences(rows: [api_football::StandingRow]) [Any] {
+fn group_conferences(rows: [prematch::StandingRow]) [Any] {
   let names: mut [Str] = mut []
   for row in rows {
     mut seen = false
@@ -100,7 +100,7 @@ fn group_conferences(rows: [api_football::StandingRow]) [Any] {
   deref conferences
 }
 
-private fn standing_json(row: api_football::StandingRow) [Str: Any] {
+private fn standing_json(row: prematch::StandingRow) [Str: Any] {
   let payload: [Str: Any] = [
     "rank": row.rank,
     "team_id": row.team_id,

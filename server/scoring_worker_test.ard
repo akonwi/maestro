@@ -1,6 +1,6 @@
 use ard/testing
 
-use maestro/api_football
+use maestro/api_football/fixtures
 use maestro/predictions
 use maestro/scoring_state
 use maestro/scoring_worker
@@ -56,7 +56,7 @@ test fn finished_fixture_is_settled_by_worker_dispatch() Void!Str {
   try predictions::upsert(app, user.id, 700, 2, 1)
   try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (700, 1, 1, 1, 'pending', 'FT', 1, 0, 1, 1)")
   let state = (try scoring_state::find(app, 700)).expect("state")
-  let fixture = api_football::Fixture{
+  let fixture = fixtures::Fixture{
     id: 700,
     kickoff_at: Int64::from(1),
     status: "FT",

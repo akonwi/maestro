@@ -1,11 +1,11 @@
 use ard/testing
 
-use maestro/api_football
-use maestro/fixtures
+use maestro/api_football/fixtures
+use maestro/fixtures as fixture_routes
 
-fn round_fixture(id: Int, kickoff_secs: Int, status: Str, round: Str) api_football::RoundFixture {
-  api_football::RoundFixture{
-    fixture: api_football::Fixture{
+fn round_fixture(id: Int, kickoff_secs: Int, status: Str, round: Str) fixtures::RoundFixture {
+  fixtures::RoundFixture{
+    fixture: fixtures::Fixture{
       id: id,
       kickoff_at: Int64::from(kickoff_secs) * 1000,
       status: status,
@@ -30,7 +30,7 @@ test fn picks_round_of_earliest_playable_fixture() Void!Str {
     round_fixture(4, 3100, "NS", "Regular Season - 2"),
     round_fixture(5, 9000, "NS", "Regular Season - 3"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 2", "expected round 2, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -42,7 +42,7 @@ test fn in_play_fixtures_keep_their_round_current() Void!Str {
     round_fixture(2, 2000, "2H", "Regular Season - 1"),
     round_fixture(3, 3000, "NS", "Regular Season - 2"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 1", "expected round 1, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -57,7 +57,7 @@ test fn detached_reschedule_cannot_hijack_the_round() Void!Str {
     round_fixture(4, 30 * day, "NS", "Regular Season - 19"),
     round_fixture(5, 31 * day, "NS", "Regular Season - 19"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 19", "expected round 19, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -70,7 +70,7 @@ test fn detached_reschedule_is_fallback_when_no_regular_round_remains() Void!Str
     round_fixture(2, 2 * day, "FT", "Regular Season - 3"),
     round_fixture(3, 120 * day, "NS", "Regular Season - 3"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 3", "expected fallback round 3, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -84,7 +84,7 @@ test fn live_reschedule_keeps_its_round_current() Void!Str {
     round_fixture(3, 120 * day, "2H", "Regular Season - 3"),
     round_fixture(4, 121 * day, "NS", "Regular Season - 19"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 3", "expected live round 3, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -99,7 +99,7 @@ test fn delayed_multi_fixture_round_stays_current() Void!Str {
     round_fixture(4, 121 * day, "NS", "Regular Season - 18"),
     round_fixture(5, 130 * day, "NS", "Regular Season - 19"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 18", "expected delayed round 18, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -112,7 +112,7 @@ test fn remaining_fixture_inside_round_window_keeps_round_current() Void!Str {
     round_fixture(2, 3 * day, "NS", "Regular Season - 18"),
     round_fixture(3, 8 * day, "NS", "Regular Season - 19"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 18", "expected round 18, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -123,7 +123,7 @@ test fn postponed_fixture_cannot_hijack_the_round() Void!Str {
     round_fixture(1, 1000, "PST", "Regular Season - 1"),
     round_fixture(2, 3000, "NS", "Regular Season - 2"),
   ]
-  match fixtures::pick_round(list) {
+  match fixture_routes::pick_round(list) {
     name => testing::assert(name == "Regular Season - 2", "expected round 2, got {name}"),
     _ => testing::fail("expected a round"),
   }
@@ -134,15 +134,15 @@ test fn finished_season_has_no_current_round() Void!Str {
     round_fixture(1, 1000, "FT", "Regular Season - 1"),
     round_fixture(2, 2000, "AET", "Regular Season - 2"),
   ]
-  try testing::assert(fixtures::pick_round(list).is_none(), "expected no round")
-  try testing::assert(fixtures::pick_round([]).is_none(), "empty list has no round")
+  try testing::assert(fixture_routes::pick_round(list).is_none(), "expected no round")
+  try testing::assert(fixture_routes::pick_round([]).is_none(), "empty list has no round")
   Result::ok(())
 }
 
 test fn sorts_round_names_by_number() Void!Str {
   // Out-of-order input (as the upstream array can produce) sorts numerically.
   let input = ["Regular Season - 36", "Regular Season - 12", "Regular Season - 37", "Regular Season - 1"]
-  let sorted = fixtures::sort_round_names(input)
+  let sorted = fixture_routes::sort_round_names(input)
   try testing::assert(sorted.at(0).expect("0") == "Regular Season - 1", "1 first")
   try testing::assert(sorted.at(1).expect("1") == "Regular Season - 12", "12 second")
   try testing::assert(sorted.at(2).expect("2") == "Regular Season - 36", "36 third")

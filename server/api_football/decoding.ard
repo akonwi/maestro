@@ -1,0 +1,36 @@
+use decode
+
+// API-Football frequently omits or nulls fields for fresh and live fixtures.
+// Endpoint decoders use these helpers when absence should not reject the
+// entire provider response.
+fn opt_string(item: Any, names: [Str]) Str? {
+  match decode::run(item, decode::path(names, decode::nullable(decode::string))) {
+    ok(v) => v,
+    err(_) => Maybe::new(),
+  }
+}
+
+fn opt_int(item: Any, names: [Str]) Int? {
+  match decode::run(item, decode::path(names, decode::nullable(decode::int))) {
+    ok(v) => v,
+    err(_) => Maybe::new(),
+  }
+}
+
+fn int_or(item: Any, names: [Str], fallback: Int) Int {
+  match opt_int(item, names) {
+    v => v,
+    _ => fallback,
+  }
+}
+
+fn string_or(item: Any, names: [Str], fallback: Str) Str {
+  match opt_string(item, names) {
+    v => v,
+    _ => fallback,
+  }
+}
+
+fn describe_error(e: Error) Str {
+  "decoding api-football response: {e.error()}"
+}

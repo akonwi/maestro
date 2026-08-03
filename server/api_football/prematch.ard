@@ -1,0 +1,449 @@
+use decode
+use maestro/api_football
+use maestro/api_football/decoding
+use maestro/app
+
+// ─── Pre-match outlook (/predictions) ───────────────────────────────
+
+struct TeamOutlook {
+  id: Int,
+  name: Str,
+  form: Str,               // "DWWWW..." most recent last
+  goals_for_avg: Str,      // per game, e.g. "2.5"
+  goals_against_avg: Str,
+  last5_for_avg: Str,      // per game over last 5
+  last5_against_avg: Str,
+  goals_for_total: Int,
+  goals_against_total: Int,
+  wins: Int,
+  draws: Int,
+  losses: Int,
+  home_wins: Int,
+  home_draws: Int,
+  home_losses: Int,
+  away_wins: Int,
+  away_draws: Int,
+  away_losses: Int,
+  clean_sheets: Int,
+}
+
+struct StandingRow {
+  team_id: Int,
+  team_name: Str,
+  rank: Int,
+  points: Int,
+  played: Int,
+  win: Int,
+  draw: Int,
+  lose: Int,
+  goals_for: Int,
+  goals_against: Int,
+  goals_diff: Int,
+  form: Str,               // last 5, e.g. "WWLDL"
+  description: Str,        // qualification note, e.g. "MLS Cup Play-offs"
+  group: Str,              // e.g. "Western Conference"
+}
+
+struct Injury {
+  team_id: Int,
+  player: Str,
+  kind: Str,               // "Missing Fixture" | "Questionable"
+  reason: Str,             // "Knee Injury" | "Suspended"
+}
+
+struct H2HResult {
+  kickoff_at: Int64,
+  home_name: Str,
+  away_name: Str,
+  home_goals: Int?,
+  away_goals: Int?,
+}
+
+struct Outlook {
+  percent_home: Str,
+  percent_draw: Str,
+  percent_away: Str,
+  league_id: Int,
+  season: Int,
+  home: TeamOutlook,
+  away: TeamOutlook,
+  h2h: [H2HResult],
+}
+
+// Fetch API-Football's pre-match outlook for a fixture. None when the
+// upstream has no prediction data for it.
+fn fixture_outlook(a: app::App, fixture_id: Int) Outlook?!Str {
+  let body = try api_football::cached_get_slow(a, "/predictions?fixture={fixture_id}")
+  parse_outlook(body)
+}
+
+fn parse_outlook(body: Str) Outlook?!Str {
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(decoding::describe_error)
+  match items.at(0) {
+    item => {
+      // Incomplete prediction payloads (nulls while upstream is still
+      // computing) are treated as "no outlook", not an error.
+      match decode::run(item, decode_outlook) {
+        ok(outlook) => Result::ok(Maybe::new(outlook)),
+        err(_) => Result::ok(Maybe::new()),
+      }
+    },
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
+private fn decode_outlook(item: Any) Outlook!decode::Err {
+  let percent_home = try decode::run(item, decode::path(["predictions", "percent", "home"], decode::string))
+  let percent_draw = try decode::run(item, decode::path(["predictions", "percent", "draw"], decode::string))
+  let percent_away = try decode::run(item, decode::path(["predictions", "percent", "away"], decode::string))
+  let league_id = decoding::int_or(item, ["league", "id"], 0)
+  let season = decoding::int_or(item, ["league", "season"], 0)
+
+  let home = try decode::run(item, decode::path(["teams", "home"], decode_team_outlook))
+  let away = try decode::run(item, decode::path(["teams", "away"], decode_team_outlook))
+  let h2h = decode_h2h_list(item)
+
+  Result::ok(
+    Outlook{
+      percent_home: percent_home,
+      percent_draw: percent_draw,
+      percent_away: percent_away,
+      league_id: league_id,
+      season: season,
+      home: home,
+      away: away,
+      h2h: h2h,
+    },
+  )
+}
+
+private fn decode_team_outlook(item: Any) TeamOutlook!decode::Err {
+  let id = try decode::run(item, decode::field("id", decode::int))
+  let name = try decode::run(item, decode::field("name", decode::string))
+  let form = decoding::string_or(item, ["league", "form"], "")
+  let gf = decoding::string_or(item, ["league", "goals", "for", "average", "total"], "0")
+  let ga = decoding::string_or(item, ["league", "goals", "against", "average", "total"], "0")
+  Result::ok(
+    TeamOutlook{
+      id: id,
+      name: name,
+      form: form,
+      goals_for_avg: gf,
+      goals_against_avg: ga,
+      last5_for_avg: decoding::string_or(item, ["last_5", "goals", "for", "average"], "0"),
+      last5_against_avg: decoding::string_or(item, ["last_5", "goals", "against", "average"], "0"),
+      goals_for_total: decoding::int_or(item, ["league", "goals", "for", "total", "total"], 0),
+      goals_against_total: decoding::int_or(item, ["league", "goals", "against", "total", "total"], 0),
+      wins: decoding::int_or(item, ["league", "fixtures", "wins", "total"], 0),
+      draws: decoding::int_or(item, ["league", "fixtures", "draws", "total"], 0),
+      losses: decoding::int_or(item, ["league", "fixtures", "loses", "total"], 0),
+      home_wins: decoding::int_or(item, ["league", "fixtures", "wins", "home"], 0),
+      home_draws: decoding::int_or(item, ["league", "fixtures", "draws", "home"], 0),
+      home_losses: decoding::int_or(item, ["league", "fixtures", "loses", "home"], 0),
+      away_wins: decoding::int_or(item, ["league", "fixtures", "wins", "away"], 0),
+      away_draws: decoding::int_or(item, ["league", "fixtures", "draws", "away"], 0),
+      away_losses: decoding::int_or(item, ["league", "fixtures", "loses", "away"], 0),
+      clean_sheets: decoding::int_or(item, ["league", "clean_sheet", "total"], 0),
+    },
+  )
+}
+
+private fn decode_h2h_list(item: Any) [H2HResult] {
+  match decode::run(item, decode::field("h2h", decode::list(decode::any))) {
+    ok(items) => {
+      mut out: mut [H2HResult] = mut []
+      for entry in items {
+        match decode::run(entry, decode_h2h) {
+          ok(meeting) => out.push(meeting),
+          err(_) => (),
+        }
+      }
+      deref out
+    },
+    err(_) => [],
+  }
+}
+
+private fn decode_h2h(item: Any) H2HResult!decode::Err {
+  let ts_secs = try decode::run(item, decode::path(["fixture", "timestamp"], decode::int))
+  let home_name = try decode::run(item, decode::path(["teams", "home", "name"], decode::string))
+  let away_name = try decode::run(item, decode::path(["teams", "away", "name"], decode::string))
+  let home_goals = try decode::run(item, decode::path(["goals", "home"], decode::nullable(decode::int)))
+  let away_goals = try decode::run(item, decode::path(["goals", "away"], decode::nullable(decode::int)))
+  Result::ok(
+    H2HResult{
+      kickoff_at: Int64::from(ts_secs) * 1000,
+      home_name: home_name,
+      away_name: away_name,
+      home_goals: home_goals,
+      away_goals: away_goals,
+    },
+  )
+}
+
+// ─── Standings (/standings) ──────────────────────────────────────────────
+
+fn league_standings(a: app::App, league_id: Int, season: Int) [StandingRow]!Str {
+  let body = try api_football::cached_get_slow(a, "/standings?league={league_id}&season={season}")
+  parse_standings(body)
+}
+
+fn parse_standings(body: Str) [StandingRow]!Str {
+  // response[0].league.standings is a list of groups (conferences), each
+  // a list of rows. Flatten across groups.
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(decoding::describe_error)
+  mut out: mut [StandingRow] = mut []
+  match items.at(0) {
+    first => {
+      match decode::run(first, decode::path(["league", "standings"], decode::list(decode::any))) {
+        ok(groups) => {
+          for group in groups {
+            match decode::run(group, decode::list(decode::any)) {
+              ok(rows) => {
+                for row in rows {
+                  match decode::run(row, decode_standing_row) {
+                    ok(parsed) => out.push(parsed),
+                    err(_) => (),
+                  }
+                }
+              },
+              err(_) => (),
+            }
+          }
+        },
+        err(_) => (),
+      }
+    },
+    _ => (),
+  }
+  Result::ok(deref out)
+}
+
+private fn decode_standing_row(item: Any) StandingRow!decode::Err {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let team_name = decoding::string_or(item, ["team", "name"], "")
+  let rank = decoding::int_or(item, ["rank"], 0)
+  let points = decoding::int_or(item, ["points"], 0)
+  let played = decoding::int_or(item, ["all", "played"], 0)
+  let win = decoding::int_or(item, ["all", "win"], 0)
+  let draw = decoding::int_or(item, ["all", "draw"], 0)
+  let lose = decoding::int_or(item, ["all", "lose"], 0)
+  let goals_for = decoding::int_or(item, ["all", "goals", "for"], 0)
+  let goals_against = decoding::int_or(item, ["all", "goals", "against"], 0)
+  let goals_diff = decoding::int_or(item, ["goalsDiff"], 0)
+  let form = decoding::string_or(item, ["form"], "")
+  let description = decoding::string_or(item, ["description"], "")
+  let group = decoding::string_or(item, ["group"], "")
+  Result::ok(
+    StandingRow{
+      team_id: team_id,
+      team_name: team_name,
+      rank: rank,
+      points: points,
+      played: played,
+      win: win,
+      draw: draw,
+      lose: lose,
+      goals_for: goals_for,
+      goals_against: goals_against,
+      goals_diff: goals_diff,
+      form: form,
+      description: description,
+      group: group,
+    },
+  )
+}
+
+// ─── Team venue goal splits (/teams/statistics) ──────────────────────────
+
+// Per-game goal averages split by venue for one team's season.
+struct TeamGoalSplits {
+  for_home: Str,
+  against_home: Str,
+  for_away: Str,
+  against_away: Str,
+}
+
+fn team_goal_splits(a: app::App, league_id: Int, season: Int, team_id: Int) TeamGoalSplits!Str {
+  let body = try api_football::cached_get_slow(
+    a,
+    "/teams/statistics?league={league_id}&season={season}&team={team_id}",
+  )
+  parse_team_goal_splits(body)
+}
+
+fn parse_team_goal_splits(body: Str) TeamGoalSplits!Str {
+  let data = try decode::from_json(body)
+  Result::ok(
+    TeamGoalSplits{
+      for_home: decoding::string_or(data, ["response", "goals", "for", "average", "home"], "0"),
+      against_home: decoding::string_or(data, ["response", "goals", "against", "average", "home"], "0"),
+      for_away: decoding::string_or(data, ["response", "goals", "for", "average", "away"], "0"),
+      against_away: decoding::string_or(data, ["response", "goals", "against", "average", "away"], "0"),
+    },
+  )
+}
+
+// ─── Key players (/players/topscorers + /topassists) ─────────────────────
+
+struct KeyPlayer {
+  team_id: Int,
+  player_id: Int,
+  name: Str,
+  goals: Int,
+  assists: Int,
+  rating: Str,
+  is_scorer: Bool,
+  is_assister: Bool,
+}
+
+// League scoring + assist leaders, merged per player (a player can lead in
+// both). Cached league-wide and reused across fixtures; the analysis layer
+// filters to a fixture's two teams.
+fn league_key_players(a: app::App, league_id: Int, season: Int) [KeyPlayer]!Str {
+  let scorers_body = try api_football::cached_get_slow(
+    a,
+    "/players/topscorers?league={league_id}&season={season}",
+  )
+  let assists_body = try api_football::cached_get_slow(
+    a,
+    "/players/topassists?league={league_id}&season={season}",
+  )
+  merge_key_players(scorers_body, assists_body)
+}
+
+fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
+  let scorers = try parse_leaders(scorers_body, true)
+  let assisters = try parse_leaders(assists_body, false)
+  mut out: mut [KeyPlayer] = mut []
+  for p in scorers {
+    out.push(p)
+  }
+  for p in assisters {
+    mut merged = false
+    let updated: mut [KeyPlayer] = mut []
+    for existing in out {
+      // Merge on (player, team): a mid-season transfer can list a player
+      // once per team, and each belongs with its own club.
+      match existing.player_id == p.player_id and existing.team_id == p.team_id {
+        true => {
+          merged = true
+          updated.push(
+            KeyPlayer{
+              team_id: existing.team_id,
+              player_id: existing.player_id,
+              name: existing.name,
+              goals: existing.goals,
+              assists: existing.assists,
+              rating: existing.rating,
+              is_scorer: existing.is_scorer,
+              is_assister: true,
+            },
+          )
+        },
+        false => updated.push(existing),
+      }
+    }
+    match merged {
+      true => (),
+      false => updated.push(p),
+    }
+    out = updated
+  }
+  Result::ok(deref out)
+}
+
+private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(decoding::describe_error)
+  mut out: mut [KeyPlayer] = mut []
+  for item in items {
+    match decode_leaders(item, scorers) {
+      ok(players) => {
+        for p in players {
+          out.push(p)
+        }
+      },
+      err(_) => (),
+    }
+  }
+  Result::ok(deref out)
+}
+
+// One player entry can carry multiple statistics blocks (one per team the
+// player represented this season). Emit a KeyPlayer per team so each is
+// attributed correctly with that team's numbers.
+private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
+  let player_id = try decode::run(item, decode::path(["player", "id"], decode::int))
+  let name = try decode::run(item, decode::path(["player", "name"], decode::string))
+  let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
+  mut out: mut [KeyPlayer] = mut []
+  for s in stats {
+    let team_id = decoding::int_or(s, ["team", "id"], 0)
+    out.push(
+      KeyPlayer{
+        team_id: team_id,
+        player_id: player_id,
+        name: name,
+        goals: decoding::int_or(s, ["goals", "total"], 0),
+        assists: decoding::int_or(s, ["goals", "assists"], 0),
+        rating: decoding::string_or(s, ["games", "rating"], ""),
+        is_scorer: scorers,
+        is_assister: not scorers,
+      },
+    )
+  }
+  Result::ok(deref out)
+}
+
+// ─── Injuries (/injuries) ────────────────────────────────────────────────
+
+fn fixture_injuries(a: app::App, fixture_id: Int) [Injury]!Str {
+  let body = try api_football::cached_get_slow(a, "/injuries?fixture={fixture_id}")
+  parse_injuries(body)
+}
+
+fn parse_injuries(body: Str) [Injury]!Str {
+  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
+    .map_err(decoding::describe_error)
+  // Upstream can list the same player twice for one fixture (e.g. a
+  // "Missing Fixture" record plus a "Questionable" one). Keep the first
+  // record per player so team news shows each player once.
+  mut out: mut [Injury] = mut []
+  let seen: mut [Str] = mut []
+  for item in items {
+    match decode::run(item, decode_injury) {
+      ok(injury) => {
+        let key = "{injury.team_id}|{injury.player}"
+        mut already = false
+        for k in seen {
+          match k == key {
+            true => { already = true },
+            false => (),
+          }
+        }
+        match already {
+          true => (),
+          false => {
+            seen.push(key)
+            out.push(injury)
+          },
+        }
+      },
+      err(_) => (),
+    }
+  }
+  Result::ok(deref out)
+}
+
+private fn decode_injury(item: Any) Injury!decode::Err {
+  let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
+  let player = decoding::string_or(item, ["player", "name"], "")
+  let kind = decoding::string_or(item, ["player", "type"], "")
+  let reason = decoding::string_or(item, ["player", "reason"], "")
+  Result::ok(Injury{team_id: team_id, player: player, kind: kind, reason: reason})
+}
+
+

@@ -1,110 +1,11 @@
 use ard/testing
 
-use maestro/api_football
-
-// A trimmed but shape-accurate API-Football /fixtures response:
-// one finished match and one not-started match.
-let SAMPLE: Str = "\{
-  \"response\": [
-    \{
-      \"fixture\": \{ \"id\": 1001, \"timestamp\": 1700000000, \"status\": \{ \"short\": \"FT\" \} \},
-      \"league\": \{ \"id\": 253, \"season\": 2026, \"round\": \"Regular Season - 1\" \},
-      \"teams\": \{
-        \"home\": \{ \"id\": 1609, \"name\": \"Inter Miami\" \},
-        \"away\": \{ \"id\": 1615, \"name\": \"Atlanta United\" \}
-      \},
-      \"goals\": \{ \"home\": 2, \"away\": 1 \}
-    \},
-    \{
-      \"fixture\": \{ \"id\": 1002, \"timestamp\": 1800000000, \"status\": \{ \"short\": \"NS\" \} \},
-      \"league\": \{ \"id\": 253, \"season\": 2026, \"round\": \"Regular Season - 2\" \},
-      \"teams\": \{
-        \"home\": \{ \"id\": 1613, \"name\": \"LA Galaxy\" \},
-        \"away\": \{ \"id\": 1614, \"name\": \"LAFC\" \}
-      \},
-      \"goals\": \{ \"home\": null, \"away\": null \}
-    \}
-  ]
-\}"
-
-test fn parses_fixtures_response() Void!Str {
-  let list = try api_football::parse_fixtures(SAMPLE)
-  try testing::assert(list.size() == 2, "expected 2 fixtures, got {list.size()}")
-
-  match list.at(0) {
-    f => {
-      try testing::assert(f.id == 1001, "first fixture id")
-      try testing::assert(f.status == "FT", "first fixture status")
-      try testing::assert(f.api_football_league_id == 253, "provider league id")
-      try testing::assert(f.season == 2026, "provider season")
-      try testing::assert(f.kickoff_at == 1700000000000, "timestamp seconds -> unix ms")
-      try testing::assert(f.home_team_name == "Inter Miami", "home team name")
-      try testing::assert(f.home_score.expect("home score") == 2, "home score")
-      try testing::assert(f.away_score.expect("away score") == 1, "away score")
-    },
-    _ => try testing::fail("missing first fixture"),
-  }
-
-  match list.at(1) {
-    f => {
-      try testing::assert(f.status == "NS", "second fixture status")
-      try testing::assert(f.home_score.is_none(), "unplayed match has no home score")
-      try testing::assert(f.away_score.is_none(), "unplayed match has no away score")
-    },
-    _ => try testing::fail("missing second fixture"),
-  }
-  try testing::assert(api_football::find_fixture(list, 1002).expect("fixture").id == 1002, "finds requested fixture")
-  try testing::assert(api_football::find_fixture(list, 9999).is_none(), "does not trust unrelated response")
-  testing::pass()
-}
-
-test fn parses_fixture_rounds() Void!Str {
-  let list = try api_football::parse_round_fixtures(SAMPLE)
-  try testing::assert(list.at(0).expect("fixture").round == "Regular Season - 1", "first round")
-  try testing::assert(list.at(1).expect("fixture").round == "Regular Season - 2", "second round")
-  testing::pass()
-}
-
-test fn rejects_malformed_body() Void!Str {
-  match api_football::parse_fixtures("not json") {
-    ok(_) => testing::fail("malformed body should not parse"),
-    err(_) => testing::pass(),
-  }
-}
-
-// Lineups with data still being populated: null formation/coach/colors and
-// a malformed player entry must not fail the team.
-let PARTIAL_LINEUPS: Str = "\{
-  \"response\": [
-    \{
-      \"team\": \{ \"id\": 1609, \"name\": \"Inter Miami\" \},
-      \"formation\": null,
-      \"coach\": \{\},
-      \"startXI\": [
-        \{ \"player\": \{ \"id\": 1, \"name\": \"R. Rios\", \"number\": 34, \"pos\": \"G\", \"grid\": \"1:1\" \} \},
-        \{ \"player\": \{ \"id\": null, \"name\": \"No Number\", \"number\": null, \"pos\": null, \"grid\": null \} \},
-        \{ \"player\": null \}
-      ],
-      \"substitutes\": []
-    \}
-  ]
-\}"
-
-test fn partial_lineups_decode_leniently() Void!Str {
-  let lineups = try api_football::parse_lineups(PARTIAL_LINEUPS)
-  try testing::assert(lineups.size() == 1, "one team decoded")
-  let team = lineups.at(0).expect("team")
-  try testing::assert(team.formation == "", "null formation becomes empty")
-  try testing::assert(team.coach == "", "missing coach becomes empty")
-  try testing::assert(team.color_primary.is_none(), "missing colors tolerated")
-  try testing::assert(team.starters.size() == 2, "malformed player skipped, got {team.starters.size()}")
-  Result::ok(())
-}
+use maestro/api_football/prematch
 
 test fn incomplete_outlook_is_treated_as_absent() Void!Str {
   // A response item without prediction percentages should yield none, not an error.
   let body = "\{ \"response\": [ \{ \"predictions\": \{\} \} ] \}"
-  let outlook = try api_football::parse_outlook(body)
+  let outlook = try prematch::parse_outlook(body)
   try testing::assert(outlook.is_none(), "incomplete outlook should be none")
   Result::ok(())
 }
@@ -120,7 +21,7 @@ let DUP_INJURIES: Str = "\{
 \}"
 
 test fn injuries_dedup_per_player() Void!Str {
-  let injuries = try api_football::parse_injuries(DUP_INJURIES)
+  let injuries = try prematch::parse_injuries(DUP_INJURIES)
   try testing::assert(injuries.size() == 2, "expected 2 unique players, got {injuries.size()}")
   let first = injuries.at(0).expect("first")
   try testing::assert(first.player == "A. Ahmed", "keeps first record")
@@ -143,7 +44,7 @@ let STANDINGS_BODY: Str = "\{
 \}"
 
 test fn parses_expanded_standings() Void!Str {
-  let rows = try api_football::parse_standings(STANDINGS_BODY)
+  let rows = try prematch::parse_standings(STANDINGS_BODY)
   try testing::assert(rows.size() == 2, "two rows across conferences")
   let west = rows.at(0).expect("west")
   try testing::assert(west.team_name == "Vancouver Whitecaps", "team name")
@@ -169,7 +70,7 @@ let TOPASSISTS: Str = "\{
 \}"
 
 test fn merges_scorers_and_assisters_by_player() Void!Str {
-  let players = try api_football::merge_key_players(TOPSCORERS, TOPASSISTS)
+  let players = try prematch::merge_key_players(TOPSCORERS, TOPASSISTS)
   try testing::assert(players.size() == 3, "3 unique players, got {players.size()}")
   let messi = players.at(0).expect("messi")
   try testing::assert(messi.name == "L. Messi", "messi first")
@@ -181,7 +82,7 @@ test fn merges_scorers_and_assisters_by_player() Void!Str {
 
 test fn parses_venue_goal_splits() Void!Str {
   let body = "\{ \"response\": \{ \"goals\": \{ \"for\": \{ \"average\": \{ \"home\": \"1.9\", \"away\": \"1.1\" \} \}, \"against\": \{ \"average\": \{ \"home\": \"0.8\", \"away\": \"1.6\" \} \} \} \} \}"
-  let s = try api_football::parse_team_goal_splits(body)
+  let s = try prematch::parse_team_goal_splits(body)
   try testing::assert(s.for_home == "1.9", "for home")
   try testing::assert(s.against_away == "1.6", "against away")
   Result::ok(())

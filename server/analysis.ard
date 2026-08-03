@@ -1,5 +1,6 @@
 use dram
-use maestro/api_football
+use maestro/api_football/prematch
+use maestro/api_football/details
 use maestro/app
 use maestro/strength
 use go:fmt
@@ -58,35 +59,35 @@ fn register(router: mut dram::App, a: app::App) {
 // are best-effort: a failure leaves them empty rather than failing the
 // whole outlook.
 fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
-  let outlook_opt = try api_football::fixture_outlook(a, fixture_id)
+  let outlook_opt = try prematch::fixture_outlook(a, fixture_id)
   match outlook_opt {
     outlook => {
       // Each supporting section is best-effort: a failure logs and leaves
       // that section empty rather than failing the whole outlook, so one
       // flaky upstream can't blank out the entire pre-match analysis.
-      mut standings: [api_football::StandingRow] = []
-      match api_football::league_standings(a, outlook.league_id, outlook.season) {
+      mut standings: [prematch::StandingRow] = []
+      match prematch::league_standings(a, outlook.league_id, outlook.season) {
         ok(v) => { standings = v },
         err(message) => log_section("standings", fixture_id, message),
       }
-      mut injuries: [api_football::Injury] = []
-      match api_football::fixture_injuries(a, fixture_id) {
+      mut injuries: [prematch::Injury] = []
+      match prematch::fixture_injuries(a, fixture_id) {
         ok(v) => { injuries = v },
         err(message) => log_section("injuries", fixture_id, message),
       }
-      let empty_splits = api_football::TeamGoalSplits{for_home: "0", against_home: "0", for_away: "0", against_away: "0"}
+      let empty_splits = prematch::TeamGoalSplits{for_home: "0", against_home: "0", for_away: "0", against_away: "0"}
       mut home_splits = empty_splits
-      match api_football::team_goal_splits(a, outlook.league_id, outlook.season, outlook.home.id) {
+      match prematch::team_goal_splits(a, outlook.league_id, outlook.season, outlook.home.id) {
         ok(v) => { home_splits = v },
         err(message) => log_section("home venue splits", fixture_id, message),
       }
       mut away_splits = empty_splits
-      match api_football::team_goal_splits(a, outlook.league_id, outlook.season, outlook.away.id) {
+      match prematch::team_goal_splits(a, outlook.league_id, outlook.season, outlook.away.id) {
         ok(v) => { away_splits = v },
         err(message) => log_section("away venue splits", fixture_id, message),
       }
-      mut key_players: [api_football::KeyPlayer] = []
-      match api_football::league_key_players(a, outlook.league_id, outlook.season) {
+      mut key_players: [prematch::KeyPlayer] = []
+      match prematch::league_key_players(a, outlook.league_id, outlook.season) {
         ok(v) => { key_players = v },
         err(message) => log_section("key players", fixture_id, message),
       }
@@ -102,12 +103,12 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
 }
 
 fn outlook_json(
-  o: api_football::Outlook,
-  standings: [api_football::StandingRow],
-  injuries: [api_football::Injury],
-  home_splits: api_football::TeamGoalSplits,
-  away_splits: api_football::TeamGoalSplits,
-  key_players: [api_football::KeyPlayer],
+  o: prematch::Outlook,
+  standings: [prematch::StandingRow],
+  injuries: [prematch::Injury],
+  home_splits: prematch::TeamGoalSplits,
+  away_splits: prematch::TeamGoalSplits,
+  key_players: [prematch::KeyPlayer],
   rankings: [strength::Ranking],
 ) [Str: Any] {
   let h2h: mut [Any] = mut []
@@ -208,8 +209,8 @@ private fn ranking_opt(rankings: [strength::Ranking], team_id: Int) Maybe<[Str: 
 }
 
 private fn team_goals_json(
-  t: api_football::TeamOutlook,
-  splits: api_football::TeamGoalSplits,
+  t: prematch::TeamOutlook,
+  splits: prematch::TeamGoalSplits,
   is_home: Bool,
 ) [Str: Any] {
   let venue_for = match is_home {
@@ -227,7 +228,7 @@ private fn team_goals_json(
   payload
 }
 
-private fn standing_opt(standings: [api_football::StandingRow], team_id: Int) Maybe<[Str: Any]> {
+private fn standing_opt(standings: [prematch::StandingRow], team_id: Int) Maybe<[Str: Any]> {
   mut found: Maybe<[Str: Any]> = Maybe::new()
   for row in standings {
     match row.team_id == team_id {
@@ -246,7 +247,7 @@ private fn standing_opt(standings: [api_football::StandingRow], team_id: Int) Ma
   found
 }
 
-private fn team_outlook_json(t: api_football::TeamOutlook) [Str: Any] {
+private fn team_outlook_json(t: prematch::TeamOutlook) [Str: Any] {
   let payload: [Str: Any] = [
     "id": t.id,
     "name": t.name,
@@ -277,32 +278,32 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
   mut failures = 0
   mut last_error = ""
 
-  mut stats: [api_football::TeamStats] = []
-  match api_football::fixture_statistics(a, fixture_id) {
+  mut stats: [details::TeamStats] = []
+  match details::fixture_statistics(a, fixture_id) {
     ok(v) => { stats = v },
     err(message) => {
       failures = failures + 1
       last_error = message
     },
   }
-  mut events: [api_football::MatchEvent] = []
-  match api_football::fixture_events(a, fixture_id) {
+  mut events: [details::MatchEvent] = []
+  match details::fixture_events(a, fixture_id) {
     ok(v) => { events = v },
     err(message) => {
       failures = failures + 1
       last_error = message
     },
   }
-  mut lineups: [api_football::Lineup] = []
-  match api_football::fixture_lineups(a, fixture_id) {
+  mut lineups: [details::Lineup] = []
+  match details::fixture_lineups(a, fixture_id) {
     ok(v) => { lineups = v },
     err(message) => {
       failures = failures + 1
       last_error = message
     },
   }
-  mut players: [api_football::TeamPlayers] = []
-  match api_football::fixture_players(a, fixture_id) {
+  mut players: [details::TeamPlayers] = []
+  match details::fixture_players(a, fixture_id) {
     ok(v) => { players = v },
     err(message) => {
       failures = failures + 1
@@ -399,7 +400,7 @@ private fn require_some_section(failures: Int, last_error: Str) Void!Str {
   }
 }
 
-private fn lineup_players_json(list: [api_football::LineupPlayer]) [Any] {
+private fn lineup_players_json(list: [details::LineupPlayer]) [Any] {
   let out: mut [Any] = mut []
   for p in list {
     let entry: [Str: Any] = ["id": p.id, "name": p.name, "number": p.number, "pos": p.pos, "grid": p.grid]

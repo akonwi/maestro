@@ -5,7 +5,7 @@ use go:math/rand/v2 as rand
 use go:os
 use go:strconv
 use go:time
-use maestro/api_football
+use maestro/api_football/fixtures
 use maestro/app
 use maestro/competitions
 use maestro/config
@@ -34,7 +34,7 @@ private fn run() Void!Str {
   try ensure_members(members, group_id)
   let mls = try active_mls(a)
   fmt::Println("fetching {mls.name} {mls.season} fixtures from API-Football")
-  let all = try api_football::season_round_fixtures(a, mls.api_football_league_id, mls.season)
+  let all = try fixtures::season_round_fixtures(a, mls.api_football_league_id, mls.season)
   let rounds = recent_rounds(all)
   try ensure_two_rounds(rounds)
 
@@ -67,7 +67,7 @@ private fn run() Void!Str {
 private fn seed(
   tx: sql::Transaction,
   members: [groups::Member],
-  fixtures: [api_football::RoundFixture],
+  fixtures: [fixtures::RoundFixture],
   now: Int64,
 ) Int!Str {
   mut inserted = 0
@@ -139,10 +139,10 @@ private fn ensure_two_rounds(rounds: [Str]) Void!Str {
   }
 }
 
-private fn recent_rounds(fixtures: [api_football::RoundFixture]) [Str] {
+private fn recent_rounds(items: [fixtures::RoundFixture]) [Str] {
   let ordered: mut [Str] = mut []
   let now = time::Now().UnixMilli()
-  for item in fixtures {
+  for item in items {
     match item.fixture.status == "FT" and item.fixture.kickoff_at < now and not contains(deref ordered, item.round) {
       true => ordered.push(item.round),
       false => (),
@@ -156,11 +156,11 @@ private fn recent_rounds(fixtures: [api_football::RoundFixture]) [Str] {
 }
 
 private fn selected_fixtures(
-  fixtures: [api_football::RoundFixture],
+  items: [fixtures::RoundFixture],
   rounds: [Str],
-) [api_football::RoundFixture] {
-  mut selected: mut [api_football::RoundFixture] = mut []
-  for item in fixtures {
+) [fixtures::RoundFixture] {
+  mut selected: mut [fixtures::RoundFixture] = mut []
+  for item in items {
     match item.fixture.status == "FT" and contains(rounds, item.round) {
       true => selected.push(item),
       false => (),

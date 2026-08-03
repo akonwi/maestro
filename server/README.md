@@ -15,19 +15,47 @@ Written in [Ard](https://github.com/akonwi/ard) and backed by SQLite.
 
 ## Layout
 
-```
+Ard modules are files. The server stays shallow by domain; the API-Football
+integration uses a directory because it contains several independent endpoint
+families.
+
+```text
 server/
-├── ard.toml            # Ard project manifest
-├── go.mod / go.sum     # Go dependencies retained for Ard interop
-├── tools.go            # build-tagged; pins interop-only deps for `go mod tidy`
-├── main.ard            # entrypoint: net/http server with a Dram handler
-├── router.ard          # Dram routes and global middleware
-├── response.ard        # JSON response and error-envelope helpers
-├── ffi/cache.go        # concurrency-safe in-memory TTL cache
-├── migrations/         # migr up/down SQL files
-├── Dockerfile          # multi-stage: builds Ard compiler, server, grabs migr
-└── entrypoint.sh       # runs `migr up` then the server
+├── main.ard / router.ard       # process lifecycle and Dram route composition
+├── config.ard / app.ard        # validated environment and shared dependencies
+├── auth.ard                    # magic-link HTTP workflows and auth middleware
+├── users.ard                   # user persistence
+├── sessions.ard                # session persistence
+├── magic_links.ard             # single-use login tokens
+├── email.ard                   # Cloudflare Email Service client
+├── competitions.ard            # configured provider leagues and seasons
+├── fixtures.ard                # public fixture and round endpoints
+├── predictions.ard             # prediction validation and persistence
+├── groups.ard                  # groups, memberships, and invitations
+├── scoring_state.ard           # durable scoring workflow state
+├── scoring.ard                 # deterministic scoring and settlement
+├── scoring_worker.ard          # result polling and retry scheduling
+├── leaderboards.ard / week.ard # season/weekly tables and week boundaries
+├── analysis.ard                # fixture outlook and match-detail responses
+├── standings.ard / strength.ard
+├── api_football.ard            # authenticated provider transport and raw cache
+├── api_football/
+│   ├── decoding.ard            # tolerant shared provider decoding helpers
+│   ├── fixtures.ard            # fixture models, rounds, and fixture lookup
+│   ├── prematch.ard            # outlook, standings, injuries, and team context
+│   └── details.ard             # statistics, events, lineups, and players
+├── maintenance_worker.ard      # expired session and magic-link cleanup
+├── ffi/cache.go                # concurrency-safe in-memory TTL cache
+├── migrations/                 # migr up/down SQL files
+├── tests/ / test-support/      # Bun HTTP e2e suites and process harness
+├── Dockerfile
+└── entrypoint.sh
 ```
+
+Route closures own request parsing and response shaping. Domain/store functions
+own business rules, SQL, and row decoding. Small repetitions such as local error
+envelopes and explicit result matching are intentional; the server does not use
+a generic response, service, or repository layer.
 
 ## Prerequisites
 

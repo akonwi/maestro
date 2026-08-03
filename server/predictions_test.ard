@@ -1,11 +1,100 @@
 use ard/testing
 
-use maestro/api_football
+use maestro/api_football/fixtures
 use maestro/groups
 use maestro/predictions
 use maestro/scoring_state
 use maestro/test_helpers
 use maestro/users
+use go:net/http
+
+fn provider_fixture(id: Int, kickoff_at: Int64, league_id: Int) fixtures::Fixture {
+  fixtures::Fixture{
+    id: id,
+    kickoff_at: kickoff_at,
+    status: "NS",
+    api_football_league_id: league_id,
+    season: 2026,
+    home_team_id: 1,
+    home_team_name: "Home",
+    away_team_id: 2,
+    away_team_name: "Away",
+    home_score: Maybe::new(),
+    away_score: Maybe::new(),
+  }
+}
+
+test fn fetched_fixture_decisions_do_not_require_provider_transport() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  let scores = predictions::Scores{home: 2, away: 1}
+  let now = Int64::from(1000)
+
+  match predictions::save_fetched_fixture(app, user.id, scores, now, Maybe::new()) {
+    ok(_) => try testing::fail("missing fixture should fail"),
+    err(e) => try testing::assert(e.status == http::StatusNotFound, "missing fixture is 404"),
+  }
+
+  match predictions::save_fetched_fixture(app, user.id, scores, now, Maybe::new(provider_fixture(300, now, 253))) {
+    ok(_) => try testing::fail("started fixture should fail"),
+    err(e) => try testing::assert(e.status == http::StatusConflict, "started fixture is locked"),
+  }
+
+  match predictions::save_fetched_fixture(
+    app,
+    user.id,
+    scores,
+    now,
+    Maybe::new(provider_fixture(301, Int64::from(2000), 999)),
+  ) {
+    ok(_) => try testing::fail("inactive competition should fail"),
+    err(e) => try testing::assert(e.status == http::StatusNotFound, "inactive competition is 404"),
+  }
+  testing::pass()
+}
+
+test fn fetched_fixture_decision_rechecks_transaction_lock() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  let fixture = provider_fixture(303, Int64::from(2000), 253)
+  try predictions::upsert_with_state_at(app, user.id, 1, fixture, 1, 0, Int64::from(1000))
+
+  // The provider decision's timestamp is before kickoff, but the transaction
+  // samples current time again and must honor the already elapsed lock.
+  match predictions::save_fetched_fixture(
+    app,
+    user.id,
+    predictions::Scores{home: 2, away: 1},
+    Int64::from(1000),
+    Maybe::new(fixture),
+  ) {
+    ok(_) => testing::fail("transaction lock should reject the stale decision"),
+    err(e) => testing::assert(e.status == http::StatusConflict, "transaction rechecks lock"),
+  }
+}
+
+test fn fetched_fixture_decision_persists_prediction() Void!Str {
+  let app = try test_helpers::build_app()
+  let user = try users::get_or_create_by_email(app, "ada@example.com")
+  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  let fixture = provider_fixture(302, Int64::from(2000000000000), 253)
+
+  match predictions::save_fetched_fixture(
+    app,
+    user.id,
+    predictions::Scores{home: 2, away: 1},
+    Int64::from(1000),
+    Maybe::new(fixture),
+  ) {
+    ok(saved) => {
+      try testing::assert(saved.fixture_id == 302, "saves fetched fixture")
+      try testing::assert((try scoring_state::find(app, 302)).is_some(), "creates scoring state")
+      testing::pass()
+    },
+    err(e) => testing::fail("expected prediction save, got {e.message}"),
+  }
+}
 
 test fn upsert_creates_then_updates_one_prediction() Void!Str {
   let app = try test_helpers::build_app()
@@ -24,7 +113,7 @@ test fn transactional_upsert_creates_scoring_state_and_preserves_lock() Void!Str
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
   let original_kickoff = Int64::from(2000000000000)
-  let fixture = api_football::Fixture{
+  let fixture = fixtures::Fixture{
     id: 200,
     kickoff_at: original_kickoff,
     status: "NS",
@@ -43,7 +132,7 @@ test fn transactional_upsert_creates_scoring_state_and_preserves_lock() Void!Str
   try testing::assert(first.prediction_lock_at == original_kickoff, "initial kickoff becomes lock")
   try testing::assert(first.competition_id == 1, "stores competition")
 
-  let revised_fixture = api_football::Fixture{
+  let revised_fixture = fixtures::Fixture{
     id: 200,
     kickoff_at: original_kickoff + Int64::from(86400000),
     status: "PST",
@@ -67,7 +156,7 @@ test fn existing_lock_is_rechecked_inside_transaction() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
-  let fixture = api_football::Fixture{
+  let fixture = fixtures::Fixture{
     id: 201,
     kickoff_at: Int64::from(2000),
     status: "NS",
@@ -94,7 +183,7 @@ test fn terminal_scoring_state_rejects_prediction_updates() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
-  let fixture = api_football::Fixture{
+  let fixture = fixtures::Fixture{
     id: 202,
     kickoff_at: Int64::from(5000),
     status: "NS",
@@ -122,7 +211,7 @@ test fn terminal_scoring_state_rejects_prediction_updates() Void!Str {
 test fn state_insert_failure_rolls_back_prediction_write() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
-  let fixture = api_football::Fixture{
+  let fixture = fixtures::Fixture{
     id: 203,
     kickoff_at: Int64::from(5000),
     status: "NS",

@@ -1,7 +1,7 @@
 use decode
 use dram
 use go:fmt
-use maestro/api_football
+use maestro/api_football/fixtures
 use maestro/app
 use maestro/auth
 use maestro/competitions
@@ -165,11 +165,24 @@ private fn fetch_and_save(
   scores: Scores,
   now: Int64,
 ) Prediction!errors::HttpError {
-  let found = try api_football::fixture_by_id(a, fixture_id) -> err {
+  let found = try fixtures::fixture_by_id(a, fixture_id) -> err {
     fmt::Println("prediction fixture lookup failed for fixture {fixture_id}: {err}")
     Result::err(errors::HttpError{status: http::StatusBadGateway, message: "fixture data is temporarily unavailable"})
   }
 
+  save_fetched_fixture(a, user_id, scores, now, found)
+}
+
+// Provider-independent half of prediction creation. Keeping the fetched
+// fixture as an input makes lock, availability, and competition decisions
+// testable without substituting the API-Football transport.
+fn save_fetched_fixture(
+  a: app::App,
+  user_id: Int,
+  scores: Scores,
+  now: Int64,
+  found: fixtures::Fixture?,
+) Prediction!errors::HttpError {
   match found {
     fixture => {
       match fixture.kickoff_at <= now {
@@ -184,7 +197,7 @@ private fn fetch_and_save(
 private fn save_for_competition(
   a: app::App,
   user_id: Int,
-  fixture: api_football::Fixture,
+  fixture: fixtures::Fixture,
   scores: Scores,
 ) Prediction!errors::HttpError {
   let found = try competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) -> err {
@@ -214,7 +227,7 @@ fn upsert_with_state(
   a: app::App,
   user_id: Int,
   competition_id: Int,
-  fixture: api_football::Fixture,
+  fixture: fixtures::Fixture,
   home_score: Int,
   away_score: Int,
 ) Prediction!Str {
@@ -233,7 +246,7 @@ fn upsert_with_state_at(
   a: app::App,
   user_id: Int,
   competition_id: Int,
-  fixture: api_football::Fixture,
+  fixture: fixtures::Fixture,
   home_score: Int,
   away_score: Int,
   now: Int64,
@@ -259,7 +272,7 @@ private fn upsert_with_state_tx(
   tx: sql::Transaction,
   user_id: Int,
   competition_id: Int,
-  fixture: api_football::Fixture,
+  fixture: fixtures::Fixture,
   home_score: Int,
   away_score: Int,
   now: Int64,

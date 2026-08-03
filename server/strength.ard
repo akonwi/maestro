@@ -1,5 +1,5 @@
 use ard/list as List
-use maestro/api_football
+use maestro/api_football/fixtures
 use maestro/app
 
 // League-relative team strength: points-per-game over each team's last N
@@ -26,13 +26,13 @@ struct GameEntry {
 }
 
 fn team_rankings(a: app::App, league_id: Int, season: Int) [Ranking]!Str {
-  let fixtures = try api_football::season_round_fixtures(a, league_id, season)
+  let fixtures = try fixtures::season_round_fixtures(a, league_id, season)
   Result::ok(compute_rankings(fixtures))
 }
 
 // Pure: last-N PPG per team, ranked by PPG descending. Teams below the
 // sample-size floor are omitted entirely.
-fn compute_rankings(fixtures: [api_football::RoundFixture]) [Ranking] {
+fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
   let games: mut [GameEntry] = mut []
   for rf in fixtures {
     let f = rf.fixture
