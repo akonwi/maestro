@@ -7,6 +7,30 @@ use maestro/scoring_worker
 use maestro/test_helpers
 use maestro/users
 
+test fn classifies_fixture_statuses() Void!Str {
+  try testing::assert(
+    scoring_worker::classify_status("FT") == scoring_worker::FixtureAction::settle,
+    "finished fixture settles",
+  )
+  try testing::assert(
+    scoring_worker::classify_status("CANC") == scoring_worker::FixtureAction::void,
+    "cancelled fixture is void",
+  )
+  try testing::assert(
+    scoring_worker::classify_status("AET") == scoring_worker::FixtureAction::reschedule,
+    "extra time remains pending outside v1 scope",
+  )
+  try testing::assert(
+    scoring_worker::classify_status("PEN") == scoring_worker::FixtureAction::reschedule,
+    "penalty shootout remains pending outside v1 scope",
+  )
+  try testing::assert(
+    scoring_worker::classify_status("PST") == scoring_worker::FixtureAction::reschedule,
+    "postponed fixture is rescheduled",
+  )
+  testing::pass()
+}
+
 test fn schedules_fixture_checks_by_state() Void!Str {
   let now = Int64::from(1000000)
   let kickoff = now + Int64::from(60000)

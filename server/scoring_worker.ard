@@ -18,6 +18,12 @@ struct Worker {
   done: Receiver<Bool>,
 }
 
+enum FixtureAction {
+  settle,
+  void,
+  reschedule,
+}
+
 fn start(a: app::App) Worker {
   let stop = Chan::new<Bool>()
   let done = Chan::new<Bool>()
@@ -116,32 +122,35 @@ private fn process_due(a: app::App, state: scoring_state::State) {
 }
 
 fn process_fixture(a: app::App, state: scoring_state::State, fixture: api_football::Fixture) {
-  let finished = fixture.status == "FT"
   let now = time::Now().UnixMilli()
-  match finished {
+  match classify_status(fixture.status) {
     // Ard 0.27 drops a Void-returning call when it is the value of a match arm.
     // Keep the call as a statement and make the arm value explicit.
-    true => {
+    FixtureAction::settle => {
       settle_fixture(a, fixture)
       ()
     },
-    false => {
-      match fixture.status == "CANC" {
-        true => {
-          match scoring_state::mark_void(a, fixture.id, fixture.status, now) {
-            ok => fmt::Println("scoring voided cancelled fixture {fixture.id}"),
-            err(message) => fmt::Println("scoring failed to void fixture {fixture.id}: {message}"),
-          }
-        },
-        false => {
-          let next_check = next_check_at(fixture.status, fixture.kickoff_at, now)
-          match scoring_state::reschedule_success(a, fixture.id, fixture.kickoff_at, fixture.status, next_check, now) {
-            ok => (),
-            err(message) => fmt::Println("scoring failed to reschedule fixture {fixture.id}: {message}"),
-          }
-        },
+    FixtureAction::void => {
+      match scoring_state::mark_void(a, fixture.id, fixture.status, now) {
+        ok => fmt::Println("scoring voided cancelled fixture {fixture.id}"),
+        err(message) => fmt::Println("scoring failed to void fixture {fixture.id}: {message}"),
       }
     },
+    FixtureAction::reschedule => {
+      let next_check = next_check_at(fixture.status, fixture.kickoff_at, now)
+      match scoring_state::reschedule_success(a, fixture.id, fixture.kickoff_at, fixture.status, next_check, now) {
+        ok => (),
+        err(message) => fmt::Println("scoring failed to reschedule fixture {fixture.id}: {message}"),
+      }
+    },
+  }
+}
+
+fn classify_status(status: Str) FixtureAction {
+  match status {
+    "FT" => FixtureAction::settle,
+    "CANC" => FixtureAction::void,
+    _ => FixtureAction::reschedule,
   }
 }
 
