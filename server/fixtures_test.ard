@@ -48,6 +48,76 @@ test fn in_play_fixtures_keep_their_round_current() Void!Str {
   }
 }
 
+test fn detached_reschedule_cannot_hijack_the_round() Void!Str {
+  let day = 24 * 60 * 60
+  let list = [
+    round_fixture(1, day, "FT", "Regular Season - 3"),
+    round_fixture(2, 2 * day, "FT", "Regular Season - 3"),
+    round_fixture(3, 120 * day, "NS", "Regular Season - 3"),
+    round_fixture(4, 30 * day, "NS", "Regular Season - 19"),
+    round_fixture(5, 31 * day, "NS", "Regular Season - 19"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 19", "expected round 19, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn detached_reschedule_is_fallback_when_no_regular_round_remains() Void!Str {
+  let day = 24 * 60 * 60
+  let list = [
+    round_fixture(1, day, "FT", "Regular Season - 3"),
+    round_fixture(2, 2 * day, "FT", "Regular Season - 3"),
+    round_fixture(3, 120 * day, "NS", "Regular Season - 3"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 3", "expected fallback round 3, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn live_reschedule_keeps_its_round_current() Void!Str {
+  let day = 24 * 60 * 60
+  let list = [
+    round_fixture(1, day, "FT", "Regular Season - 3"),
+    round_fixture(2, 2 * day, "FT", "Regular Season - 3"),
+    round_fixture(3, 120 * day, "2H", "Regular Season - 3"),
+    round_fixture(4, 121 * day, "NS", "Regular Season - 19"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 3", "expected live round 3, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn delayed_multi_fixture_round_stays_current() Void!Str {
+  let day = 24 * 60 * 60
+  let list = [
+    round_fixture(1, day, "FT", "Regular Season - 18"),
+    round_fixture(2, 2 * day, "FT", "Regular Season - 18"),
+    round_fixture(3, 120 * day, "NS", "Regular Season - 18"),
+    round_fixture(4, 121 * day, "NS", "Regular Season - 18"),
+    round_fixture(5, 130 * day, "NS", "Regular Season - 19"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 18", "expected delayed round 18, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
+test fn remaining_fixture_inside_round_window_keeps_round_current() Void!Str {
+  let day = 24 * 60 * 60
+  let list = [
+    round_fixture(1, day, "FT", "Regular Season - 18"),
+    round_fixture(2, 3 * day, "NS", "Regular Season - 18"),
+    round_fixture(3, 8 * day, "NS", "Regular Season - 19"),
+  ]
+  match fixtures::pick_round(list) {
+    name => testing::assert(name == "Regular Season - 18", "expected round 18, got {name}"),
+    _ => testing::fail("expected a round"),
+  }
+}
+
 test fn postponed_fixture_cannot_hijack_the_round() Void!Str {
   let list = [
     round_fixture(1, 1000, "PST", "Regular Season - 1"),

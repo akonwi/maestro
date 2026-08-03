@@ -162,26 +162,86 @@ fn is_settled(status: Str) Bool {
   found
 }
 
-// The round of the earliest fixture that is still playable (not started,
-// in play, or awaiting kickoff). None when every fixture is settled.
-fn pick_round(list: [api_football::RoundFixture]) Str? {
-  mut best_kickoff = Int64::from(0)
-  mut best_round: Str? = Maybe::new()
-  for f in list {
-    match not is_settled(f.fixture.status) {
+// A rescheduled fixture can retain its original round even when moved months
+// later. Once that round's other fixtures are long finished, the isolated game
+// must not drag the matchday navigator back to the historical round.
+let MAX_ROUND_SPAN_MS = Int64::from(14 * 24 * 60 * 60 * 1000)
+
+private fn is_detached_reschedule(candidate: api_football::RoundFixture, list: [api_football::RoundFixture]) Bool {
+  let awaiting_kickoff = candidate.fixture.status == "NS" or candidate.fixture.status == "TBD"
+  mut settled_count = 0
+  mut playable_count = 0
+  mut latest_settled: Int64? = Maybe::new()
+  for other in list {
+    match other.round == candidate.round {
       true => {
-        match best_round.is_none() or f.fixture.kickoff_at < best_kickoff {
+        match is_settled(other.fixture.status) {
           true => {
-            best_kickoff = f.fixture.kickoff_at
-            best_round = Maybe::new(f.round)
+            settled_count = settled_count + 1
+            match latest_settled {
+              kickoff => {
+                match other.fixture.kickoff_at > kickoff {
+                  true => { latest_settled = Maybe::new(other.fixture.kickoff_at) },
+                  false => (),
+                }
+              },
+              _ => { latest_settled = Maybe::new(other.fixture.kickoff_at) },
+            }
           },
-          false => (),
+          false => { playable_count = playable_count + 1 },
         }
       },
       false => (),
     }
   }
-  best_round
+  match latest_settled {
+    kickoff => {
+      let detached = awaiting_kickoff and settled_count > 1 and playable_count == 1 and candidate.fixture.kickoff_at - kickoff > MAX_ROUND_SPAN_MS
+      detached
+    },
+    _ => false,
+  }
+}
+
+// The round of the earliest fixture that is still playable (not started,
+// in play, or awaiting kickoff), excluding detached reschedules from old
+// rounds. None when every fixture is settled.
+fn pick_round(list: [api_football::RoundFixture]) Str? {
+  mut best_kickoff = Int64::from(0)
+  mut best_round: Str? = Maybe::new()
+  mut fallback_kickoff = Int64::from(0)
+  mut fallback_round: Str? = Maybe::new()
+  for f in list {
+    match not is_settled(f.fixture.status) {
+      true => {
+        match is_detached_reschedule(f, list) {
+          true => {
+            match fallback_round.is_none() or f.fixture.kickoff_at < fallback_kickoff {
+              true => {
+                fallback_kickoff = f.fixture.kickoff_at
+                fallback_round = Maybe::new(f.round)
+              },
+              false => (),
+            }
+          },
+          false => {
+            match best_round.is_none() or f.fixture.kickoff_at < best_kickoff {
+              true => {
+                best_kickoff = f.fixture.kickoff_at
+                best_round = Maybe::new(f.round)
+              },
+              false => (),
+            }
+          },
+        }
+      },
+      false => (),
+    }
+  }
+  match best_round {
+    round => Maybe::new(round),
+    _ => fallback_round,
+  }
 }
 
 private fn active_competition(a: app::App, competition_id: Int?) (competitions::Competition?)!Str {
