@@ -1,8 +1,8 @@
 use decode
-use go:strings
-use go:time
 use maestro/app
 use sql
+use go:strings
+use go:time
 
 // Domain struct + persistence for users. Handlers never touch sql
 // directly; they call through this module.
@@ -61,24 +61,24 @@ fn get_or_create_by_email_tx(tx: sql::Transaction, email: Str) User!Str {
 }
 
 fn find_by_id(a: app::App, id: Int) User?!Str {
-  let rows = try a.db
-    .query("SELECT id, email, display_name, created_at FROM users WHERE id = @id LIMIT 1")
-    .all(["id": id])
+  let rows = try a.db.query(
+    "SELECT id, email, display_name, created_at FROM users WHERE id = @id LIMIT 1",
+  ).all(["id": id])
   first_user(rows)
 }
 
 fn find_by_email(a: app::App, email: Str) User?!Str {
   let normalized = normalize_email(email)
-  let rows = try a.db
-    .query("SELECT id, email, display_name, created_at FROM users WHERE lower(trim(email)) = @email LIMIT 1")
-    .all(["email": normalized])
+  let rows = try a.db.query(
+    "SELECT id, email, display_name, created_at FROM users WHERE lower(trim(email)) = @email LIMIT 1",
+  ).all(["email": normalized])
   first_user(rows)
 }
 
 private fn find_by_email_tx(tx: sql::Transaction, email: Str) User?!Str {
-  let rows = try tx
-    .query("SELECT id, email, display_name, created_at FROM users WHERE lower(trim(email)) = @email LIMIT 1")
-    .all(["email": email])
+  let rows = try tx.query(
+    "SELECT id, email, display_name, created_at FROM users WHERE lower(trim(email)) = @email LIMIT 1",
+  ).all(["email": email])
   first_user(rows)
 }
 
@@ -102,10 +102,7 @@ private fn first_user(rows: [Any]) User?!Str {
 private fn decode_user(row: Any) User!Str {
   let id = try decode::run(row, decode::field("id", decode::int)).map_err(describe)
   let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
-  let display_name = try decode::run(
-    row,
-    decode::field("display_name", decode::nullable(decode::string)),
-  ).map_err(describe)
+  let display_name = try decode::run(row, decode::field("display_name", decode::nullable(decode::string))).map_err(describe)
   let created_at_int = try decode::run(row, decode::field("created_at", decode::int)).map_err(describe)
   Result::ok(
     User{

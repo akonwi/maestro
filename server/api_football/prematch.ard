@@ -10,10 +10,13 @@ let CACHE_TTL_MS = Int64::from(60 * 60 * 1000)
 struct TeamOutlook {
   id: Int,
   name: Str,
-  form: Str,               // "DWWWW..." most recent last
-  goals_for_avg: Str,      // per game, e.g. "2.5"
+  form: Str,
+  // "DWWWW..." most recent last
+  goals_for_avg: Str,
+  // per game, e.g. "2.5"
   goals_against_avg: Str,
-  last5_for_avg: Str,      // per game over last 5
+  last5_for_avg: Str,
+  // per game over last 5
   last5_against_avg: Str,
   goals_for_total: Int,
   goals_against_total: Int,
@@ -41,16 +44,21 @@ struct StandingRow {
   goals_for: Int,
   goals_against: Int,
   goals_diff: Int,
-  form: Str,               // last 5, e.g. "WWLDL"
-  description: Str,        // qualification note, e.g. "MLS Cup Play-offs"
-  group: Str,              // e.g. "Western Conference"
+  form: Str,
+  // last 5, e.g. "WWLDL"
+  description: Str,
+  // qualification note, e.g. "MLS Cup Play-offs"
+  group: Str,
+  // e.g. "Western Conference"
 }
 
 struct Injury {
   team_id: Int,
   player: Str,
-  kind: Str,               // "Missing Fixture" | "Questionable"
-  reason: Str,             // "Knee Injury" | "Suspended"
+  kind: Str,
+  // "Missing Fixture" | "Questionable"
+  reason: Str,
+  // "Knee Injury" | "Suspended"
 }
 
 struct H2HResult {
@@ -80,8 +88,10 @@ fn fixture_outlook(a: app::App, fixture_id: Int) Outlook?!Str {
 }
 
 fn parse_outlook(body: Str) Outlook?!Str {
-  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
-    .map_err(decoding::describe_error)
+  let items = try decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode::any)),
+  ).map_err(decoding::describe_error)
   match items.at(0) {
     item => {
       // Incomplete prediction payloads (nulls while upstream is still
@@ -194,8 +204,10 @@ fn league_standings(a: app::App, league_id: Int, season: Int) [StandingRow]!Str 
 fn parse_standings(body: Str) [StandingRow]!Str {
   // response[0].league.standings is a list of groups (conferences), each
   // a list of rows. Flatten across groups.
-  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
-    .map_err(decoding::describe_error)
+  let items = try decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode::any)),
+  ).map_err(decoding::describe_error)
   mut out: mut [StandingRow] = mut []
   match items.at(0) {
     first => {
@@ -306,16 +318,8 @@ struct KeyPlayer {
 // both). Cached league-wide and reused across fixtures; the analysis layer
 // filters to a fixture's two teams.
 fn league_key_players(a: app::App, league_id: Int, season: Int) [KeyPlayer]!Str {
-  let scorers_body = try api_football::cached_get(
-    a,
-    "/players/topscorers?league={league_id}&season={season}",
-    CACHE_TTL_MS,
-  )
-  let assists_body = try api_football::cached_get(
-    a,
-    "/players/topassists?league={league_id}&season={season}",
-    CACHE_TTL_MS,
-  )
+  let scorers_body = try api_football::cached_get(a, "/players/topscorers?league={league_id}&season={season}", CACHE_TTL_MS)
+  let assists_body = try api_football::cached_get(a, "/players/topassists?league={league_id}&season={season}", CACHE_TTL_MS)
   merge_key_players(scorers_body, assists_body)
 }
 
@@ -361,8 +365,10 @@ fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
 }
 
 private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
-  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
-    .map_err(decoding::describe_error)
+  let items = try decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode::any)),
+  ).map_err(decoding::describe_error)
   mut out: mut [KeyPlayer] = mut []
   for item in items {
     match decode_leaders(item, scorers) {
@@ -411,8 +417,10 @@ fn fixture_injuries(a: app::App, fixture_id: Int) [Injury]!Str {
 }
 
 fn parse_injuries(body: Str) [Injury]!Str {
-  let items = try decode::unmarshal(body, decode::field("response", decode::list(decode::any)))
-    .map_err(decoding::describe_error)
+  let items = try decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode::any)),
+  ).map_err(decoding::describe_error)
   // Upstream can list the same player twice for one fixture (e.g. a
   // "Missing Fixture" record plus a "Questionable" one). Keep the first
   // record per player so team news shows each player once.
@@ -448,7 +456,12 @@ private fn decode_injury(item: Any) Injury!decode::Err {
   let player = decoding::string_or(item, ["player", "name"], "")
   let kind = decoding::string_or(item, ["player", "type"], "")
   let reason = decoding::string_or(item, ["player", "reason"], "")
-  Result::ok(Injury{team_id: team_id, player: player, kind: kind, reason: reason})
+  Result::ok(
+    Injury{
+      team_id: team_id,
+      player: player,
+      kind: kind,
+      reason: reason,
+    },
+  )
 }
-
-

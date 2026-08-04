@@ -1,9 +1,9 @@
 use dram
-use maestro/api_football/prematch
+use go:fmt
 use maestro/api_football/details
+use maestro/api_football/prematch
 use maestro/app
 use maestro/strength
-use go:fmt
 use go:net/http
 use go:strconv
 
@@ -12,45 +12,45 @@ use go:strconv
 // ride the shared TTL cache in the api_football module.
 
 fn register(router: mut dram::App, a: app::App) {
-  router.get(
-    "/fixtures/:id/outlook",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match strconv::Atoi(req.param("id").or("")) {
-        ok(id) => {
-          match outlook_payload(a, id) {
-            ok(found) => {
-              match found {
-                payload => res.json(http::StatusOK, payload),
-                _ => res.json(http::StatusNotFound, ["error": "no outlook available for this fixture"]),
-              }
-            },
-            err(message) => {
-              fmt::Println("fixture outlook failed for fixture {id}: {message}")
-              res.json(http::StatusBadGateway, ["error": "fixture analysis is temporarily unavailable"])
-            },
-          }
-        },
-        err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
-      }
-    },
-  )
-  router.get(
-    "/fixtures/:id/match",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match strconv::Atoi(req.param("id").or("")) {
-        ok(id) => {
-          match match_json(a, id) {
-            ok(payload) => res.json(http::StatusOK, payload),
-            err(message) => {
-              fmt::Println("fixture match analysis failed for fixture {id}: {message}")
-              res.json(http::StatusBadGateway, ["error": "fixture analysis is temporarily unavailable"])
-            },
-          }
-        },
-        err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
-      }
-    },
-  )
+  router.get("/fixtures/:id/outlook", fn(req: dram::Request, res: mut dram::Response) {
+    match strconv::Atoi(req.param("id").or("")) {
+      ok(id) => {
+        match outlook_payload(a, id) {
+          ok(found) => {
+            match found {
+              payload => res.json(http::StatusOK, payload),
+              _ => res.json(http::StatusNotFound, ["error": "no outlook available for this fixture"]),
+            }
+          },
+          err(message) => {
+            fmt::Println("fixture outlook failed for fixture {id}: {message}")
+            res.json(
+              http::StatusBadGateway,
+              ["error": "fixture analysis is temporarily unavailable"],
+            )
+          },
+        }
+      },
+      err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
+    }
+  })
+  router.get("/fixtures/:id/match", fn(req: dram::Request, res: mut dram::Response) {
+    match strconv::Atoi(req.param("id").or("")) {
+      ok(id) => {
+        match match_json(a, id) {
+          ok(payload) => res.json(http::StatusOK, payload),
+          err(message) => {
+            fmt::Println("fixture match analysis failed for fixture {id}: {message}")
+            res.json(
+              http::StatusBadGateway,
+              ["error": "fixture analysis is temporarily unavailable"],
+            )
+          },
+        }
+      },
+      err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
+    }
+  })
 }
 
 // ─── JSON shaping ───────────────────────────────────────────────────────
@@ -75,7 +75,13 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
         ok(v) => { injuries = v },
         err(message) => log_section("injuries", fixture_id, message),
       }
-      let empty_splits = prematch::TeamGoalSplits{for_home: "0", against_home: "0", for_away: "0", against_away: "0"}
+      let empty_splits = prematch::TeamGoalSplits{
+        for_home: "0",
+        against_home: "0",
+        for_away: "0",
+        against_away: "0",
+      }
+
       mut home_splits = empty_splits
       match prematch::team_goal_splits(a, outlook.league_id, outlook.season, outlook.home.id) {
         ok(v) => { home_splits = v },
@@ -96,7 +102,19 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
         ok(v) => { rankings = v },
         err(message) => log_section("strength", fixture_id, message),
       }
-      Result::ok(Maybe::new(outlook_json(outlook, standings, injuries, home_splits, away_splits, key_players, rankings)))
+      Result::ok(
+        Maybe::new(
+          outlook_json(
+            outlook,
+            standings,
+            injuries,
+            home_splits,
+            away_splits,
+            key_players,
+            rankings,
+          ),
+        ),
+      )
     },
     _ => Result::ok(Maybe::new()),
   }
@@ -143,6 +161,7 @@ fn outlook_json(
     "home": standing_opt(standings, o.home.id),
     "away": standing_opt(standings, o.away.id),
   ]
+
   let injuries_map: [Str: Any] = ["home": home_injuries, "away": away_injuries]
 
   let goals_map: [Str: Any] = [
@@ -162,6 +181,7 @@ fn outlook_json(
       "is_scorer": kp.is_scorer,
       "is_assister": kp.is_assister,
     ]
+
     match kp.team_id == o.home.id {
       true => home_players.push(entry),
       false => (),
@@ -239,6 +259,7 @@ private fn standing_opt(standings: [prematch::StandingRow], team_id: Int) Maybe<
           "goals_diff": row.goals_diff,
           "group": row.group,
         ]
+
         found = Maybe::new(entry)
       },
       false => (),
@@ -388,7 +409,12 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
     players_json.push(entry)
   }
 
-  let payload: [Str: Any] = ["statistics": stats_json, "events": events_json, "lineups": lineups_json, "players": players_json]
+  let payload: [Str: Any] = [
+    "statistics": stats_json,
+    "events": events_json,
+    "lineups": lineups_json,
+    "players": players_json,
+  ]
 
   Result::ok(payload)
 }
@@ -403,7 +429,13 @@ private fn require_some_section(failures: Int, last_error: Str) Void!Str {
 private fn lineup_players_json(list: [details::LineupPlayer]) [Any] {
   let out: mut [Any] = mut []
   for p in list {
-    let entry: [Str: Any] = ["id": p.id, "name": p.name, "number": p.number, "pos": p.pos, "grid": p.grid]
+    let entry: [Str: Any] = [
+      "id": p.id,
+      "name": p.name,
+      "number": p.number,
+      "pos": p.pos,
+      "grid": p.grid,
+    ]
 
     out.push(entry)
   }

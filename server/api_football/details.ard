@@ -9,7 +9,8 @@ let CACHE_TTL_MS = Int64::from(60 * 1000)
 
 struct StatLine {
   label: Str,
-  value: Str?,   // upstream mixes ints, "55%", and null; normalized to text
+  value: Str?,
+  // upstream mixes ints, "55%", and null; normalized to text
 }
 
 struct TeamStats {
@@ -22,8 +23,10 @@ struct MatchEvent {
   minute: Int,
   extra: Int?,
   team_id: Int,
-  kind: Str,     // Goal | Card | subst | Var
-  detail: Str,   // Normal Goal | Own Goal | Yellow Card | Substitution 1 | ...
+  kind: Str,
+  // Goal | Card | subst | Var
+  detail: Str,
+  // Normal Goal | Own Goal | Yellow Card | Substitution 1 | ...
   player: Str?,
   assist: Str?,
   comments: Str?,
@@ -34,7 +37,8 @@ struct LineupPlayer {
   name: Str,
   number: Int,
   pos: Str?,
-  grid: Str?,    // "row:col", none for bench
+  grid: Str?,
+  // "row:col", none for bench
 }
 
 struct Lineup {
@@ -82,14 +86,23 @@ fn fixture_statistics(a: app::App, fixture_id: Int) [TeamStats]!Str {
 }
 
 fn parse_statistics(body: Str) [TeamStats]!Str {
-  decode::unmarshal(body, decode::field("response", decode::list(decode_team_stats))).map_err(decoding::describe_error)
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_team_stats)),
+  ).map_err(decoding::describe_error)
 }
 
 private fn decode_team_stats(item: Any) TeamStats!decode::Err {
   let team_id = try decode::run(item, decode::path(["team", "id"], decode::int))
   let team_name = try decode::run(item, decode::path(["team", "name"], decode::string))
   let stats = try decode::run(item, decode::field("statistics", decode::list(decode_stat_line)))
-  Result::ok(TeamStats{team_id: team_id, team_name: team_name, stats: stats})
+  Result::ok(
+    TeamStats{
+      team_id: team_id,
+      team_name: team_name,
+      stats: stats,
+    },
+  )
 }
 
 private fn decode_stat_line(item: Any) StatLine!decode::Err {
@@ -120,7 +133,10 @@ fn fixture_events(a: app::App, fixture_id: Int) [MatchEvent]!Str {
 }
 
 fn parse_events(body: Str) [MatchEvent]!Str {
-  decode::unmarshal(body, decode::field("response", decode::list(decode_event))).map_err(decoding::describe_error)
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_event)),
+  ).map_err(decoding::describe_error)
 }
 
 private fn decode_event(item: Any) MatchEvent!decode::Err {
@@ -152,7 +168,10 @@ fn fixture_lineups(a: app::App, fixture_id: Int) [Lineup]!Str {
 }
 
 fn parse_lineups(body: Str) [Lineup]!Str {
-  decode::unmarshal(body, decode::field("response", decode::list(decode_lineup))).map_err(decoding::describe_error)
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_lineup)),
+  ).map_err(decoding::describe_error)
 }
 
 private fn decode_lineup(item: Any) Lineup!decode::Err {
@@ -204,7 +223,15 @@ private fn decode_lineup_player(item: Any) LineupPlayer!decode::Err {
   }
   let pos = decoding::opt_string(item, ["player", "pos"])
   let grid = decoding::opt_string(item, ["player", "grid"])
-  Result::ok(LineupPlayer{id: id, name: name, number: number, pos: pos, grid: grid})
+  Result::ok(
+    LineupPlayer{
+      id: id,
+      name: name,
+      number: number,
+      pos: pos,
+      grid: grid,
+    },
+  )
 }
 
 fn fixture_players(a: app::App, fixture_id: Int) [TeamPlayers]!Str {
@@ -213,7 +240,10 @@ fn fixture_players(a: app::App, fixture_id: Int) [TeamPlayers]!Str {
 }
 
 fn parse_players(body: Str) [TeamPlayers]!Str {
-  decode::unmarshal(body, decode::field("response", decode::list(decode_team_players))).map_err(decoding::describe_error)
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_team_players)),
+  ).map_err(decoding::describe_error)
 }
 
 private fn decode_team_players(item: Any) TeamPlayers!decode::Err {
@@ -228,7 +258,13 @@ private fn decode_team_players(item: Any) TeamPlayers!decode::Err {
       err(_) => (),
     }
   }
-  Result::ok(TeamPlayers{team_id: team_id, team_name: team_name, players: deref players})
+  Result::ok(
+    TeamPlayers{
+      team_id: team_id,
+      team_name: team_name,
+      players: deref players,
+    },
+  )
 }
 
 private fn decode_player_line(item: Any) PlayerLine!decode::Err {
@@ -283,4 +319,3 @@ private fn decode_player_stats(id: Int, name: Str, s: Any) PlayerLine!decode::Er
     },
   )
 }
-

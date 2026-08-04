@@ -1,12 +1,12 @@
 use ard/async
 
 use go:fmt
-use go:time
 use maestro/api_football/fixtures
 use maestro/app
 use maestro/competitions
 use maestro/scoring
 use maestro/scoring_state
+use go:time
 
 let POLL_INTERVAL = 60 * time::Second
 let SHORT_RETRY_MS = Int64::from(10 * 60 * 1000)
@@ -27,7 +27,9 @@ enum FixtureAction {
 fn start(a: app::App) Worker {
   let stop = Chan::new<Bool>(1)
   let done = Chan::new<Bool>()
-  async::start(fn() { run(a, stop.receiver(), done.sender()) })
+  async::start(fn() {
+    run(a, stop.receiver(), done.sender())
+  })
   Worker{stop: stop.sender(), done: done.receiver()}
 }
 
@@ -69,7 +71,9 @@ fn poll_once(a: app::App) Void!Str {
     true => fmt::Println("scoring worker processing {due.size()} due fixture(s)"),
     false => (),
   }
-  for state in due { process_due(a, state) }
+  for state in due {
+    process_due(a, state)
+  }
   Result::ok(())
 }
 
@@ -95,7 +99,11 @@ private fn discover_missing(a: app::App) Void!Str {
 
 private fn create_discovered(a: app::App, fixture: fixtures::Fixture) {
   match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
-    err(message) => fmt::Println("scoring discovery competition lookup failed for fixture {fixture.id}: {message}"),
+    err(message) => {
+      fmt::Println(
+        "scoring discovery competition lookup failed for fixture {fixture.id}: {message}",
+      )
+    },
     ok(found) => {
       match found {
         competition => {
@@ -108,7 +116,11 @@ private fn create_discovered(a: app::App, fixture: fixtures::Fixture) {
             time::Now().UnixMilli(),
           ) {
             ok => (),
-            err(message) => fmt::Println("scoring discovery state insert failed for fixture {fixture.id}: {message}"),
+            err(message) => {
+              fmt::Println(
+                "scoring discovery state insert failed for fixture {fixture.id}: {message}",
+              )
+            },
           }
         },
         _ => fmt::Println("scoring discovery ignored fixture {fixture.id} outside active competitions"),
@@ -146,7 +158,14 @@ fn process_fixture(a: app::App, state: scoring_state::State, fixture: fixtures::
     },
     FixtureAction::reschedule => {
       let next_check = next_check_at(fixture.status, fixture.kickoff_at, now)
-      match scoring_state::reschedule_success(a, fixture.id, fixture.kickoff_at, fixture.status, next_check, now) {
+      match scoring_state::reschedule_success(
+        a,
+        fixture.id,
+        fixture.kickoff_at,
+        fixture.status,
+        next_check,
+        now,
+      ) {
         ok => (),
         err(message) => fmt::Println("scoring failed to reschedule fixture {fixture.id}: {message}"),
       }
@@ -187,7 +206,9 @@ private fn record_fixture_error(a: app::App, fixture_id: Int, message: Str) {
         _ => (),
       }
     },
-    err(find_message) => fmt::Println("scoring could not record fixture {fixture_id} error: {find_message}"),
+    err(find_message) => {
+      fmt::Println("scoring could not record fixture {fixture_id} error: {find_message}")
+    },
   }
 }
 
@@ -196,7 +217,9 @@ private fn record_error(a: app::App, state: scoring_state::State, message: Str) 
   let next_check = now + error_delay_ms(state.attempt_count)
   match scoring_state::reschedule_error(a, state.fixture_id, message, next_check, now) {
     ok => fmt::Println("scoring fixture {state.fixture_id} failed; retry scheduled: {message}"),
-    err(update_message) => fmt::Println("scoring failed to record fixture {state.fixture_id} error: {update_message}"),
+    err(update_message) => {
+      fmt::Println("scoring failed to record fixture {state.fixture_id} error: {update_message}")
+    },
   }
 }
 

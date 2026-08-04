@@ -12,13 +12,7 @@ test fn incomplete_outlook_is_treated_as_absent() Void!Str {
 
 // Upstream lists the same player twice for one fixture (different injury
 // types); team news should see each player once.
-let DUP_INJURIES: Str = "\{
-  \"response\": [
-    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"A. Ahmed\", \"type\": \"Missing Fixture\", \"reason\": \"International duty\" \} \},
-    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"A. Ahmed\", \"type\": \"Questionable\", \"reason\": \"Injury\" \} \},
-    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"B. Smith\", \"type\": \"Missing Fixture\", \"reason\": \"Knee Injury\" \} \}
-  ]
-\}"
+let DUP_INJURIES: Str = "\{\n  \"response\": [\n    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"A. Ahmed\", \"type\": \"Missing Fixture\", \"reason\": \"International duty\" \} \},\n    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"A. Ahmed\", \"type\": \"Questionable\", \"reason\": \"Injury\" \} \},\n    \{ \"team\": \{ \"id\": 1603 \}, \"player\": \{ \"name\": \"B. Smith\", \"type\": \"Missing Fixture\", \"reason\": \"Knee Injury\" \} \}\n  ]\n\}"
 
 test fn injuries_dedup_per_player() Void!Str {
   let injuries = try prematch::parse_injuries(DUP_INJURIES)
@@ -30,18 +24,7 @@ test fn injuries_dedup_per_player() Void!Str {
 }
 
 // Standings decode: expanded row fields + conference grouping.
-let STANDINGS_BODY: Str = "\{
-  \"response\": [
-    \{ \"league\": \{ \"standings\": [
-      [
-        \{ \"rank\": 1, \"team\": \{ \"id\": 1607, \"name\": \"Vancouver Whitecaps\" \}, \"points\": 32, \"goalsDiff\": 22, \"form\": \"WLWDD\", \"description\": \"Promotion - MLS (Play Offs)\", \"group\": \"Western Conference\", \"all\": \{ \"played\": 14, \"win\": 10, \"draw\": 2, \"lose\": 2, \"goals\": \{ \"for\": 34, \"against\": 12 \} \} \}
-      ],
-      [
-        \{ \"rank\": 1, \"team\": \{ \"id\": 1595, \"name\": \"Philadelphia Union\" \}, \"points\": 30, \"goalsDiff\": 14, \"form\": \"WWWDW\", \"description\": \"Promotion - MLS (Play Offs)\", \"group\": \"Eastern Conference\", \"all\": \{ \"played\": 15, \"win\": 9, \"draw\": 3, \"lose\": 3, \"goals\": \{ \"for\": 28, \"against\": 14 \} \} \}
-      ]
-    ] \} \}
-  ]
-\}"
+let STANDINGS_BODY: Str = "\{\n  \"response\": [\n    \{ \"league\": \{ \"standings\": [\n      [\n        \{ \"rank\": 1, \"team\": \{ \"id\": 1607, \"name\": \"Vancouver Whitecaps\" \}, \"points\": 32, \"goalsDiff\": 22, \"form\": \"WLWDD\", \"description\": \"Promotion - MLS (Play Offs)\", \"group\": \"Western Conference\", \"all\": \{ \"played\": 14, \"win\": 10, \"draw\": 2, \"lose\": 2, \"goals\": \{ \"for\": 34, \"against\": 12 \} \} \}\n      ],\n      [\n        \{ \"rank\": 1, \"team\": \{ \"id\": 1595, \"name\": \"Philadelphia Union\" \}, \"points\": 30, \"goalsDiff\": 14, \"form\": \"WWWDW\", \"description\": \"Promotion - MLS (Play Offs)\", \"group\": \"Eastern Conference\", \"all\": \{ \"played\": 15, \"win\": 9, \"draw\": 3, \"lose\": 3, \"goals\": \{ \"for\": 28, \"against\": 14 \} \} \}\n      ]\n    ] \} \}\n  ]\n\}"
 
 test fn parses_expanded_standings() Void!Str {
   let rows = try prematch::parse_standings(STANDINGS_BODY)
@@ -55,19 +38,9 @@ test fn parses_expanded_standings() Void!Str {
   Result::ok(())
 }
 
-let TOPSCORERS: Str = "\{
-  \"response\": [
-    \{ \"player\": \{ \"id\": 10, \"name\": \"L. Messi\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1609 \}, \"goals\": \{ \"total\": 35, \"assists\": 23 \}, \"games\": \{ \"rating\": \"8.6\" \} \}] \},
-    \{ \"player\": \{ \"id\": 20, \"name\": \"S. Surridge\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1602 \}, \"goals\": \{ \"total\": 25, \"assists\": 3 \}, \"games\": \{ \"rating\": \"7.4\" \} \}] \}
-  ]
-\}"
+let TOPSCORERS: Str = "\{\n  \"response\": [\n    \{ \"player\": \{ \"id\": 10, \"name\": \"L. Messi\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1609 \}, \"goals\": \{ \"total\": 35, \"assists\": 23 \}, \"games\": \{ \"rating\": \"8.6\" \} \}] \},\n    \{ \"player\": \{ \"id\": 20, \"name\": \"S. Surridge\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1602 \}, \"goals\": \{ \"total\": 25, \"assists\": 3 \}, \"games\": \{ \"rating\": \"7.4\" \} \}] \}\n  ]\n\}"
 
-let TOPASSISTS: Str = "\{
-  \"response\": [
-    \{ \"player\": \{ \"id\": 10, \"name\": \"L. Messi\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1609 \}, \"goals\": \{ \"total\": 35, \"assists\": 23 \}, \"games\": \{ \"rating\": \"8.6\" \} \}] \},
-    \{ \"player\": \{ \"id\": 30, \"name\": \"E. Gaddis\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1600 \}, \"goals\": \{ \"total\": 2, \"assists\": 12 \}, \"games\": \{ \"rating\": \"7.1\" \} \}] \}
-  ]
-\}"
+let TOPASSISTS: Str = "\{\n  \"response\": [\n    \{ \"player\": \{ \"id\": 10, \"name\": \"L. Messi\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1609 \}, \"goals\": \{ \"total\": 35, \"assists\": 23 \}, \"games\": \{ \"rating\": \"8.6\" \} \}] \},\n    \{ \"player\": \{ \"id\": 30, \"name\": \"E. Gaddis\" \}, \"statistics\": [\{ \"team\": \{ \"id\": 1600 \}, \"goals\": \{ \"total\": 2, \"assists\": 12 \}, \"games\": \{ \"rating\": \"7.1\" \} \}] \}\n  ]\n\}"
 
 test fn merges_scorers_and_assisters_by_player() Void!Str {
   let players = try prematch::merge_key_players(TOPSCORERS, TOPASSISTS)

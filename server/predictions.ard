@@ -76,7 +76,7 @@ fn register(router: mut dram::App, a: app::App) {
               ok(prediction) => res.json(http::StatusOK, prediction_json(prediction)),
               err(e) => res.json(e.status, ["error": e.message]),
             }
-          }
+          },
         }
       },
     }
@@ -107,7 +107,9 @@ fn register(router: mut dram::App, a: app::App) {
           res.json(http::StatusOK, payload)
         },
         err(message) => {
-          fmt::Println("group prediction list failed for group {group_id}, fixture {fixture_id}: {message}")
+          fmt::Println(
+            "group prediction list failed for group {group_id}, fixture {fixture_id}: {message}",
+          )
           res.json(http::StatusInternalServerError, ["error": "could not load predictions"])
         },
       }
@@ -120,14 +122,13 @@ struct Scores {
   away: Int,
 }
 
-private fn save_before_kickoff(
-  a: app::App,
-  user_id: Int,
-  fixture_id: Int,
-  scores: Scores,
-) Prediction!errors::HttpError {
+private fn save_before_kickoff(a: app::App, user_id: Int, fixture_id: Int, scores: Scores) Prediction!errors::HttpError {
   match ffi::CacheAllow(a.cache, "prediction-write:{user_id}", 30, Int64::from(60 * 1000)) {
-    false => Result::err(errors::HttpError{status: http::StatusTooManyRequests, message: "too many prediction requests"}),
+    false => {
+      Result::err(
+        errors::HttpError{status: http::StatusTooManyRequests, message: "too many prediction requests"},
+      )
+    },
     true => check_existing_lock(a, user_id, fixture_id, scores, time::Now().UnixMilli()),
   }
 }
@@ -142,13 +143,19 @@ private fn check_existing_lock(
   match scoring_state::find(a, fixture_id) {
     err(message) => {
       fmt::Println("prediction scoring-state lookup failed for fixture {fixture_id}: {message}")
-      Result::err(errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"})
+      Result::err(
+        errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"},
+      )
     },
     ok(existing) => {
       match existing {
         state => {
           match state.prediction_lock_at <= now {
-            true => Result::err(errors::HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
+            true => {
+              Result::err(
+                errors::HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"},
+              )
+            },
             false => fetch_and_save(a, user_id, fixture_id, scores, now),
           }
         },
@@ -158,16 +165,12 @@ private fn check_existing_lock(
   }
 }
 
-private fn fetch_and_save(
-  a: app::App,
-  user_id: Int,
-  fixture_id: Int,
-  scores: Scores,
-  now: Int64,
-) Prediction!errors::HttpError {
+private fn fetch_and_save(a: app::App, user_id: Int, fixture_id: Int, scores: Scores, now: Int64) Prediction!errors::HttpError {
   let found = try fixtures::fixture_by_id(a, fixture_id) -> err {
     fmt::Println("prediction fixture lookup failed for fixture {fixture_id}: {err}")
-    Result::err(errors::HttpError{status: http::StatusBadGateway, message: "fixture data is temporarily unavailable"})
+    Result::err(
+      errors::HttpError{status: http::StatusBadGateway, message: "fixture data is temporarily unavailable"},
+    )
   }
 
   save_fetched_fixture(a, user_id, scores, now, found)
@@ -186,7 +189,11 @@ fn save_fetched_fixture(
   match found {
     fixture => {
       match fixture.kickoff_at <= now {
-        true => Result::err(errors::HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"}),
+        true => {
+          Result::err(
+            errors::HttpError{status: http::StatusConflict, message: "predictions are locked after kickoff"},
+          )
+        },
         false => save_for_competition(a, user_id, fixture, scores),
       }
     },
@@ -202,7 +209,9 @@ private fn save_for_competition(
 ) Prediction!errors::HttpError {
   let found = try competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) -> err {
     fmt::Println("prediction competition lookup failed for fixture {fixture.id}: {err}")
-    Result::err(errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"})
+    Result::err(
+      errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"},
+    )
   }
   match found {
     competition => {
@@ -212,14 +221,22 @@ private fn save_for_competition(
           match message == "predictions are locked after kickoff" {
             true => Result::err(errors::HttpError{status: http::StatusConflict, message: message}),
             false => {
-              fmt::Println("prediction write failed for fixture {fixture.id}, user {user_id}: {message}")
-              Result::err(errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"})
+              fmt::Println(
+                "prediction write failed for fixture {fixture.id}, user {user_id}: {message}",
+              )
+              Result::err(
+                errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"},
+              )
             },
           }
         },
       }
     },
-    _ => Result::err(errors::HttpError{status: http::StatusNotFound, message: "fixture competition is not active"}),
+    _ => {
+      Result::err(
+        errors::HttpError{status: http::StatusNotFound, message: "fixture competition is not active"},
+      )
+    },
   }
 }
 
@@ -433,7 +450,14 @@ private fn decode_scores(req: dram::Request) Scores!Str {
   let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
-    false => decode::unmarshal(body, decode_scores_value).map_err(fn(e) { e.error() }),
+    false => {
+      decode::unmarshal(
+        body,
+        decode_scores_value,
+      ).map_err(fn(e) {
+        e.error()
+      })
+    },
   }
 }
 

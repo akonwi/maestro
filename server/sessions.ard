@@ -1,8 +1,8 @@
 use decode
-use go:time
 use maestro/app
 use maestro/crypto
 use sql
+use go:time
 
 // Bearer-token sessions. The `token` column is a 64-char hex string
 // (32 random bytes from crypto/rand).
@@ -21,16 +21,9 @@ fn mint(a: app::App, user_id: Int) Session!Str {
   let ttl_ms = Int64::from(a.config.session_ttl_secs) * 1000
   let expires_at = now + ttl_ms
 
-  try a.db
-    .query("INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)")
-    .run(
-      [
-        "token": token,
-        "user_id": user_id,
-        "created_at": now,
-        "expires_at": expires_at,
-      ],
-    )
+  try a.db.query(
+    "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)",
+  ).run(["token": token, "user_id": user_id, "created_at": now, "expires_at": expires_at])
 
   Result::ok(
     Session{
@@ -48,16 +41,9 @@ fn mint_tx(tx: sql::Transaction, a: app::App, user_id: Int) Session!Str {
   let ttl_ms = Int64::from(a.config.session_ttl_secs) * 1000
   let expires_at = now + ttl_ms
 
-  try tx
-    .query("INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)")
-    .run(
-      [
-        "token": token,
-        "user_id": user_id,
-        "created_at": now,
-        "expires_at": expires_at,
-      ],
-    )
+  try tx.query(
+    "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)",
+  ).run(["token": token, "user_id": user_id, "created_at": now, "expires_at": expires_at])
 
   Result::ok(
     Session{
@@ -72,9 +58,9 @@ fn mint_tx(tx: sql::Transaction, a: app::App, user_id: Int) Session!Str {
 // Look up a session by its bearer token. Returns none for missing or
 // expired sessions; the hourly cleanup worker removes expired rows.
 fn find_by_token(a: app::App, token: Str) Session?!Str {
-  let rows = try a.db
-    .query("SELECT token, user_id, created_at, expires_at FROM sessions WHERE token = @token LIMIT 1")
-    .all(["token": token])
+  let rows = try a.db.query(
+    "SELECT token, user_id, created_at, expires_at FROM sessions WHERE token = @token LIMIT 1",
+  ).all(["token": token])
   match rows.at(0) {
     row => {
       let session = try decode_session(row)

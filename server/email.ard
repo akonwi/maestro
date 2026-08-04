@@ -3,8 +3,8 @@ use ard/unsafe
 use go:bytes
 use go:encoding/json
 use go:io
-use go:net/http
 use maestro/config
+use go:net/http
 
 // Minimal Cloudflare Email Service REST client. One plain-text message per
 // request; the sender must belong to a domain configured for Email Service.
@@ -18,13 +18,7 @@ fn send(cfg: config::Config, to: Str, subject: Str, text: Str, html: Str) Void!S
   }
 }
 
-private fn send_via_cloudflare(
-  cfg: config::Config,
-  to: Str,
-  subject: Str,
-  text: Str,
-  html: Str,
-) Void!Str {
+private fn send_via_cloudflare(cfg: config::Config, to: Str, subject: Str, text: Str, html: Str) Void!Str {
   let payload: [Str: Str] = [
     "from": cfg.email_from,
     "to": to,

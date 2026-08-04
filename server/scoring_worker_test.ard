@@ -52,10 +52,15 @@ test fn schedules_fixture_checks_by_state() Void!Str {
 test fn finished_fixture_is_settled_by_worker_dispatch() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "worker@example.com")
-  try app.db.exec("INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)")
+  try app.db.exec(
+    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+  )
   try predictions::upsert(app, user.id, 700, 2, 1)
-  try app.db.exec("INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (700, 1, 1, 1, 'pending', 'FT', 1, 0, 1, 1)")
-  let state = (try scoring_state::find(app, 700)).expect("state")
+  try app.db.exec(
+    "INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (700, 1, 1, 1, 'pending', 'FT', 1, 0, 1, 1)",
+  )
+  let maybe_state = try scoring_state::find(app, 700)
+  let state = maybe_state.expect("state")
   let fixture = fixtures::Fixture{
     id: 700,
     kickoff_at: Int64::from(1),
@@ -69,8 +74,10 @@ test fn finished_fixture_is_settled_by_worker_dispatch() Void!Str {
     home_score: Maybe::new(2),
     away_score: Maybe::new(1),
   }
+
   scoring_worker::process_fixture(app, state, fixture)
-  let saved = (try predictions::find(app, user.id, 700)).expect("prediction")
+  let maybe_saved = try predictions::find(app, user.id, 700)
+  let saved = maybe_saved.expect("prediction")
   try testing::assert(saved.points.expect("points") == 3, "worker dispatch settles finished fixture")
   testing::pass()
 }

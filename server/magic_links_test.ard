@@ -23,10 +23,7 @@ test fn consume_is_single_use() Void!Str {
   match magic_links::consume(app, token) {
     ok(_) => testing::fail("second consume should fail"),
     err(message) => {
-      try testing::assert(
-        message.contains("already used"),
-        "expected 'already used' error, got: {message}",
-      )
+      try testing::assert(message.contains("already used"), "expected 'already used' error, got: {message}")
       testing::pass()
     },
   }

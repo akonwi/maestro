@@ -17,6 +17,9 @@ struct Fixture {
   fixture: fixtures::Fixture,
 }
 
+// Work around ard#361: the formatter cannot parse a qualified Maybe inside Result.
+type OptionalCompetition = competitions::Competition?
+
 private fn set_provider_error(res: mut dram::Response, message: Str) {
   fmt::Println("fixture request failed: {message}")
   res.json(http::StatusBadGateway, ["error": "fixture data is temporarily unavailable"])
@@ -32,106 +35,94 @@ struct CurrentRound {
 }
 
 fn register(router: mut dram::App, a: app::App) {
-  router.get(
-    "/fixtures/upcoming",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let raw_comp = req.query("competition_id").or("")
-      match raw_comp.is_empty() {
-        true => {
-          match upcoming(a, Maybe::new()) {
-            ok(list) => res.json(http::StatusOK, to_json_list(list)),
-            err(message) => set_provider_error(res, message),
-          }
-        },
-        false => {
-          match strconv::Atoi(raw_comp) {
-            ok(id) => {
-              match upcoming(a, Maybe::new(id)) {
-                ok(list) => res.json(http::StatusOK, to_json_list(list)),
-                err(message) => set_provider_error(res, message),
-              }
-            },
-            err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
-          }
-        },
-      }
-    },
-  )
-  router.get(
-    "/fixtures/round",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let raw_name = req.query("name").or("")
-      let name: Str? = match raw_name.is_empty() {
-        true => Maybe::new(),
-        false => Maybe::new(raw_name),
-      }
-      let raw_comp = req.query("competition_id").or("")
-      match raw_comp.is_empty() {
-        true => {
-          match round_payload(a, Maybe::new(), name) {
-            ok(payload) => res.json(http::StatusOK, round_json(payload)),
-            err(message) => set_provider_error(res, message),
-          }
-        },
-        false => {
-          match strconv::Atoi(raw_comp) {
-            ok(id) => {
-              match round_payload(a, Maybe::new(id), name) {
-                ok(payload) => res.json(http::StatusOK, round_json(payload)),
-                err(message) => set_provider_error(res, message),
-              }
-            },
-            err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
-          }
-        },
-      }
-    },
-  )
-  router.get(
-    "/fixtures/rounds",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let raw_comp = req.query("competition_id").or("")
-      match raw_comp.is_empty() {
-        true => {
-          match season_rounds(a, Maybe::new()) {
-            ok(payload) => res.json(http::StatusOK, payload),
-            err(message) => set_provider_error(res, message),
-          }
-        },
-        false => {
-          match strconv::Atoi(raw_comp) {
-            ok(id) => {
-              match season_rounds(a, Maybe::new(id)) {
-                ok(payload) => res.json(http::StatusOK, payload),
-                err(message) => set_provider_error(res, message),
-              }
-            },
-            err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
-          }
-        },
-      }
-    },
-  )
-  router.get(
-    "/fixtures/:id",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let raw = req.param("id").or("")
-      match strconv::Atoi(raw) {
-        ok(id) => {
-          match by_id(a, id) {
-            ok(found) => {
-              match found {
-                f => res.json(http::StatusOK, to_json(f)),
-                _ => res.json(http::StatusNotFound, ["error": "fixture not found"]),
-              }
-            },
-            err(message) => set_provider_error(res, message),
-          }
-        },
-        err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
-      }
-    },
-  )
+  router.get("/fixtures/upcoming", fn(req: dram::Request, res: mut dram::Response) {
+    let raw_comp = req.query("competition_id").or("")
+    match raw_comp.is_empty() {
+      true => {
+        match upcoming(a, Maybe::new()) {
+          ok(list) => res.json(http::StatusOK, to_json_list(list)),
+          err(message) => set_provider_error(res, message),
+        }
+      },
+      false => {
+        match strconv::Atoi(raw_comp) {
+          ok(id) => {
+            match upcoming(a, Maybe::new(id)) {
+              ok(list) => res.json(http::StatusOK, to_json_list(list)),
+              err(message) => set_provider_error(res, message),
+            }
+          },
+          err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
+        }
+      },
+    }
+  })
+  router.get("/fixtures/round", fn(req: dram::Request, res: mut dram::Response) {
+    let raw_name = req.query("name").or("")
+    let name: Str? = match raw_name.is_empty() {
+      true => Maybe::new(),
+      false => Maybe::new(raw_name),
+    }
+    let raw_comp = req.query("competition_id").or("")
+    match raw_comp.is_empty() {
+      true => {
+        match round_payload(a, Maybe::new(), name) {
+          ok(payload) => res.json(http::StatusOK, round_json(payload)),
+          err(message) => set_provider_error(res, message),
+        }
+      },
+      false => {
+        match strconv::Atoi(raw_comp) {
+          ok(id) => {
+            match round_payload(a, Maybe::new(id), name) {
+              ok(payload) => res.json(http::StatusOK, round_json(payload)),
+              err(message) => set_provider_error(res, message),
+            }
+          },
+          err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
+        }
+      },
+    }
+  })
+  router.get("/fixtures/rounds", fn(req: dram::Request, res: mut dram::Response) {
+    let raw_comp = req.query("competition_id").or("")
+    match raw_comp.is_empty() {
+      true => {
+        match season_rounds(a, Maybe::new()) {
+          ok(payload) => res.json(http::StatusOK, payload),
+          err(message) => set_provider_error(res, message),
+        }
+      },
+      false => {
+        match strconv::Atoi(raw_comp) {
+          ok(id) => {
+            match season_rounds(a, Maybe::new(id)) {
+              ok(payload) => res.json(http::StatusOK, payload),
+              err(message) => set_provider_error(res, message),
+            }
+          },
+          err(_) => res.json(http::StatusBadRequest, ["error": "competition_id must be an integer"]),
+        }
+      },
+    }
+  })
+  router.get("/fixtures/:id", fn(req: dram::Request, res: mut dram::Response) {
+    let raw = req.param("id").or("")
+    match strconv::Atoi(raw) {
+      ok(id) => {
+        match by_id(a, id) {
+          ok(found) => {
+            match found {
+              f => res.json(http::StatusOK, to_json(f)),
+              _ => res.json(http::StatusNotFound, ["error": "fixture not found"]),
+            }
+          },
+          err(message) => set_provider_error(res, message),
+        }
+      },
+      err(_) => res.json(http::StatusBadRequest, ["error": "fixture id must be an integer"]),
+    }
+  })
 }
 
 // Fetch all active competitions, optionally selecting one, then filter
@@ -250,7 +241,7 @@ fn pick_round(list: [fixtures::RoundFixture]) Str? {
   }
 }
 
-private fn active_competition(a: app::App, competition_id: Int?) (competitions::Competition?)!Str {
+private fn active_competition(a: app::App, competition_id: Int?) OptionalCompetition!Str {
   let comps = try competitions::list_active(a)
   mut chosen: competitions::Competition? = Maybe::new()
   for comp in comps {
@@ -388,7 +379,11 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
       for n in ordered {
         rounds.push(n)
       }
-      let payload: [Str: Any] = ["competition_id": comp.id, "rounds": rounds, "current": pick_round(list)]
+      let payload: [Str: Any] = [
+        "competition_id": comp.id,
+        "rounds": rounds,
+        "current": pick_round(list),
+      ]
 
       Result::ok(payload)
     },
@@ -436,7 +431,11 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
 }
 
 private fn round_json(p: CurrentRound) [Str: Any] {
-  let payload: [Str: Any] = ["competition_id": p.competition_id, "round": p.name, "fixtures": to_json_list(p.fixtures)]
+  let payload: [Str: Any] = [
+    "competition_id": p.competition_id,
+    "round": p.name,
+    "fixtures": to_json_list(p.fixtures),
+  ]
 
   payload
 }

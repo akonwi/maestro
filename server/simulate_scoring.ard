@@ -1,16 +1,16 @@
 use decode
 use go:fmt
-use go:maestro/ffi
-use go:math/rand/v2 as rand
-use go:os
-use go:strconv
-use go:time
 use maestro/api_football/fixtures
 use maestro/app
 use maestro/competitions
 use maestro/config
+use go:maestro/ffi
 use maestro/groups
+use go:math/rand/v2 as rand
+use go:os
 use sql
+use go:strconv
+use go:time
 
 // Local-only fixture prediction backfill for exercising the real scoring
 // worker. Run with the HTTP server stopped, then restart it so discovery and
@@ -28,7 +28,11 @@ private fn run() Void!Str {
   try require_local_database(cfg.database_url)
   let group_id = try simulation_group_id()
   let db = try sql::open(cfg.database_url)
-  let a = app::App{db: db, config: cfg, cache: ffi::NewCache()}
+  let a = app::App{
+    db: db,
+    config: cfg,
+    cache: ffi::NewCache(),
+  }
 
   let members = try groups::members(a, group_id)
   try ensure_members(members, group_id)
@@ -50,7 +54,9 @@ private fn run() Void!Str {
         err(message) => Result::err("committing simulation: {message}"),
         ok => {
           fmt::Println("inserted {count} missing predictions for group {group_id}")
-          fmt::Println("cleared scoring state for selected fixtures; restart the server to let the real worker score them")
+          fmt::Println(
+            "cleared scoring state for selected fixtures; restart the server to let the real worker score them",
+          )
           Result::ok(())
         },
       }
@@ -72,23 +78,29 @@ private fn seed(
 ) Int!Str {
   mut inserted = 0
   for item in fixtures {
-    try tx.query("DELETE FROM fixture_scoring_state WHERE fixture_id = @fixture_id").run(["fixture_id": item.fixture.id])
-    try tx.query("UPDATE predictions SET points = NULL WHERE fixture_id = @fixture_id").run(["fixture_id": item.fixture.id])
+    try tx.query(
+      "DELETE FROM fixture_scoring_state WHERE fixture_id = @fixture_id",
+    ).run(["fixture_id": item.fixture.id])
+    try tx.query(
+      "UPDATE predictions SET points = NULL WHERE fixture_id = @fixture_id",
+    ).run(["fixture_id": item.fixture.id])
     for member in members {
       let exists = try prediction_exists(tx, member.id, item.fixture.id)
       match exists {
         true => (),
         false => {
-          try tx
-            .query("INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, NULL, @created_at, @updated_at)")
-            .run([
+          try tx.query(
+            "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, NULL, @created_at, @updated_at)",
+          ).run(
+            [
               "user_id": member.id,
               "fixture_id": item.fixture.id,
               "home_score": rand::IntN(5),
               "away_score": rand::IntN(5),
               "created_at": now,
               "updated_at": now,
-            ])
+            ],
+          )
           inserted = inserted + 1
         },
       }
@@ -98,9 +110,9 @@ private fn seed(
 }
 
 private fn prediction_exists(tx: sql::Transaction, user_id: Int, fixture_id: Int) Bool!Str {
-  let row = try tx
-    .query("SELECT COUNT(*) AS count FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id")
-    .first(["user_id": user_id, "fixture_id": fixture_id])
+  let row = try tx.query(
+    "SELECT COUNT(*) AS count FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id",
+  ).first(["user_id": user_id, "fixture_id": fixture_id])
   match row {
     value => {
       let count = try decode::run(value, decode::field("count", decode::int)).map_err(describe)
@@ -143,7 +155,7 @@ private fn recent_rounds(items: [fixtures::RoundFixture]) [Str] {
   let ordered: mut [Str] = mut []
   let now = time::Now().UnixMilli()
   for item in items {
-    match item.fixture.status == "FT" and item.fixture.kickoff_at < now and not contains(deref ordered, item.round) {
+    match item.fixture.status == "FT" and item.fixture.kickoff_at < now and (not contains(deref ordered, item.round)) {
       true => ordered.push(item.round),
       false => (),
     }
@@ -155,10 +167,7 @@ private fn recent_rounds(items: [fixtures::RoundFixture]) [Str] {
   }
 }
 
-private fn selected_fixtures(
-  items: [fixtures::RoundFixture],
-  rounds: [Str],
-) [fixtures::RoundFixture] {
+private fn selected_fixtures(items: [fixtures::RoundFixture], rounds: [Str]) [fixtures::RoundFixture] {
   mut selected: mut [fixtures::RoundFixture] = mut []
   for item in items {
     match item.fixture.status == "FT" and contains(rounds, item.round) {
@@ -207,4 +216,6 @@ private fn require_local_database(database_url: Str) Void!Str {
   }
 }
 
-private fn describe(e: decode::Err) Str { e.to_str() }
+private fn describe(e: decode::Err) Str {
+  e.to_str()
+}

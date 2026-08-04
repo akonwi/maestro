@@ -1,8 +1,8 @@
 use decode
-use go:time
 use maestro/app
 use maestro/crypto
 use sql
+use go:time
 
 // A one-shot email->token record used to bootstrap sessions.
 
@@ -14,9 +14,9 @@ fn create(a: app::App, email: Str) Str!Str {
   let ttl_ms = Int64::from(a.config.magic_link_ttl_secs) * 1000
   let expires_at = now + ttl_ms
 
-  try a.db
-    .query("INSERT INTO magic_links (token, email, expires_at) VALUES (@token, @email, @expires_at)")
-    .run(["token": token, "email": email, "expires_at": expires_at])
+  try a.db.query(
+    "INSERT INTO magic_links (token, email, expires_at) VALUES (@token, @email, @expires_at)",
+  ).run(["token": token, "email": email, "expires_at": expires_at])
   Result::ok(token)
 }
 
@@ -64,10 +64,7 @@ private fn describe_unclaimable(tx: sql::Transaction, token: Str, now: Int64) St
   match rows.at(0) {
     row => {
       let expires_at = try decode::run(row, decode::field("expires_at", decode::int)).map_err(describe)
-      let consumed_at = try decode::run(
-        row,
-        decode::field("consumed_at", decode::nullable(decode::int)),
-      ).map_err(describe)
+      let consumed_at = try decode::run(row, decode::field("consumed_at", decode::nullable(decode::int))).map_err(describe)
       match consumed_at.is_some() {
         true => Result::err("magic link already used"),
         false => {

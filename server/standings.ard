@@ -10,28 +10,25 @@ use go:strconv
 // grouped by conference. Rides the shared TTL cache in api_football.
 
 fn register(router: mut dram::App, a: app::App) {
-  router.get(
-    "/standings",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let raw = req.query("competition_id").or("")
-      let competition_id: Int? = match raw == "" {
-        true => Maybe::new(),
-        false => {
-          match strconv::Atoi(raw) {
-            ok(id) => Maybe::new(id),
-            err(_) => Maybe::new(),
-          }
-        },
-      }
-      match standings_payload(a, competition_id) {
-        ok(payload) => res.json(http::StatusOK, payload),
-        err(message) => {
-          fmt::Println("standings request failed: {message}")
-          res.json(http::StatusBadGateway, ["error": "standings are temporarily unavailable"])
-        },
-      }
-    },
-  )
+  router.get("/standings", fn(req: dram::Request, res: mut dram::Response) {
+    let raw = req.query("competition_id").or("")
+    let competition_id: Int? = match raw == "" {
+      true => Maybe::new(),
+      false => {
+        match strconv::Atoi(raw) {
+          ok(id) => Maybe::new(id),
+          err(_) => Maybe::new(),
+        }
+      },
+    }
+    match standings_payload(a, competition_id) {
+      ok(payload) => res.json(http::StatusOK, payload),
+      err(message) => {
+        fmt::Println("standings request failed: {message}")
+        res.json(http::StatusBadGateway, ["error": "standings are temporarily unavailable"])
+      },
+    }
+  })
 }
 
 fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
@@ -56,6 +53,7 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
         "season": comp.season,
         "conferences": group_conferences(rows),
       ]
+
       Result::ok(payload)
     },
     _ => {
@@ -116,5 +114,6 @@ private fn standing_json(row: prematch::StandingRow) [Str: Any] {
     "form": row.form,
     "description": row.description,
   ]
+
   payload
 }

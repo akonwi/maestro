@@ -17,7 +17,10 @@ test fn rejects_invalid_boolean_values() Void!Str {
   match config::parse_bool("FLAG", "sometimes", false) {
     ok(_) => testing::fail("invalid boolean should fail"),
     err(message) => {
-      try testing::assert(message == "FLAG must be one of true, false, 1, 0, yes, or no", "error identifies accepted values")
+      try testing::assert(
+        message == "FLAG must be one of true, false, 1, 0, yes, or no",
+        "error identifies accepted values",
+      )
       testing::pass()
     },
   }

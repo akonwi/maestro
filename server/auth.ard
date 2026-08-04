@@ -10,8 +10,8 @@ use maestro/magic_links
 use maestro/sessions
 use maestro/users
 use go:net/http
-use go:strings
 use sql
+use go:strings
 
 fn set_error(res: mut dram::Response, err: Str) {
   res.json(http::StatusBadRequest, ["error": err])
@@ -19,100 +19,89 @@ fn set_error(res: mut dram::Response, err: Str) {
 
 // Wire public auth endpoints and the middleware-protected current-user route.
 fn register(router: mut dram::App, a: app::App) {
-  router.post(
-    "/auth/request",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let raw_address = try decode_field(req, "email") -> err { set_error(res, err) }
-      let address = users::normalize_email(raw_address)
-      match send_magic_link(a, address) {
-        ok => { res.status = 204 },
-        err(message) => {
-          fmt::Println("magic-link request failed for {address}: {message}")
-          res.json(http::StatusInternalServerError, ["error": "could not request sign-in link"])
-        },
-      }
-    },
-  )
+  router.post("/auth/request", fn(req: dram::Request, res: mut dram::Response) {
+    let raw_address = try decode_field(req, "email") -> err { set_error(res, err) }
+    let address = users::normalize_email(raw_address)
+    match send_magic_link(a, address) {
+      ok => { res.status = 204 },
+      err(message) => {
+        fmt::Println("magic-link request failed for {address}: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not request sign-in link"])
+      },
+    }
+  })
   // GET /auth/verify?token=X -> 302 to the web app. Never consumes.
-  router.get(
-    "/auth/verify",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let token = req.query("token").or("")
-      match token.is_empty() {
-        true => res.json(http::StatusBadRequest, ["error": "missing token"]),
-        false => {
-          let target = "{a.config.app_base_url}/auth/verify?token={token}"
-          res.header("Location", target)
-          res.status = http::StatusFound
-        },
-      }
-    },
-  )
-  router.post(
-    "/auth/verify",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let token = try decode_field(req, "token") -> err { set_error(res, err) }
-      match verify(a, token) {
-        ok(payload) => res.json(http::StatusOK, payload),
-        err(message) => {
-          match is_magic_link_error(message) {
-            true => set_error(res, "sign-in link is invalid or expired"),
-            false => {
-              fmt::Println("auth verification failed: {message}")
-              res.json(http::StatusInternalServerError, ["error": "could not verify sign-in link"])
-            },
-          }
-        },
-      }
-    },
-  )
-  router.post(
-    "/auth/logout",
-    fn(req: dram::Request, res: mut dram::Response) {
-      let token = bearer_token(req)
-      match token.is_empty() {
-        true => res.json(http::StatusUnauthorized, ["error": "missing or invalid bearer token"]),
-        false => {
-          match sessions::delete(a, token) {
-            ok => { res.status = 204 },
-            err(message) => {
-              fmt::Println("session deletion failed during logout: {message}")
-              res.json(http::StatusInternalServerError, ["error": "could not log out"])
-            },
-          }
-        },
-      }
-    },
-  )
+  router.get("/auth/verify", fn(req: dram::Request, res: mut dram::Response) {
+    let token = req.query("token").or("")
+    match token.is_empty() {
+      true => res.json(http::StatusBadRequest, ["error": "missing token"]),
+      false => {
+        let target = "{a.config.app_base_url}/auth/verify?token={token}"
+        res.header("Location", target)
+        res.status = http::StatusFound
+      },
+    }
+  })
+  router.post("/auth/verify", fn(req: dram::Request, res: mut dram::Response) {
+    let token = try decode_field(req, "token") -> err { set_error(res, err) }
+    match verify(a, token) {
+      ok(payload) => res.json(http::StatusOK, payload),
+      err(message) => {
+        match is_magic_link_error(message) {
+          true => set_error(res, "sign-in link is invalid or expired"),
+          false => {
+            fmt::Println("auth verification failed: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not verify sign-in link"])
+          },
+        }
+      },
+    }
+  })
+  router.post("/auth/logout", fn(req: dram::Request, res: mut dram::Response) {
+    let token = bearer_token(req)
+    match token.is_empty() {
+      true => res.json(http::StatusUnauthorized, ["error": "missing or invalid bearer token"]),
+      false => {
+        match sessions::delete(a, token) {
+          ok => { res.status = 204 },
+          err(message) => {
+            fmt::Println("session deletion failed during logout: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not log out"])
+          },
+        }
+      },
+    }
+  })
 
   let protected = mut router.group("/")
   protected.use(middleware(a))
-  protected.get(
-    "/auth/me",
-    fn(req: dram::Request, res: mut dram::Response) {
-      match user_id(req) {
-        user_id => {
-          match users::find_by_id(a, user_id) {
-            ok(found) => {
-              match found {
-                user => {
-                  let payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
+  protected.get("/auth/me", fn(req: dram::Request, res: mut dram::Response) {
+    match user_id(req) {
+      user_id => {
+        match users::find_by_id(a, user_id) {
+          ok(found) => {
+            match found {
+              user => {
+                let payload: [Str: Any] = [
+                  "id": user.id,
+                  "email": user.email,
+                  "display_name": user.display_name,
+                ]
 
-                  res.json(http::StatusOK, payload)
-                },
-                _ => res.json(http::StatusUnauthorized, ["error": "authenticated user no longer exists"]),
-              }
-            },
-            err(message) => {
-              fmt::Println("current user lookup failed for user {user_id}: {message}")
-              res.json(http::StatusInternalServerError, ["error": "could not load current user"])
-            },
-          }
-        },
-        _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
-      }
-    },
-  )
+                res.json(http::StatusOK, payload)
+              },
+              _ => res.json(http::StatusUnauthorized, ["error": "authenticated user no longer exists"]),
+            }
+          },
+          err(message) => {
+            fmt::Println("current user lookup failed for user {user_id}: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not load current user"])
+          },
+        }
+      },
+      _ => res.json(http::StatusUnauthorized, ["error": "unauthorized"]),
+    }
+  })
 }
 
 private fn is_magic_link_error(message: Str) Bool {
@@ -159,7 +148,12 @@ private fn verify_tx(a: app::App, tx: sql::Transaction, token: Str) [Str: Any]!S
   let user = try users::get_or_create_by_email_tx(tx, addr)
   let session = try sessions::mint_tx(tx, a, user.id)
 
-  let user_payload: [Str: Any] = ["id": user.id, "email": user.email, "display_name": user.display_name]
+  let user_payload: [Str: Any] = [
+    "id": user.id,
+    "email": user.email,
+    "display_name": user.display_name,
+  ]
+
   let payload: [Str: Any] = ["session_token": session.token, "user": user_payload]
 
   Result::ok(payload)
@@ -181,9 +175,7 @@ fn authenticate(a: app::App, req: dram::Request) Int? {
             _ => (),
           }
         },
-        err(message) => {
-          fmt::Println("session lookup failed: {message}")
-        },
+        err(message) => fmt::Println("session lookup failed: {message}"),
       }
     },
   }
@@ -229,8 +221,14 @@ private fn decode_field(req: dram::Request, name: Str) Str!Str {
   let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
-    false => decode::unmarshal(body, decode::field(name, decode::string))
-      .map_err(fn(e) { "invalid request: {e.error()}" }),
+    false => {
+      decode::unmarshal(
+        body,
+        decode::field(name, decode::string),
+      ).map_err(fn(e) {
+        "invalid request: {e.error()}"
+      })
+    },
   }
 }
 

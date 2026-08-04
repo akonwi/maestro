@@ -1,5 +1,5 @@
-use go:maestro/ffi
 use maestro/config
+use go:maestro/ffi
 use sql
 
 // A cheap value threaded through every handler. The db handle is a Go

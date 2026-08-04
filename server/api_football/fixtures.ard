@@ -15,7 +15,8 @@ struct RoundFixture {
 struct Fixture {
   id: Int,
   kickoff_at: Int64,
-  status: Str,       // NS, 1H, HT, 2H, FT, PST, ...
+  status: Str,
+  // NS, 1H, HT, 2H, FT, PST, ...
   api_football_league_id: Int,
   season: Int,
   home_team_id: Int,
@@ -30,16 +31,22 @@ struct Fixture {
 // full season in one response for /fixtures?league=&season=. Raw JSON
 // is cached by URL; all callers within the TTL share one upstream call.
 fn season_fixtures(a: app::App, league_id: Int, season: Int) [Fixture]!Str {
-  parse_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}", CACHE_TTL_MS))
+  parse_fixtures(
+    try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}", CACHE_TTL_MS),
+  )
 }
 
 fn season_round_fixtures(a: app::App, league_id: Int, season: Int) [RoundFixture]!Str {
-  parse_round_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}", CACHE_TTL_MS))
+  parse_round_fixtures(
+    try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}", CACHE_TTL_MS),
+  )
 }
 
 fn parse_round_fixtures(body: Str) [RoundFixture]!Str {
-  decode::unmarshal(body, decode::field("response", decode::list(decode_round_fixture)))
-    .map_err(decoding::describe_error)
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_round_fixture)),
+  ).map_err(decoding::describe_error)
 }
 
 fn fixture_by_id(a: app::App, fixture_id: Int) Fixture?!Str {
@@ -52,7 +59,7 @@ fn find_fixture(fixtures: [Fixture], fixture_id: Int) Fixture? {
   for fixture in fixtures {
     match fixture.id == fixture_id {
       true => { found = Maybe::new(fixture) },
-      false => {},
+      false => (),
     }
   }
   found
@@ -60,8 +67,10 @@ fn find_fixture(fixtures: [Fixture], fixture_id: Int) Fixture? {
 
 // Exposed for testing: parse an API-Football /fixtures response body.
 fn parse_fixtures(body: Str) [Fixture]!Str {
-  decode::unmarshal(body, decode::field("response", decode::list(decode_fixture)))
-    .map_err(decoding::describe_error)
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_fixture)),
+  ).map_err(decoding::describe_error)
 }
 
 private fn decode_round_fixture(item: Any) RoundFixture!decode::Err {
@@ -99,4 +108,3 @@ private fn decode_fixture(item: Any) Fixture!decode::Err {
     },
   )
 }
-

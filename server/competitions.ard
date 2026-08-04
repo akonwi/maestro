@@ -9,28 +9,29 @@ struct Competition {
   api_football_league_id: Int,
   name: Str,
   season: Int,
-  kind: Str,       // 'league' | 'cup' | 'playoff'
+  kind: Str,
+  // 'league' | 'cup' | 'playoff'
   is_active: Bool,
 }
 
 fn list_active(a: app::App) [Competition]!Str {
-  let rows = try a.db
-    .query("SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE is_active = 1")
-    .all([:])
+  let rows = try a.db.query(
+    "SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE is_active = 1",
+  ).all([:])
   decode_all(rows)
 }
 
 fn list_all(a: app::App) [Competition]!Str {
-  let rows = try a.db
-    .query("SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions ORDER BY id")
-    .all([:])
+  let rows = try a.db.query(
+    "SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions ORDER BY id",
+  ).all([:])
   decode_all(rows)
 }
 
 fn find_by_provider(a: app::App, league_id: Int, season: Int) Competition?!Str {
-  let row = try a.db
-    .query("SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE api_football_league_id = @league_id AND season = @season AND is_active = 1 LIMIT 1")
-    .first(["league_id": league_id, "season": season])
+  let row = try a.db.query(
+    "SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE api_football_league_id = @league_id AND season = @season AND is_active = 1 LIMIT 1",
+  ).first(["league_id": league_id, "season": season])
   match row {
     value => Result::ok(Maybe::new(try decode_competition(value))),
     _ => Result::ok(Maybe::new()),

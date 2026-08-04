@@ -8,10 +8,10 @@ use maestro/email
 use maestro/magic_links
 use maestro/users
 use go:net/http
+use sql
 use go:strconv
 use go:strings
 use go:time
-use sql
 
 struct Group {
   id: Int,
@@ -60,7 +60,12 @@ fn register(router: mut dram::App, a: app::App) {
     let name = strings::TrimSpace(raw_name)
 
     match name.is_empty() or name.size() > 80 {
-      true => res.json(http::StatusBadRequest, ["error": "group name must be between 1 and 80 characters"]),
+      true => {
+        res.json(
+          http::StatusBadRequest,
+          ["error": "group name must be between 1 and 80 characters"],
+        )
+      },
       false => {
         match create(a, user_id, name) {
           ok(group) => res.json(http::StatusCreated, group_json(group)),
@@ -83,7 +88,10 @@ fn register(router: mut dram::App, a: app::App) {
 
     match members(a, group_id) {
       ok(group_members) => {
-        let payload: [Str: Any] = ["group": group_json(group), "members": members_json(group_members)]
+        let payload: [Str: Any] = [
+          "group": group_json(group),
+          "members": members_json(group_members),
+        ]
 
         res.json(http::StatusOK, payload)
       },
@@ -118,7 +126,9 @@ fn register(router: mut dram::App, a: app::App) {
             res.json(http::StatusOK, payload)
           },
           err(message) => {
-            fmt::Println("group invitation failed for group {group_id}, inviter {inviter_id}: {message}")
+            fmt::Println(
+              "group invitation failed for group {group_id}, inviter {inviter_id}: {message}",
+            )
             res.json(http::StatusInternalServerError, ["error": "could not add group member"])
           },
         }
@@ -134,13 +144,15 @@ private fn add_invited_member(a: app::App, group: Group, inviter_id: Int, addres
   let member = try found -> _ { Result::err("invited member vanished") }
   match added {
     true => add_and_notify_member(a, group, inviter_id, member, address),
-    false => Result::ok(
-      InviteResult{
-        member: member,
-        member_added: false,
-        invitation_sent: false,
-      },
-    ),
+    false => {
+      Result::ok(
+        InviteResult{
+          member: member,
+          member_added: false,
+          invitation_sent: false,
+        },
+      )
+    },
   }
 }
 
@@ -378,7 +390,14 @@ private fn decode_string_field(req: dram::Request, name: Str) Str!Str {
   let body = Str::from(req.body)
   match body.is_empty() {
     true => Result::err("empty request body"),
-    false => decode::unmarshal(body, decode::field(name, decode::string)).map_err(fn(e) { e.error() }),
+    false => {
+      decode::unmarshal(
+        body,
+        decode::field(name, decode::string),
+      ).map_err(fn(e) {
+        e.error()
+      })
+    },
   }
 }
 

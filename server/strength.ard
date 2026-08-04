@@ -1,4 +1,5 @@
 use ard/list as List
+
 use maestro/api_football/fixtures
 use maestro/app
 
@@ -15,7 +16,8 @@ struct Ranking {
   team_id: Int,
   ppg: Float64,
   games: Int,
-  rank: Int,      // 1 = best recent form in the league
+  rank: Int,
+  // 1 = best recent form in the league
 }
 
 // One completed result from a single team's perspective.
@@ -40,8 +42,20 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
       true => {
         let hg = f.home_score.expect("home goals")
         let ag = f.away_score.expect("away goals")
-        games.push(GameEntry{team_id: f.home_team_id, kickoff: f.kickoff_at, points: result_points(hg, ag)})
-        games.push(GameEntry{team_id: f.away_team_id, kickoff: f.kickoff_at, points: result_points(ag, hg)})
+        games.push(
+          GameEntry{
+            team_id: f.home_team_id,
+            kickoff: f.kickoff_at,
+            points: result_points(hg, ag),
+          },
+        )
+        games.push(
+          GameEntry{
+            team_id: f.away_team_id,
+            kickoff: f.kickoff_at,
+            points: result_points(ag, hg),
+          },
+        )
       },
       false => (),
     }
@@ -49,7 +63,9 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
 
   let team_ids: mut [Int] = mut []
   for g in games {
-    let contains_team_id = List::find(deref team_ids, fn(x) { x == g.team_id}).is_some()
+    let contains_team_id = List::find(deref team_ids, fn(x) {
+      x == g.team_id
+    }).is_some()
     match contains_team_id {
       true => (),
       false => team_ids.push(g.team_id),
@@ -58,7 +74,9 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
 
   let prelim: mut [Ranking] = mut []
   for tid in team_ids {
-    let team_fixtures = List::keep(deref games, fn(g) { g.team_id == tid})
+    let team_fixtures = List::keep(deref games, fn(g) {
+      g.team_id == tid
+    })
     let recent = first_n(sort_desc(team_fixtures), RECENT_WINDOW)
     match recent.size() >= MIN_GAMES {
       true => {
@@ -67,7 +85,14 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
           pts = pts + e.points
         }
         let ppg = pts.to_f64() / recent.size().to_f64()
-        prelim.push(Ranking{team_id: tid, ppg: ppg, games: recent.size(), rank: 0})
+        prelim.push(
+          Ranking{
+            team_id: tid,
+            ppg: ppg,
+            games: recent.size(),
+            rank: 0,
+          },
+        )
       },
       false => (),
     }
@@ -77,7 +102,9 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
 }
 
 fn find_ranking(rankings: [Ranking], team_id: Int) Ranking? {
-  List::find(rankings, fn(r) { r.team_id == team_id })
+  List::find(rankings, fn(r) {
+    r.team_id == team_id
+  })
 }
 
 private fn has_result(status: Str) Bool {
@@ -95,7 +122,7 @@ private fn result_points(gf: Int, ga: Int) Int {
   match {
     gf > ga => 3,
     gf == ga => 1,
-    _ => 0
+    _ => 0,
   }
 }
 
@@ -106,7 +133,7 @@ private fn sort_desc(entries: [GameEntry]) [GameEntry] {
     mut inserted = false
     let result: mut [GameEntry] = mut []
     for existing in out {
-      let before = (not inserted) and (e.kickoff > existing.kickoff)
+      let before = (not inserted) and e.kickoff > existing.kickoff
       match before {
         true => {
           result.push(e)
@@ -147,7 +174,7 @@ private fn assign_ranks(prelim: [Ranking]) [Ranking] {
     mut inserted = false
     let result: mut [Ranking] = mut []
     for existing in sorted {
-      let before = (not inserted) and (r.ppg > existing.ppg)
+      let before = (not inserted) and r.ppg > existing.ppg
       match before {
         true => {
           result.push(r)
@@ -168,7 +195,14 @@ private fn assign_ranks(prelim: [Ranking]) [Ranking] {
   mut idx = 0
   for r in sorted {
     idx = idx + 1
-    ranked.push(Ranking{team_id: r.team_id, ppg: r.ppg, games: r.games, rank: idx})
+    ranked.push(
+      Ranking{
+        team_id: r.team_id,
+        ppg: r.ppg,
+        games: r.games,
+        rank: idx,
+      },
+    )
   }
   deref ranked
 }

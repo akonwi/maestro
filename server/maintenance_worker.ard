@@ -1,10 +1,10 @@
 use ard/async
 
 use go:fmt
-use go:time
 use maestro/app
 use maestro/magic_links
 use maestro/sessions
+use go:time
 
 let CLEANUP_INTERVAL = time::Hour
 let CONSUMED_LINK_RETENTION_MS = Int64::from(24 * 60 * 60 * 1000)
@@ -17,7 +17,9 @@ struct Worker {
 fn start(a: app::App) Worker {
   let stop = Chan::new<Bool>(1)
   let done = Chan::new<Bool>()
-  async::start(fn() { run(a, stop.receiver(), done.sender()) })
+  async::start(fn() {
+    run(a, stop.receiver(), done.sender())
+  })
   Worker{stop: stop.sender(), done: done.receiver()}
 }
 

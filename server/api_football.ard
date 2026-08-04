@@ -1,12 +1,11 @@
 use ard/unsafe
 
-use decode
 use go:io
+use maestro/app
+use maestro/config
 use go:maestro/ffi
 use go:net/http
 use go:time
-use maestro/app
-use maestro/config
 
 // Client for the API-Football v3 REST API.
 // https://www.api-football.com/documentation-v3

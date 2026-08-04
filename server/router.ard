@@ -16,13 +16,13 @@ use go:time
 fn build(a: app::App) dram::App {
   let router = mut dram::App::new()
 
-  router.use(
-    fn(request: dram::Request, response: mut dram::Response, next: dram::Next) {
-      let started = time::Now()
-      next.run(request, response)
-      fmt::Println("{request.method} {request.path} {response.status} {time::Since(started).String()}")
-    },
-  )
+  router.use(fn(request: dram::Request, response: mut dram::Response, next: dram::Next) {
+    let started = time::Now()
+    next.run(request, response)
+    fmt::Println(
+      "{request.method} {request.path} {response.status} {time::Since(started).String()}",
+    )
+  })
 
   health::register(router, a)
   auth::register(router, a)

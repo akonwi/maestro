@@ -61,6 +61,9 @@ test fn ignores_unfinished_fixtures() Void!Str {
     fixtures.push(rf(i, 1000 + i, "NS", 1, 2, 0, 0))
     i = i + 1
   }
-  try testing::assert(strength::compute_rankings(deref fixtures).size() == 0, "no finished games -> no rankings")
+  try testing::assert(
+    strength::compute_rankings(deref fixtures).size() == 0,
+    "no finished games -> no rankings",
+  )
   Result::ok(())
 }

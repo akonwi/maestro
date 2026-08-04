@@ -141,7 +141,12 @@ test fn finished_season_has_no_current_round() Void!Str {
 
 test fn sorts_round_names_by_number() Void!Str {
   // Out-of-order input (as the upstream array can produce) sorts numerically.
-  let input = ["Regular Season - 36", "Regular Season - 12", "Regular Season - 37", "Regular Season - 1"]
+  let input = [
+    "Regular Season - 36",
+    "Regular Season - 12",
+    "Regular Season - 37",
+    "Regular Season - 1",
+  ]
   let sorted = fixture_routes::sort_round_names(input)
   try testing::assert(sorted.at(0).expect("0") == "Regular Season - 1", "1 first")
   try testing::assert(sorted.at(1).expect("1") == "Regular Season - 12", "12 second")
