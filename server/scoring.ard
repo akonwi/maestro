@@ -2,6 +2,12 @@ use maestro/app
 use sql
 use go:time
 
+enum Outcome {
+  home_win,
+  draw,
+  away_win,
+}
+
 fn points(predicted_home: Int, predicted_away: Int, actual_home: Int, actual_away: Int) Int {
   match predicted_home == actual_home and predicted_away == actual_away {
     true => 3,
@@ -16,15 +22,11 @@ fn points(predicted_home: Int, predicted_away: Int, actual_home: Int, actual_awa
   }
 }
 
-private fn outcome(home: Int, away: Int) Int {
-  match home > away {
-    true => 1,
-    false => {
-      match home < away {
-        true => -1,
-        false => 0,
-      }
-    },
+private fn outcome(home: Int, away: Int) Outcome {
+  match {
+    home > away => Outcome::home_win,
+    home < away => Outcome::away_win,
+    _ => Outcome::draw,
   }
 }
 
