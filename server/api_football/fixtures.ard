@@ -3,6 +3,8 @@ use maestro/api_football
 use maestro/api_football/decoding
 use maestro/app
 
+let CACHE_TTL_MS = Int64::from(60 * 1000)
+
 // One fixture as we care about it. Timestamps are unix ms. Scores are
 // none until the match has started.
 struct RoundFixture {
@@ -28,11 +30,11 @@ struct Fixture {
 // full season in one response for /fixtures?league=&season=. Raw JSON
 // is cached by URL; all callers within the TTL share one upstream call.
 fn season_fixtures(a: app::App, league_id: Int, season: Int) [Fixture]!Str {
-  parse_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}"))
+  parse_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}", CACHE_TTL_MS))
 }
 
 fn season_round_fixtures(a: app::App, league_id: Int, season: Int) [RoundFixture]!Str {
-  parse_round_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}"))
+  parse_round_fixtures(try api_football::cached_get(a, "/fixtures?league={league_id}&season={season}", CACHE_TTL_MS))
 }
 
 fn parse_round_fixtures(body: Str) [RoundFixture]!Str {
@@ -41,7 +43,7 @@ fn parse_round_fixtures(body: Str) [RoundFixture]!Str {
 }
 
 fn fixture_by_id(a: app::App, fixture_id: Int) Fixture?!Str {
-  let fixtures = try parse_fixtures(try api_football::cached_get(a, "/fixtures?id={fixture_id}"))
+  let fixtures = try parse_fixtures(try api_football::cached_get(a, "/fixtures?id={fixture_id}", CACHE_TTL_MS))
   Result::ok(find_fixture(fixtures, fixture_id))
 }
 

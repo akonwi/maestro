@@ -3,6 +3,8 @@ use maestro/api_football
 use maestro/api_football/decoding
 use maestro/app
 
+let CACHE_TTL_MS = Int64::from(60 * 60 * 1000)
+
 // ─── Pre-match outlook (/predictions) ───────────────────────────────
 
 struct TeamOutlook {
@@ -73,7 +75,7 @@ struct Outlook {
 // Fetch API-Football's pre-match outlook for a fixture. None when the
 // upstream has no prediction data for it.
 fn fixture_outlook(a: app::App, fixture_id: Int) Outlook?!Str {
-  let body = try api_football::cached_get_slow(a, "/predictions?fixture={fixture_id}")
+  let body = try api_football::cached_get(a, "/predictions?fixture={fixture_id}", CACHE_TTL_MS)
   parse_outlook(body)
 }
 
@@ -185,7 +187,7 @@ private fn decode_h2h(item: Any) H2HResult!decode::Err {
 // ─── Standings (/standings) ──────────────────────────────────────────────
 
 fn league_standings(a: app::App, league_id: Int, season: Int) [StandingRow]!Str {
-  let body = try api_football::cached_get_slow(a, "/standings?league={league_id}&season={season}")
+  let body = try api_football::cached_get(a, "/standings?league={league_id}&season={season}", CACHE_TTL_MS)
   parse_standings(body)
 }
 
@@ -267,9 +269,10 @@ struct TeamGoalSplits {
 }
 
 fn team_goal_splits(a: app::App, league_id: Int, season: Int, team_id: Int) TeamGoalSplits!Str {
-  let body = try api_football::cached_get_slow(
+  let body = try api_football::cached_get(
     a,
     "/teams/statistics?league={league_id}&season={season}&team={team_id}",
+    CACHE_TTL_MS,
   )
   parse_team_goal_splits(body)
 }
@@ -303,13 +306,15 @@ struct KeyPlayer {
 // both). Cached league-wide and reused across fixtures; the analysis layer
 // filters to a fixture's two teams.
 fn league_key_players(a: app::App, league_id: Int, season: Int) [KeyPlayer]!Str {
-  let scorers_body = try api_football::cached_get_slow(
+  let scorers_body = try api_football::cached_get(
     a,
     "/players/topscorers?league={league_id}&season={season}",
+    CACHE_TTL_MS,
   )
-  let assists_body = try api_football::cached_get_slow(
+  let assists_body = try api_football::cached_get(
     a,
     "/players/topassists?league={league_id}&season={season}",
+    CACHE_TTL_MS,
   )
   merge_key_players(scorers_body, assists_body)
 }
@@ -401,7 +406,7 @@ private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
 // ─── Injuries (/injuries) ────────────────────────────────────────────────
 
 fn fixture_injuries(a: app::App, fixture_id: Int) [Injury]!Str {
-  let body = try api_football::cached_get_slow(a, "/injuries?fixture={fixture_id}")
+  let body = try api_football::cached_get(a, "/injuries?fixture={fixture_id}", CACHE_TTL_MS)
   parse_injuries(body)
 }
 

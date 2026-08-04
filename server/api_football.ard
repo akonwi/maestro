@@ -12,20 +12,10 @@ use maestro/config
 // https://www.api-football.com/documentation-v3
 
 let BASE_URL = "https://v3.football.api-sports.io"
-let FIXTURE_CACHE_TTL_MS = Int64::from(60 * 1000)
-let OUTLOOK_CACHE_TTL_MS = Int64::from(60 * 60 * 1000)
 
-// Cached provider reads. Endpoint modules pass paths so URL construction,
-// authentication, and cache keys remain centralized here.
-fn cached_get(a: app::App, path: Str) Str!Str {
-  cached_get_ttl(a, path, FIXTURE_CACHE_TTL_MS)
-}
-
-fn cached_get_slow(a: app::App, path: Str) Str!Str {
-  cached_get_ttl(a, path, OUTLOOK_CACHE_TTL_MS)
-}
-
-private fn cached_get_ttl(a: app::App, path: Str, ttl_ms: Int64) Str!Str {
+// Endpoint modules own cache policy; this module centralizes URL construction,
+// authentication, cache keys, and provider transport.
+fn cached_get(a: app::App, path: Str, ttl_ms: Int64) Str!Str {
   let url = "{BASE_URL}{path}"
   match ffi::CacheGet(a.cache, url, ttl_ms) {
     cached => Result::ok(cached),
