@@ -25,7 +25,7 @@ fn rf(id: Int, kickoff_secs: Int, status: Str, home: Int, away: Int, hs: Int, as
 // Team 1 wins 7, team 2 loses 7 -> team 1 ranks above team 2; teams with
 // fewer than the minimum games are excluded.
 test fn ranks_teams_by_recent_ppg() Void!Str {
-  mut fixtures: mut [fixtures::RoundFixture] = mut []
+  let fixtures: mut [fixtures::RoundFixture] = mut []
   mut i = 0
   for _ in [0, 0, 0, 0, 0, 0, 0] {
     fixtures.push(rf(i, 1000 + i, "FT", 1, 2, 2, 0))
@@ -55,7 +55,7 @@ test fn ranks_teams_by_recent_ppg() Void!Str {
 }
 
 test fn ignores_unfinished_fixtures() Void!Str {
-  mut fixtures: mut [fixtures::RoundFixture] = mut []
+  let fixtures: mut [fixtures::RoundFixture] = mut []
   mut i = 0
   for _ in [0, 0, 0, 0, 0, 0, 0] {
     fixtures.push(rf(i, 1000 + i, "NS", 1, 2, 0, 0))

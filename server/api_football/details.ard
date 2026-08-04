@@ -201,7 +201,7 @@ private fn decode_lineup(item: Any) Lineup!decode::Err {
 private fn decode_lineup_players(item: Any, field: Str) [LineupPlayer] {
   match decode::run(item, decode::field(field, decode::list(decode::any))) {
     ok(items) => {
-      mut out: mut [LineupPlayer] = mut []
+      let out: mut [LineupPlayer] = mut []
       for entry in items {
         match decode::run(entry, decode_lineup_player) {
           ok(player) => out.push(player),

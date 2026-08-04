@@ -38,26 +38,23 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
   let games: mut [GameEntry] = mut []
   for rf in fixtures {
     let f = rf.fixture
-    match has_result(f.status) and f.home_score.is_some() and f.away_score.is_some() {
-      true => {
-        let hg = f.home_score.expect("home goals")
-        let ag = f.away_score.expect("away goals")
-        games.push(
-          GameEntry{
-            team_id: f.home_team_id,
-            kickoff: f.kickoff_at,
-            points: result_points(hg, ag),
-          },
-        )
-        games.push(
-          GameEntry{
-            team_id: f.away_team_id,
-            kickoff: f.kickoff_at,
-            points: result_points(ag, hg),
-          },
-        )
-      },
-      false => (),
+    if has_result(f.status) and f.home_score.is_some() and f.away_score.is_some() {
+      let hg = f.home_score.expect("home goals")
+      let ag = f.away_score.expect("away goals")
+      games.push(
+        GameEntry{
+          team_id: f.home_team_id,
+          kickoff: f.kickoff_at,
+          points: result_points(hg, ag),
+        },
+      )
+      games.push(
+        GameEntry{
+          team_id: f.away_team_id,
+          kickoff: f.kickoff_at,
+          points: result_points(ag, hg),
+        },
+      )
     }
   }
 
@@ -66,9 +63,8 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
     let contains_team_id = List::find(deref team_ids, fn(x) {
       x == g.team_id
     }).is_some()
-    match contains_team_id {
-      true => (),
-      false => team_ids.push(g.team_id),
+    if not contains_team_id {
+      team_ids.push(g.team_id)
     }
   }
 
@@ -78,23 +74,20 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
       g.team_id == tid
     })
     let recent = first_n(sort_desc(team_fixtures), RECENT_WINDOW)
-    match recent.size() >= MIN_GAMES {
-      true => {
-        mut pts = 0
-        for e in recent {
-          pts = pts + e.points
-        }
-        let ppg = pts.to_f64() / recent.size().to_f64()
-        prelim.push(
-          Ranking{
-            team_id: tid,
-            ppg: ppg,
-            games: recent.size(),
-            rank: 0,
-          },
-        )
-      },
-      false => (),
+    if recent.size() >= MIN_GAMES {
+      mut pts = 0
+      for e in recent {
+        pts = pts + e.points
+      }
+      let ppg = pts.to_f64() / recent.size().to_f64()
+      prelim.push(
+        Ranking{
+          team_id: tid,
+          ppg: ppg,
+          games: recent.size(),
+          rank: 0,
+        },
+      )
     }
   }
 
@@ -110,9 +103,8 @@ fn find_ranking(rankings: [Ranking], team_id: Int) Ranking? {
 private fn has_result(status: Str) Bool {
   mut ok = false
   for s in RESULT_STATUSES {
-    match s == status {
-      true => { ok = true },
-      false => (),
+    if s == status {
+      ok = true
     }
   }
   ok
@@ -134,18 +126,14 @@ private fn sort_desc(entries: [GameEntry]) [GameEntry] {
     let result: mut [GameEntry] = mut []
     for existing in out {
       let before = (not inserted) and e.kickoff > existing.kickoff
-      match before {
-        true => {
-          result.push(e)
-          inserted = true
-        },
-        false => (),
+      if before {
+        result.push(e)
+        inserted = true
       }
       result.push(existing)
     }
-    match inserted {
-      true => (),
-      false => result.push(e),
+    if not inserted {
+      result.push(e)
     }
     out = result
   }
@@ -156,12 +144,9 @@ private fn first_n(entries: [GameEntry], n: Int) [GameEntry] {
   let out: mut [GameEntry] = mut []
   mut i = 0
   for e in entries {
-    match i < n {
-      true => {
-        out.push(e)
-        i = i + 1
-      },
-      false => (),
+    if i < n {
+      out.push(e)
+      i = i + 1
     }
   }
   deref out
@@ -175,18 +160,14 @@ private fn assign_ranks(prelim: [Ranking]) [Ranking] {
     let result: mut [Ranking] = mut []
     for existing in sorted {
       let before = (not inserted) and r.ppg > existing.ppg
-      match before {
-        true => {
-          result.push(r)
-          inserted = true
-        },
-        false => (),
+      if before {
+        result.push(r)
+        inserted = true
       }
       result.push(existing)
     }
-    match inserted {
-      true => (),
-      false => result.push(r),
+    if not inserted {
+      result.push(r)
     }
     sorted = result
   }

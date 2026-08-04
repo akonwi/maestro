@@ -39,9 +39,8 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
       id => id == comp.id,
       _ => chosen.is_none(),
     }
-    match wanted {
-      true => { chosen = Maybe::new(comp) },
-      false => (),
+    if wanted {
+      chosen = Maybe::new(comp)
     }
   }
 
@@ -72,14 +71,12 @@ fn group_conferences(rows: [prematch::StandingRow]) [Any] {
   for row in rows {
     mut seen = false
     for n in names {
-      match n == row.group {
-        true => { seen = true },
-        false => (),
+      if n == row.group {
+        seen = true
       }
     }
-    match seen {
-      true => (),
-      false => names.push(row.group),
+    if not seen {
+      names.push(row.group)
     }
   }
 
@@ -87,9 +84,8 @@ fn group_conferences(rows: [prematch::StandingRow]) [Any] {
   for name in names {
     let group_rows: mut [Any] = mut []
     for row in rows {
-      match row.group == name {
-        true => group_rows.push(standing_json(row)),
-        false => (),
+      if row.group == name {
+        group_rows.push(standing_json(row))
       }
     }
     let conference: [Str: Any] = ["name": name, "rows": group_rows]

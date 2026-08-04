@@ -57,9 +57,8 @@ fn fixture_by_id(a: app::App, fixture_id: Int) Fixture?!Str {
 fn find_fixture(fixtures: [Fixture], fixture_id: Int) Fixture? {
   mut found: Fixture? = Maybe::new()
   for fixture in fixtures {
-    match fixture.id == fixture_id {
-      true => { found = Maybe::new(fixture) },
-      false => (),
+    if fixture.id == fixture_id {
+      found = Maybe::new(fixture)
     }
   }
   found

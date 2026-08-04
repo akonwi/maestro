@@ -164,7 +164,7 @@ private fn decode_team_outlook(item: Any) TeamOutlook!decode::Err {
 private fn decode_h2h_list(item: Any) [H2HResult] {
   match decode::run(item, decode::field("h2h", decode::list(decode::any))) {
     ok(items) => {
-      mut out: mut [H2HResult] = mut []
+      let out: mut [H2HResult] = mut []
       for entry in items {
         match decode::run(entry, decode_h2h) {
           ok(meeting) => out.push(meeting),
@@ -208,7 +208,7 @@ fn parse_standings(body: Str) [StandingRow]!Str {
     body,
     decode::field("response", decode::list(decode::any)),
   ).map_err(decoding::describe_error)
-  mut out: mut [StandingRow] = mut []
+  let out: mut [StandingRow] = mut []
   match items.at(0) {
     first => {
       match decode::run(first, decode::path(["league", "standings"], decode::list(decode::any))) {
@@ -369,7 +369,7 @@ private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
     body,
     decode::field("response", decode::list(decode::any)),
   ).map_err(decoding::describe_error)
-  mut out: mut [KeyPlayer] = mut []
+  let out: mut [KeyPlayer] = mut []
   for item in items {
     match decode_leaders(item, scorers) {
       ok(players) => {
@@ -390,7 +390,7 @@ private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
   let player_id = try decode::run(item, decode::path(["player", "id"], decode::int))
   let name = try decode::run(item, decode::path(["player", "name"], decode::string))
   let stats = try decode::run(item, decode::field("statistics", decode::list(decode::any)))
-  mut out: mut [KeyPlayer] = mut []
+  let out: mut [KeyPlayer] = mut []
   for s in stats {
     let team_id = decoding::int_or(s, ["team", "id"], 0)
     out.push(
@@ -424,7 +424,7 @@ fn parse_injuries(body: Str) [Injury]!Str {
   // Upstream can list the same player twice for one fixture (e.g. a
   // "Missing Fixture" record plus a "Questionable" one). Keep the first
   // record per player so team news shows each player once.
-  mut out: mut [Injury] = mut []
+  let out: mut [Injury] = mut []
   let seen: mut [Str] = mut []
   for item in items {
     match decode::run(item, decode_injury) {
@@ -432,17 +432,13 @@ fn parse_injuries(body: Str) [Injury]!Str {
         let key = "{injury.team_id}|{injury.player}"
         mut already = false
         for k in seen {
-          match k == key {
-            true => { already = true },
-            false => (),
+          if k == key {
+            already = true
           }
         }
-        match already {
-          true => (),
-          false => {
-            seen.push(key)
-            out.push(injury)
-          },
+        if not already {
+          seen.push(key)
+          out.push(injury)
         }
       },
       err(_) => (),

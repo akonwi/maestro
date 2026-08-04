@@ -146,13 +146,11 @@ fn outlook_json(
   let away_injuries: mut [Any] = mut []
   for inj in injuries {
     let entry: [Str: Any] = ["player": inj.player, "kind": inj.kind, "reason": inj.reason]
-    match inj.team_id == o.home.id {
-      true => home_injuries.push(entry),
-      false => (),
+    if inj.team_id == o.home.id {
+      home_injuries.push(entry)
     }
-    match inj.team_id == o.away.id {
-      true => away_injuries.push(entry),
-      false => (),
+    if inj.team_id == o.away.id {
+      away_injuries.push(entry)
     }
   }
 
@@ -182,13 +180,11 @@ fn outlook_json(
       "is_assister": kp.is_assister,
     ]
 
-    match kp.team_id == o.home.id {
-      true => home_players.push(entry),
-      false => (),
+    if kp.team_id == o.home.id {
+      home_players.push(entry)
     }
-    match kp.team_id == o.away.id {
-      true => away_players.push(entry),
-      false => (),
+    if kp.team_id == o.away.id {
+      away_players.push(entry)
     }
   }
   let key_players_map: [Str: Any] = ["home": home_players, "away": away_players]
@@ -251,18 +247,15 @@ private fn team_goals_json(
 private fn standing_opt(standings: [prematch::StandingRow], team_id: Int) Maybe<[Str: Any]> {
   mut found: Maybe<[Str: Any]> = Maybe::new()
   for row in standings {
-    match row.team_id == team_id {
-      true => {
-        let entry: [Str: Any] = [
-          "rank": row.rank,
-          "points": row.points,
-          "goals_diff": row.goals_diff,
-          "group": row.group,
-        ]
+    if row.team_id == team_id {
+      let entry: [Str: Any] = [
+        "rank": row.rank,
+        "points": row.points,
+        "goals_diff": row.goals_diff,
+        "group": row.group,
+      ]
 
-        found = Maybe::new(entry)
-      },
-      false => (),
+      found = Maybe::new(entry)
     }
   }
   found

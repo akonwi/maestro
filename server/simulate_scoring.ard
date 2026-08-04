@@ -126,9 +126,8 @@ private fn active_mls(a: app::App) competitions::Competition!Str {
   let all = try competitions::list_active(a)
   mut found: competitions::Competition? = Maybe::new()
   for competition in all {
-    match competition.api_football_league_id == 253 {
-      true => { found = Maybe::new(competition) },
-      false => (),
+    if competition.api_football_league_id == 253 {
+      found = Maybe::new(competition)
     }
   }
   match found {
@@ -155,9 +154,8 @@ private fn recent_rounds(items: [fixtures::RoundFixture]) [Str] {
   let ordered: mut [Str] = mut []
   let now = time::Now().UnixMilli()
   for item in items {
-    match item.fixture.status == "FT" and item.fixture.kickoff_at < now and (not contains(deref ordered, item.round)) {
-      true => ordered.push(item.round),
-      false => (),
+    if item.fixture.status == "FT" and item.fixture.kickoff_at < now and (not contains(deref ordered, item.round)) {
+      ordered.push(item.round)
     }
   }
   let count = ordered.size()
@@ -168,11 +166,10 @@ private fn recent_rounds(items: [fixtures::RoundFixture]) [Str] {
 }
 
 private fn selected_fixtures(items: [fixtures::RoundFixture], rounds: [Str]) [fixtures::RoundFixture] {
-  mut selected: mut [fixtures::RoundFixture] = mut []
+  let selected: mut [fixtures::RoundFixture] = mut []
   for item in items {
-    match item.fixture.status == "FT" and contains(rounds, item.round) {
-      true => selected.push(item),
-      false => (),
+    if item.fixture.status == "FT" and contains(rounds, item.round) {
+      selected.push(item)
     }
   }
   deref selected
@@ -181,9 +178,8 @@ private fn selected_fixtures(items: [fixtures::RoundFixture], rounds: [Str]) [fi
 private fn contains(values: [Str], wanted: Str) Bool {
   mut found = false
   for value in values {
-    match value == wanted {
-      true => { found = true },
-      false => (),
+    if value == wanted {
+      found = true
     }
   }
   found

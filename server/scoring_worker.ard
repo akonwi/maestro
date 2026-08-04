@@ -67,9 +67,8 @@ fn poll_once(a: app::App) Void!Str {
   try discover_missing(a)
   let now = time::Now().UnixMilli()
   let due = try scoring_state::due(a, now, BATCH_SIZE)
-  match due.size() > 0 {
-    true => fmt::Println("scoring worker processing {due.size()} due fixture(s)"),
-    false => (),
+  if due.size() > 0 {
+    fmt::Println("scoring worker processing {due.size()} due fixture(s)")
   }
   for state in due {
     process_due(a, state)
@@ -79,9 +78,8 @@ fn poll_once(a: app::App) Void!Str {
 
 private fn discover_missing(a: app::App) Void!Str {
   let ids = try scoring_state::missing_fixture_ids(a, BATCH_SIZE)
-  match ids.size() > 0 {
-    true => fmt::Println("scoring worker discovered {ids.size()} fixture(s) without state"),
-    false => (),
+  if ids.size() > 0 {
+    fmt::Println("scoring worker discovered {ids.size()} fixture(s) without state")
   }
   for fixture_id in ids {
     match fixtures::fixture_by_id(a, fixture_id) {

@@ -133,11 +133,10 @@ fn register(router: mut dram::App, a: app::App) {
 fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
   let all = try fetch(a, competition_id)
   let now = time::Now().UnixMilli()
-  mut out: mut [Fixture] = mut []
+  let out: mut [Fixture] = mut []
   for f in all {
-    match f.fixture.kickoff_at >= now {
-      true => out.push(f),
-      false => (),
+    if f.fixture.kickoff_at >= now {
+      out.push(f)
     }
   }
   Result::ok(deref out)
@@ -151,9 +150,8 @@ let SETTLED_STATUSES: [Str] = ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "
 fn is_settled(status: Str) Bool {
   mut found = false
   for s in SETTLED_STATUSES {
-    match s == status {
-      true => { found = true },
-      false => (),
+    if s == status {
+      found = true
     }
   }
   found
@@ -170,25 +168,21 @@ private fn is_detached_reschedule(candidate: fixtures::RoundFixture, list: [fixt
   mut playable_count = 0
   mut latest_settled: Int64? = Maybe::new()
   for other in list {
-    match other.round == candidate.round {
-      true => {
-        match is_settled(other.fixture.status) {
-          true => {
-            settled_count = settled_count + 1
-            match latest_settled {
-              kickoff => {
-                match other.fixture.kickoff_at > kickoff {
-                  true => { latest_settled = Maybe::new(other.fixture.kickoff_at) },
-                  false => (),
-                }
-              },
-              _ => { latest_settled = Maybe::new(other.fixture.kickoff_at) },
-            }
-          },
-          false => { playable_count = playable_count + 1 },
-        }
-      },
-      false => (),
+    if other.round == candidate.round {
+      match is_settled(other.fixture.status) {
+        true => {
+          settled_count = settled_count + 1
+          match latest_settled {
+            kickoff => {
+              if other.fixture.kickoff_at > kickoff {
+                latest_settled = Maybe::new(other.fixture.kickoff_at)
+              }
+            },
+            _ => { latest_settled = Maybe::new(other.fixture.kickoff_at) },
+          }
+        },
+        false => { playable_count = playable_count + 1 },
+      }
     }
   }
   match latest_settled {
@@ -209,30 +203,21 @@ fn pick_round(list: [fixtures::RoundFixture]) Str? {
   mut fallback_kickoff = Int64::from(0)
   mut fallback_round: Str? = Maybe::new()
   for f in list {
-    match not is_settled(f.fixture.status) {
-      true => {
-        match is_detached_reschedule(f, list) {
-          true => {
-            match fallback_round.is_none() or f.fixture.kickoff_at < fallback_kickoff {
-              true => {
-                fallback_kickoff = f.fixture.kickoff_at
-                fallback_round = Maybe::new(f.round)
-              },
-              false => (),
-            }
-          },
-          false => {
-            match best_round.is_none() or f.fixture.kickoff_at < best_kickoff {
-              true => {
-                best_kickoff = f.fixture.kickoff_at
-                best_round = Maybe::new(f.round)
-              },
-              false => (),
-            }
-          },
-        }
-      },
-      false => (),
+    if not is_settled(f.fixture.status) {
+      match is_detached_reschedule(f, list) {
+        true => {
+          if fallback_round.is_none() or f.fixture.kickoff_at < fallback_kickoff {
+            fallback_kickoff = f.fixture.kickoff_at
+            fallback_round = Maybe::new(f.round)
+          }
+        },
+        false => {
+          if best_round.is_none() or f.fixture.kickoff_at < best_kickoff {
+            best_kickoff = f.fixture.kickoff_at
+            best_round = Maybe::new(f.round)
+          }
+        },
+      }
     }
   }
   match best_round {
@@ -249,9 +234,8 @@ private fn active_competition(a: app::App, competition_id: Int?) OptionalCompeti
       id => id == comp.id,
       _ => chosen.is_none(),
     }
-    match wanted {
-      true => { chosen = Maybe::new(comp) },
-      false => (),
+    if wanted {
+      chosen = Maybe::new(comp)
     }
   }
   Result::ok(chosen)
@@ -271,11 +255,10 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
       }
       match picked {
         name => {
-          mut out: mut [Fixture] = mut []
+          let out: mut [Fixture] = mut []
           for f in list {
-            match f.round == name {
-              true => out.push(Fixture{competition_id: comp.id, fixture: f.fixture}),
-              false => (),
+            if f.round == name {
+              out.push(Fixture{competition_id: comp.id, fixture: f.fixture})
             }
           }
           Result::ok(
@@ -335,18 +318,14 @@ fn sort_round_names(names: [Str]) [Str] {
     let result: mut [Str] = mut []
     for existing in out {
       let goes_before = (not inserted) and key < round_order_key(existing)
-      match goes_before {
-        true => {
-          result.push(name)
-          inserted = true
-        },
-        false => (),
+      if goes_before {
+        result.push(name)
+        inserted = true
       }
       result.push(existing)
     }
-    match inserted {
-      true => (),
-      false => result.push(name),
+    if not inserted {
+      result.push(name)
     }
     out = result
   }
@@ -364,9 +343,8 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
       for f in list {
         mut seen = false
         for n in names {
-          match n == f.round {
-            true => { seen = true },
-            false => (),
+          if n == f.round {
+            seen = true
           }
         }
         match seen {
@@ -401,9 +379,8 @@ fn by_id(a: app::App, id: Int) Fixture?!Str {
   let all = try fetch(a, Maybe::new())
   mut found: Fixture? = Maybe::new()
   for f in all {
-    match f.fixture.id == id {
-      true => { found = Maybe::new(f) },
-      false => (),
+    if f.fixture.id == id {
+      found = Maybe::new(f)
     }
   }
   Result::ok(found)
@@ -411,20 +388,17 @@ fn by_id(a: app::App, id: Int) Fixture?!Str {
 
 private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
   let comps = try competitions::list_active(a)
-  mut out: mut [Fixture] = mut []
+  let out: mut [Fixture] = mut []
   for comp in comps {
     let include = match competition_id {
       wanted => wanted == comp.id,
       _ => true,
     }
-    match include {
-      true => {
-        let list = try fixtures::season_fixtures(a, comp.api_football_league_id, comp.season)
-        for item in list {
-          out.push(Fixture{competition_id: comp.id, fixture: item})
-        }
-      },
-      false => (),
+    if include {
+      let list = try fixtures::season_fixtures(a, comp.api_football_league_id, comp.season)
+      for item in list {
+        out.push(Fixture{competition_id: comp.id, fixture: item})
+      }
     }
   }
   Result::ok(deref out)
