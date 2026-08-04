@@ -91,10 +91,7 @@ private fn display_name_for(email: Str) Str {
 
 private fn first_user(rows: [Any]) User?!Str {
   match rows.at(0) {
-    row => {
-      let user = try decode_user(row)
-      Result::ok(Maybe::new(user))
-    },
+    row => Result::ok(Maybe::new(try decode_user(row))),
     _ => Result::ok(Maybe::new()),
   }
 }

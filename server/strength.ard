@@ -38,23 +38,31 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
   let games: mut [GameEntry] = mut []
   for rf in fixtures {
     let f = rf.fixture
-    if has_result(f.status) and f.home_score.is_some() and f.away_score.is_some() {
-      let hg = f.home_score.expect("home goals")
-      let ag = f.away_score.expect("away goals")
-      games.push(
-        GameEntry{
-          team_id: f.home_team_id,
-          kickoff: f.kickoff_at,
-          points: result_points(hg, ag),
+    if has_result(f.status) {
+      match f.home_score {
+        hg => {
+          match f.away_score {
+            ag => {
+              games.push(
+                GameEntry{
+                  team_id: f.home_team_id,
+                  kickoff: f.kickoff_at,
+                  points: result_points(hg, ag),
+                },
+              )
+              games.push(
+                GameEntry{
+                  team_id: f.away_team_id,
+                  kickoff: f.kickoff_at,
+                  points: result_points(ag, hg),
+                },
+              )
+            },
+            _ => (),
+          }
         },
-      )
-      games.push(
-        GameEntry{
-          team_id: f.away_team_id,
-          kickoff: f.kickoff_at,
-          points: result_points(ag, hg),
-        },
-      )
+        _ => (),
+      }
     }
   }
 
@@ -101,13 +109,9 @@ fn find_ranking(rankings: [Ranking], team_id: Int) Ranking? {
 }
 
 private fn has_result(status: Str) Bool {
-  mut ok = false
-  for s in RESULT_STATUSES {
-    if s == status {
-      ok = true
-    }
-  }
-  ok
+  List::find(RESULT_STATUSES, fn(s) {
+    s == status
+  }).is_some()
 }
 
 private fn result_points(gf: Int, ga: Int) Int {

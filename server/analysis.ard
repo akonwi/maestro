@@ -1,3 +1,5 @@
+use ard/list as List
+
 use dram
 use go:fmt
 use maestro/api_football/details
@@ -245,9 +247,10 @@ private fn team_goals_json(
 }
 
 private fn standing_opt(standings: [prematch::StandingRow], team_id: Int) Maybe<[Str: Any]> {
-  mut found: Maybe<[Str: Any]> = Maybe::new()
-  for row in standings {
-    if row.team_id == team_id {
+  match List::find(standings, fn(row) {
+    row.team_id == team_id
+  }) {
+    row => {
       let entry: [Str: Any] = [
         "rank": row.rank,
         "points": row.points,
@@ -255,10 +258,10 @@ private fn standing_opt(standings: [prematch::StandingRow], team_id: Int) Maybe<
         "group": row.group,
       ]
 
-      found = Maybe::new(entry)
-    }
+      Maybe::new(entry)
+    },
+    _ => Maybe::new(),
   }
-  found
 }
 
 private fn team_outlook_json(t: prematch::TeamOutlook) [Str: Any] {

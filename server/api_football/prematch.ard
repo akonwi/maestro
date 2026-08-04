@@ -1,3 +1,5 @@
+use ard/list as List
+
 use decode
 use maestro/api_football
 use maestro/api_football/decoding
@@ -430,12 +432,9 @@ fn parse_injuries(body: Str) [Injury]!Str {
     match decode::run(item, decode_injury) {
       ok(injury) => {
         let key = "{injury.team_id}|{injury.player}"
-        mut already = false
-        for k in seen {
-          if k == key {
-            already = true
-          }
-        }
+        let already = List::find(deref seen, fn(seen_key) {
+          seen_key == key
+        }).is_some()
         if not already {
           seen.push(key)
           out.push(injury)

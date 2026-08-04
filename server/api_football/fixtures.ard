@@ -1,3 +1,5 @@
+use ard/list as List
+
 use decode
 use maestro/api_football
 use maestro/api_football/decoding
@@ -51,17 +53,11 @@ fn parse_round_fixtures(body: Str) [RoundFixture]!Str {
 
 fn fixture_by_id(a: app::App, fixture_id: Int) Fixture?!Str {
   let fixtures = try parse_fixtures(try api_football::cached_get(a, "/fixtures?id={fixture_id}", CACHE_TTL_MS))
-  Result::ok(find_fixture(fixtures, fixture_id))
-}
-
-fn find_fixture(fixtures: [Fixture], fixture_id: Int) Fixture? {
-  mut found: Fixture? = Maybe::new()
-  for fixture in fixtures {
-    if fixture.id == fixture_id {
-      found = Maybe::new(fixture)
-    }
-  }
-  found
+  Result::ok(
+    List::find(fixtures, fn(fixture) {
+      fixture.id == fixture_id
+    }),
+  )
 }
 
 // Exposed for testing: parse an API-Football /fixtures response body.

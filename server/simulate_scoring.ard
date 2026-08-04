@@ -1,3 +1,5 @@
+use ard/list as List
+
 use decode
 use go:fmt
 use maestro/api_football/fixtures
@@ -176,13 +178,9 @@ private fn selected_fixtures(items: [fixtures::RoundFixture], rounds: [Str]) [fi
 }
 
 private fn contains(values: [Str], wanted: Str) Bool {
-  mut found = false
-  for value in values {
-    if value == wanted {
-      found = true
-    }
-  }
-  found
+  List::find(values, fn(value) {
+    value == wanted
+  }).is_some()
 }
 
 private fn simulation_group_id() Int!Str {

@@ -1,3 +1,5 @@
+use ard/list as List
+
 use dram
 use go:fmt
 use maestro/api_football/fixtures
@@ -148,13 +150,9 @@ fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
 let SETTLED_STATUSES: [Str] = ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"]
 
 fn is_settled(status: Str) Bool {
-  mut found = false
-  for s in SETTLED_STATUSES {
-    if s == status {
-      found = true
-    }
-  }
-  found
+  List::find(SETTLED_STATUSES, fn(s) {
+    s == status
+  }).is_some()
 }
 
 // A rescheduled fixture can retain its original round even when moved months
@@ -341,15 +339,11 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
       let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
       let names: mut [Str] = mut []
       for f in list {
-        mut seen = false
-        for n in names {
-          if n == f.round {
-            seen = true
-          }
-        }
-        match seen {
-          true => (),
-          false => names.push(f.round),
+        let seen = List::find(deref names, fn(name) {
+          name == f.round
+        }).is_some()
+        if not seen {
+          names.push(f.round)
         }
       }
       let ordered = sort_round_names(deref names)
@@ -377,13 +371,11 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
 
 fn by_id(a: app::App, id: Int) Fixture?!Str {
   let all = try fetch(a, Maybe::new())
-  mut found: Fixture? = Maybe::new()
-  for f in all {
-    if f.fixture.id == id {
-      found = Maybe::new(f)
-    }
-  }
-  Result::ok(found)
+  Result::ok(
+    List::find(all, fn(f) {
+      f.fixture.id == id
+    }),
+  )
 }
 
 private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
