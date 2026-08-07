@@ -206,7 +206,7 @@ function CreateGroupForm() {
           value={name}
         />
       </m-vstack>
-      <button className='primary' disabled={create.isPending} type='submit'>
+      <button data-variant='primary' disabled={create.isPending} type='submit'>
         {create.isPending ? 'Creating group…' : 'Create Group'}
       </button>
       {create.isError ? (
@@ -249,7 +249,7 @@ function SignInRequired() {
           <p className='page-subtitle'>
             Groups and predictions are tied to your Maestro account.
           </p>
-          <Link className='btn primary' to='/login'>
+          <Link className='btn' data-variant='primary' to='/login'>
             Sign In
           </Link>
         </m-vstack>

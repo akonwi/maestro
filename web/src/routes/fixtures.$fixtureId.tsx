@@ -207,7 +207,7 @@ function PredictionArea({
       <section className='empty-state'>
         <m-vstack align='center' gap='sm'>
           <h2>Sign In to Make a Prediction</h2>
-          <Link className='btn primary' to='/login'>
+          <Link className='btn' data-variant='primary' to='/login'>
             Sign In
           </Link>
         </m-vstack>
@@ -351,7 +351,11 @@ function PredictionForm({
                 {save.error.message}
               </p>
             ) : null}
-            <button className='primary' disabled={save.isPending} type='submit'>
+            <button
+              data-variant='primary'
+              disabled={save.isPending}
+              type='submit'
+            >
               {save.isPending
                 ? 'Saving prediction…'
                 : initial

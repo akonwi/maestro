@@ -75,7 +75,7 @@ function LoginPage() {
                 </p>
               ) : null}
               <button
-                className='primary'
+                data-variant='primary'
                 disabled={requestLink.isPending}
                 type='submit'
               >

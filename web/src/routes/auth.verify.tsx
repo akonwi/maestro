@@ -95,7 +95,7 @@ function VerifyPage() {
               The link may be expired or already used. Request a new one to
               continue.
             </p>
-            <Link className='btn primary' to='/login'>
+            <Link className='btn' data-variant='primary' to='/login'>
               Request another link
             </Link>
           </m-vstack>

@@ -123,7 +123,7 @@ function InviteForm({ groupId }: { groupId: number }) {
           value={email}
         />
       </m-vstack>
-      <button className='primary' disabled={invite.isPending} type='submit'>
+      <button data-variant='primary' disabled={invite.isPending} type='submit'>
         {invite.isPending ? 'Sending invite…' : 'Invite Member'}
       </button>
       {invite.isSuccess ? (
@@ -158,7 +158,7 @@ function SignInRequired() {
     <main className='page slim' id='main-content'>
       <m-vstack align='start' gap='sm'>
         <h1 className='panel-title'>Sign In to View This Group</h1>
-        <Link className='btn primary' to='/login'>
+        <Link className='btn' data-variant='primary' to='/login'>
           Sign In
         </Link>
       </m-vstack>
