@@ -8,6 +8,7 @@ use maestro/groups
 use maestro/health
 use maestro/leaderboards
 use maestro/predictions
+use maestro/push
 use maestro/standings
 use go:time
 
@@ -32,6 +33,7 @@ fn build(a: app::App) dram::App {
   predictions::register(router, a)
   leaderboards::register(router, a)
   standings::register(router, a)
+  push::register(router, a)
 
   deref router
 }

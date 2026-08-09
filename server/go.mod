@@ -2,12 +2,16 @@ module maestro
 
 go 1.26
 
-require github.com/akonwi/ard-sql v0.0.0-20260730112014-4ed13333dcab
+require (
+	github.com/SherClockHolmes/webpush-go v1.4.0
+	github.com/akonwi/ard-sql v0.0.0-20260730112014-4ed13333dcab
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

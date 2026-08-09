@@ -4,6 +4,7 @@ use go:fmt
 use maestro/api_football/fixtures
 use maestro/app
 use maestro/competitions
+use maestro/push
 use maestro/scoring
 use maestro/scoring_state
 use go:time
@@ -185,7 +186,10 @@ private fn settle_fixture(a: app::App, fixture: fixtures::Fixture) {
       match fixture.away_score {
         away => {
           match scoring::settle(a, fixture.id, fixture.status, home, away) {
-            ok => fmt::Println("scoring settled fixture {fixture.id} at {home}-{away}"),
+            ok => {
+              fmt::Println("scoring settled fixture {fixture.id} at {home}-{away}")
+              push::notify_fixture_settled(a, fixture, home, away)
+            },
             err(message) => fmt::Println("scoring settlement failed for fixture {fixture.id}: {message}"),
           }
         },

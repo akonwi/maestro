@@ -1537,3 +1537,20 @@
 .signout:hover {
   color: var(--color-accent);
 }
+
+/* Header bell: icon-only toggle for settlement notifications. */
+.notif-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+.notif-toggle:hover:not(:disabled) {
+  color: var(--color-accent);
+}
+.notif-toggle[aria-pressed="true"] {
+  color: var(--color-accent);
+}
+.notif-toggle:disabled {
+  opacity: 0.5;
+}

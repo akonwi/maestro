@@ -1,0 +1,289 @@
+use ard/unsafe
+
+use decode
+use dram
+use go:encoding/json
+use go:fmt
+use go:github.com/SherClockHolmes/webpush-go as webpush
+use maestro/api_football/fixtures
+use maestro/app
+use maestro/auth
+use go:net/http
+use go:strconv
+use go:time
+
+// Web Push subscriptions and settlement notifications.
+//
+// Browsers register a push endpoint per (user, browser); we store them and
+// send each user their personal result when a fixture they predicted
+// settles. Sending is best-effort with logging — a push failure never
+// affects settlement. Expired subscriptions (404/410 from the push
+// service) are deleted on the spot.
+
+// Results stay useful for a day; let push services retry that long.
+let TTL_SECONDS = 86400
+
+struct Subscription {
+  endpoint: Str,
+  p256dh: Str,
+  auth: Str,
+}
+
+// One user's prediction on a settled fixture plus one of their
+// subscriptions to deliver the result to.
+struct Target {
+  user_id: Int,
+  subscription: Subscription,
+  predicted_home: Int,
+  predicted_away: Int,
+  points: Int,
+}
+
+fn register(router: mut dram::App, a: app::App) {
+  // Public: the client needs the VAPID public key to subscribe.
+  router.get("/push/vapid-key", fn(req: dram::Request, res: mut dram::Response) {
+    let payload: [Str: Any] = ["enabled": a.config.push_enabled, "key": a.config.vapid_public_key]
+    res.json(http::StatusOK, payload)
+  })
+
+  let protected = mut router.group("/")
+  protected.use(auth::middleware(a))
+
+  protected.post("/push/subscriptions", fn(req: dram::Request, res: mut dram::Response) {
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let sub = try decode_subscription(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    match save(a, user_id, sub) {
+      ok => { res.status = 204 },
+      err(message) => {
+        fmt::Println("push: saving subscription for user {user_id} failed: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not save subscription"])
+      },
+    }
+  })
+
+  protected.delete("/push/subscriptions", fn(req: dram::Request, res: mut dram::Response) {
+    let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
+    let endpoint = try decode_endpoint(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    match remove(a, user_id, endpoint) {
+      ok => { res.status = 204 },
+      err(message) => {
+        fmt::Println("push: removing subscription for user {user_id} failed: {message}")
+        res.json(http::StatusInternalServerError, ["error": "could not remove subscription"])
+      },
+    }
+  })
+}
+
+private fn decode_subscription(req: dram::Request) Subscription!Str {
+  let body = Str::from(req.body)
+  match body.is_empty() {
+    true => Result::err("empty request body"),
+    false => {
+      let endpoint = try decode::unmarshal(
+        body,
+        decode::field("endpoint", decode::string),
+      ).map_err(fn(e) {
+        "invalid request: {e.error()}"
+      })
+      let p256dh = try decode::unmarshal(
+        body,
+        decode::field("p256dh", decode::string),
+      ).map_err(fn(e) {
+        "invalid request: {e.error()}"
+      })
+      let auth_key = try decode::unmarshal(
+        body,
+        decode::field("auth", decode::string),
+      ).map_err(fn(e) {
+        "invalid request: {e.error()}"
+      })
+      Result::ok(
+        Subscription{
+          endpoint: endpoint,
+          p256dh: p256dh,
+          auth: auth_key,
+        },
+      )
+    },
+  }
+}
+
+private fn decode_endpoint(req: dram::Request) Str!Str {
+  let body = Str::from(req.body)
+  match body.is_empty() {
+    true => Result::err("empty request body"),
+    false => {
+      decode::unmarshal(
+        body,
+        decode::field("endpoint", decode::string),
+      ).map_err(fn(e) {
+        "invalid request: {e.error()}"
+      })
+    },
+  }
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────
+
+// Upsert by endpoint: re-subscribing (or a different account signing in on
+// the same browser) takes over the endpoint.
+fn save(a: app::App, user_id: Int, sub: Subscription) Void!Str {
+  let now = time::Now().UnixMilli()
+  a.db.query(
+    "INSERT INTO push_subscriptions (endpoint, user_id, p256dh, auth, created_at) VALUES (@endpoint, @user_id, @p256dh, @auth, @now) ON CONFLICT(endpoint) DO UPDATE SET user_id = @user_id, p256dh = @p256dh, auth = @auth",
+  ).run(
+    [
+      "endpoint": sub.endpoint,
+      "user_id": user_id,
+      "p256dh": sub.p256dh,
+      "auth": sub.auth,
+      "now": now,
+    ],
+  )
+}
+
+fn remove(a: app::App, user_id: Int, endpoint: Str) Void!Str {
+  a.db.query(
+    "DELETE FROM push_subscriptions WHERE endpoint = @endpoint AND user_id = @user_id",
+  ).run(["endpoint": endpoint, "user_id": user_id])
+}
+
+private fn remove_expired(a: app::App, endpoint: Str) {
+  match a.db.query("DELETE FROM push_subscriptions WHERE endpoint = @endpoint").run(["endpoint": endpoint]) {
+    ok => fmt::Println("push: removed expired subscription {endpoint}"),
+    err(message) => fmt::Println("push: removing expired subscription failed: {message}"),
+  }
+}
+
+// Every (settled prediction × subscription) pair for a fixture.
+fn targets_for_fixture(a: app::App, fixture_id: Int) [Target]!Str {
+  let rows = try a.db.query(
+    "SELECT p.user_id AS user_id, p.home_score AS home_score, p.away_score AS away_score, p.points AS points, s.endpoint AS endpoint, s.p256dh AS p256dh, s.auth AS auth FROM predictions p JOIN push_subscriptions s ON s.user_id = p.user_id WHERE p.fixture_id = @fixture_id AND p.points IS NOT NULL",
+  ).all(["fixture_id": fixture_id])
+  let out: mut [Target] = mut []
+  for row in rows {
+    match decode_target(row) {
+      ok(target) => {
+        out.push(target)
+        ()
+      },
+      err(message) => fmt::Println("push: skipping malformed target row: {message}"),
+    }
+  }
+  Result::ok(deref out)
+}
+
+private fn decode_target(row: Any) Target!Str {
+  let user_id = try decode::run(row, decode::field("user_id", decode::int)).map_err(describe)
+  let predicted_home = try decode::run(row, decode::field("home_score", decode::int)).map_err(describe)
+  let predicted_away = try decode::run(row, decode::field("away_score", decode::int)).map_err(describe)
+  let points = try decode::run(row, decode::field("points", decode::int)).map_err(describe)
+  let endpoint = try decode::run(row, decode::field("endpoint", decode::string)).map_err(describe)
+  let p256dh = try decode::run(row, decode::field("p256dh", decode::string)).map_err(describe)
+  let auth_key = try decode::run(row, decode::field("auth", decode::string)).map_err(describe)
+  Result::ok(
+    Target{
+      user_id: user_id,
+      subscription: Subscription{
+        endpoint: endpoint,
+        p256dh: p256dh,
+        auth: auth_key,
+      },
+      predicted_home: predicted_home,
+      predicted_away: predicted_away,
+      points: points,
+    },
+  )
+}
+
+private fn describe(e: decode::Err) Str {
+  "decoding push row: {e.to_str()}"
+}
+
+// ─── Sending ─────────────────────────────────────────────────────────────
+
+// Notify every subscribed user who predicted this fixture of their result.
+// Called by the scoring worker after settlement commits; never fails the
+// caller.
+fn notify_fixture_settled(
+  a: app::App,
+  fixture: fixtures::Fixture,
+  actual_home: Int,
+  actual_away: Int,
+) {
+  match a.config.push_enabled {
+    false => (),
+    true => {
+      match targets_for_fixture(a, fixture.id) {
+        ok(targets) => {
+          for target in targets {
+            send_result(a, fixture, actual_home, actual_away, target)
+          }
+        },
+        err(message) => fmt::Println("push: loading targets for fixture {fixture.id} failed: {message}"),
+      }
+    },
+  }
+}
+
+fn result_body(predicted_home: Int, predicted_away: Int, points: Int) Str {
+  match points {
+    3 => "Exact score! +3 points",
+    1 => "Right outcome - you predicted {predicted_home}-{predicted_away}. +1 point",
+    _ => "You picked {predicted_home}-{predicted_away}",
+  }
+}
+
+private fn send_result(
+  a: app::App,
+  fixture: fixtures::Fixture,
+  actual_home: Int,
+  actual_away: Int,
+  target: Target,
+) {
+  let title = "FT: {fixture.home_team_name} {actual_home}–{actual_away} {fixture.away_team_name}"
+  let body = result_body(target.predicted_home, target.predicted_away, target.points)
+  let payload: [Str: Any] = [
+    "title": title,
+    "body": body,
+    "url": "/fixtures/{strconv::Itoa(fixture.id)}",
+  ]
+  let encoded = try json::Marshal(payload) -> err {
+    fmt::Println("push: encoding payload for fixture {fixture.id} failed: {err}")
+  }
+
+  // webpush-go owns the Web Push protocol: the VAPID-signed JWT and the
+  // RFC 8291 aes128gcm payload encryption.
+  let message = mut encoded
+  let subscription = mut webpush::Subscription{
+    Endpoint: target.subscription.endpoint,
+    Keys: webpush::Keys{Auth: target.subscription.auth, P256dh: target.subscription.p256dh},
+  }
+  let options = mut webpush::Options{
+    Subscriber: a.config.push_subscriber,
+    VAPIDPublicKey: a.config.vapid_public_key,
+    VAPIDPrivateKey: a.config.vapid_private_key,
+    TTL: TTL_SECONDS,
+  }
+  match webpush::SendNotification(message, subscription, options) {
+    ok(response) => {
+      match unsafe::is_nil(response) {
+        true => fmt::Println("push: send to user {target.user_id} returned no response"),
+        false => {
+          let status = response.StatusCode
+          response.Body.Close()
+          match status == 404 or status == 410 {
+            true => remove_expired(a, target.subscription.endpoint),
+            false => {
+              match status >= 400 {
+                true => fmt::Println("push: send to user {target.user_id} returned HTTP {status}"),
+                false => (),
+              }
+            },
+          }
+        },
+      }
+    },
+    err(message) => fmt::Println("push: send to user {target.user_id} failed: {message}"),
+  }
+}

@@ -7,5 +7,6 @@
 package tools
 
 import (
+	_ "github.com/SherClockHolmes/webpush-go"
 	_ "github.com/akonwi/ard-sql/ffi"
 )

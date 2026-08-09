@@ -18,6 +18,10 @@ struct Config {
   magic_link_ttl_secs: Int,
   session_ttl_secs: Int,
   api_football_key: Str,
+  push_enabled: Bool,
+  vapid_public_key: Str,
+  vapid_private_key: Str,
+  push_subscriber: Str,
 }
 
 fn load() Config!Str {
@@ -32,6 +36,11 @@ fn load() Config!Str {
   let magic_link_ttl_secs = try parse_ttl("MAGIC_LINK_TTL_SECONDS", os::Getenv("MAGIC_LINK_TTL_SECONDS"), 900)
   let session_ttl_secs = try parse_ttl("SESSION_TTL_SECONDS", os::Getenv("SESSION_TTL_SECONDS"), 2592000)
   let api_football_key = try require("API_FOOTBALL_KEY")
+  // Push is enabled by supplying a VAPID keypair; no separate flag.
+  let vapid_public_key = os::Getenv("VAPID_PUBLIC_KEY")
+  let vapid_private_key = os::Getenv("VAPID_PRIVATE_KEY")
+  let push_enabled = (not vapid_public_key.is_empty()) and not vapid_private_key.is_empty()
+  let push_subscriber = try require_when(push_enabled, "PUSH_SUBSCRIBER")
 
   Result::ok(
     Config{
@@ -46,6 +55,10 @@ fn load() Config!Str {
       magic_link_ttl_secs: magic_link_ttl_secs,
       session_ttl_secs: session_ttl_secs,
       api_football_key: api_football_key,
+      push_enabled: push_enabled,
+      vapid_public_key: vapid_public_key,
+      vapid_private_key: vapid_private_key,
+      push_subscriber: push_subscriber,
     },
   )
 }

@@ -136,6 +136,29 @@ database paths.
 | `MAGIC_LINK_TTL_SECONDS` | Magic-link lifetime    | `900`              |
 | `SESSION_TTL_SECONDS` | Session lifetime          | `2592000` (30d)    |
 | `API_FOOTBALL_KEY` | API-Football key             | required           |
+| `VAPID_PUBLIC_KEY` | VAPID public key; push notifications are enabled when the keypair is set | optional |
+| `VAPID_PRIVATE_KEY` | VAPID private key            | optional           |
+| `PUSH_SUBSCRIBER` | VAPID subscriber contact (`mailto:` URL) | required when VAPID keys are set |
+
+Generate a VAPID keypair once with webpush-go:
+
+```sh
+cat > /tmp/genvapid.go << 'EOF'
+package main
+
+import (
+	"fmt"
+	webpush "github.com/SherClockHolmes/webpush-go"
+)
+
+func main() {
+	priv, pub, _ := webpush.GenerateVAPIDKeys()
+	fmt.Println("VAPID_PUBLIC_KEY=" + pub)
+	fmt.Println("VAPID_PRIVATE_KEY=" + priv)
+}
+EOF
+go run /tmp/genvapid.go
+```
 
 ## Docker
 

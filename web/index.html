@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- iOS only delivers Web Push to Home Screen apps; the manifest +
+         these tags make Maestro installable. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Maestro" />
     <link rel="preconnect" href="https://media.api-sports.io" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <!-- mica before the bundled app css: the app's layer-order statement
