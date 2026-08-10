@@ -34,6 +34,12 @@ struct CurrentRound {
 }
 
 fn register(router: mut dram::App, a: app::App) {
+  router.get("/fixtures/feed", fn(req: dram::Request, res: mut dram::Response) {
+    match feed_payload(a) {
+      ok(entries) => res.json(http::StatusOK, entries),
+      err(message) => set_provider_error(res, message),
+    }
+  })
   router.get("/fixtures/upcoming", fn(req: dram::Request, res: mut dram::Response) {
     let raw_comp = req.query("competition_id").or("")
     match raw_comp.is_empty() {
@@ -242,39 +248,7 @@ private fn active_competition(a: app::App, competition_id: Int?) Maybe<competiti
 fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRound!Str {
   let chosen = try active_competition(a, competition_id)
   match chosen {
-    comp => {
-      let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
-      let picked: Str? = match requested {
-        name => Maybe::new(name),
-        _ => pick_round(list),
-      }
-      match picked {
-        name => {
-          let out: mut [Fixture] = mut []
-          for f in list {
-            if f.round == name {
-              out.push(Fixture{competition_id: comp.id, fixture: f.fixture})
-            }
-          }
-          Result::ok(
-            CurrentRound{
-              competition_id: Maybe::new(comp.id),
-              name: Maybe::new(name),
-              fixtures: deref out,
-            },
-          )
-        },
-        _ => {
-          Result::ok(
-            CurrentRound{
-              competition_id: Maybe::new(comp.id),
-              name: Maybe::new(),
-              fixtures: [],
-            },
-          )
-        },
-      }
-    },
+    comp => competition_round(a, comp, requested),
     _ => {
       Result::ok(
         CurrentRound{
@@ -285,6 +259,69 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
       )
     },
   }
+}
+
+private fn competition_round(a: app::App, comp: competitions::Competition, requested: Str?) CurrentRound!Str {
+  let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+  let picked: Str? = match requested {
+    name => Maybe::new(name),
+    _ => pick_round(list),
+  }
+  match picked {
+    name => {
+      let out: mut [Fixture] = mut []
+      for f in list {
+        if f.round == name {
+          out.push(Fixture{competition_id: comp.id, fixture: f.fixture})
+        }
+      }
+      Result::ok(
+        CurrentRound{
+          competition_id: Maybe::new(comp.id),
+          name: Maybe::new(name),
+          fixtures: deref out,
+        },
+      )
+    },
+    _ => {
+      Result::ok(
+        CurrentRound{
+          competition_id: Maybe::new(comp.id),
+          name: Maybe::new(),
+          fixtures: [],
+        },
+      )
+    },
+  }
+}
+
+// The unified feed: the current matchday of every active competition in
+// one response. Per-competition failures are logged and skipped — one
+// flaky upstream league must not blank the whole feed.
+fn feed_payload(a: app::App) [Any]!Str {
+  let comps = try competitions::list_active(a)
+  let out: mut [Any] = mut []
+  for comp in comps {
+    match competition_round(a, comp, Maybe::new()) {
+      ok(round) => {
+        let competition: [Str: Any] = [
+          "id": comp.id,
+          "name": comp.name,
+          "api_football_league_id": comp.api_football_league_id,
+          "season": comp.season,
+        ]
+        let entry: [Str: Any] = [
+          "competition": competition,
+          "round": round.name,
+          "fixtures": to_json_list(round.fixtures),
+        ]
+        out.push(entry)
+        ()
+      },
+      err(message) => fmt::Println("feed: skipping competition {comp.id} ({comp.name}): {message}"),
+    }
+  }
+  Result::ok(deref out)
 }
 
 // The trailing integer in a round name like "Regular Season - 28", or a
