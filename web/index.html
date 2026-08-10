@@ -17,11 +17,16 @@
          appends its own layer after mica's, and unlayered app rules win. -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@akonwi/mica@0.5.0/mica.css"
+      href="https://cdn.jsdelivr.net/npm/@akonwi/mica@0.8.0/mica.css"
     />
     <title>Maestro</title>
     <!-- Dark mode needs no script: mica sets color-scheme: light dark and
          resolves every color via light-dark(), following the OS. -->
+    <!-- The one mica behavior module in use: the admin league search. -->
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@akonwi/mica@0.8.0/combobox.js"
+    ></script>
   </head>
   <body>
     <div id="root"></div>

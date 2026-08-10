@@ -1,4 +1,4 @@
-// Vendored from https://github.com/akonwi/mica v0.2.2 (types/react.d.ts).
+// Vendored from https://github.com/akonwi/mica v0.8.0 (types/react.d.ts).
 // Refresh by re-copying; the diff is the upgrade review.
 // React JSX typings for mica's custom elements.
 //
@@ -57,6 +57,11 @@ declare module 'react' {
       'm-badge': MicaElement<{
         variant?: 'primary' | 'success' | 'warning' | 'danger'
         count?: boolean
+      }>
+      'm-toast': MicaElement<{
+        popover?: 'manual'
+        variant?: 'success' | 'warning' | 'danger'
+        duration?: string | number
       }>
       'm-field': MicaElement
       'm-error': MicaElement<{ active?: boolean }>

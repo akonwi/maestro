@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { type FormEvent, useState } from 'react'
-import type { AdminCompetition } from '@/lib/admin'
+import { type FormEvent, useEffect, useState } from 'react'
+import type { AdminCompetition, LeagueSearchResult } from '@/lib/admin'
 import {
   AdminAuthError,
   adminCompetitionsQuery,
   getAdminToken,
+  leagueSearchQuery,
   setAdminToken,
   upsertCompetition,
 } from '@/lib/admin'
@@ -192,23 +193,51 @@ function CompetitionRow({ competition }: { competition: AdminCompetition }) {
 
 function AddCompetitionForm() {
   const queryClient = useQueryClient()
-  const [leagueId, setLeagueId] = useState('')
+  const [searchText, setSearchText] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const [selected, setSelected] = useState<LeagueSearchResult | null>(null)
   const [name, setName] = useState('')
   const [kind, setKind] = useState('league')
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(searchText), 300)
+    return () => clearTimeout(timer)
+  }, [searchText])
+
+  const search = useQuery(leagueSearchQuery(debounced))
+  const results = search.data ?? []
+
   const add = useMutation({
-    mutationFn: () =>
-      upsertCompetition({
-        api_football_league_id: Number(leagueId),
+    mutationFn: () => {
+      if (!selected) throw new Error('Pick a league from the search results.')
+      return upsertCompetition({
+        api_football_league_id: selected.league_id,
         name: name.trim(),
         kind,
-      }),
+      })
+    },
     onSuccess: () => {
-      setLeagueId('')
+      setSearchText('')
+      setSelected(null)
       setName('')
+      setKind('league')
       queryClient.invalidateQueries({ queryKey: ['admin', 'competitions'] })
     },
   })
+
+  function onSearchChange(value: string) {
+    setSearchText(value)
+    // mica's combobox commits a selection by dispatching a real change
+    // event with the option's value; match it back to the result.
+    const picked = results.find(result => optionLabel(result) === value)
+    if (picked) {
+      setSelected(picked)
+      setName(picked.name)
+      setKind(picked.type === 'Cup' ? 'cup' : 'league')
+    } else if (selected) {
+      setSelected(null)
+    }
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -224,49 +253,83 @@ function AddCompetitionForm() {
       </header>
       <form className='admin-form' onSubmit={submit}>
         <m-vstack align='start' gap='md'>
-          <div className='admin-form-grid'>
-            <m-vstack gap='xs'>
-              <label htmlFor='add-league-id'>API-Football league ID</label>
+          <m-vstack gap='xs' style={{ inlineSize: '100%' }}>
+            <label htmlFor='league-search'>Find a league</label>
+            <m-combobox>
               <input
-                id='add-league-id'
-                inputMode='numeric'
-                min='1'
-                onChange={event => setLeagueId(event.target.value)}
-                required
-                type='number'
-                value={leagueId}
-              />
-            </m-vstack>
-            <m-vstack gap='xs'>
-              <label htmlFor='add-name'>Name</label>
-              <input
-                id='add-name'
-                onChange={event => setName(event.target.value)}
-                placeholder='Premier League'
-                required
+                autoComplete='off'
+                id='league-search'
+                list='league-search-options'
+                onChange={event => onSearchChange(event.target.value)}
+                placeholder='Search API-Football (e.g. championship)…'
                 type='text'
-                value={name}
+                value={searchText}
               />
-            </m-vstack>
-            <m-vstack gap='xs'>
-              <label htmlFor='add-kind'>Kind</label>
-              <select
-                id='add-kind'
-                onChange={event => setKind(event.target.value)}
-                value={kind}
-              >
-                <option value='league'>League</option>
-                <option value='cup'>Cup</option>
-                <option value='playoff'>Playoff</option>
-              </select>
-            </m-vstack>
-          </div>
+              <datalist id='league-search-options'>
+                {results.map(result => (
+                  <option
+                    key={`${result.league_id}-${result.country}`}
+                    value={optionLabel(result)}
+                  />
+                ))}
+              </datalist>
+            </m-combobox>
+            {search.isFetching ? (
+              <p className='hint'>Searching…</p>
+            ) : selected ? (
+              <p className='hint'>
+                League ID {selected.league_id} · {selected.country} ·{' '}
+                {selected.type}
+              </p>
+            ) : (
+              <p className='hint'>
+                Type at least three characters, then pick a result.
+              </p>
+            )}
+            {search.isError ? (
+              <p className='form-error' role='alert'>
+                {search.error.message}
+              </p>
+            ) : null}
+          </m-vstack>
+
+          {selected ? (
+            <div className='admin-form-grid'>
+              <m-vstack gap='xs'>
+                <label htmlFor='add-name'>Display name</label>
+                <input
+                  id='add-name'
+                  onChange={event => setName(event.target.value)}
+                  required
+                  type='text'
+                  value={name}
+                />
+              </m-vstack>
+              <m-vstack gap='xs'>
+                <label htmlFor='add-kind'>Kind</label>
+                <select
+                  id='add-kind'
+                  onChange={event => setKind(event.target.value)}
+                  value={kind}
+                >
+                  <option value='league'>League</option>
+                  <option value='cup'>Cup</option>
+                  <option value='playoff'>Playoff</option>
+                </select>
+              </m-vstack>
+            </div>
+          ) : null}
+
           {add.isError ? (
             <p className='form-error' role='alert'>
               {add.error.message}
             </p>
           ) : null}
-          <button data-variant='primary' disabled={add.isPending} type='submit'>
+          <button
+            data-variant='primary'
+            disabled={!selected || add.isPending}
+            type='submit'
+          >
             {add.isPending ? 'Adding…' : 'Add competition'}
           </button>
           <p className='hint'>
@@ -277,4 +340,8 @@ function AddCompetitionForm() {
       </form>
     </section>
   )
+}
+
+function optionLabel(result: LeagueSearchResult) {
+  return `${result.name} — ${result.country}`
 }

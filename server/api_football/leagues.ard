@@ -4,6 +4,7 @@ use decode
 use maestro/api_football
 use maestro/api_football/decoding
 use maestro/app
+use go:net/url
 use go:time
 
 // League metadata from /leagues?id= — most importantly, which season is
@@ -40,6 +41,43 @@ fn current_season(a: app::App, league_id: Int) Season!Str {
 
 fn league_seasons(a: app::App, league_id: Int) [Season]!Str {
   parse_seasons(try api_football::cached_get(a, "/leagues?id={league_id}", CACHE_TTL_MS))
+}
+
+// ─── League search (/leagues?search=) ────────────────────────────────
+
+struct SearchResult {
+  league_id: Int,
+  name: Str,
+  // Upstream league type: "League" | "Cup"
+  league_type: Str,
+  country: Str,
+}
+
+fn search(a: app::App, query: Str) [SearchResult]!Str {
+  let escaped = url::QueryEscape(query)
+  parse_search(try api_football::cached_get(a, "/leagues?search={escaped}", CACHE_TTL_MS))
+}
+
+fn parse_search(body: Str) [SearchResult]!Str {
+  decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode_search_result)),
+  ).map_err(decoding::describe_error)
+}
+
+private fn decode_search_result(item: Any) SearchResult!decode::Err {
+  let league_id = try decode::run(item, decode::path(["league", "id"], decode::int))
+  let name = try decode::run(item, decode::path(["league", "name"], decode::string))
+  let league_type = try decode::run(item, decode::path(["league", "type"], decode::string))
+  let country = try decode::run(item, decode::path(["country", "name"], decode::string))
+  Result::ok(
+    SearchResult{
+      league_id: league_id,
+      name: name,
+      league_type: league_type,
+      country: country,
+    },
+  )
 }
 
 fn parse_seasons(body: Str) [Season]!Str {

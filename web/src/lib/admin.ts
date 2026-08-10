@@ -76,3 +76,23 @@ export function upsertCompetition(body: CompetitionUpsert) {
     body: JSON.stringify(body),
   })
 }
+
+export type LeagueSearchResult = {
+  league_id: number
+  name: string
+  type: string // 'League' | 'Cup'
+  country: string
+}
+
+export function leagueSearchQuery(query: string) {
+  return queryOptions({
+    queryKey: ['admin', 'league-search', query],
+    queryFn: () =>
+      request<LeagueSearchResult[]>(
+        `/admin/leagues/search?q=${encodeURIComponent(query)}`,
+      ),
+    enabled: query.trim().length >= 3,
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  })
+}

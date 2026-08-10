@@ -1,6 +1,7 @@
 use go:crypto/subtle
 use decode
 use dram
+use maestro/api_football/leagues
 use maestro/app
 use maestro/competitions
 use go:net/http
@@ -26,6 +27,21 @@ private fn register_routes(router: mut dram::App, a: app::App) {
     match competitions::list_all(a) {
       ok(list) => res.json(http::StatusOK, to_json_list(list)),
       err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
+
+  router.get("/admin/leagues/search", fn(req: dram::Request, res: mut dram::Response) {
+    try authorize(a, req) -> _ { unauthorized(res) }
+    let query = strings::TrimSpace(req.query("q").or(""))
+    // API-Football requires at least 3 characters for a search.
+    match query.size() < 3 {
+      true => res.json(http::StatusBadRequest, ["error": "q must be at least 3 characters"]),
+      false => {
+        match leagues::search(a, query) {
+          ok(results) => res.json(http::StatusOK, search_json(results)),
+          err(message) => res.json(http::StatusBadGateway, ["error": message]),
+        }
+      },
     }
   })
 
@@ -97,6 +113,20 @@ private fn field_bool_or(body: Str, name: Str, fallback: Bool) Bool {
 }
 
 // ─── JSON shaping ───────────────────────────────────────────────────────
+
+private fn search_json(results: [leagues::SearchResult]) [Any] {
+  let out: mut [Any] = mut []
+  for result in results {
+    let entry: [Str: Any] = [
+      "league_id": result.league_id,
+      "name": result.name,
+      "type": result.league_type,
+      "country": result.country,
+    ]
+    out.push(entry)
+  }
+  deref out
+}
 
 private fn to_json_list(list: [competitions::Competition]) [Any] {
   let out: mut [Any] = mut []
