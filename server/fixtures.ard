@@ -19,9 +19,6 @@ struct Fixture {
   fixture: fixtures::Fixture,
 }
 
-// Work around ard#361: the formatter cannot parse a qualified Maybe inside Result.
-type OptionalCompetition = competitions::Competition?
-
 private fn set_provider_error(res: mut dram::Response, message: Str) {
   fmt::Println("fixture request failed: {message}")
   res.json(http::StatusBadGateway, ["error": "fixture data is temporarily unavailable"])
@@ -150,9 +147,9 @@ fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
 let SETTLED_STATUSES: [Str] = ["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"]
 
 fn is_settled(status: Str) Bool {
-  List::find(SETTLED_STATUSES, fn(s) {
+  List::contains(SETTLED_STATUSES, fn(s) {
     s == status
-  }).is_some()
+  })
 }
 
 // A rescheduled fixture can retain its original round even when moved months
@@ -224,7 +221,7 @@ fn pick_round(list: [fixtures::RoundFixture]) Str? {
   }
 }
 
-private fn active_competition(a: app::App, competition_id: Int?) OptionalCompetition!Str {
+private fn active_competition(a: app::App, competition_id: Int?) Maybe<competitions::Competition>!Str {
   let comps = try competitions::list_active(a)
   mut chosen: competitions::Competition? = Maybe::new()
   for comp in comps {
@@ -339,9 +336,9 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
       let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
       let names: mut [Str] = mut []
       for f in list {
-        let seen = List::find(deref names, fn(name) {
+        let seen = List::contains(deref names, fn(name) {
           name == f.round
-        }).is_some()
+        })
         if not seen {
           names.push(f.round)
         }

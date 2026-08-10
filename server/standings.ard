@@ -71,9 +71,9 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
 fn group_conferences(rows: [prematch::StandingRow]) [Any] {
   let names: mut [Str] = mut []
   for row in rows {
-    let seen = List::find(deref names, fn(name) {
+    let seen = List::contains(deref names, fn(name) {
       name == row.group
-    }).is_some()
+    })
     if not seen {
       names.push(row.group)
     }

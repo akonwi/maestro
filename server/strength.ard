@@ -68,9 +68,9 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
 
   let team_ids: mut [Int] = mut []
   for g in games {
-    let contains_team_id = List::find(deref team_ids, fn(x) {
+    let contains_team_id = List::contains(deref team_ids, fn(x) {
       x == g.team_id
-    }).is_some()
+    })
     if not contains_team_id {
       team_ids.push(g.team_id)
     }
@@ -109,9 +109,9 @@ fn find_ranking(rankings: [Ranking], team_id: Int) Ranking? {
 }
 
 private fn has_result(status: Str) Bool {
-  List::find(RESULT_STATUSES, fn(s) {
+  List::contains(RESULT_STATUSES, fn(s) {
     s == status
-  }).is_some()
+  })
 }
 
 private fn result_points(gf: Int, ga: Int) Int {

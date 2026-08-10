@@ -432,9 +432,9 @@ fn parse_injuries(body: Str) [Injury]!Str {
     match decode::run(item, decode_injury) {
       ok(injury) => {
         let key = "{injury.team_id}|{injury.player}"
-        let already = List::find(deref seen, fn(seen_key) {
+        let already = List::contains(deref seen, fn(seen_key) {
           seen_key == key
-        }).is_some()
+        })
         if not already {
           seen.push(key)
           out.push(injury)
