@@ -131,6 +131,9 @@
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
+.chip.on {
+  color: var(--color-success);
+}
 
 .form-error {
   font-size: 0.875rem;
@@ -1676,4 +1679,48 @@
 .account-signout:hover:not(:disabled) {
   color: var(--color-danger-text);
   background: var(--color-danger-surface);
+}
+
+/* --- admin: competitions ------------------------------------------- */
+.admin-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.admin-table tr th,
+.admin-table tr td {
+  padding: 0.625rem 1rem;
+  text-align: left;
+  border-block-start: 1px solid var(--color-border);
+}
+.admin-table thead th {
+  border-block-start: 0;
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.admin-table td.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.admin-table tr.inactive th,
+.admin-table tr.inactive td.num {
+  color: var(--color-text-muted);
+}
+.admin-table td.action {
+  text-align: right;
+}
+.admin-form {
+  padding: var(--space-md);
+}
+.admin-form-grid {
+  display: grid;
+  gap: var(--space-md);
+  inline-size: 100%;
+}
+@media (min-width: 40rem) {
+  .admin-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
