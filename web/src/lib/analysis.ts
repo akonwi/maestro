@@ -98,6 +98,8 @@ export type Outlook = {
     away: TeamStrength | null
     total: number
   }
+  /** The season's first kickoff (unix ms); 0 when unknown. */
+  season_start_ms: number
 }
 
 export type StatLine = {

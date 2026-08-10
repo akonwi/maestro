@@ -38,9 +38,9 @@ private fn run() Void!Str {
 
   let members = try groups::members(a, group_id)
   try ensure_members(members, group_id)
-  let mls = try active_mls(a)
-  fmt::Println("fetching {mls.name} {mls.season} fixtures from API-Football")
-  let all = try fixtures::season_round_fixtures(a, mls.api_football_league_id, mls.season)
+  let competition = try active_competition(a)
+  fmt::Println("fetching {competition.name} {competition.season} fixtures from API-Football")
+  let all = try fixtures::season_round_fixtures(a, competition.api_football_league_id, competition.season)
   let rounds = recent_rounds(all)
   try ensure_two_rounds(rounds)
 
@@ -124,17 +124,12 @@ private fn prediction_exists(tx: sql::Transaction, user_id: Int, fixture_id: Int
   }
 }
 
-private fn active_mls(a: app::App) competitions::Competition!Str {
+// The first active competition drives the simulation.
+private fn active_competition(a: app::App) competitions::Competition!Str {
   let all = try competitions::list_active(a)
-  mut found: competitions::Competition? = Maybe::new()
-  for competition in all {
-    if competition.api_football_league_id == 253 {
-      found = Maybe::new(competition)
-    }
-  }
-  match found {
+  match all.at(0) {
     competition => Result::ok(competition),
-    _ => Result::err("no active MLS competition is configured"),
+    _ => Result::err("no active competition is configured"),
   }
 }
 
@@ -148,7 +143,7 @@ private fn ensure_members(members: [groups::Member], group_id: Int) Void!Str {
 private fn ensure_two_rounds(rounds: [Str]) Void!Str {
   match rounds.size() == 2 {
     true => Result::ok(()),
-    false => Result::err("could not find two completed MLS rounds"),
+    false => Result::err("could not find two completed rounds"),
   }
 }
 

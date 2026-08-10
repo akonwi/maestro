@@ -3,6 +3,7 @@ use ard/list as List
 use dram
 use go:fmt
 use maestro/api_football/details
+use maestro/api_football/fixtures
 use maestro/api_football/prematch
 use maestro/app
 use maestro/strength
@@ -104,6 +105,21 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
         ok(v) => { rankings = v },
         err(message) => log_section("strength", fixture_id, message),
       }
+      // The season's actual first kickoff, so the client can scope "this
+      // season" exactly — calendar years don't work for cross-year
+      // European seasons. Best-effort: 0 means unknown.
+      mut season_start_ms = Int64::from(0)
+      match fixtures::season_round_fixtures(a, outlook.league_id, outlook.season) {
+        ok(season_fixtures) => {
+          for entry in season_fixtures {
+            let earlier = season_start_ms == Int64::from(0) or entry.fixture.kickoff_at < season_start_ms
+            if earlier {
+              season_start_ms = entry.fixture.kickoff_at
+            }
+          }
+        },
+        err(message) => log_section("season window", fixture_id, message),
+      }
       Result::ok(
         Maybe::new(
           outlook_json(
@@ -114,6 +130,7 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
             away_splits,
             key_players,
             rankings,
+            season_start_ms,
           ),
         ),
       )
@@ -130,6 +147,7 @@ fn outlook_json(
   away_splits: prematch::TeamGoalSplits,
   key_players: [prematch::KeyPlayer],
   rankings: [strength::Ranking],
+  season_start_ms: Int64,
 ) [Str: Any] {
   let h2h: mut [Any] = mut []
   for m in o.h2h {
@@ -207,6 +225,7 @@ fn outlook_json(
     "goals": goals_map,
     "key_players": key_players_map,
     "strength": strength_map,
+    "season_start_ms": season_start_ms,
   ]
 
   payload

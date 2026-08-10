@@ -21,10 +21,8 @@ const h2hDateFormatter = new Intl.DateTimeFormat(undefined, {
 /** Pre-match analysis: outlook probabilities plus comparison tabs. */
 export function FixtureOutlook({
   query,
-  kickoffAt,
 }: {
   query: UseQueryResult<Outlook, Error>
-  kickoffAt: number
 }) {
   if (query.isPending) {
     return (
@@ -41,7 +39,7 @@ export function FixtureOutlook({
   return (
     <m-vstack align='stretch' gap='md'>
       <OutlookProbabilities outlook={outlook} />
-      <OutlookTabs kickoffAt={kickoffAt} outlook={outlook} />
+      <OutlookTabs outlook={outlook} />
       <AvailabilityPanel outlook={outlook} />
     </m-vstack>
   )
@@ -82,13 +80,7 @@ function OutlookProbabilities({ outlook }: { outlook: Outlook }) {
 
 const OUTLOOK_TABS = ['Overview', 'Team form', 'Head-to-head'] as const
 
-function OutlookTabs({
-  outlook,
-  kickoffAt,
-}: {
-  outlook: Outlook
-  kickoffAt: number
-}) {
+function OutlookTabs({ outlook }: { outlook: Outlook }) {
   const [active, setActive] =
     useState<(typeof OUTLOOK_TABS)[number]>('Overview')
   const baseId = useId()
@@ -128,7 +120,10 @@ function OutlookTabs({
           ) : null}
           {active === 'Team form' ? <TeamFormPanel outlook={outlook} /> : null}
           {active === 'Head-to-head' ? (
-            <H2HPanel h2h={outlook.h2h} kickoffAt={kickoffAt} />
+            <H2HPanel
+              h2h={outlook.h2h}
+              seasonStartMs={outlook.season_start_ms}
+            />
           ) : null}
         </section>
       </m-tabs>
@@ -448,13 +443,20 @@ function TeamAvailability({
   )
 }
 
-function H2HPanel({ h2h, kickoffAt }: { h2h: H2HResult[]; kickoffAt: number }) {
-  // MLS seasons are calendar years, so "this season" = the fixture's
-  // kickoff year. Revisit for cross-year seasons (European leagues).
-  const seasonYear = new Date(kickoffAt).getFullYear()
-  const thisSeason = h2h.filter(
-    meeting => new Date(meeting.kickoff_at).getFullYear() === seasonYear,
-  )
+function H2HPanel({
+  h2h,
+  seasonStartMs,
+}: {
+  h2h: H2HResult[]
+  /** The season's first kickoff; 0 when unknown (then show all meetings). */
+  seasonStartMs: number
+}) {
+  // "This season" = meetings since the season's actual first kickoff —
+  // exact for both calendar-year (MLS) and cross-year (PL/EFL) seasons.
+  const thisSeason =
+    seasonStartMs > 0
+      ? h2h.filter(meeting => meeting.kickoff_at >= seasonStartMs)
+      : h2h
   if (thisSeason.length === 0)
     return <p className='panel-body meta'>No meetings yet this season.</p>
   return (

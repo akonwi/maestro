@@ -139,7 +139,7 @@ function FixtureDetail({ fixture }: { fixture: Fixture }) {
         <MatchDetailPanel query={matchDetail} />
       ) : (
         <>
-          <FixtureOutlook kickoffAt={fixture.kickoff_at} query={outlook} />
+          <FixtureOutlook query={outlook} />
           {matchDetail.data ? (
             <PreMatchLineups lineups={matchDetail.data.lineups} />
           ) : null}
