@@ -50,6 +50,18 @@ fn upsert(a: app::App, league_id: Int, name: Str, season: Int, kind: Str, is_act
   }
 }
 
+// Like find_by_provider, but includes deactivated competitions — used to
+// resolve fixtures from finished seasons (history stays reachable).
+fn find_by_provider_any(a: app::App, league_id: Int, season: Int) Competition?!Str {
+  let row = try a.db.query(
+    "SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE api_football_league_id = @league_id AND season = @season LIMIT 1",
+  ).first(["league_id": league_id, "season": season])
+  match row {
+    value => Result::ok(Maybe::new(try decode_competition(value))),
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
 fn find_by_provider(a: app::App, league_id: Int, season: Int) Competition?!Str {
   let row = try a.db.query(
     "SELECT id, api_football_league_id, name, season, kind, is_active FROM competitions WHERE api_football_league_id = @league_id AND season = @season AND is_active = 1 LIMIT 1",

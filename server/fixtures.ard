@@ -405,11 +405,31 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
 
 fn by_id(a: app::App, id: Int) Fixture?!Str {
   let all = try fetch(a, Maybe::new())
-  Result::ok(
-    List::find(all, fn(f) {
-      f.fixture.id == id
-    }),
-  )
+  let found = List::find(all, fn(f) {
+    f.fixture.id == id
+  })
+  match found {
+    // Not in any active competition's season — e.g. a fixture from a
+    // deactivated (finished) season. Resolve it directly upstream so
+    // history stays reachable after season rollover.
+    fixture => Result::ok(Maybe::new(fixture)),
+    _ => by_id_upstream(a, id),
+  }
+}
+
+private fn by_id_upstream(a: app::App, id: Int) Fixture?!Str {
+  let upstream = try fixtures::fixture_by_id(a, id)
+  match upstream {
+    fixture => {
+      let comp = try competitions::find_by_provider_any(a, fixture.api_football_league_id, fixture.season)
+      match comp {
+        // A fixture from a league we never configured is not ours.
+        c => Result::ok(Maybe::new(Fixture{competition_id: c.id, fixture: fixture})),
+        _ => Result::ok(Maybe::new()),
+      }
+    },
+    _ => Result::ok(Maybe::new()),
+  }
 }
 
 private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
