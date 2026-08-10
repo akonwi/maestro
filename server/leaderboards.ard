@@ -1,12 +1,15 @@
 use decode
 use dram
 use go:fmt
+use maestro/api_football/leagues
 use maestro/app
 use maestro/auth
+use maestro/competitions
 use maestro/groups
 use maestro/week
 use go:net/http
 use go:strconv
+use go:strings
 
 struct Entry {
   user_id: Int,
@@ -92,8 +95,10 @@ private fn aggregate(
     true => 1,
     false => 0,
   }
+  // Grouped by (user, competition, season); the season slice is applied in
+  // Ard because "current season" is resolved from the provider per league.
   let rows = try a.db.query(
-    "SELECT u.id AS user_id, u.email, u.display_name, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) THEN p.points ELSE 0 END), 0) AS total_points, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 3 THEN 1 ELSE 0 END), 0) AS exact_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 1 THEN 1 ELSE 0 END), 0) AS outcome_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points IS NOT NULL THEN 1 ELSE 0 END), 0) AS played FROM group_members gm JOIN users u ON u.id = gm.user_id LEFT JOIN predictions p ON p.user_id = gm.user_id LEFT JOIN fixture_scoring_state s ON s.fixture_id = p.fixture_id WHERE gm.group_id = @group_id GROUP BY u.id, u.email, u.display_name ORDER BY total_points DESC, exact_count DESC, outcome_count DESC, COALESCE(u.display_name, u.email), u.id",
+    "SELECT u.id AS user_id, u.email, u.display_name, s.competition_id AS competition_id, s.season AS season, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) THEN p.points ELSE 0 END), 0) AS total_points, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 3 THEN 1 ELSE 0 END), 0) AS exact_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points = 1 THEN 1 ELSE 0 END), 0) AS outcome_count, COALESCE(SUM(CASE WHEN s.state = 'settled' AND (@competition_id = 0 OR s.competition_id = @competition_id) AND (@bounded = 0 OR (s.kickoff_at >= @start_ms AND s.kickoff_at < @end_ms)) AND p.points IS NOT NULL THEN 1 ELSE 0 END), 0) AS played FROM group_members gm JOIN users u ON u.id = gm.user_id LEFT JOIN predictions p ON p.user_id = gm.user_id LEFT JOIN fixture_scoring_state s ON s.fixture_id = p.fixture_id WHERE gm.group_id = @group_id GROUP BY u.id, u.email, u.display_name, s.competition_id, s.season",
   ).all(
     [
       "group_id": group_id,
@@ -103,11 +108,161 @@ private fn aggregate(
       "end_ms": end_ms,
     ],
   )
-  let entries: mut [Entry] = mut []
+  let current_seasons = current_season_by_competition(a)
+  let combined = try combine_rows(rows, bounded, current_seasons)
+  Result::ok(sort_entries(combined))
+}
+
+// Current season year per competition id, best-effort: a failed provider
+// lookup just excludes that competition from season-mode standings.
+private fn current_season_by_competition(a: app::App) [Str: Int] {
+  let out: mut [Str: Int] = mut [:]
+  match competitions::list_all(a) {
+    err(message) => fmt::Println("leaderboard competition list failed: {message}"),
+    ok(comps) => {
+      for comp in comps {
+        match leagues::current_season(a, comp.api_football_league_id) {
+          ok(season) => out.set("{comp.id}", season.year),
+          err(message) => {
+            fmt::Println("leaderboard season lookup failed for competition {comp.id}: {message}")
+          },
+        }
+      }
+    },
+  }
+  deref out
+}
+
+// Merge grouped rows into one entry per member. Season mode (unbounded)
+// keeps only each competition's current season; weekly mode is already
+// time-bounded, so every row counts. Rows with no scoring state (members
+// without settled predictions) pass through so everyone appears.
+private fn combine_rows(rows: [Any], bounded: Bool, current_seasons: [Str: Int]) [Entry]!Str {
+  mut entries: mut [Entry] = mut []
   for row in rows {
-    entries.push(try decode_entry(row))
+    let slice = try decode_entry(row)
+    let competition_id = try decode::run(row, decode::field("competition_id", decode::nullable(decode::int))).map_err(describe)
+    let season = try decode::run(row, decode::field("season", decode::nullable(decode::int))).map_err(describe)
+    let include = match bounded {
+      true => true,
+      false => in_current_season(competition_id, season, current_seasons),
+    }
+    mut merged = false
+    let updated: mut [Entry] = mut []
+    for existing in entries {
+      match existing.user_id == slice.user_id {
+        true => {
+          merged = true
+          match include {
+            true => updated.push(add_entries(existing, slice)),
+            false => updated.push(existing),
+          }
+        },
+        false => updated.push(existing),
+      }
+    }
+    match merged {
+      true => (),
+      false => {
+        match include {
+          true => updated.push(slice),
+          false => updated.push(zeroed(slice)),
+        }
+      },
+    }
+    entries = updated
   }
   Result::ok(deref entries)
+}
+
+private fn in_current_season(competition_id: Int?, season: Int?, current_seasons: [Str: Int]) Bool {
+  match competition_id {
+    // No scoring state at all: a zero row that only keeps the member listed.
+    comp_id => {
+      match season {
+        // Pre-season-column history has no recorded season; count it so
+        // legacy points don't vanish.
+        year => {
+          match current_seasons.get("{comp_id}") {
+            // Season lookup unavailable (provider outage): fail open so
+            // standings degrade to combined-history rather than zeros.
+            current => current == year,
+            _ => true,
+          }
+        },
+        _ => true,
+      }
+    },
+    _ => false,
+  }
+}
+
+private fn add_entries(base: Entry, slice: Entry) Entry {
+  Entry{
+    user_id: base.user_id,
+    email: base.email,
+    display_name: base.display_name,
+    total_points: base.total_points + slice.total_points,
+    exact_count: base.exact_count + slice.exact_count,
+    outcome_count: base.outcome_count + slice.outcome_count,
+    played: base.played + slice.played,
+  }
+}
+
+private fn zeroed(slice: Entry) Entry {
+  Entry{
+    user_id: slice.user_id,
+    email: slice.email,
+    display_name: slice.display_name,
+    total_points: 0,
+    exact_count: 0,
+    outcome_count: 0,
+    played: 0,
+  }
+}
+
+// Insertion sort by the leaderboard ordering: points desc, exact desc,
+// outcome desc, then display name/email, then id.
+private fn sort_entries(entries: [Entry]) [Entry] {
+  mut out: mut [Entry] = mut []
+  for entry in entries {
+    mut inserted = false
+    let result: mut [Entry] = mut []
+    for existing in deref out {
+      let goes_before = (not inserted) and ranks_before(entry, existing)
+      match goes_before {
+        true => {
+          result.push(entry)
+          inserted = true
+        },
+        false => (),
+      }
+      result.push(existing)
+    }
+    match inserted {
+      true => (),
+      false => result.push(entry),
+    }
+    out = result
+  }
+  deref out
+}
+
+private fn ranks_before(a: Entry, b: Entry) Bool {
+  match {
+    a.total_points != b.total_points => a.total_points > b.total_points,
+    a.exact_count != b.exact_count => a.exact_count > b.exact_count,
+    a.outcome_count != b.outcome_count => a.outcome_count > b.outcome_count,
+    display_key(a) != display_key(b) => strings::Compare(display_key(a), display_key(b)) < 0,
+    _ => a.user_id < b.user_id,
+  }
+}
+
+private fn display_key(entry: Entry) Str {
+  match entry.display_name {
+    name => name,
+    _ => entry.email,
+  }
 }
 
 private fn entries_json(entries: [Entry]) [Any] {

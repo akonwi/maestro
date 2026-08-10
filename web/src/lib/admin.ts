@@ -8,7 +8,6 @@ export type AdminCompetition = {
   id: number
   api_football_league_id: number
   name: string
-  season: number
   kind: string
   is_active: boolean
 }
@@ -16,7 +15,6 @@ export type AdminCompetition = {
 export type CompetitionUpsert = {
   api_football_league_id: number
   name: string
-  season: number
   kind?: string
   is_active?: boolean
 }

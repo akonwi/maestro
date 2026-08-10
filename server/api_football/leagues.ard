@@ -1,0 +1,77 @@
+use ard/list as List
+
+use decode
+use maestro/api_football
+use maestro/api_football/decoding
+use maestro/app
+use go:time
+
+// League metadata from /leagues?id= — most importantly, which season is
+// current and its date window. This is what lets the competitions table
+// stay season-free: rollovers happen when the provider flips `current`.
+
+// Seasons change rarely; cache the lookup for a day.
+let CACHE_TTL_MS = Int64::from(24 * 60 * 60 * 1000)
+
+struct Season {
+  year: Int,
+  current: Bool,
+  start_ms: Int64,
+  end_ms: Int64,
+}
+
+fn current_season(a: app::App, league_id: Int) Season!Str {
+  let seasons = try league_seasons(a, league_id)
+  let found = List::find(seasons, fn(s) {
+    s.current
+  })
+  match found {
+    // Between seasons the provider can briefly have no current flag;
+    // fall back to the latest season on record.
+    season => Result::ok(season),
+    _ => {
+      match seasons.at(seasons.size() - 1) {
+        latest => Result::ok(latest),
+        _ => Result::err("league {league_id} has no seasons"),
+      }
+    },
+  }
+}
+
+fn league_seasons(a: app::App, league_id: Int) [Season]!Str {
+  parse_seasons(try api_football::cached_get(a, "/leagues?id={league_id}", CACHE_TTL_MS))
+}
+
+fn parse_seasons(body: Str) [Season]!Str {
+  let per_league = try decode::unmarshal(
+    body,
+    decode::field("response", decode::list(decode::field("seasons", decode::list(decode_season)))),
+  ).map_err(decoding::describe_error)
+  match per_league.at(0) {
+    seasons => Result::ok(seasons),
+    _ => Result::err("league not found upstream"),
+  }
+}
+
+private fn decode_season(item: Any) Season!decode::Err {
+  let year = try decode::run(item, decode::field("year", decode::int))
+  let current = try decode::run(item, decode::field("current", decode::boolean))
+  let start = try decode::run(item, decode::field("start", decode::string))
+  let end = try decode::run(item, decode::field("end", decode::string))
+  Result::ok(
+    Season{
+      year: year,
+      current: current,
+      start_ms: date_ms(start),
+      end_ms: date_ms(end),
+    },
+  )
+}
+
+// "2026-08-21" -> unix ms at UTC midnight; 0 when unparseable.
+private fn date_ms(value: Str) Int64 {
+  match time::Parse("2006-01-02", value) {
+    ok(parsed) => parsed.UnixMilli(),
+    err(_) => Int64::from(0),
+  }
+}

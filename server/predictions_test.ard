@@ -63,7 +63,7 @@ test fn fetched_fixture_decision_rechecks_transaction_lock() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec(
-    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+    "INSERT INTO competitions (id, api_football_league_id, name, kind, is_active) VALUES (1, 253, 'MLS', 'league', 1)",
   )
   let fixture = provider_fixture(303, Int64::from(2000), 253)
   try predictions::upsert_with_state_at(app, user.id, 1, fixture, 1, 0, Int64::from(1000))
@@ -86,7 +86,7 @@ test fn fetched_fixture_decision_persists_prediction() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec(
-    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+    "INSERT INTO competitions (id, api_football_league_id, name, kind, is_active) VALUES (1, 253, 'MLS', 'league', 1)",
   )
   let fixture = provider_fixture(302, Int64::from(2000000000000), 253)
 
@@ -123,7 +123,7 @@ test fn transactional_upsert_creates_scoring_state_and_preserves_lock() Void!Str
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec(
-    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+    "INSERT INTO competitions (id, api_football_league_id, name, kind, is_active) VALUES (1, 253, 'MLS', 'league', 1)",
   )
   let original_kickoff = Int64::from(2000000000000)
   let fixture = fixtures::Fixture{
@@ -172,7 +172,7 @@ test fn existing_lock_is_rechecked_inside_transaction() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec(
-    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+    "INSERT INTO competitions (id, api_football_league_id, name, kind, is_active) VALUES (1, 253, 'MLS', 'league', 1)",
   )
   let fixture = fixtures::Fixture{
     id: 201,
@@ -203,7 +203,7 @@ test fn terminal_scoring_state_rejects_prediction_updates() Void!Str {
   let app = try test_helpers::build_app()
   let user = try users::get_or_create_by_email(app, "ada@example.com")
   try app.db.exec(
-    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+    "INSERT INTO competitions (id, api_football_league_id, name, kind, is_active) VALUES (1, 253, 'MLS', 'league', 1)",
   )
   let fixture = fixtures::Fixture{
     id: 202,

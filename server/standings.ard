@@ -2,6 +2,7 @@ use ard/list as List
 
 use dram
 use go:fmt
+use maestro/api_football/leagues
 use maestro/api_football/prematch
 use maestro/app
 use maestro/competitions
@@ -48,10 +49,11 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
 
   match chosen {
     comp => {
-      let rows = try prematch::league_standings(a, comp.api_football_league_id, comp.season)
+      let season = try leagues::current_season(a, comp.api_football_league_id)
+      let rows = try prematch::league_standings(a, comp.api_football_league_id, season.year)
       let payload: [Str: Any] = [
         "competition_id": comp.id,
-        "season": comp.season,
+        "season": season.year,
         "conferences": group_conferences(rows),
       ]
 

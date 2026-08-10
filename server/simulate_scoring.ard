@@ -3,6 +3,7 @@ use ard/list as List
 use decode
 use go:fmt
 use maestro/api_football/fixtures
+use maestro/api_football/leagues
 use maestro/app
 use maestro/competitions
 use maestro/config
@@ -39,8 +40,9 @@ private fn run() Void!Str {
   let members = try groups::members(a, group_id)
   try ensure_members(members, group_id)
   let competition = try active_competition(a)
-  fmt::Println("fetching {competition.name} {competition.season} fixtures from API-Football")
-  let all = try fixtures::season_round_fixtures(a, competition.api_football_league_id, competition.season)
+  let season = try leagues::current_season(a, competition.api_football_league_id)
+  fmt::Println("fetching {competition.name} {season.year} fixtures from API-Football")
+  let all = try fixtures::season_round_fixtures(a, competition.api_football_league_id, season.year)
   let rounds = recent_rounds(all)
   try ensure_two_rounds(rounds)
 

@@ -3,6 +3,7 @@ use ard/list as List
 use dram
 use go:fmt
 use maestro/api_football/fixtures
+use maestro/api_football/leagues
 use maestro/app
 use maestro/competitions
 use go:net/http
@@ -262,7 +263,8 @@ fn round_payload(a: app::App, competition_id: Int?, requested: Str?) CurrentRoun
 }
 
 private fn competition_round(a: app::App, comp: competitions::Competition, requested: Str?) CurrentRound!Str {
-  let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+  let season = try leagues::current_season(a, comp.api_football_league_id)
+  let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, season.year)
   let picked: Str? = match requested {
     name => Maybe::new(name),
     _ => pick_round(list),
@@ -298,6 +300,14 @@ private fn competition_round(a: app::App, comp: competitions::Competition, reque
 // The unified feed: the current matchday of every active competition in
 // one response. Per-competition failures are logged and skipped — one
 // flaky upstream league must not blank the whole feed.
+// Resolved current season year, 0 when the lookup fails (display-only).
+private fn season_year_or_zero(a: app::App, league_id: Int) Int {
+  match leagues::current_season(a, league_id) {
+    ok(season) => season.year,
+    err(_) => 0,
+  }
+}
+
 fn feed_payload(a: app::App) [Any]!Str {
   let comps = try competitions::list_active(a)
   let out: mut [Any] = mut []
@@ -308,7 +318,7 @@ fn feed_payload(a: app::App) [Any]!Str {
           "id": comp.id,
           "name": comp.name,
           "api_football_league_id": comp.api_football_league_id,
-          "season": comp.season,
+          "season": season_year_or_zero(a, comp.api_football_league_id),
         ]
         let entry: [Str: Any] = [
           "competition": competition,
@@ -370,7 +380,8 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
   let chosen = try active_competition(a, competition_id)
   match chosen {
     comp => {
-      let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, comp.season)
+      let season = try leagues::current_season(a, comp.api_football_league_id)
+      let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, season.year)
       let names: mut [Str] = mut []
       for f in list {
         let seen = List::contains(deref names, fn(name) {
@@ -421,7 +432,7 @@ private fn by_id_upstream(a: app::App, id: Int) Fixture?!Str {
   let upstream = try fixtures::fixture_by_id(a, id)
   match upstream {
     fixture => {
-      let comp = try competitions::find_by_provider_any(a, fixture.api_football_league_id, fixture.season)
+      let comp = try competitions::find_by_league(a, fixture.api_football_league_id)
       match comp {
         // A fixture from a league we never configured is not ours.
         c => Result::ok(Maybe::new(Fixture{competition_id: c.id, fixture: fixture})),
@@ -441,7 +452,8 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
       _ => true,
     }
     if include {
-      let list = try fixtures::season_fixtures(a, comp.api_football_league_id, comp.season)
+      let season = try leagues::current_season(a, comp.api_football_league_id)
+      let list = try fixtures::season_fixtures(a, comp.api_football_league_id, season.year)
       for item in list {
         out.push(Fixture{competition_id: comp.id, fixture: item})
       }

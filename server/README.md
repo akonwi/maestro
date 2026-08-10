@@ -187,27 +187,28 @@ tracks applied migrations in a `schema_migrations` table.
 ## Managing competitions
 
 Competitions are administered through the token-gated `/admin` surface
-(set `ADMIN_TOKEN`), not migrations. Upserts are keyed by
-(API-Football league id, season); re-posting with `is_active: false`
-deactivates a competition.
+(set `ADMIN_TOKEN`) or the web app's `/admin` page. A competition is a
+league, configured once — the current season is resolved automatically
+from API-Football, so season rollovers need no changes. Upserts are
+keyed by league id; re-posting with `is_active: false` deactivates.
 
 ```sh
 # List all competitions (active and inactive)
 curl -H "Authorization: Bearer $ADMIN_TOKEN" $SERVER/admin/competitions
 
-# Add / activate the Premier League 2025/26
+# Add / activate the Premier League
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"api_football_league_id": 39, "name": "Premier League", "season": 2025}' \
+  -d '{"api_football_league_id": 39, "name": "Premier League"}' \
   $SERVER/admin/competitions
 
-# Add the EFL Championship 2025/26
+# Add the EFL Championship
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"api_football_league_id": 40, "name": "EFL Championship", "season": 2025}' \
+  -d '{"api_football_league_id": 40, "name": "EFL Championship"}' \
   $SERVER/admin/competitions
 
-# Deactivate a competition (same POST, is_active false)
+# Deactivate a league (same POST, is_active false)
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"api_football_league_id": 40, "name": "EFL Championship", "season": 2025, "is_active": false}' \
+  -d '{"api_football_league_id": 40, "name": "EFL Championship", "is_active": false}' \
   $SERVER/admin/competitions
 ```
 

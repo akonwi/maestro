@@ -23,8 +23,8 @@ function AdminPage() {
         <div>
           <h1 className='page-title'>Administration</h1>
           <p className='page-subtitle'>
-            Competitions drive everything the app shows. Season rollover:
-            deactivate the finished season, then add the new one.
+            Competitions drive everything the app shows. Seasons roll over
+            automatically — a league is configured once.
           </p>
         </div>
 
@@ -127,7 +127,6 @@ function CompetitionsTable({
       <thead>
         <tr>
           <th scope='col'>Competition</th>
-          <th scope='col'>Season</th>
           <th abbr='API-Football league id' scope='col'>
             League ID
           </th>
@@ -153,7 +152,6 @@ function CompetitionRow({ competition }: { competition: AdminCompetition }) {
       upsertCompetition({
         api_football_league_id: competition.api_football_league_id,
         name: competition.name,
-        season: competition.season,
         kind: competition.kind,
         is_active: !competition.is_active,
       }),
@@ -164,7 +162,6 @@ function CompetitionRow({ competition }: { competition: AdminCompetition }) {
   return (
     <tr className={competition.is_active ? undefined : 'inactive'}>
       <th scope='row'>{competition.name}</th>
-      <td className='num'>{competition.season}</td>
       <td className='num'>{competition.api_football_league_id}</td>
       <td>
         <span className={competition.is_active ? 'chip on' : 'chip'}>
@@ -197,7 +194,6 @@ function AddCompetitionForm() {
   const queryClient = useQueryClient()
   const [leagueId, setLeagueId] = useState('')
   const [name, setName] = useState('')
-  const [season, setSeason] = useState('')
   const [kind, setKind] = useState('league')
 
   const add = useMutation({
@@ -205,13 +201,11 @@ function AddCompetitionForm() {
       upsertCompetition({
         api_football_league_id: Number(leagueId),
         name: name.trim(),
-        season: Number(season),
         kind,
       }),
     onSuccess: () => {
       setLeagueId('')
       setName('')
-      setSeason('')
       queryClient.invalidateQueries({ queryKey: ['admin', 'competitions'] })
     },
   })
@@ -255,19 +249,6 @@ function AddCompetitionForm() {
               />
             </m-vstack>
             <m-vstack gap='xs'>
-              <label htmlFor='add-season'>Season</label>
-              <input
-                id='add-season'
-                inputMode='numeric'
-                min='2000'
-                onChange={event => setSeason(event.target.value)}
-                placeholder='2026'
-                required
-                type='number'
-                value={season}
-              />
-            </m-vstack>
-            <m-vstack gap='xs'>
               <label htmlFor='add-kind'>Kind</label>
               <select
                 id='add-kind'
@@ -289,8 +270,8 @@ function AddCompetitionForm() {
             {add.isPending ? 'Adding…' : 'Add competition'}
           </button>
           <p className='hint'>
-            Upserts by (league ID, season) — re-adding an existing pair updates
-            it.
+            Upserts by league ID — re-adding an existing league updates it. The
+            current season is resolved automatically from API-Football.
           </p>
         </m-vstack>
       </form>

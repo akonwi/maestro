@@ -24,7 +24,6 @@ type Competition = {
   id: number;
   api_football_league_id: number;
   name: string;
-  season: number;
   kind: string;
   is_active: boolean;
 };
@@ -35,7 +34,7 @@ describe("admin competitions", () => {
     expect(list.status).toBe(401);
 
     const create = await harness.api("POST", "/admin/competitions", {
-      body: { api_football_league_id: 39, name: "Premier League", season: 2025 },
+      body: { api_football_league_id: 39, name: "Premier League" },
     });
     expect(create.status).toBe(401);
   });
@@ -50,7 +49,7 @@ describe("admin competitions", () => {
   it("creates a competition with defaults and lists it", async () => {
     const created = await harness.api<Competition>("POST", "/admin/competitions", {
       ...authed,
-      body: { api_football_league_id: 39, name: "Premier League", season: 2025 },
+      body: { api_football_league_id: 39, name: "Premier League" },
     });
     expect(created.status).toBe(200);
     expect(created.json?.kind).toBe("league");
@@ -62,10 +61,10 @@ describe("admin competitions", () => {
     expect(pl?.name).toBe("Premier League");
   });
 
-  it("upserts by (league, season) and can deactivate", async () => {
+  it("upserts by league and can deactivate", async () => {
     const created = await harness.api<Competition>("POST", "/admin/competitions", {
       ...authed,
-      body: { api_football_league_id: 40, name: "EFL Championship", season: 2025 },
+      body: { api_football_league_id: 40, name: "EFL Championship" },
     });
     expect(created.status).toBe(200);
 
@@ -74,7 +73,6 @@ describe("admin competitions", () => {
       body: {
         api_football_league_id: 40,
         name: "EFL Championship",
-        season: 2025,
         is_active: false,
       },
     });
@@ -91,7 +89,7 @@ describe("admin competitions", () => {
   it("validates the request body", async () => {
     const res = await harness.api("POST", "/admin/competitions", {
       ...authed,
-      body: { name: "No league id", season: 2025 },
+      body: { name: "No league id" },
     });
     expect(res.status).toBe(400);
   });

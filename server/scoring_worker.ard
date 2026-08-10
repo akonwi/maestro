@@ -97,7 +97,7 @@ private fn discover_missing(a: app::App) Void!Str {
 }
 
 private fn create_discovered(a: app::App, fixture: fixtures::Fixture) {
-  match competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) {
+  match competitions::find_by_league(a, fixture.api_football_league_id) {
     err(message) => {
       fmt::Println(
         "scoring discovery competition lookup failed for fixture {fixture.id}: {message}",
@@ -110,6 +110,7 @@ private fn create_discovered(a: app::App, fixture: fixtures::Fixture) {
             a,
             fixture.id,
             competition.id,
+            fixture.season,
             fixture.kickoff_at,
             fixture.status,
             time::Now().UnixMilli(),

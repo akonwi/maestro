@@ -54,17 +54,19 @@ fn upsert_pending(
   tx: sql::Transaction,
   fixture_id: Int,
   competition_id: Int,
+  season: Int,
   kickoff_at: Int64,
   provider_status: Str,
   now: Int64,
 ) Void!Str {
   let next_check_at = kickoff_at + Int64::from(2 * 60 * 60 * 1000)
   try tx.query(
-    "INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (@fixture_id, @competition_id, @kickoff_at, @prediction_lock_at, 'pending', @provider_status, @next_check_at, 0, @created_at, @updated_at) ON CONFLICT(fixture_id) DO UPDATE SET competition_id = @competition_id, kickoff_at = @kickoff_at, provider_status = @provider_status, next_check_at = CASE WHEN fixture_scoring_state.state = 'pending' THEN @next_check_at ELSE fixture_scoring_state.next_check_at END, updated_at = @updated_at",
+    "INSERT INTO fixture_scoring_state (fixture_id, competition_id, season, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (@fixture_id, @competition_id, @season, @kickoff_at, @prediction_lock_at, 'pending', @provider_status, @next_check_at, 0, @created_at, @updated_at) ON CONFLICT(fixture_id) DO UPDATE SET competition_id = @competition_id, season = @season, kickoff_at = @kickoff_at, provider_status = @provider_status, next_check_at = CASE WHEN fixture_scoring_state.state = 'pending' THEN @next_check_at ELSE fixture_scoring_state.next_check_at END, updated_at = @updated_at",
   ).run(
     [
       "fixture_id": fixture_id,
       "competition_id": competition_id,
+      "season": season,
       "kickoff_at": kickoff_at,
       "prediction_lock_at": kickoff_at,
       "provider_status": provider_status,
@@ -80,17 +82,19 @@ fn create_discovered(
   a: app::App,
   fixture_id: Int,
   competition_id: Int,
+  season: Int,
   kickoff_at: Int64,
   provider_status: Str,
   now: Int64,
 ) Void!Str {
   let next_check_at = kickoff_at + Int64::from(2 * 60 * 60 * 1000)
   try a.db.query(
-    "INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (@fixture_id, @competition_id, @kickoff_at, @prediction_lock_at, 'pending', @provider_status, @next_check_at, 0, @created_at, @updated_at) ON CONFLICT(fixture_id) DO NOTHING",
+    "INSERT INTO fixture_scoring_state (fixture_id, competition_id, season, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (@fixture_id, @competition_id, @season, @kickoff_at, @prediction_lock_at, 'pending', @provider_status, @next_check_at, 0, @created_at, @updated_at) ON CONFLICT(fixture_id) DO NOTHING",
   ).run(
     [
       "fixture_id": fixture_id,
       "competition_id": competition_id,
+      "season": season,
       "kickoff_at": kickoff_at,
       "prediction_lock_at": kickoff_at,
       "provider_status": provider_status,

@@ -201,13 +201,27 @@ fn save_fetched_fixture(
   }
 }
 
+// A fixture is predictable only while its league is actively tracked.
+private fn active_league(a: app::App, league_id: Int) Maybe<competitions::Competition>!Str {
+  let found = try competitions::find_by_league(a, league_id)
+  match found {
+    competition => {
+      match competition.is_active {
+        true => Result::ok(Maybe::new(competition)),
+        false => Result::ok(Maybe::new()),
+      }
+    },
+    _ => Result::ok(Maybe::new()),
+  }
+}
+
 private fn save_for_competition(
   a: app::App,
   user_id: Int,
   fixture: fixtures::Fixture,
   scores: Scores,
 ) Prediction!errors::HttpError {
-  let found = try competitions::find_by_provider(a, fixture.api_football_league_id, fixture.season) -> err {
+  let found = try active_league(a, fixture.api_football_league_id) -> err {
     fmt::Println("prediction competition lookup failed for fixture {fixture.id}: {err}")
     Result::err(
       errors::HttpError{status: http::StatusInternalServerError, message: "could not save prediction"},
@@ -313,6 +327,7 @@ private fn upsert_with_state_tx(
     tx,
     fixture.id,
     competition_id,
+    fixture.season,
     fixture.kickoff_at,
     fixture.status,
     now,

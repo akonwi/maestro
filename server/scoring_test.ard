@@ -23,7 +23,7 @@ test fn settlement_scores_all_predictions_and_closes_state() Void!Str {
   let outcome = try users::get_or_create_by_email(app, "outcome@example.com")
   let wrong = try users::get_or_create_by_email(app, "wrong@example.com")
   try app.db.exec(
-    "INSERT INTO competitions (id, api_football_league_id, name, season, kind, is_active) VALUES (1, 253, 'MLS', 2026, 'league', 1)",
+    "INSERT INTO competitions (id, api_football_league_id, name, kind, is_active) VALUES (1, 253, 'MLS', 'league', 1)",
   )
   try predictions::upsert(app, exact.id, 400, 3, 2)
   try predictions::upsert(app, outcome.id, 400, 2, 1)

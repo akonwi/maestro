@@ -36,10 +36,9 @@ private fn register_routes(router: mut dram::App, a: app::App) {
       res.json(http::StatusBadRequest, ["error": err])
     }
     let name = try field_string(body, "name") -> err { res.json(http::StatusBadRequest, ["error": err]) }
-    let season = try field_int(body, "season") -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let kind = field_string_or(body, "kind", "league")
     let is_active = field_bool_or(body, "is_active", true)
-    match competitions::upsert(a, league_id, name, season, kind, is_active) {
+    match competitions::upsert(a, league_id, name, kind, is_active) {
       ok(comp) => res.json(http::StatusOK, to_json(comp)),
       err(message) => res.json(http::StatusInternalServerError, ["error": message]),
     }
@@ -112,7 +111,6 @@ private fn to_json(comp: competitions::Competition) [Str: Any] {
     "id": comp.id,
     "api_football_league_id": comp.api_football_league_id,
     "name": comp.name,
-    "season": comp.season,
     "kind": comp.kind,
     "is_active": comp.is_active,
   ]
