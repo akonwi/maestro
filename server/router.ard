@@ -1,5 +1,6 @@
 use dram
 use go:fmt
+use maestro/admin
 use maestro/analysis
 use maestro/app
 use maestro/auth
@@ -34,6 +35,7 @@ fn build(a: app::App) dram::App {
   leaderboards::register(router, a)
   standings::register(router, a)
   push::register(router, a)
+  admin::register(router, a)
 
   deref router
 }

@@ -22,6 +22,8 @@ struct Config {
   vapid_public_key: Str,
   vapid_private_key: Str,
   push_subscriber: Str,
+  // Bearer token for /admin routes; empty disables the admin surface.
+  admin_token: Str,
 }
 
 fn load() Config!Str {
@@ -41,6 +43,7 @@ fn load() Config!Str {
   let vapid_private_key = os::Getenv("VAPID_PRIVATE_KEY")
   let push_enabled = (not vapid_public_key.is_empty()) and not vapid_private_key.is_empty()
   let push_subscriber = try require_when(push_enabled, "PUSH_SUBSCRIBER")
+  let admin_token = os::Getenv("ADMIN_TOKEN")
 
   Result::ok(
     Config{
@@ -59,6 +62,7 @@ fn load() Config!Str {
       vapid_public_key: vapid_public_key,
       vapid_private_key: vapid_private_key,
       push_subscriber: push_subscriber,
+      admin_token: admin_token,
     },
   )
 }

@@ -28,6 +28,7 @@ fn build_app() app::App!Str {
     vapid_public_key: "",
     vapid_private_key: "",
     push_subscriber: "",
+    admin_token: "",
   }
 
   Result::ok(

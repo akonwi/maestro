@@ -139,6 +139,7 @@ database paths.
 | `VAPID_PUBLIC_KEY` | VAPID public key; push notifications are enabled when the keypair is set | optional |
 | `VAPID_PRIVATE_KEY` | VAPID private key            | optional           |
 | `PUSH_SUBSCRIBER` | VAPID subscriber contact (`mailto:` URL) | required when VAPID keys are set |
+| `ADMIN_TOKEN` | Bearer token for the `/admin` surface; unset disables it | optional |
 
 Generate a VAPID keypair once with webpush-go:
 
@@ -182,6 +183,35 @@ migr create add_something
 
 Naming is `NNN_name.up.sql` / `NNN_name.down.sql`. `migr up` is idempotent and
 tracks applied migrations in a `schema_migrations` table.
+
+## Managing competitions
+
+Competitions are administered through the token-gated `/admin` surface
+(set `ADMIN_TOKEN`), not migrations. Upserts are keyed by
+(API-Football league id, season); re-posting with `is_active: false`
+deactivates a competition.
+
+```sh
+# List all competitions (active and inactive)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" $SERVER/admin/competitions
+
+# Add / activate the Premier League 2025/26
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"api_football_league_id": 39, "name": "Premier League", "season": 2025}' \
+  $SERVER/admin/competitions
+
+# Add the EFL Championship 2025/26
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"api_football_league_id": 40, "name": "EFL Championship", "season": 2025}' \
+  $SERVER/admin/competitions
+
+# Deactivate a competition (same POST, is_active false)
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"api_football_league_id": 40, "name": "EFL Championship", "season": 2025, "is_active": false}' \
+  $SERVER/admin/competitions
+```
+
+`kind` defaults to `league` (`cup` and `playoff` are reserved for later).
 
 ## E2E API tests
 

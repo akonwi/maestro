@@ -1,0 +1,44 @@
+use ard/testing
+
+use maestro/competitions
+use maestro/test_helpers
+
+test fn upsert_inserts_then_updates() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let created = try competitions::upsert(app, 39, "Premier League", 2025, "league", true)
+  try testing::assert(created.api_football_league_id == 39, "league id round-trips")
+  try testing::assert(created.is_active, "starts active")
+
+  let updated = try competitions::upsert(app, 39, "Premier League", 2025, "league", false)
+  try testing::assert(updated.id == created.id, "same (league, season) is the same row")
+  try testing::assert(not updated.is_active, "re-posting toggles active off")
+
+  let all = try competitions::list_all(app)
+  try testing::assert(all.size() == 1, "no duplicate rows, got {all.size()}")
+  testing::pass()
+}
+
+test fn distinct_seasons_are_distinct_competitions() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let this_season = try competitions::upsert(app, 39, "Premier League", 2025, "league", true)
+  let next_season = try competitions::upsert(app, 39, "Premier League", 2026, "league", true)
+  try testing::assert(this_season.id != next_season.id, "seasons are separate rows")
+
+  let active = try competitions::list_active(app)
+  try testing::assert(active.size() == 2, "both seasons active, got {active.size()}")
+  testing::pass()
+}
+
+test fn inactive_competitions_are_hidden_from_active_list() Void!Str {
+  let app = try test_helpers::build_app()
+
+  let _ = try competitions::upsert(app, 40, "EFL Championship", 2025, "league", false)
+  let active = try competitions::list_active(app)
+  try testing::assert(active.size() == 0, "inactive rows excluded")
+
+  let all = try competitions::list_all(app)
+  try testing::assert(all.size() == 1, "but present in list_all")
+  testing::pass()
+}

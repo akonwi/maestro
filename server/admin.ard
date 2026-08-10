@@ -1,0 +1,120 @@
+use go:crypto/subtle
+use decode
+use dram
+use maestro/app
+use maestro/competitions
+use go:net/http
+use go:strings
+
+// Token-gated administration surface. Routes exist only when ADMIN_TOKEN
+// is configured; requests must carry it as a bearer token.
+//
+// Competitions are administered here instead of via migrations: adding a
+// league (or a new season of one) is a POST, deactivating it is the same
+// POST with is_active false.
+
+fn register(router: mut dram::App, a: app::App) {
+  match a.config.admin_token.is_empty() {
+    true => (),
+    false => register_routes(router, a),
+  }
+}
+
+private fn register_routes(router: mut dram::App, a: app::App) {
+  router.get("/admin/competitions", fn(req: dram::Request, res: mut dram::Response) {
+    try authorize(a, req) -> _ { unauthorized(res) }
+    match competitions::list_all(a) {
+      ok(list) => res.json(http::StatusOK, to_json_list(list)),
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
+
+  router.post("/admin/competitions", fn(req: dram::Request, res: mut dram::Response) {
+    try authorize(a, req) -> _ { unauthorized(res) }
+    let body = Str::from(req.body)
+    let league_id = try field_int(body, "api_football_league_id") -> err {
+      res.json(http::StatusBadRequest, ["error": err])
+    }
+    let name = try field_string(body, "name") -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let season = try field_int(body, "season") -> err { res.json(http::StatusBadRequest, ["error": err]) }
+    let kind = field_string_or(body, "kind", "league")
+    let is_active = field_bool_or(body, "is_active", true)
+    match competitions::upsert(a, league_id, name, season, kind, is_active) {
+      ok(comp) => res.json(http::StatusOK, to_json(comp)),
+      err(message) => res.json(http::StatusInternalServerError, ["error": message]),
+    }
+  })
+}
+
+// ─── Authorization ──────────────────────────────────────────────────────
+
+private fn authorize(a: app::App, req: dram::Request) Void!Str {
+  let auth = req.header("Authorization").or("")
+  let token = match auth.starts_with("Bearer ") {
+    true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
+    false => "",
+  }
+  match token.is_empty() {
+    true => Result::err("missing admin token"),
+    false => {
+      match subtle::ConstantTimeCompare(mut token.bytes(), mut a.config.admin_token.bytes()) == 1 {
+        true => Result::ok(()),
+        false => Result::err("invalid admin token"),
+      }
+    },
+  }
+}
+
+private fn unauthorized(res: mut dram::Response) {
+  res.json(http::StatusUnauthorized, ["error": "missing or invalid admin token"])
+}
+
+// ─── Body decoding ──────────────────────────────────────────────────────
+
+private fn field_int(body: Str, name: Str) Int!Str {
+  decode::unmarshal(
+    body,
+    decode::field(name, decode::int),
+  ).map_err(fn(e) {
+    "invalid request: {e.error()}"
+  })
+}
+
+private fn field_string(body: Str, name: Str) Str!Str {
+  decode::unmarshal(
+    body,
+    decode::field(name, decode::string),
+  ).map_err(fn(e) {
+    "invalid request: {e.error()}"
+  })
+}
+
+private fn field_string_or(body: Str, name: Str, fallback: Str) Str {
+  decode::unmarshal(body, decode::field(name, decode::string)).or(fallback)
+}
+
+private fn field_bool_or(body: Str, name: Str, fallback: Bool) Bool {
+  decode::unmarshal(body, decode::field(name, decode::boolean)).or(fallback)
+}
+
+// ─── JSON shaping ───────────────────────────────────────────────────────
+
+private fn to_json_list(list: [competitions::Competition]) [Any] {
+  let out: mut [Any] = mut []
+  for comp in list {
+    out.push(to_json(comp))
+  }
+  deref out
+}
+
+private fn to_json(comp: competitions::Competition) [Str: Any] {
+  let payload: [Str: Any] = [
+    "id": comp.id,
+    "api_football_league_id": comp.api_football_league_id,
+    "name": comp.name,
+    "season": comp.season,
+    "kind": comp.kind,
+    "is_active": comp.is_active,
+  ]
+  payload
+}
