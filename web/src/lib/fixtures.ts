@@ -41,8 +41,27 @@ export type SeasonRounds = {
   current: string | null
 }
 
-function getRound(name?: string) {
-  const query = name ? `?name=${encodeURIComponent(name)}` : ''
+export type Competition = {
+  id: number
+  name: string
+  api_football_league_id: number
+  season: number
+}
+
+export type FeedEntry = {
+  competition: Competition
+  round: string | null
+  fixtures: Fixture[]
+}
+
+type RoundParams = { competitionId?: number; name?: string }
+
+function getRound({ competitionId, name }: RoundParams) {
+  const params = new URLSearchParams()
+  if (competitionId !== undefined)
+    params.set('competition_id', String(competitionId))
+  if (name) params.set('name', name)
+  const query = params.size > 0 ? `?${params}` : ''
   return request<CurrentRound>(`/fixtures/round${query}`)
 }
 
@@ -67,11 +86,19 @@ export function isLiveStatus(status: string) {
   return LIVE_STATUSES.has(status)
 }
 
-/** A specific round by name, or the current matchday when name is omitted. */
-export function roundQuery(name?: string) {
+/**
+ * A specific round by name, or the current matchday when name is
+ * omitted — scoped to a competition (or the first active one).
+ */
+export function roundQuery(params: RoundParams = {}) {
   return queryOptions({
-    queryKey: ['fixtures', 'round', name ?? 'current'],
-    queryFn: () => getRound(name),
+    queryKey: [
+      'fixtures',
+      'round',
+      params.competitionId ?? 'default',
+      params.name ?? 'current',
+    ],
+    queryFn: () => getRound(params),
     // Poll while any fixture in the round is in play so scores stay
     // current. The server caches the upstream season fetch for 60s, so
     // a matching interval avoids redundant work.
@@ -84,10 +111,26 @@ export function roundQuery(name?: string) {
   })
 }
 
-export const seasonRoundsQuery = queryOptions({
-  queryKey: ['fixtures', 'rounds'],
-  queryFn: () => request<SeasonRounds>('/fixtures/rounds'),
-  staleTime: 5 * 60 * 1000,
+export function seasonRoundsQuery(competitionId?: number) {
+  const query =
+    competitionId === undefined ? '' : `?competition_id=${competitionId}`
+  return queryOptions({
+    queryKey: ['fixtures', 'rounds', competitionId ?? 'default'],
+    queryFn: () => request<SeasonRounds>(`/fixtures/rounds${query}`),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Every active competition's current matchday in one call. */
+export const feedQuery = queryOptions({
+  queryKey: ['fixtures', 'feed'],
+  queryFn: () => request<FeedEntry[]>('/fixtures/feed'),
+  refetchInterval: query => {
+    const anyLive = query.state.data?.some(entry =>
+      entry.fixtures.some(fixture => LIVE_STATUSES.has(fixture.status)),
+    )
+    return anyLive ? 60_000 : false
+  },
 })
 
 // API-Football round names look like "Regular Season - 28"; render the
@@ -131,4 +174,26 @@ export function fixtureStatusLabel(status: string) {
 
 export function teamCrestUrl(teamId: number) {
   return `https://media.api-sports.io/football/teams/${teamId}.png`
+}
+
+export function leagueLogoUrl(leagueId: number) {
+  return `https://media.api-sports.io/football/leagues/${leagueId}.png`
+}
+
+const competitionCodes: Record<string, string> = {
+  MLS: 'MLS',
+  'Premier League': 'PL',
+  'EFL Championship': 'EFL',
+}
+
+/** Compact mono code for a competition (fallback: initials, max 3). */
+export function competitionCode(name: string) {
+  const known = competitionCodes[name]
+  if (known) return known
+  const initials = name
+    .split(/\s+/)
+    .map(word => word[0] ?? '')
+    .join('')
+    .toUpperCase()
+  return initials.slice(0, 3) || name.slice(0, 3).toUpperCase()
 }

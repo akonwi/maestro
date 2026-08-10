@@ -39,6 +39,37 @@
   color: var(--color-text-muted);
 }
 
+/* --- fixtures: league scope rail ----------------------------------- */
+.scope-rail {
+  display: flex;
+  overflow-x: auto;
+}
+.scope-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font: 700 0.6875rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.scope-tab + .scope-tab {
+  border-inline-start: 0;
+}
+.scope-tab img {
+  display: block;
+}
+.scope-tab[aria-pressed="true"] {
+  color: var(--color-on-accent);
+  background: var(--accent-9);
+  border-color: var(--accent-9);
+}
+
 .day-heading {
   margin-bottom: 0.75rem;
   font: 600 0.75rem var(--font-mono);
@@ -1455,6 +1486,19 @@
   font-size: 0.6875rem;
   color: var(--color-text-muted);
 }
+.fixture-row .league-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font: 600 0.625rem var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+.fixture-row .league-tag img {
+  display: block;
+}
+
 .fixture-row .teams {
   display: grid;
   gap: var(--space-xs);

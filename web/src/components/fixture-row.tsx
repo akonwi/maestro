@@ -1,14 +1,26 @@
 import { CaretRight } from '@phosphor-icons/react'
 import { Link } from '@tanstack/react-router'
-import type { Fixture } from '@/lib/fixtures'
-import { fixtureStatusLabel, teamCrestUrl } from '@/lib/fixtures'
+import type { Competition, Fixture } from '@/lib/fixtures'
+import {
+  competitionCode,
+  fixtureStatusLabel,
+  leagueLogoUrl,
+  teamCrestUrl,
+} from '@/lib/fixtures'
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
 })
 
-export function FixtureRow({ fixture }: { fixture: Fixture }) {
+export function FixtureRow({
+  fixture,
+  league,
+}: {
+  fixture: Fixture
+  /** Shown in the time rail on cross-league lists; omit when scoped. */
+  league?: Competition
+}) {
   const hasScore = fixture.home_score !== null && fixture.away_score !== null
   return (
     <Link
@@ -24,6 +36,20 @@ export function FixtureRow({ fixture }: { fixture: Fixture }) {
         {fixture.status === 'NS' ? null : (
           <div className='status'>{fixtureStatusLabel(fixture.status)}</div>
         )}
+        {league ? (
+          <div className='league-tag'>
+            <img
+              alt=''
+              decoding='async'
+              height='13'
+              loading='lazy'
+              src={leagueLogoUrl(league.api_football_league_id)}
+              width='13'
+            />
+            <span>{competitionCode(league.name)}</span>
+            <span data-visually-hidden>{league.name}</span>
+          </div>
+        ) : null}
       </div>
       <div className='teams'>
         <Team crestId={fixture.home_team.id} name={fixture.home_team.name} />
