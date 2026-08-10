@@ -18,11 +18,15 @@ async function getLeaderboard(
   groupId: number,
   period: 'season' | 'week',
   week?: string,
+  competitionId?: number,
 ) {
   const token = getSessionToken()
   if (!token) throw new Error('Sign in to view standings.')
-  const query =
-    period === 'week' && week ? `?week=${encodeURIComponent(week)}` : ''
+  const params = new URLSearchParams()
+  if (period === 'week' && week) params.set('week', week)
+  if (competitionId !== undefined)
+    params.set('competition_id', String(competitionId))
+  const query = params.size > 0 ? `?${params}` : ''
   const response = await fetch(
     `/api/groups/${groupId}/leaderboard/${period}${query}`,
     {
@@ -40,10 +44,20 @@ async function getLeaderboard(
   return response.json() as Promise<LeaderboardEntry[]>
 }
 
-export function seasonLeaderboardQuery(groupId: number, enabled: boolean) {
+export function seasonLeaderboardQuery(
+  groupId: number,
+  enabled: boolean,
+  competitionId?: number,
+) {
   return queryOptions({
-    queryKey: ['groups', groupId, 'leaderboard', 'season'],
-    queryFn: () => getLeaderboard(groupId, 'season'),
+    queryKey: [
+      'groups',
+      groupId,
+      'leaderboard',
+      'season',
+      competitionId ?? 'all',
+    ],
+    queryFn: () => getLeaderboard(groupId, 'season', undefined, competitionId),
     enabled,
   })
 }
@@ -52,10 +66,18 @@ export function weeklyLeaderboardQuery(
   groupId: number,
   week: string,
   enabled: boolean,
+  competitionId?: number,
 ) {
   return queryOptions({
-    queryKey: ['groups', groupId, 'leaderboard', 'week', week],
-    queryFn: () => getLeaderboard(groupId, 'week', week),
+    queryKey: [
+      'groups',
+      groupId,
+      'leaderboard',
+      'week',
+      week,
+      competitionId ?? 'all',
+    ],
+    queryFn: () => getLeaderboard(groupId, 'week', week, competitionId),
     enabled,
   })
 }

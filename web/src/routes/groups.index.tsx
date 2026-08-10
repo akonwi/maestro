@@ -4,6 +4,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
 import { GroupLeaderboardCard } from '@/components/group-leaderboard-card'
 import { currentUserQuery } from '@/lib/auth'
+import { competitionCode, feedQuery } from '@/lib/fixtures'
 import { createGroup, groupsQuery } from '@/lib/groups'
 import {
   currentWeekKey,
@@ -14,13 +15,18 @@ import {
 import { useSessionToken } from '@/lib/session'
 
 export const Route = createFileRoute('/groups/')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    mode: search.mode === 'week' ? ('week' as const) : ('season' as const),
-    week:
-      typeof search.week === 'string' && isWeekKey(search.week)
-        ? search.week
-        : undefined,
-  }),
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { mode: 'week' | 'season'; week?: string; comp?: number } => {
+    const comp = Number(search.comp)
+    const out: { mode: 'week' | 'season'; week?: string; comp?: number } = {
+      mode: search.mode === 'week' ? 'week' : 'season',
+    }
+    if (typeof search.week === 'string' && isWeekKey(search.week))
+      out.week = search.week
+    if (Number.isInteger(comp) && comp > 0) out.comp = comp
+    return out
+  },
   component: GroupsPage,
 })
 
@@ -30,6 +36,8 @@ function GroupsPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   const groups = useQuery({ ...groupsQuery, enabled: Boolean(token) })
   const currentUser = useQuery(currentUserQuery(token))
+  const feed = useQuery({ ...feedQuery, enabled: Boolean(token) })
+  const competitions = feed.data?.map(entry => entry.competition) ?? []
   const currentWeek = currentWeekKey()
   const selectedWeek = search.week ?? currentWeek
 
@@ -52,20 +60,59 @@ function GroupsPage() {
               mode={search.mode}
               onModeChange={mode =>
                 navigate({
-                  search: {
+                  search: previous => ({
+                    ...previous,
                     mode,
                     week: mode === 'week' ? selectedWeek : undefined,
-                  },
+                  }),
                 })
               }
               onWeekChange={week =>
-                navigate({ search: { mode: 'week', week } })
+                navigate({
+                  search: previous => ({ ...previous, mode: 'week', week }),
+                })
               }
               week={selectedWeek}
             />
+            {competitions.length > 1 ? (
+              <nav aria-label='Competition filter' className='scope-rail small'>
+                <button
+                  aria-pressed={search.comp === undefined}
+                  className='scope-tab'
+                  onClick={() =>
+                    navigate({
+                      search: previous => ({ ...previous, comp: undefined }),
+                    })
+                  }
+                  type='button'
+                >
+                  All
+                </button>
+                {competitions.map(competition => (
+                  <button
+                    aria-pressed={search.comp === competition.id}
+                    className='scope-tab'
+                    key={competition.id}
+                    onClick={() =>
+                      navigate({
+                        search: previous => ({
+                          ...previous,
+                          comp: competition.id,
+                        }),
+                      })
+                    }
+                    type='button'
+                  >
+                    {competitionCode(competition.name)}
+                    <span data-visually-hidden>{competition.name}</span>
+                  </button>
+                ))}
+              </nav>
+            ) : null}
             <section aria-label='Group standings' className='two-col'>
               {groups.data.map(group => (
                 <GroupLeaderboardCard
+                  competitionId={search.comp}
                   group={group}
                   key={group.id}
                   mode={search.mode}

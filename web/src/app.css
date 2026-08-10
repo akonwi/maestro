@@ -75,6 +75,11 @@
   background: var(--accent-9);
   border-color: var(--accent-9);
 }
+/* Compact variant: competition filter on standings pages. */
+.scope-rail.small .scope-tab {
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.625rem;
+}
 
 .day-heading {
   margin-bottom: 0.75rem;

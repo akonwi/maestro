@@ -13,15 +13,20 @@ export function GroupLeaderboardCard({
   mode,
   userId,
   week,
+  competitionId,
 }: {
   group: Group
   mode: 'season' | 'week'
   userId: number | undefined
   week: string
+  /** Restrict standings to one competition; undefined = combined. */
+  competitionId?: number
 }) {
-  const season = useQuery(seasonLeaderboardQuery(group.id, mode === 'season'))
+  const season = useQuery(
+    seasonLeaderboardQuery(group.id, mode === 'season', competitionId),
+  )
   const weekly = useQuery(
-    weeklyLeaderboardQuery(group.id, week, mode === 'week'),
+    weeklyLeaderboardQuery(group.id, week, mode === 'week', competitionId),
   )
   const leaderboard = mode === 'week' ? weekly : season
 
