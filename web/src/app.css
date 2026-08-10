@@ -4,6 +4,12 @@
    composition belongs to mica primitives (m-vstack/m-hstack) in markup;
    these classes cover repeated app patterns and bespoke elements. */
 
+/* Mica has no warning role; define one app-local token in its
+   light-dark() idiom (used by qualification zones: Europa places). */
+:root {
+  --color-warning: light-dark(#b45309, #f59e0b);
+}
+
 /* --- page scaffold ----------------------------------------------- */
 .page {
   width: 100%;
@@ -1347,9 +1353,7 @@
 .standings tbody tr:last-child {
   border-bottom: 0;
 }
-.standings tbody tr.playoff-line {
-  border-top: 2px solid var(--color-accent);
-}
+
 .standings td.num {
   padding: 0.625rem 0.25rem;
   text-align: center;
@@ -1365,8 +1369,17 @@
 .standings td.rank {
   border-left: 2px solid transparent;
 }
-.standings tr.in-playoffs td.rank {
+.standings tr.zone-success td.rank {
+  border-left-color: var(--color-success);
+}
+.standings tr.zone-accent td.rank {
   border-left-color: var(--color-accent);
+}
+.standings tr.zone-warning td.rank {
+  border-left-color: var(--color-warning);
+}
+.standings tr.zone-danger td.rank {
+  border-left-color: var(--color-danger);
 }
 .standings th.club-cell {
   min-width: 0;
@@ -1458,6 +1471,15 @@
   block-size: 0.75rem;
   inline-size: 2px;
   background: var(--color-accent);
+}
+.legend-line .tick.success {
+  background: var(--color-success);
+}
+.legend-line .tick.warning {
+  background: var(--color-warning);
+}
+.legend-line .tick.danger {
+  background: var(--color-danger);
 }
 
 /* --- fixture row --------------------------------------------------- */

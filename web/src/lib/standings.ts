@@ -40,23 +40,61 @@ async function request<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export const standingsQuery = queryOptions({
-  queryKey: ['standings'],
-  queryFn: () => request<Standings>('/standings'),
-  staleTime: 5 * 60 * 1000,
-})
-
-/**
- * Number of teams in the playoff zone for a conference. MLS takes the top
- * 9; we read it from the qualification descriptions when present and fall
- * back to 9.
- */
-export function playoffCutoff(rows: StandingRow[]) {
-  const qualifying = rows.filter(row => /play\W?off/i.test(row.description))
-  return qualifying.length > 0 ? qualifying.length : 9
+export function standingsQuery(competitionId?: number) {
+  const query =
+    competitionId === undefined ? '' : `?competition_id=${competitionId}`
+  return queryOptions({
+    queryKey: ['standings', competitionId ?? 'default'],
+    queryFn: () => request<Standings>(`/standings${query}`),
+    staleTime: 5 * 60 * 1000,
+  })
 }
 
 /** "Western Conference" -> "Western". */
 export function conferenceLabel(name: string) {
   return name.replace(/\s*conference$/i, '')
+}
+
+// ─── Qualification zones ──────────────────────────────────────────
+
+export type ZoneKind = 'success' | 'accent' | 'warning' | 'danger'
+
+/**
+ * Visual role for a qualification description. Order matters: MLS
+ * descriptions contain both "Promotion" and "Play Offs" — playoffs win.
+ */
+export function zoneKind(description: string): ZoneKind | null {
+  if (!description) return null
+  const d = description.toLowerCase()
+  if (d.includes('relegation')) return 'danger'
+  if (/play\W?offs?/.test(d)) return 'accent'
+  if (d.includes('champions league')) return 'accent'
+  if (d.includes('europa') || d.includes('conference league')) return 'warning'
+  if (d.includes('promotion')) return 'success'
+  return 'accent'
+}
+
+/**
+ * Legend label for a description. Upstream promotion strings carry the
+ * useful part in parentheses ("Promotion - MLS (Play Offs: 1/8-finals)"
+ * -> "Play Offs: 1/8-finals"); others read fine as-is.
+ */
+export function zoneLabel(description: string) {
+  const parenthetical = /\(([^)]+)\)/.exec(description)
+  return parenthetical ? parenthetical[1] : description
+}
+
+export type LegendEntry = { kind: ZoneKind; label: string }
+
+/** Distinct qualification zones in table order, for the legend. */
+export function legendEntries(rows: StandingRow[]): LegendEntry[] {
+  const seen = new Set<string>()
+  const out: LegendEntry[] = []
+  for (const row of rows) {
+    const kind = zoneKind(row.description)
+    if (!kind || seen.has(row.description)) continue
+    seen.add(row.description)
+    out.push({ kind, label: zoneLabel(row.description) })
+  }
+  return out
 }

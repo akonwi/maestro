@@ -1,45 +1,87 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { clsx } from 'clsx'
+import { feedQuery } from '@/lib/fixtures'
 import type { StandingRow } from '@/lib/standings'
-import { conferenceLabel, playoffCutoff, standingsQuery } from '@/lib/standings'
+import {
+  conferenceLabel,
+  legendEntries,
+  standingsQuery,
+  zoneKind,
+} from '@/lib/standings'
 
-type TableSearch = { c?: number }
+type TableSearch = { c?: number; conf?: number }
 
 export const Route = createFileRoute('/table')({
   validateSearch: (search: Record<string, unknown>): TableSearch => {
+    const out: TableSearch = {}
     const c = Number(search.c)
-    return Number.isInteger(c) && c > 0 ? { c } : {}
+    if (Number.isInteger(c) && c > 0) out.c = c
+    const conf = Number(search.conf)
+    if (Number.isInteger(conf) && conf > 0) out.conf = conf
+    return out
   },
-  loader: ({ context }) => context.queryClient.ensureQueryData(standingsQuery),
+  loaderDeps: ({ search }) => ({ c: search.c }),
+  loader: ({ context, deps }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(feedQuery),
+      context.queryClient.ensureQueryData(standingsQuery(deps.c)),
+    ]),
   pendingComponent: TablePending,
   errorComponent: TableError,
   component: TablePage,
 })
 
 function TablePage() {
-  const { c = 0 } = Route.useSearch()
+  const { c, conf = 0 } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const standings = useQuery(standingsQuery)
+  const feed = useQuery(feedQuery)
+  const standings = useQuery(standingsQuery(c))
+
+  const competitions = feed.data?.map(entry => entry.competition) ?? []
+  const selectedCompetition =
+    competitions.find(
+      competition => competition.id === (c ?? standings.data?.competition_id),
+    ) ?? null
 
   const conferences = standings.data?.conferences ?? []
-  const activeIndex = c < conferences.length ? c : 0
+  const activeIndex = conf < conferences.length ? conf : 0
   const active = conferences[activeIndex]
-  const cutoff = active ? playoffCutoff(active.rows) : 0
+  const legend = active ? legendEntries(active.rows) : []
 
   return (
     <main className='page wide' id='main-content'>
       <m-vstack align='stretch' gap='md'>
         <div>
-          <div className='section-kicker'>
-            MLS
-            {standings.data?.season ? ` / ${standings.data.season} season` : ''}
-          </div>
           <h1 className='page-title'>League table</h1>
           <p className='page-subtitle'>
-            Conference standings and the race for the MLS Cup Playoffs.
+            {selectedCompetition
+              ? `${selectedCompetition.name} · ${standings.data?.season ?? ''} season`
+              : 'Standings and the qualification picture.'}
           </p>
         </div>
+
+        {competitions.length > 1 ? (
+          <div className='select-affix'>
+            <span id='table-league-label'>League</span>
+            <select
+              aria-labelledby='table-league-label'
+              onChange={event => {
+                const id = Number(event.target.value)
+                navigate({
+                  search: () => ({ c: id, conf: undefined }),
+                })
+              }}
+              value={selectedCompetition?.id ?? ''}
+            >
+              {competitions.map(competition => (
+                <option key={competition.id} value={competition.id}>
+                  {competition.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         {standings.isPending ? <TableSkeleton /> : null}
         {standings.isError ? (
@@ -63,7 +105,12 @@ function TablePage() {
                       aria-selected={index === activeIndex}
                       key={conference.name}
                       onClick={() =>
-                        navigate({ search: index === 0 ? {} : { c: index } })
+                        navigate({
+                          search: previous => ({
+                            ...previous,
+                            conf: index === 0 ? undefined : index,
+                          }),
+                        })
                       }
                       role='tab'
                       type='button'
@@ -75,16 +122,14 @@ function TablePage() {
               </m-tabs>
             ) : null}
 
-            <ConferenceTable
-              cutoff={cutoff}
-              name={active.name}
-              rows={active.rows}
-            />
+            <StandingsTable name={active.name} rows={active.rows} />
 
-            <div className='legend-line'>
-              <span aria-hidden className='tick' />
-              Top {cutoff} qualify for the MLS Cup Playoffs
-            </div>
+            {legend.map(entry => (
+              <div className='legend-line' key={entry.label}>
+                <span aria-hidden className={`tick ${entry.kind}`} />
+                {entry.label}
+              </div>
+            ))}
           </div>
         ) : null}
       </m-vstack>
@@ -92,23 +137,12 @@ function TablePage() {
   )
 }
 
-function ConferenceTable({
-  cutoff,
-  name,
-  rows,
-}: {
-  cutoff: number
-  name: string
-  rows: StandingRow[]
-}) {
+function StandingsTable({ name, rows }: { name: string; rows: StandingRow[] }) {
   return (
-    <section
-      aria-label={`${conferenceLabel(name)} Conference standings`}
-      className='card'
-    >
+    <section aria-label={`${conferenceLabel(name)} standings`} className='card'>
       <table className='standings'>
         <caption data-visually-hidden>
-          {conferenceLabel(name)} Conference standings
+          {conferenceLabel(name)} standings
         </caption>
         <colgroup>
           <col className='col-rank' />
@@ -159,13 +193,8 @@ function ConferenceTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((team, index) => (
-            <TableRow
-              inPlayoffs={index < cutoff}
-              key={team.team_id}
-              showPlayoffLine={index === cutoff}
-              team={team}
-            />
+          {rows.map(team => (
+            <TableRow key={team.team_id} team={team} />
           ))}
         </tbody>
       </table>
@@ -173,22 +202,10 @@ function ConferenceTable({
   )
 }
 
-function TableRow({
-  inPlayoffs,
-  team,
-  showPlayoffLine,
-}: {
-  inPlayoffs: boolean
-  team: StandingRow
-  showPlayoffLine: boolean
-}) {
+function TableRow({ team }: { team: StandingRow }) {
+  const kind = zoneKind(team.description)
   return (
-    <tr
-      className={clsx(
-        inPlayoffs && 'in-playoffs',
-        showPlayoffLine && 'playoff-line',
-      )}
-    >
+    <tr className={clsx(kind && `zone-${kind}`)}>
       <td className='num rank'>{team.rank}</td>
       <th className='club-cell' scope='row'>
         <span className='club-inner'>
