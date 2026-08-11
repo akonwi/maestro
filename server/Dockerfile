@@ -1,14 +1,14 @@
 # Multi-stage build for the Ard server.
 #
-#   ard       — downloads the published Ard 0.35.1 compiler.
+#   ard       — downloads the published Ard compiler.
 #   migr      — downloads the published migr release.
-#   builder   — compiles the server with Ard 0.33.0.
+#   builder   — compiles the server with that Ard release.
 #   runtime   — slim image with both binaries, migrations, and entrypoint.
 
 # --- Published Ard compiler --------------------------------------------------
 FROM alpine:latest AS ard
 
-ARG ARD_VERSION=v0.35.1
+ARG ARD_VERSION=v0.36.0
 ARG TARGETARCH
 RUN apk add --no-cache ca-certificates curl \
   && mkdir -p /out \

@@ -81,7 +81,12 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
     let team_fixtures = List::keep(deref games, fn(g) {
       g.team_id == tid
     })
-    let recent = first_n(sort_desc(team_fixtures), RECENT_WINDOW)
+    let sorted = sort_desc(team_fixtures)
+    let recent_end = match RECENT_WINDOW < sorted.size() {
+      true => RECENT_WINDOW,
+      false => sorted.size(),
+    }
+    let recent = sorted.slice(end: recent_end).expect("end clamped to list bounds")
     if recent.size() >= MIN_GAMES {
       mut pts = 0
       for e in recent {
@@ -144,17 +149,6 @@ private fn sort_desc(entries: [GameEntry]) [GameEntry] {
   deref out
 }
 
-private fn first_n(entries: [GameEntry], n: Int) [GameEntry] {
-  let out: mut [GameEntry] = mut []
-  mut i = 0
-  for e in entries {
-    if i < n {
-      out.push(e)
-      i = i + 1
-    }
-  }
-  deref out
-}
 
 // Sort by PPG descending and assign 1-based ranks.
 private fn assign_ranks(prelim: [Ranking]) [Ranking] {

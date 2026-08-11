@@ -4,7 +4,30 @@ use maestro/api_football/fixtures
 
 // A trimmed but shape-accurate API-Football /fixtures response:
 // one finished match and one not-started match.
-let SAMPLE: Str = "{{\n  \"response\": [\n    {{\n      \"fixture\": {{ \"id\": 1001, \"timestamp\": 1700000000, \"status\": {{ \"short\": \"FT\" }} }},\n      \"league\": {{ \"id\": 253, \"season\": 2026, \"round\": \"Regular Season - 1\" }},\n      \"teams\": {{\n        \"home\": {{ \"id\": 1609, \"name\": \"Inter Miami\" }},\n        \"away\": {{ \"id\": 1615, \"name\": \"Atlanta United\" }}\n      }},\n      \"goals\": {{ \"home\": 2, \"away\": 1 }}\n    }},\n    {{\n      \"fixture\": {{ \"id\": 1002, \"timestamp\": 1800000000, \"status\": {{ \"short\": \"NS\" }} }},\n      \"league\": {{ \"id\": 253, \"season\": 2026, \"round\": \"Regular Season - 2\" }},\n      \"teams\": {{\n        \"home\": {{ \"id\": 1613, \"name\": \"LA Galaxy\" }},\n        \"away\": {{ \"id\": 1614, \"name\": \"LAFC\" }}\n      }},\n      \"goals\": {{ \"home\": null, \"away\": null }}\n    }}\n  ]\n}}"
+let SAMPLE: Str = `
+  {{
+    "response": [
+      {{
+        "fixture": {{ "id": 1001, "timestamp": 1700000000, "status": {{ "short": "FT" }} }},
+        "league": {{ "id": 253, "season": 2026, "round": "Regular Season - 1" }},
+        "teams": {{
+          "home": {{ "id": 1609, "name": "Inter Miami" }},
+          "away": {{ "id": 1615, "name": "Atlanta United" }}
+        }},
+        "goals": {{ "home": 2, "away": 1 }}
+      }},
+      {{
+        "fixture": {{ "id": 1002, "timestamp": 1800000000, "status": {{ "short": "NS" }} }},
+        "league": {{ "id": 253, "season": 2026, "round": "Regular Season - 2" }},
+        "teams": {{
+          "home": {{ "id": 1613, "name": "LA Galaxy" }},
+          "away": {{ "id": 1614, "name": "LAFC" }}
+        }},
+        "goals": {{ "home": null, "away": null }}
+      }}
+    ]
+  }}
+  `
 
 test fn parses_fixtures_response() Void!Str {
   let list = try fixtures::parse_fixtures(SAMPLE)

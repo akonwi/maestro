@@ -4,7 +4,23 @@ use maestro/api_football/details
 
 // Lineups with data still being populated: null formation/coach/colors and
 // a malformed player entry must not fail the team.
-let PARTIAL_LINEUPS: Str = "{{\n  \"response\": [\n    {{\n      \"team\": {{ \"id\": 1609, \"name\": \"Inter Miami\" }},\n      \"formation\": null,\n      \"coach\": {{}},\n      \"startXI\": [\n        {{ \"player\": {{ \"id\": 1, \"name\": \"R. Rios\", \"number\": 34, \"pos\": \"G\", \"grid\": \"1:1\" }} }},\n        {{ \"player\": {{ \"id\": null, \"name\": \"No Number\", \"number\": null, \"pos\": null, \"grid\": null }} }},\n        {{ \"player\": null }}\n      ],\n      \"substitutes\": []\n    }}\n  ]\n}}"
+let PARTIAL_LINEUPS: Str = `
+  {{
+    "response": [
+      {{
+        "team": {{ "id": 1609, "name": "Inter Miami" }},
+        "formation": null,
+        "coach": {{}},
+        "startXI": [
+          {{ "player": {{ "id": 1, "name": "R. Rios", "number": 34, "pos": "G", "grid": "1:1" }} }},
+          {{ "player": {{ "id": null, "name": "No Number", "number": null, "pos": null, "grid": null }} }},
+          {{ "player": null }}
+        ],
+        "substitutes": []
+      }}
+    ]
+  }}
+  `
 
 test fn partial_lineups_decode_leniently() Void!Str {
   let lineups = try details::parse_lineups(PARTIAL_LINEUPS)
