@@ -45,7 +45,7 @@ fn register(router: mut dram::App, a: app::App) {
       true => res.json(http::StatusBadRequest, ["error": "missing token"]),
       false => {
         let target = "{a.config.app_base_url}/auth/verify?token={token}"
-        res.header("Location", target)
+        res.headers.set("Location", target)
         res.status = http::StatusFound
       },
     }
@@ -318,7 +318,7 @@ fn authenticate(a: app::App, req: dram::Request) Int? {
       }
     },
   }
-  deref out
+  out.@
 }
 
 struct UserIdKey {
@@ -331,7 +331,7 @@ fn middleware(a: app::App) dram::Middleware {
   fn(req: dram::Request, res: mut dram::Response, next: dram::Next) {
     match authenticate(a, req) {
       user_id => {
-        let derived = context::with_value(req.context(), USER_ID_KEY, user_id)
+        let derived = context::with_value(req.context, USER_ID_KEY, user_id)
         next.run(req.with_context(derived), res)
       },
       _ => res.json(http::StatusUnauthorized, ["error": "missing, invalid, or expired bearer token"]),
@@ -340,7 +340,7 @@ fn middleware(a: app::App) dram::Middleware {
 }
 
 fn user_id(req: dram::Request) Int? {
-  match context::value(req.context(), USER_ID_KEY) {
+  match context::value(req.context, USER_ID_KEY) {
     value => unsafe::cast<Int>(value),
     _ => Maybe::new(),
   }
@@ -374,7 +374,7 @@ private fn decode_field(req: dram::Request, name: Str) Str!Str {
 // Extract the token from a Bearer Authorization header. Returns "" if
 // the header is missing or malformed.
 private fn bearer_token(req: dram::Request) Str {
-  let auth = req.header("Authorization").or("")
+  let auth = req.headers.get("Authorization").or("")
   match auth.starts_with("Bearer ") {
     true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
     false => "",

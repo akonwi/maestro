@@ -23,7 +23,7 @@ test fn season_includes_zero_score_members_and_orders_scores() Void!Str {
   try app.db.query(
     "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@owner, 500, 2, 1, 3, 1, 1), (@owner, 501, 1, 0, 1, 1, 1), (@second, 500, 2, 1, 3, 1, 1)",
   ).run(["owner": owner.id, "second": second.id])
-
+  
   let entries = try leaderboards::season(app, group.id, Maybe::new())
   try testing::assert(entries.size() == 3, "all members appear")
   let first = entries.at(0).expect("first")
@@ -60,7 +60,7 @@ test fn weekly_includes_only_fixtures_inside_bounds() Void!Str {
     end_ms: Int64::from(2000),
     key: "test",
   }
-
+  
   let entries = try leaderboards::weekly(app, group.id, Maybe::new(), bounds)
   let entry = entries.at(0).expect("entry")
   try testing::assert(entry.total_points == 3 and entry.played == 1, "end boundary is exclusive")
@@ -80,7 +80,7 @@ test fn season_filters_by_competition() Void!Str {
   try app.db.query(
     "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@owner, 510, 2, 1, 3, 1, 1), (@owner, 511, 2, 1, 1, 1, 1)",
   ).run(["owner": owner.id])
-
+  
   let entries = try leaderboards::season(app, group.id, Maybe::new(2))
   let entry = entries.at(0).expect("entry")
   try testing::assert(entry.total_points == 1 and entry.played == 1, "only requested competition counts")

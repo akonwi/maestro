@@ -8,7 +8,7 @@ test fn save_upserts_by_endpoint() Void!Str {
   let app = try test_helpers::build_app()
   let ada = try users::get_or_create_by_email(app, "ada@example.com")
   let grace = try users::get_or_create_by_email(app, "grace@example.com")
-
+  
   let sub = push::Subscription{
     endpoint: "https://push.example/abc",
     p256dh: "k1",
@@ -22,7 +22,7 @@ test fn save_upserts_by_endpoint() Void!Str {
     auth: "a2",
   }
   try push::save(app, grace.id, taken)
-
+  
   let rows = try app.db.query("SELECT user_id, p256dh FROM push_subscriptions").all([:])
   try testing::assert(rows.size() == 1, "one row per endpoint, got {rows.size()}")
   testing::pass()
@@ -32,7 +32,7 @@ test fn remove_only_deletes_own_subscription() Void!Str {
   let app = try test_helpers::build_app()
   let ada = try users::get_or_create_by_email(app, "ada@example.com")
   let grace = try users::get_or_create_by_email(app, "grace@example.com")
-
+  
   try push::save(
     app,
     ada.id,
@@ -42,12 +42,12 @@ test fn remove_only_deletes_own_subscription() Void!Str {
       auth: "a",
     },
   )
-
+  
   // Someone else cannot remove Ada's subscription.
   try push::remove(app, grace.id, "https://push.example/ada")
   let after_other = try app.db.query("SELECT endpoint FROM push_subscriptions").all([:])
   try testing::assert(after_other.size() == 1, "other user's delete is a no-op")
-
+  
   try push::remove(app, ada.id, "https://push.example/ada")
   let after_own = try app.db.query("SELECT endpoint FROM push_subscriptions").all([:])
   try testing::assert(after_own.size() == 0, "owner's delete removes the row")
@@ -58,7 +58,7 @@ test fn targets_join_settled_predictions_with_subscriptions() Void!Str {
   let app = try test_helpers::build_app()
   let ada = try users::get_or_create_by_email(app, "ada@example.com")
   let grace = try users::get_or_create_by_email(app, "grace@example.com")
-
+  
   // Ada predicted and is subscribed; Grace predicted but has no
   // subscription; a third prediction is unsettled (points NULL).
   try push::save(
@@ -79,7 +79,7 @@ test fn targets_join_settled_predictions_with_subscriptions() Void!Str {
   try app.db.query(
     "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, points, created_at, updated_at) VALUES (@user, 501, 2, 0, NULL, 0, 0)",
   ).run(["user": ada.id])
-
+  
   let targets = try push::targets_for_fixture(app, 500)
   try testing::assert(
     targets.size() == 1,

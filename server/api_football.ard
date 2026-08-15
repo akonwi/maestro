@@ -29,7 +29,7 @@ fn cached_get(a: app::App, path: Str, ttl_ms: Int64) Str!Str {
 private fn get(cfg: config::Config, url: Str) Str!Str {
   mut req = try http::NewRequest("GET", url, http::NoBody)
   req.Header.Set("x-apisports-key", cfg.api_football_key)
-
+  
   let client = mut http::Client{Timeout: 15 * time::Second}
   let resp = try client.Do(req)
   match unsafe::is_nil(resp) {

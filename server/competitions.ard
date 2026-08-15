@@ -67,7 +67,7 @@ private fn decode_all(rows: [Any]) [Competition]!Str {
     let comp = try decode_competition(row)
     out.push(comp)
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn decode_competition(row: Any) Competition!Str {

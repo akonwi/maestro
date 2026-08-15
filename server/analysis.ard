@@ -84,7 +84,7 @@ fn outlook_payload(a: app::App, fixture_id: Int) Maybe<[Str: Any]>!Str {
         for_away: "0",
         against_away: "0",
       }
-
+      
       mut home_splits = empty_splits
       match prematch::team_goal_splits(a, outlook.league_id, outlook.season, outlook.home.id) {
         ok(v) => { home_splits = v },
@@ -158,10 +158,10 @@ fn outlook_json(
       "home_goals": m.home_goals,
       "away_goals": m.away_goals,
     ]
-
+    
     h2h.push(entry)
   }
-
+  
   let home_injuries: mut [Any] = mut []
   let away_injuries: mut [Any] = mut []
   for inj in injuries {
@@ -173,20 +173,20 @@ fn outlook_json(
       away_injuries.push(entry)
     }
   }
-
+  
   let percent: [Str: Any] = ["home": o.percent_home, "draw": o.percent_draw, "away": o.percent_away]
   let standings_map: [Str: Any] = [
     "home": standing_opt(standings, o.home.id),
     "away": standing_opt(standings, o.away.id),
   ]
-
+  
   let injuries_map: [Str: Any] = ["home": home_injuries, "away": away_injuries]
-
+  
   let goals_map: [Str: Any] = [
     "home": team_goals_json(o.home, home_splits, true),
     "away": team_goals_json(o.away, away_splits, false),
   ]
-
+  
   let home_players: mut [Any] = mut []
   let away_players: mut [Any] = mut []
   for kp in key_players {
@@ -199,7 +199,7 @@ fn outlook_json(
       "is_scorer": kp.is_scorer,
       "is_assister": kp.is_assister,
     ]
-
+    
     if kp.team_id == o.home.id {
       home_players.push(entry)
     }
@@ -208,13 +208,13 @@ fn outlook_json(
     }
   }
   let key_players_map: [Str: Any] = ["home": home_players, "away": away_players]
-
+  
   let strength_map: [Str: Any] = [
     "home": ranking_opt(rankings, o.home.id),
     "away": ranking_opt(rankings, o.away.id),
     "total": rankings.size(),
   ]
-
+  
   let payload: [Str: Any] = [
     "percent": percent,
     "home": team_outlook_json(o.home),
@@ -227,7 +227,7 @@ fn outlook_json(
     "strength": strength_map,
     "season_start_ms": season_start_ms,
   ]
-
+  
   payload
 }
 
@@ -276,7 +276,7 @@ private fn standing_opt(standings: [prematch::StandingRow], team_id: Int) Maybe<
         "goals_diff": row.goals_diff,
         "group": row.group,
       ]
-
+      
       Maybe::new(entry)
     },
     _ => Maybe::new(),
@@ -303,7 +303,7 @@ private fn team_outlook_json(t: prematch::TeamOutlook) [Str: Any] {
     "away_losses": t.away_losses,
     "clean_sheets": t.clean_sheets,
   ]
-
+  
   payload
 }
 
@@ -313,7 +313,7 @@ private fn team_outlook_json(t: prematch::TeamOutlook) [Str: Any] {
 fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
   mut failures = 0
   mut last_error = ""
-
+  
   mut stats: [details::TeamStats] = []
   match details::fixture_statistics(a, fixture_id) {
     ok(v) => { stats = v },
@@ -346,9 +346,9 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
       last_error = message
     },
   }
-
+  
   try require_some_section(failures, last_error)
-
+  
   let stats_json: mut [Any] = mut []
   for t in stats {
     let lines: mut [Any] = mut []
@@ -359,7 +359,7 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
     let entry: [Str: Any] = ["team_id": t.team_id, "team_name": t.team_name, "stats": lines]
     stats_json.push(entry)
   }
-
+  
   let events_json: mut [Any] = mut []
   for e in events {
     let entry: [Str: Any] = [
@@ -372,10 +372,10 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
       "assist": e.assist,
       "comments": e.comments,
     ]
-
+    
     events_json.push(entry)
   }
-
+  
   let lineups_json: mut [Any] = mut []
   for l in lineups {
     let entry: [Str: Any] = [
@@ -388,10 +388,10 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
       "starters": lineup_players_json(l.starters),
       "bench": lineup_players_json(l.bench),
     ]
-
+    
     lineups_json.push(entry)
   }
-
+  
   let players_json: mut [Any] = mut []
   for t in players {
     let lines: mut [Any] = mut []
@@ -417,20 +417,20 @@ fn match_json(a: app::App, fixture_id: Int) [Str: Any]!Str {
         "yellow": p.yellow,
         "red": p.red,
       ]
-
+      
       lines.push(line)
     }
     let entry: [Str: Any] = ["team_id": t.team_id, "team_name": t.team_name, "players": lines]
     players_json.push(entry)
   }
-
+  
   let payload: [Str: Any] = [
     "statistics": stats_json,
     "events": events_json,
     "lineups": lineups_json,
     "players": players_json,
   ]
-
+  
   Result::ok(payload)
 }
 
@@ -451,8 +451,8 @@ private fn lineup_players_json(list: [details::LineupPlayer]) [Any] {
       "pos": p.pos,
       "grid": p.grid,
     ]
-
+    
     out.push(entry)
   }
-  deref out
+  out.@
 }

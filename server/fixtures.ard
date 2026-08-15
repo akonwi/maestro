@@ -145,7 +145,7 @@ fn upcoming(a: app::App, competition_id: Int?) [Fixture]!Str {
       out.push(f)
     }
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 // Statuses that mean a fixture will not be played (as scheduled) anymore.
@@ -281,7 +281,7 @@ private fn competition_round(a: app::App, comp: competitions::Competition, reque
         CurrentRound{
           competition_id: Maybe::new(comp.id),
           name: Maybe::new(name),
-          fixtures: deref out,
+          fixtures: out.@,
         },
       )
     },
@@ -331,7 +331,7 @@ fn feed_payload(a: app::App) [Any]!Str {
       err(message) => fmt::Println("feed: skipping competition {comp.id} ({comp.name}): {message}"),
     }
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 // The trailing integer in a round name like "Regular Season - 28", or a
@@ -371,7 +371,7 @@ fn sort_round_names(names: [Str]) [Str] {
     }
     out = result
   }
-  deref out
+  out.@
 }
 
 // Every round name in the season, ordered by round number, plus the
@@ -384,14 +384,14 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
       let list = try fixtures::season_round_fixtures(a, comp.api_football_league_id, season.year)
       let names: mut [Str] = mut []
       for f in list {
-        let seen = List::contains(deref names, fn(name) {
+        let seen = List::contains(names.@, fn(name) {
           name == f.round
         })
         if not seen {
           names.push(f.round)
         }
       }
-      let ordered = sort_round_names(deref names)
+      let ordered = sort_round_names(names.@)
       let rounds: mut [Any] = mut []
       for n in ordered {
         rounds.push(n)
@@ -401,7 +401,7 @@ fn season_rounds(a: app::App, competition_id: Int?) [Str: Any]!Str {
         "rounds": rounds,
         "current": pick_round(list),
       ]
-
+      
       Result::ok(payload)
     },
     _ => {
@@ -459,7 +459,7 @@ private fn fetch(a: app::App, competition_id: Int?) [Fixture]!Str {
       }
     }
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn round_json(p: CurrentRound) [Str: Any] {
@@ -468,7 +468,7 @@ private fn round_json(p: CurrentRound) [Str: Any] {
     "round": p.name,
     "fixtures": to_json_list(p.fixtures),
   ]
-
+  
   payload
 }
 
@@ -477,14 +477,14 @@ private fn to_json_list(list: [Fixture]) [Any] {
   for f in list {
     payload.push(to_json(f))
   }
-  deref payload
+  payload.@
 }
 
 private fn to_json(f: Fixture) [Str: Any] {
   let home_team: [Str: Any] = ["id": f.fixture.home_team_id, "name": f.fixture.home_team_name]
-
+  
   let away_team: [Str: Any] = ["id": f.fixture.away_team_id, "name": f.fixture.away_team_name]
-
+  
   let payload: [Str: Any] = [
     "id": f.fixture.id,
     "competition_id": f.competition_id,
@@ -495,6 +495,6 @@ private fn to_json(f: Fixture) [Str: Any] {
     "home_score": f.fixture.home_score,
     "away_score": f.fixture.away_score,
   ]
-
+  
   payload
 }

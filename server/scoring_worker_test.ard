@@ -74,7 +74,7 @@ test fn finished_fixture_is_settled_by_worker_dispatch() Void!Str {
     home_score: Maybe::new(2),
     away_score: Maybe::new(1),
   }
-
+  
   scoring_worker::process_fixture(app, state, fixture)
   let maybe_saved = try predictions::find(app, user.id, 700)
   let saved = maybe_saved.expect("prediction")

@@ -39,7 +39,7 @@ fn register(router: mut dram::App, a: app::App) {
   protected.use(auth::middleware(a))
   protected.get("/groups", fn(req: dram::Request, res: mut dram::Response) {
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
-
+    
     match list_for_user(a, user_id) {
       ok(groups) => {
         let payload: mut [Any] = mut []
@@ -58,7 +58,7 @@ fn register(router: mut dram::App, a: app::App) {
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let raw_name = try decode_string_field(req, "name") -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let name = strings::TrimSpace(raw_name)
-
+    
     match name.is_empty() or name.size() > 80 {
       true => {
         res.json(
@@ -85,14 +85,14 @@ fn register(router: mut dram::App, a: app::App) {
       res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
-
+    
     match members(a, group_id) {
       ok(group_members) => {
         let payload: [Str: Any] = [
           "group": group_json(group),
           "members": members_json(group_members),
         ]
-
+        
         res.json(http::StatusOK, payload)
       },
       err(message) => {
@@ -109,7 +109,7 @@ fn register(router: mut dram::App, a: app::App) {
       res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let group = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
-
+    
     let raw_email = try decode_string_field(req, "email") -> err { res.json(http::StatusBadRequest, ["error": err]) }
     let address = users::normalize_email(raw_email)
     match address.is_empty() or not strings::Contains(address, "@") {
@@ -122,7 +122,7 @@ fn register(router: mut dram::App, a: app::App) {
               "member_added": result.member_added,
               "invitation_sent": result.invitation_sent,
             ]
-
+            
             res.json(http::StatusOK, payload)
           },
           err(message) => {
@@ -298,7 +298,7 @@ fn members(a: app::App, group_id: Int) [Member]!Str {
   for row in rows {
     out.push(try decode_member(row))
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn member_by_id(a: app::App, group_id: Int, user_id: Int) Member?!Str {
@@ -316,7 +316,7 @@ private fn decode_groups(rows: [Any]) [Group]!Str {
   for row in rows {
     out.push(try decode_group(row))
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn decode_group(row: Any) Group!Str {
@@ -359,7 +359,7 @@ private fn group_json(group: Group) [Str: Any] {
     "created_at": group.created_at,
     "member_count": group.member_count,
   ]
-
+  
   payload
 }
 
@@ -368,7 +368,7 @@ private fn members_json(group_members: [Member]) [Any] {
   for member in group_members {
     payload.push(member_json(member))
   }
-  deref payload
+  payload.@
 }
 
 private fn member_json(member: Member) [Str: Any] {
@@ -378,7 +378,7 @@ private fn member_json(member: Member) [Str: Any] {
     "display_name": member.display_name,
     "joined_at": member.joined_at,
   ]
-
+  
   payload
 }
 

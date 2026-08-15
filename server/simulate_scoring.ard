@@ -36,7 +36,7 @@ private fn run() Void!Str {
     config: cfg,
     cache: ffi::NewCache(),
   }
-
+  
   let members = try groups::members(a, group_id)
   try ensure_members(members, group_id)
   let competition = try active_competition(a)
@@ -45,7 +45,7 @@ private fn run() Void!Str {
   let all = try fixtures::season_round_fixtures(a, competition.api_football_league_id, season.year)
   let rounds = recent_rounds(all)
   try ensure_two_rounds(rounds)
-
+  
   let selected = selected_fixtures(all, rounds)
   let earlier_round = rounds.at(0).expect("round")
   let later_round = rounds.at(1).expect("round")
@@ -153,7 +153,7 @@ private fn recent_rounds(items: [fixtures::RoundFixture]) [Str] {
   let ordered: mut [Str] = mut []
   let now = time::Now().UnixMilli()
   for item in items {
-    if item.fixture.status == "FT" and item.fixture.kickoff_at < now and (not contains(deref ordered, item.round)) {
+    if item.fixture.status == "FT" and item.fixture.kickoff_at < now and (not contains(ordered.@, item.round)) {
       ordered.push(item.round)
     }
   }
@@ -171,7 +171,7 @@ private fn selected_fixtures(items: [fixtures::RoundFixture], rounds: [Str]) [fi
       selected.push(item)
     }
   }
-  deref selected
+  selected.@
 }
 
 private fn contains(values: [Str], wanted: Str) Bool {

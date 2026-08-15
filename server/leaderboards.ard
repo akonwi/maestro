@@ -24,7 +24,7 @@ struct Entry {
 fn register(router: mut dram::App, a: app::App) {
   let protected = mut router.group("/")
   protected.use(auth::middleware(a))
-
+  
   protected.get("/groups/:id/leaderboard/season", fn(req: dram::Request, res: mut dram::Response) {
     let group_id = try strconv::Atoi(req.param("id").or("")) -> _ {
       res.json(http::StatusBadRequest, ["error": "group id must be an integer"])
@@ -36,7 +36,7 @@ fn register(router: mut dram::App, a: app::App) {
       res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
-
+    
     match season(a, group_id, competition_id) {
       ok(entries) => res.json(http::StatusOK, entries_json(entries)),
       err(message) => {
@@ -45,7 +45,7 @@ fn register(router: mut dram::App, a: app::App) {
       },
     }
   })
-
+  
   protected.get("/groups/:id/leaderboard/week", fn(req: dram::Request, res: mut dram::Response) {
     let group_id = try strconv::Atoi(req.param("id").or("")) -> _ {
       res.json(http::StatusBadRequest, ["error": "group id must be an integer"])
@@ -60,7 +60,7 @@ fn register(router: mut dram::App, a: app::App) {
       res.json(http::StatusInternalServerError, ["error": "could not load group"])
     }
     let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
-
+    
     match weekly(a, group_id, competition_id, bounds) {
       ok(entries) => res.json(http::StatusOK, entries_json(entries)),
       err(message) => {
@@ -130,7 +130,7 @@ private fn current_season_by_competition(a: app::App) [Str: Int] {
       }
     },
   }
-  deref out
+  out.@
 }
 
 // Merge grouped rows into one entry per member. Season mode (unbounded)
@@ -172,7 +172,7 @@ private fn combine_rows(rows: [Any], bounded: Bool, current_seasons: [Str: Int])
     }
     entries = updated
   }
-  Result::ok(deref entries)
+  Result::ok(entries.@)
 }
 
 private fn in_current_season(competition_id: Int?, season: Int?, current_seasons: [Str: Int]) Bool {
@@ -228,7 +228,7 @@ private fn sort_entries(entries: [Entry]) [Entry] {
   for entry in entries {
     mut inserted = false
     let result: mut [Entry] = mut []
-    for existing in deref out {
+    for existing in out.@ {
       let goes_before = (not inserted) and ranks_before(entry, existing)
       match goes_before {
         true => {
@@ -245,7 +245,7 @@ private fn sort_entries(entries: [Entry]) [Entry] {
     }
     out = result
   }
-  deref out
+  out.@
 }
 
 private fn ranks_before(a: Entry, b: Entry) Bool {
@@ -284,7 +284,7 @@ private fn entries_json(entries: [Entry]) [Any] {
     payload.push(entry_json(entry, rank))
     previous = Maybe::new(entry)
   }
-  deref payload
+  payload.@
 }
 
 private fn same_score(a: Entry, b: Entry) Bool {
@@ -297,7 +297,7 @@ private fn entry_json(entry: Entry, rank: Int) [Str: Any] {
     "email": entry.email,
     "display_name": entry.display_name,
   ]
-
+  
   let payload: [Str: Any] = [
     "rank": rank,
     "user": user,
@@ -306,7 +306,7 @@ private fn entry_json(entry: Entry, rank: Int) [Str: Any] {
     "outcome_count": entry.outcome_count,
     "played": entry.played,
   ]
-
+  
   payload
 }
 

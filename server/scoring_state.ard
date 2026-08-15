@@ -114,7 +114,7 @@ fn due(a: app::App, now: Int64, limit: Int) [State]!Str {
   for row in rows {
     states.push(try decode_state(row))
   }
-  Result::ok(deref states)
+  Result::ok(states.@)
 }
 
 fn reschedule_success(
@@ -161,7 +161,7 @@ fn missing_fixture_ids(a: app::App, limit: Int) [Int]!Str {
   for row in rows {
     ids.push(try decode::run(row, decode::field("fixture_id", decode::int)).map_err(describe))
   }
-  Result::ok(deref ids)
+  Result::ok(ids.@)
 }
 
 private fn decode_state(row: Any) State!Str {

@@ -45,10 +45,10 @@ fn register(router: mut dram::App, a: app::App) {
     let payload: [Str: Any] = ["enabled": a.config.push_enabled, "key": a.config.vapid_public_key]
     res.json(http::StatusOK, payload)
   })
-
+  
   let protected = mut router.group("/")
   protected.use(auth::middleware(a))
-
+  
   protected.post("/push/subscriptions", fn(req: dram::Request, res: mut dram::Response) {
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let sub = try decode_subscription(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
@@ -60,7 +60,7 @@ fn register(router: mut dram::App, a: app::App) {
       },
     }
   })
-
+  
   protected.delete("/push/subscriptions", fn(req: dram::Request, res: mut dram::Response) {
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
     let endpoint = try decode_endpoint(req) -> err { res.json(http::StatusBadRequest, ["error": err]) }
@@ -170,7 +170,7 @@ fn targets_for_fixture(a: app::App, fixture_id: Int) [Target]!Str {
       err(message) => fmt::Println("push: skipping malformed target row: {message}"),
     }
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn decode_target(row: Any) Target!Str {
@@ -251,7 +251,7 @@ private fn send_result(
   let encoded = try json::Marshal(payload) -> err {
     fmt::Println("push: encoding payload for fixture {fixture.id} failed: {err}")
   }
-
+  
   // webpush-go owns the Web Push protocol: the VAPID-signed JWT and the
   // RFC 8291 aes128gcm payload encryption.
   let message = mut encoded

@@ -31,20 +31,20 @@ test fn settlement_scores_all_predictions_and_closes_state() Void!Str {
   try app.db.exec(
     "INSERT INTO fixture_scoring_state (fixture_id, competition_id, kickoff_at, prediction_lock_at, state, provider_status, next_check_at, attempt_count, created_at, updated_at) VALUES (400, 1, 1000, 1000, 'pending', '2H', 1000, 0, 1, 1)",
   )
-
+  
   try scoring::settle(app, 400, "FT", 3, 2)
   let maybe_exact_prediction = try predictions::find(app, exact.id, 400)
   let exact_prediction = maybe_exact_prediction.expect("exact")
   try testing::assert(exact_prediction.points.expect("points") == 3, "exact gets three")
-
+  
   let maybe_outcome_prediction = try predictions::find(app, outcome.id, 400)
   let outcome_prediction = maybe_outcome_prediction.expect("outcome")
   try testing::assert(outcome_prediction.points.expect("points") == 1, "outcome gets one")
-
+  
   let maybe_wrong_prediction = try predictions::find(app, wrong.id, 400)
   let wrong_prediction = maybe_wrong_prediction.expect("wrong")
   try testing::assert(wrong_prediction.points.expect("points") == 0, "wrong gets zero")
-
+  
   let row = try app.db.query(
     "SELECT state, final_home_score, final_away_score, scoring_version, next_check_at FROM fixture_scoring_state WHERE fixture_id = 400",
   ).first([:])

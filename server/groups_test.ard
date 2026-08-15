@@ -8,7 +8,7 @@ test fn create_adds_owner_as_first_member() Void!Str {
   let app = try test_helpers::build_app()
   let owner = try users::get_or_create_by_email(app, "owner@example.com")
   let group = try groups::create(app, owner.id, "Sunday League")
-
+  
   try testing::assert(group.name == "Sunday League", "name round-trips")
   try testing::assert(group.owner_id == owner.id, "creator owns group")
   try testing::assert(group.member_count == 1, "owner is first member")
@@ -21,13 +21,13 @@ test fn membership_failure_rolls_back_group_creation() Void!Str {
   try app.db.exec(
     "CREATE TRIGGER fail_group_member_insert BEFORE INSERT ON group_members BEGIN SELECT RAISE(FAIL, 'forced membership failure'); END;",
   )
-
+  
   let failed = match groups::create(app, owner.id, "Orphaned League") {
     ok(_) => false,
     err(_) => true,
   }
   try testing::assert(failed, "group creation should fail when owner membership fails")
-
+  
   let rows = try app.db.query("SELECT id FROM groups").all([:])
   try testing::assert(rows.size() == 0, "failed creation should not leave an orphan group")
   testing::pass()
@@ -38,7 +38,7 @@ test fn add_member_is_idempotent() Void!Str {
   let owner = try users::get_or_create_by_email(app, "owner@example.com")
   let friend = try users::get_or_create_by_email(app, "friend@example.com")
   let group = try groups::create(app, owner.id, "Sunday League")
-
+  
   try groups::add_member(app, group.id, friend.id)
   try groups::add_member(app, group.id, friend.id)
   let members = try groups::members(app, group.id)
@@ -51,12 +51,12 @@ test fn list_and_detail_require_membership() Void!Str {
   let owner = try users::get_or_create_by_email(app, "owner@example.com")
   let outsider = try users::get_or_create_by_email(app, "outsider@example.com")
   let group = try groups::create(app, owner.id, "Sunday League")
-
+  
   let owner_groups = try groups::list_for_user(app, owner.id)
   let outsider_groups = try groups::list_for_user(app, outsider.id)
   try testing::assert(owner_groups.size() == 1, "member sees group")
   try testing::assert(outsider_groups.size() == 0, "outsider does not see group")
-
+  
   let hidden = try groups::find_for_member(app, group.id, outsider.id)
   try testing::assert(hidden.is_none(), "detail hidden from outsider")
   testing::pass()

@@ -35,10 +35,10 @@ test fn ranks_teams_by_recent_ppg() Void!Str {
   fixtures.push(rf(100, 5000, "FT", 3, 4, 1, 0))
   fixtures.push(rf(101, 5001, "FT", 3, 4, 1, 0))
   fixtures.push(rf(102, 5002, "FT", 3, 4, 1, 0))
-
-  let rankings = strength::compute_rankings(deref fixtures)
+  
+  let rankings = strength::compute_rankings(fixtures.@)
   try testing::assert(rankings.size() == 2, "only teams 1 and 2 qualify, got {rankings.size()}")
-
+  
   match strength::find_ranking(rankings, 1) {
     r1 => {
       try testing::assert(r1.rank == 1, "team 1 is rank 1")
@@ -62,7 +62,7 @@ test fn ignores_unfinished_fixtures() Void!Str {
     i = i + 1
   }
   try testing::assert(
-    strength::compute_rankings(deref fixtures).size() == 0,
+    strength::compute_rankings(fixtures.@).size() == 0,
     "no finished games -> no rankings",
   )
   Result::ok(())

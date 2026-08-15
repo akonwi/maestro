@@ -13,7 +13,7 @@ fn create(a: app::App, email: Str) Str!Str {
   let now = time::Now().UnixMilli()
   let ttl_ms = Int64::from(a.config.magic_link_ttl_secs) * 1000
   let expires_at = now + ttl_ms
-
+  
   try a.db.query(
     "INSERT INTO magic_links (token, email, expires_at) VALUES (@token, @email, @expires_at)",
   ).run(["token": token, "email": email, "expires_at": expires_at])

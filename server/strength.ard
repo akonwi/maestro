@@ -65,20 +65,20 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
       }
     }
   }
-
+  
   let team_ids: mut [Int] = mut []
   for g in games {
-    let contains_team_id = List::contains(deref team_ids, fn(x) {
+    let contains_team_id = List::contains(team_ids.@, fn(x) {
       x == g.team_id
     })
     if not contains_team_id {
       team_ids.push(g.team_id)
     }
   }
-
+  
   let prelim: mut [Ranking] = mut []
   for tid in team_ids {
-    let team_fixtures = List::keep(deref games, fn(g) {
+    let team_fixtures = List::keep(games.@, fn(g) {
       g.team_id == tid
     })
     let sorted = sort_desc(team_fixtures)
@@ -103,8 +103,8 @@ fn compute_rankings(fixtures: [fixtures::RoundFixture]) [Ranking] {
       )
     }
   }
-
-  assign_ranks(deref prelim)
+  
+  assign_ranks(prelim.@)
 }
 
 fn find_ranking(rankings: [Ranking], team_id: Int) Ranking? {
@@ -146,9 +146,8 @@ private fn sort_desc(entries: [GameEntry]) [GameEntry] {
     }
     out = result
   }
-  deref out
+  out.@
 }
-
 
 // Sort by PPG descending and assign 1-based ranks.
 private fn assign_ranks(prelim: [Ranking]) [Ranking] {
@@ -169,7 +168,7 @@ private fn assign_ranks(prelim: [Ranking]) [Ranking] {
     }
     sorted = result
   }
-
+  
   let ranked: mut [Ranking] = mut []
   mut idx = 0
   for r in sorted {
@@ -183,5 +182,5 @@ private fn assign_ranks(prelim: [Ranking]) [Ranking] {
       },
     )
   }
-  deref ranked
+  ranked.@
 }

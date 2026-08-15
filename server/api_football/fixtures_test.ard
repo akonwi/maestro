@@ -32,7 +32,7 @@ let SAMPLE: Str = `
 test fn parses_fixtures_response() Void!Str {
   let list = try fixtures::parse_fixtures(SAMPLE)
   try testing::assert(list.size() == 2, "expected 2 fixtures, got {list.size()}")
-
+  
   match list.at(0) {
     f => {
       try testing::assert(f.id == 1001, "first fixture id")
@@ -46,7 +46,7 @@ test fn parses_fixtures_response() Void!Str {
     },
     _ => try testing::fail("missing first fixture"),
   }
-
+  
   match list.at(1) {
     f => {
       try testing::assert(f.status == "NS", "second fixture status")

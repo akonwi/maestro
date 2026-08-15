@@ -46,7 +46,7 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
       chosen = Maybe::new(comp)
     }
   }
-
+  
   match chosen {
     comp => {
       let season = try leagues::current_season(a, comp.api_football_league_id)
@@ -56,7 +56,7 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
         "season": season.year,
         "conferences": group_conferences(rows),
       ]
-
+      
       Result::ok(payload)
     },
     _ => {
@@ -73,14 +73,14 @@ fn standings_payload(a: app::App, competition_id: Int?) [Str: Any]!Str {
 fn group_conferences(rows: [prematch::StandingRow]) [Any] {
   let names: mut [Str] = mut []
   for row in rows {
-    let seen = List::contains(deref names, fn(name) {
+    let seen = List::contains(names.@, fn(name) {
       name == row.group
     })
     if not seen {
       names.push(row.group)
     }
   }
-
+  
   let conferences: mut [Any] = mut []
   for name in names {
     let group_rows: mut [Any] = mut []
@@ -92,7 +92,7 @@ fn group_conferences(rows: [prematch::StandingRow]) [Any] {
     let conference: [Str: Any] = ["name": name, "rows": group_rows]
     conferences.push(conference)
   }
-  deref conferences
+  conferences.@
 }
 
 private fn standing_json(row: prematch::StandingRow) [Str: Any] {
@@ -111,6 +111,6 @@ private fn standing_json(row: prematch::StandingRow) [Str: Any] {
     "form": row.form,
     "description": row.description,
   ]
-
+  
   payload
 }

@@ -113,11 +113,11 @@ private fn decode_outlook(item: Any) Outlook!decode::Err {
   let percent_away = try decode::run(item, decode::path(["predictions", "percent", "away"], decode::string))
   let league_id = decoding::int_or(item, ["league", "id"], 0)
   let season = decoding::int_or(item, ["league", "season"], 0)
-
+  
   let home = try decode::run(item, decode::path(["teams", "home"], decode_team_outlook))
   let away = try decode::run(item, decode::path(["teams", "away"], decode_team_outlook))
   let h2h = decode_h2h_list(item)
-
+  
   Result::ok(
     Outlook{
       percent_home: percent_home,
@@ -173,7 +173,7 @@ private fn decode_h2h_list(item: Any) [H2HResult] {
           err(_) => (),
         }
       }
-      deref out
+      out.@
     },
     err(_) => [],
   }
@@ -234,7 +234,7 @@ fn parse_standings(body: Str) [StandingRow]!Str {
     },
     _ => (),
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn decode_standing_row(item: Any) StandingRow!decode::Err {
@@ -363,7 +363,7 @@ fn merge_key_players(scorers_body: Str, assists_body: Str) [KeyPlayer]!Str {
     }
     out = updated
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
@@ -382,7 +382,7 @@ private fn parse_leaders(body: Str, scorers: Bool) [KeyPlayer]!Str {
       err(_) => (),
     }
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 // One player entry can carry multiple statistics blocks (one per team the
@@ -408,7 +408,7 @@ private fn decode_leaders(item: Any, scorers: Bool) [KeyPlayer]!decode::Err {
       },
     )
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 // ─── Injuries (/injuries) ────────────────────────────────────────────────
@@ -432,7 +432,7 @@ fn parse_injuries(body: Str) [Injury]!Str {
     match decode::run(item, decode_injury) {
       ok(injury) => {
         let key = "{injury.team_id}|{injury.player}"
-        let already = List::contains(deref seen, fn(seen_key) {
+        let already = List::contains(seen.@, fn(seen_key) {
           seen_key == key
         })
         if not already {
@@ -443,7 +443,7 @@ fn parse_injuries(body: Str) [Injury]!Str {
       err(_) => (),
     }
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn decode_injury(item: Any) Injury!decode::Err {

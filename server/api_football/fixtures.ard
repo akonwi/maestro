@@ -86,7 +86,7 @@ private fn decode_fixture(item: Any) Fixture!decode::Err {
   let away_name = try decode::run(item, decode::path(["teams", "away", "name"], decode::string))
   let home_score = try decode::run(item, decode::path(["goals", "home"], decode::nullable(decode::int)))
   let away_score = try decode::run(item, decode::path(["goals", "away"], decode::nullable(decode::int)))
-
+  
   Result::ok(
     Fixture{
       id: id,

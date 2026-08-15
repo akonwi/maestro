@@ -17,7 +17,7 @@ use go:time
 // module is just the wiring diagram.
 fn build(a: app::App) dram::App {
   let router = mut dram::App::new()
-
+  
   router.use(fn(request: dram::Request, response: mut dram::Response, next: dram::Next) {
     let started = time::Now()
     next.run(request, response)
@@ -25,7 +25,7 @@ fn build(a: app::App) dram::App {
       "{request.method} {request.path} {response.status} {time::Since(started).String()}",
     )
   })
-
+  
   health::register(router, a)
   auth::register(router, a)
   fixtures::register(router, a)
@@ -36,6 +36,6 @@ fn build(a: app::App) dram::App {
   standings::register(router, a)
   push::register(router, a)
   admin::register(router, a)
-
-  deref router
+  
+  router.@
 }

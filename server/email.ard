@@ -26,16 +26,16 @@ private fn send_via_cloudflare(cfg: config::Config, to: Str, subject: Str, text:
     "text": text,
     "html": html,
   ]
-
+  
   let body_bytes = try json::Marshal(payload)
   mut buf = body_bytes
   let reader = bytes::NewReader(mut buf)
   let endpoint = "{API_BASE}/accounts/{cfg.cloudflare_account_id}/email/sending/send"
-
+  
   mut req = try http::NewRequest("POST", endpoint, reader)
   req.Header.Set("Authorization", "Bearer {cfg.cloudflare_email_api_token}")
   req.Header.Set("Content-Type", "application/json")
-
+  
   let client = mut http::Client{}
   let resp = try client.Do(req)
   match unsafe::is_nil(resp) {

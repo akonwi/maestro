@@ -15,7 +15,7 @@ test fn cleanup_removes_stale_rows_and_keeps_current_rows() Void!Str {
   let old_consumed_link = try magic_links::create(app, "consumed@example.com")
   let active_link = try magic_links::create(app, "active@example.com")
   let now = Int64::from(100000000)
-
+  
   try app.db.query(
     "UPDATE sessions SET expires_at = 0 WHERE token = @token",
   ).run(["token": expired_session.token])
@@ -25,14 +25,14 @@ test fn cleanup_removes_stale_rows_and_keeps_current_rows() Void!Str {
   try app.db.query(
     "UPDATE magic_links SET consumed_at = 1 WHERE token = @token",
   ).run(["token": old_consumed_link])
-
+  
   maintenance_worker::run_once_at(app, now)
-
+  
   let session_rows = try app.db.query("SELECT token FROM sessions").all([:])
   try testing::assert(session_rows.size() == 1, "cleanup leaves only the active session")
   let found_active_session = try sessions::find_by_token(app, active_session.token)
   try testing::assert(found_active_session.is_some(), "active session remains findable")
-
+  
   let link_rows = try app.db.query("SELECT token FROM magic_links").all([:])
   try testing::assert(link_rows.size() == 1, "cleanup leaves only the active magic link")
   let active_rows = try app.db.query("SELECT token FROM magic_links WHERE token = @token").all(["token": active_link])

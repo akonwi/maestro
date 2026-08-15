@@ -12,13 +12,13 @@ test fn failed_session_insert_rolls_back_magic_link_consumption() Void!Str {
   try app.db.exec(
     "CREATE TRIGGER fail_session_insert BEFORE INSERT ON sessions BEGIN SELECT RAISE(FAIL, 'forced session failure'); END;",
   )
-
+  
   let failed = match auth::verify(app, token) {
     ok(_) => false,
     err(_) => true,
   }
   try testing::assert(failed, "verification should fail when session insertion fails")
-
+  
   try app.db.exec("DROP TRIGGER fail_session_insert;")
   try auth::verify(app, token)
   testing::pass()

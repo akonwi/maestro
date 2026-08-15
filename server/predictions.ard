@@ -38,13 +38,13 @@ struct GroupPrediction {
 fn register(router: mut dram::App, a: app::App) {
   let protected = mut router.group("/")
   protected.use(auth::middleware(a))
-
+  
   protected.get("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
     let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ {
       res.json(http::StatusBadRequest, ["error": "id must be an integer"])
     }
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
-
+    
     match find(a, user_id, fixture_id) {
       ok(found) => {
         match found {
@@ -58,13 +58,13 @@ fn register(router: mut dram::App, a: app::App) {
       },
     }
   })
-
+  
   protected.put("/fixtures/:id/prediction", fn(req: dram::Request, res: mut dram::Response) {
     let fixture_id = try strconv::Atoi(req.param("id").or("")) -> _ {
       res.json(http::StatusBadRequest, ["error": "id must be an integer"])
     }
     let user_id = try auth::get_user_id(req) -> err { res.json(http::StatusUnauthorized, ["error": err]) }
-
+    
     match fixture_id <= 0 {
       true => res.json(http::StatusBadRequest, ["error": "fixture id must be positive"]),
       false => {
@@ -81,7 +81,7 @@ fn register(router: mut dram::App, a: app::App) {
       },
     }
   })
-
+  
   protected.get(
     "/groups/:groupId/fixtures/:fixtureId/predictions",
     fn(req: dram::Request, res: mut dram::Response) {
@@ -97,7 +97,7 @@ fn register(router: mut dram::App, a: app::App) {
         res.json(http::StatusInternalServerError, ["error": "could not load group"])
       }
       let _ = try maybe_group -> _ { res.json(http::StatusNotFound, ["error": "group not found"]) }
-
+      
       match list_for_group(a, group_id, fixture_id) {
         ok(predictions) => {
           let payload: mut [Any] = mut []
@@ -172,7 +172,7 @@ private fn fetch_and_save(a: app::App, user_id: Int, fixture_id: Int, scores: Sc
       errors::HttpError{status: http::StatusBadGateway, message: "fixture data is temporarily unavailable"},
     )
   }
-
+  
   save_fetched_fixture(a, user_id, scores, now, found)
 }
 
@@ -309,7 +309,7 @@ private fn upsert_with_state_tx(
   now: Int64,
 ) Prediction!Str {
   try scoring_state::ensure_prediction_open(tx, fixture.id, fixture.kickoff_at, now)
-
+  
   try tx.query(
     "INSERT INTO predictions (user_id, fixture_id, home_score, away_score, created_at, updated_at) VALUES (@user_id, @fixture_id, @home_score, @away_score, @created_at, @updated_at) ON CONFLICT(user_id, fixture_id) DO UPDATE SET home_score = @home_score, away_score = @away_score, points = NULL, updated_at = @updated_at",
   ).run(
@@ -322,7 +322,7 @@ private fn upsert_with_state_tx(
       "updated_at": now,
     ],
   )
-
+  
   try scoring_state::upsert_pending(
     tx,
     fixture.id,
@@ -332,7 +332,7 @@ private fn upsert_with_state_tx(
     fixture.status,
     now,
   )
-
+  
   let row = try tx.query(
     "SELECT id, user_id, fixture_id, home_score, away_score, points, created_at, updated_at FROM predictions WHERE user_id = @user_id AND fixture_id = @fixture_id LIMIT 1",
   ).first(["user_id": user_id, "fixture_id": fixture.id])
@@ -381,7 +381,7 @@ fn list_for_group(a: app::App, group_id: Int, fixture_id: Int) [GroupPrediction]
   for row in rows {
     out.push(try decode_group_prediction(row))
   }
-  Result::ok(deref out)
+  Result::ok(out.@)
 }
 
 private fn decode_prediction(row: Any) Prediction!Str {
@@ -439,7 +439,7 @@ private fn prediction_json(prediction: Prediction) [Str: Any] {
     "created_at": prediction.created_at,
     "updated_at": prediction.updated_at,
   ]
-
+  
   payload
 }
 
@@ -449,7 +449,7 @@ private fn group_prediction_json(prediction: GroupPrediction) [Str: Any] {
     "email": prediction.email,
     "display_name": prediction.display_name,
   ]
-
+  
   let payload: [Str: Any] = [
     "user": user,
     "home_score": prediction.home_score,
@@ -457,7 +457,7 @@ private fn group_prediction_json(prediction: GroupPrediction) [Str: Any] {
     "points": prediction.points,
     "updated_at": prediction.updated_at,
   ]
-
+  
   payload
 }
 

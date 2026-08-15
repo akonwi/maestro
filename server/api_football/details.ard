@@ -208,7 +208,7 @@ private fn decode_lineup_players(item: Any, field: Str) [LineupPlayer] {
           err(_) => (),
         }
       }
-      deref out
+      out.@
     },
     err(_) => [],
   }
@@ -262,7 +262,7 @@ private fn decode_team_players(item: Any) TeamPlayers!decode::Err {
     TeamPlayers{
       team_id: team_id,
       team_name: team_name,
-      players: deref players,
+      players: players.@,
     },
   )
 }

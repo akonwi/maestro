@@ -5,10 +5,10 @@ use maestro/test_helpers
 
 test fn create_then_consume_yields_email() Void!Str {
   let app = try test_helpers::build_app()
-
+  
   let token = try magic_links::create(app, "ada@example.com")
   try testing::assert(token.size() == 64, "token is 32 bytes hex-encoded (64 chars)")
-
+  
   let email = try magic_links::consume(app, token)
   try testing::assert(email == "ada@example.com", "consume returns the original email")
   testing::pass()
@@ -16,10 +16,10 @@ test fn create_then_consume_yields_email() Void!Str {
 
 test fn consume_is_single_use() Void!Str {
   let app = try test_helpers::build_app()
-
+  
   let token = try magic_links::create(app, "ada@example.com")
   try magic_links::consume(app, token)
-
+  
   match magic_links::consume(app, token) {
     ok(_) => testing::fail("second consume should fail"),
     err(message) => {
@@ -31,7 +31,7 @@ test fn consume_is_single_use() Void!Str {
 
 test fn consume_unknown_token_fails() Void!Str {
   let app = try test_helpers::build_app()
-
+  
   match magic_links::consume(app, "not-a-real-token") {
     ok(_) => testing::fail("bogus token should not consume"),
     err(message) => {

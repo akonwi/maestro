@@ -29,7 +29,7 @@ private fn register_routes(router: mut dram::App, a: app::App) {
       err(message) => res.json(http::StatusInternalServerError, ["error": message]),
     }
   })
-
+  
   router.get("/admin/leagues/search", fn(req: dram::Request, res: mut dram::Response) {
     try authorize(a, req) -> _ { unauthorized(res) }
     let query = strings::TrimSpace(req.query("q").or(""))
@@ -44,7 +44,7 @@ private fn register_routes(router: mut dram::App, a: app::App) {
       },
     }
   })
-
+  
   router.post("/admin/competitions", fn(req: dram::Request, res: mut dram::Response) {
     try authorize(a, req) -> _ { unauthorized(res) }
     let body = Str::from(req.body)
@@ -64,7 +64,7 @@ private fn register_routes(router: mut dram::App, a: app::App) {
 // ─── Authorization ──────────────────────────────────────────────────────
 
 private fn authorize(a: app::App, req: dram::Request) Void!Str {
-  let auth = req.header("Authorization").or("")
+  let auth = req.headers.get("Authorization").or("")
   let token = match auth.starts_with("Bearer ") {
     true => strings::TrimSpace(strings::TrimPrefix(auth, "Bearer ")),
     false => "",
@@ -125,7 +125,7 @@ private fn search_json(results: [leagues::SearchResult]) [Any] {
     ]
     out.push(entry)
   }
-  deref out
+  out.@
 }
 
 private fn to_json_list(list: [competitions::Competition]) [Any] {
@@ -133,7 +133,7 @@ private fn to_json_list(list: [competitions::Competition]) [Any] {
   for comp in list {
     out.push(to_json(comp))
   }
-  deref out
+  out.@
 }
 
 private fn to_json(comp: competitions::Competition) [Str: Any] {
