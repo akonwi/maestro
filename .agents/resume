@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="${HOME}/.local/bin:${PATH}"
+
+for command_name in ard bun git go gopls migr node; do
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    echo "${command_name} is missing; rerun .agents/setup." >&2
+    exit 1
+  fi
+done
+
+if [[ "$(ard version)" != "v0.36.0" ]]; then
+  echo "Ard v0.36.0 is required; rerun .agents/setup." >&2
+  exit 1
+fi
+
+if ! go version | grep -Fq "go1.26.5"; then
+  echo "Go 1.26.5 is required; rerun .agents/setup." >&2
+  exit 1
+fi
+
+if [[ "$(bun --version)" != "1.3.10" ]]; then
+  echo "Bun 1.3.10 is required; rerun .agents/setup." >&2
+  exit 1
+fi
+
+if [[ "$(node --version)" != "v24.19.0" ]]; then
+  echo "Node.js 24.19.0 is required; rerun .agents/setup." >&2
+  exit 1
+fi
+
+if [[ ! -x "${HOME}/.local/share/migr-v0.1.1/migr" ]]; then
+  echo "migr v0.1.1 is missing; rerun .agents/setup." >&2
+  exit 1
+fi
+
+echo "Orb resumed; Maestro has no local services to reconnect."
