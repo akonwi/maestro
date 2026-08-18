@@ -80,6 +80,7 @@ export function createHarness(opts: HarnessOptions) {
     // Order matters only if we had FK enforcement on; SQLite defaults to
     // off, but we still delete children before parents for clarity.
     db.exec(`
+      DELETE FROM login_attempts;
       DELETE FROM sessions;
       DELETE FROM group_members;
       DELETE FROM groups;

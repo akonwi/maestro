@@ -34,8 +34,10 @@ body,
 html {
   overflow-x: hidden;
 }
-a {
+a:not(.btn) {
   color: inherit;
+}
+a {
   text-decoration: none;
 }
 button,

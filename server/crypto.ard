@@ -1,6 +1,8 @@
 use go:bytes
 use go:crypto/rand
 use go:encoding/hex
+use go:fmt
+use go:math/big
 
 // Cryptographic helpers. Small enough to stay one file.
 
@@ -13,4 +15,9 @@ fn generate_token(n: Int) Str!Str {
   mut buf = bytes::Repeat(mut seed, n)
   try rand::Read(mut buf)
   Result::ok(hex::EncodeToString(mut buf))
+}
+
+fn generate_numeric_code() Str!Str {
+  let number = try rand::Int(rand::Reader, big::NewInt(1_000_000))
+  Result::ok(fmt::Sprintf("%06d", number.Int64()))
 }
