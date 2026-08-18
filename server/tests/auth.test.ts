@@ -24,29 +24,41 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 // POST /auth/request
 // Body: { email }
-// -> 204 (always; we never leak whether the email is known)
-// Side effect: a magic_links row is created for `email`.
+// -> 200 { attempt_id, claim_token, expires_in }
+// Side effect: linked login_attempts + magic_links rows are created.
 // ---------------------------------------------------------------------------
 
 describe("POST /auth/request", () => {
-  it("returns 204 and creates a magic_links row", async () => {
-    const res = await harness.api("POST", "/auth/request", {
-      body: { email: "ada@example.com" },
+  it("returns claim credentials and creates a linked login attempt", async () => {
+    const res = await harness.api<{
+      attempt_id: string;
+      claim_token: string;
+      expires_in: number;
+    }>("POST", "/auth/request", { body: { email: "ada@example.com" } });
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({
+      attempt_id: expect.any(String),
+      claim_token: expect.any(String),
+      expires_in: 900,
     });
-    expect(res.status).toBe(204);
-    expect(res.text).toBe("");
+    expect(res.json?.attempt_id.length).toBe(32);
+    expect(res.json?.claim_token.length).toBe(64);
 
     const row = harness.sqlOne<{
       email: string;
-      token: string;
+      magic_token: string;
+      code: string;
+      claim_token: string;
       consumed_at: number | null;
     }>(
-      "SELECT email, token, consumed_at FROM magic_links WHERE email = ?;",
-      "ada@example.com",
+      "SELECT la.email, la.magic_token, la.code, la.claim_token, ml.consumed_at FROM login_attempts la JOIN magic_links ml ON ml.token = la.magic_token WHERE la.id = ?;",
+      res.json?.attempt_id,
     );
     expect(row).not.toBeNull();
     expect(row?.email).toBe("ada@example.com");
-    expect(row?.token.length).toBe(64); // 32 random bytes hex-encoded
+    expect(row?.magic_token.length).toBe(64);
+    expect(row?.code).toMatch(/^\d{6}$/);
+    expect(row?.claim_token).toBe(res.json?.claim_token);
     expect(row?.consumed_at).toBeNull();
   });
 
@@ -70,6 +82,284 @@ describe("POST /auth/request", () => {
     const res = await harness.api("POST", "/auth/request", { body: {} });
     expect(res.status).toBe(400);
     expect(res.json).toMatchObject({ error: expect.stringContaining("email") });
+  });
+});
+
+type LoginAttempt = {
+  attempt_id: string;
+  claim_token: string;
+  expires_in: number;
+};
+
+type CompletedLogin = {
+  status: "complete";
+  session_token: string;
+  user: { id: number; email: string; display_name: string | null };
+};
+
+async function requestAttempt(email = "ada@example.com") {
+  const res = await harness.api<LoginAttempt>("POST", "/auth/request", {
+    body: { email },
+  });
+  if (!res.json) throw new Error("login attempt was not created");
+  return res.json;
+}
+
+// ---------------------------------------------------------------------------
+// POST /auth/attempt/claim and /auth/attempt/code
+// The claim endpoint polls the server-mediated handoff. The code endpoint is
+// a rate-limited fallback that completes the same attempt in its origin app.
+// ---------------------------------------------------------------------------
+
+describe("login-attempt handoff", () => {
+  it("stays pending until its email link is verified", async () => {
+    const attempt = await requestAttempt();
+
+    const pending = await harness.api<{ status: string }>(
+      "POST",
+      "/auth/attempt/claim",
+      { body: attempt },
+    );
+    expect(pending.status).toBe(202);
+    expect(pending.json).toEqual({ status: "pending" });
+
+    const row = harness.sqlOne<{ magic_token: string }>(
+      "SELECT magic_token FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+    const verified = await harness.api<{ session_token: string }>(
+      "POST",
+      "/auth/verify",
+      { body: { token: row.magic_token } },
+    );
+    expect(verified.status).toBe(200);
+
+    const claimed = await harness.api<CompletedLogin>(
+      "POST",
+      "/auth/attempt/claim",
+      { body: attempt },
+    );
+    expect(claimed.status).toBe(200);
+    expect(claimed.json).toEqual({
+      status: "complete",
+      session_token: verified.json?.session_token,
+      user: {
+        id: expect.any(Number),
+        email: "ada@example.com",
+        display_name: "ada",
+      },
+    });
+  });
+
+  it("completes in the originating app with the emailed code", async () => {
+    const attempt = await requestAttempt();
+    const row = harness.sqlOne<{ code: string }>(
+      "SELECT code FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+
+    const completed = await harness.api<CompletedLogin>(
+      "POST",
+      "/auth/attempt/code",
+      { body: { ...attempt, code: row.code } },
+    );
+    expect(completed.status).toBe(200);
+    expect(completed.json?.status).toBe("complete");
+    expect(completed.json?.session_token).toBeString();
+    expect(completed.json?.user.email).toBe("ada@example.com");
+    const sessionToken = completed.json?.session_token;
+
+    // A response can be lost after the server commits. Retrying returns the
+    // same session instead of consuming the attempt a second time.
+    const retried = await harness.api<CompletedLogin>(
+      "POST",
+      "/auth/attempt/code",
+      { body: { ...attempt, code: row.code } },
+    );
+    expect(retried.status).toBe(200);
+    expect(retried.json?.session_token).toBe(sessionToken);
+  });
+
+  it("retires the alternate magic link after code redemption", async () => {
+    const attempt = await requestAttempt();
+    const row = harness.sqlOne<{ code: string; magic_token: string }>(
+      "SELECT code, magic_token FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+
+    const completed = await harness.api<CompletedLogin>(
+      "POST",
+      "/auth/attempt/code",
+      { body: { ...attempt, code: row.code } },
+    );
+    expect(completed.status).toBe(200);
+
+    const verified = await harness.api("POST", "/auth/verify", {
+      body: { token: row.magic_token },
+    });
+    expect(verified.status).toBe(400);
+    expect(
+      harness.sqlOne<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM sessions;",
+      )?.count,
+    ).toBe(1);
+  });
+
+  it("cannot resurrect a code-created session with the magic link after logout", async () => {
+    const attempt = await requestAttempt();
+    const row = harness.sqlOne<{ code: string; magic_token: string }>(
+      "SELECT code, magic_token FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+
+    const completed = await harness.api<CompletedLogin>(
+      "POST",
+      "/auth/attempt/code",
+      { body: { ...attempt, code: row.code } },
+    );
+    if (!completed.json) throw new Error("login attempt was not completed");
+    const loggedOut = await harness.api("POST", "/auth/logout", {
+      body: {},
+      headers: { Authorization: `Bearer ${completed.json.session_token}` },
+    });
+    expect(loggedOut.status).toBe(204);
+
+    const verified = await harness.api("POST", "/auth/verify", {
+      body: { token: row.magic_token },
+    });
+    expect(verified.status).toBe(400);
+    expect(
+      harness.sqlOne<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM sessions;",
+      )?.count,
+    ).toBe(0);
+  });
+
+  it("treats expiry while retiring the magic link as an invalid code", async () => {
+    const attempt = await requestAttempt();
+    const row = harness.sqlOne<{ code: string; magic_token: string }>(
+      "SELECT code, magic_token FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+    harness.sqlOne(
+      "UPDATE magic_links SET expires_at = 0 WHERE token = ? RETURNING token;",
+      row.magic_token,
+    );
+
+    const completed = await harness.api("POST", "/auth/attempt/code", {
+      body: { ...attempt, code: row.code },
+    });
+    expect(completed.status).toBe(400);
+    expect(completed.json).toEqual({
+      error: "verification code is invalid or expired",
+    });
+    expect(
+      harness.sqlOne<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM sessions;",
+      )?.count,
+    ).toBe(0);
+  });
+
+  it("mints at most one session when code and link verification race", async () => {
+    const attempt = await requestAttempt();
+    const row = harness.sqlOne<{ code: string; magic_token: string }>(
+      "SELECT code, magic_token FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+
+    const [codeResult, linkResult] = await Promise.all([
+      harness.api<CompletedLogin>("POST", "/auth/attempt/code", {
+        body: { ...attempt, code: row.code },
+      }),
+      harness.api<{ session_token: string }>("POST", "/auth/verify", {
+        body: { token: row.magic_token },
+      }),
+    ]);
+
+    expect([200, 400]).toContain(codeResult.status);
+    expect([200, 400]).toContain(linkResult.status);
+    expect(codeResult.status === 200 || linkResult.status === 200).toBe(true);
+    expect(
+      harness.sqlOne<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM sessions;",
+      )?.count,
+    ).toBe(1);
+
+    const returnedTokens = [
+      codeResult.json?.session_token,
+      linkResult.json?.session_token,
+    ].filter((token): token is string => Boolean(token));
+    expect(new Set(returnedTokens).size).toBe(1);
+
+    const claimed = await harness.api<CompletedLogin>(
+      "POST",
+      "/auth/attempt/claim",
+      { body: attempt },
+    );
+    expect(claimed.status).toBe(200);
+    expect(claimed.json?.session_token).toBe(returnedTokens[0]);
+  });
+
+  it("rejects claims made without the private claim token", async () => {
+    const attempt = await requestAttempt();
+    const res = await harness.api("POST", "/auth/attempt/claim", {
+      body: { ...attempt, claim_token: "wrong" },
+    });
+    expect(res.status).toBe(400);
+    expect(res.json).toEqual({
+      error: "login attempt is invalid or expired",
+    });
+  });
+
+  it("locks the fallback code after five incorrect guesses", async () => {
+    const attempt = await requestAttempt();
+    const row = harness.sqlOne<{ code: string }>(
+      "SELECT code FROM login_attempts WHERE id = ?;",
+      attempt.attempt_id,
+    );
+    if (!row) throw new Error("login attempt row was not created");
+
+    for (let i = 0; i < 5; i += 1) {
+      const rejected = await harness.api("POST", "/auth/attempt/code", {
+        body: { ...attempt, code: "wrong" },
+      });
+      expect(rejected.status).toBe(400);
+    }
+    expect(
+      harness.sqlOne<{ code_attempts: number }>(
+        "SELECT code_attempts FROM login_attempts WHERE id = ?;",
+        attempt.attempt_id,
+      )?.code_attempts,
+    ).toBe(5);
+
+    const locked = await harness.api("POST", "/auth/attempt/code", {
+      body: { ...attempt, code: row.code },
+    });
+    expect(locked.status).toBe(400);
+    expect(locked.json).toEqual({
+      error: "verification code is invalid or expired",
+    });
+  });
+
+  it("rejects an expired attempt", async () => {
+    const attempt = await requestAttempt();
+    harness.sqlOne(
+      "UPDATE login_attempts SET expires_at = 0 WHERE id = ? RETURNING id;",
+      attempt.attempt_id,
+    );
+    const res = await harness.api("POST", "/auth/attempt/claim", {
+      body: attempt,
+    });
+    expect(res.status).toBe(400);
+    expect(res.json).toEqual({
+      error: "login attempt is invalid or expired",
+    });
   });
 });
 

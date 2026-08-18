@@ -1,13 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { verifyMagicLink } from '@/lib/auth'
-import { createAuthChannel, isAuthMessage } from '@/lib/auth-channel'
 import { setSessionToken } from '@/lib/session'
-
-// How long to wait for another tab to take over before this tab enters the
-// app itself (i.e. the link was opened on a device with no waiting tab).
-const HANDOFF_TIMEOUT_MS = 1500
 
 const verificationRequests = new Map<
   string,
@@ -32,9 +27,7 @@ export const Route = createFileRoute('/auth/verify')({
 
 function VerifyPage() {
   const { token } = Route.useSearch()
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [handedOff, setHandedOff] = useState(false)
   const verify = useMutation({
     mutationFn: verifyMagicLinkOnce,
     onSuccess: result => {
@@ -48,38 +41,8 @@ function VerifyPage() {
     if (token) verify.mutate(token)
   }, [token, verify.mutate])
 
-  // After verifying, offer the sign-in to the original tab. If it acks,
-  // show a "close this tab" screen; otherwise enter the app here.
-  useEffect(() => {
-    if (!verify.isSuccess) return
-    const channel = createAuthChannel()
-    if (!channel) {
-      navigate({ to: '/', replace: true })
-      return
-    }
-    let done = false
-    channel.onmessage = event => {
-      if (isAuthMessage(event.data) && event.data.type === 'ack') {
-        done = true
-        setHandedOff(true)
-        // Try to close this tab. Browsers only allow closing script-opened
-        // windows, so this often no-ops (e.g. a Gmail-opened tab) — the
-        // "you can close this tab" screen is the fallback.
-        window.close()
-      }
-    }
-    channel.postMessage({ type: 'signed-in' })
-    const timer = setTimeout(() => {
-      if (!done) navigate({ to: '/', replace: true })
-    }, HANDOFF_TIMEOUT_MS)
-    return () => {
-      clearTimeout(timer)
-      channel.close()
-    }
-  }, [verify.isSuccess, navigate])
-
   if (!token) return <InvalidLink />
-  if (handedOff) return <HandedOff />
+  if (verify.isSuccess) return <Verified />
 
   return (
     <main className='auth-page' id='main-content'>
@@ -111,7 +74,7 @@ function VerifyPage() {
   )
 }
 
-function HandedOff() {
+function Verified() {
   return (
     <main className='auth-page' id='main-content'>
       <div
@@ -119,10 +82,13 @@ function HandedOff() {
         className='notice-card success centered-card'
         role='status'
       >
-        <h1>You’re signed in</h1>
+        <h1>Email verified</h1>
         <p className='body'>
-          You can close this tab and return to Maestro in your other tab.
+          Return to Maestro to finish signing in, or continue in this browser.
         </p>
+        <Link className='btn' data-variant='primary' to='/'>
+          Continue in this browser
+        </Link>
       </div>
     </main>
   )

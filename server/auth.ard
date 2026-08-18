@@ -6,6 +6,7 @@ use dram/context
 use go:fmt
 use maestro/app
 use maestro/email
+use maestro/login_attempts
 use maestro/magic_links
 use maestro/sessions
 use maestro/users
@@ -22,10 +23,17 @@ fn register(router: mut dram::App, a: app::App) {
   router.post("/auth/request", fn(req: dram::Request, res: mut dram::Response) {
     let raw_address = try decode_field(req, "email") -> err { set_error(res, err) }
     let address = users::normalize_email(raw_address)
-    match send_magic_link(a, address) {
-      ok => { res.status = 204 },
+    match request_login(a, address) {
+      ok(attempt) => {
+        let payload: [Str: Any] = [
+          "attempt_id": attempt.id,
+          "claim_token": attempt.claim_token,
+          "expires_in": a.config.magic_link_ttl_secs,
+        ]
+        res.json(http::StatusOK, payload)
+      },
       err(message) => {
-        fmt::Println("magic-link request failed for {address}: {message}")
+        fmt::Println("login request failed for {address}: {message}")
         res.json(http::StatusInternalServerError, ["error": "could not request sign-in link"])
       },
     }
@@ -52,6 +60,44 @@ fn register(router: mut dram::App, a: app::App) {
           false => {
             fmt::Println("auth verification failed: {message}")
             res.json(http::StatusInternalServerError, ["error": "could not verify sign-in link"])
+          },
+        }
+      },
+    }
+  })
+  router.post("/auth/attempt/claim", fn(req: dram::Request, res: mut dram::Response) {
+    let id = try decode_field(req, "attempt_id") -> err { set_error(res, err) }
+    let claim_token = try decode_field(req, "claim_token") -> err { set_error(res, err) }
+    match claim_attempt(a, id, claim_token) {
+      ok(result) => {
+        match result.complete {
+          true => res.json(http::StatusOK, result.payload),
+          false => res.json(http::StatusAccepted, result.payload),
+        }
+      },
+      err(message) => {
+        match is_login_attempt_error(message) {
+          true => set_error(res, "login attempt is invalid or expired"),
+          false => {
+            fmt::Println("login-attempt claim failed: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not complete sign-in"])
+          },
+        }
+      },
+    }
+  })
+  router.post("/auth/attempt/code", fn(req: dram::Request, res: mut dram::Response) {
+    let id = try decode_field(req, "attempt_id") -> err { set_error(res, err) }
+    let claim_token = try decode_field(req, "claim_token") -> err { set_error(res, err) }
+    let code = try decode_field(req, "code") -> err { set_error(res, err) }
+    match redeem_code(a, id, claim_token, code) {
+      ok(result) => res.json(http::StatusOK, result.payload),
+      err(message) => {
+        match is_login_attempt_error(message) or is_magic_link_error(message) {
+          true => set_error(res, "verification code is invalid or expired"),
+          false => {
+            fmt::Println("login code redemption failed: {message}")
+            res.json(http::StatusInternalServerError, ["error": "could not verify sign-in code"])
           },
         }
       },
@@ -108,20 +154,112 @@ private fn is_magic_link_error(message: Str) Bool {
   message == "magic link already used" or message == "magic link expired" or message == "invalid or unknown magic link"
 }
 
+private fn is_login_attempt_error(message: Str) Bool {
+  message == login_attempts::INVALID_ATTEMPT or message == login_attempts::INVALID_CODE
+}
+
 // We deliberately never leak whether the email is known.
-private fn send_magic_link(a: app::App, address: Str) Void!Str {
-  let token = try magic_links::create(a, address)
-  let link = "{a.config.server_base_url}/auth/verify?token={token}"
-  let text = "Click the link to sign in to Maestro:\n\n{link}\n\nThe link expires soon and can only be used once."
-  let html = "<p>Use the link below to sign in to Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>This link expires soon and can only be used once.</p>"
+private fn request_login(a: app::App, address: Str) login_attempts::LoginAttempt!Str {
+  let attempt = try login_attempts::create(a, address)
+  let link = "{a.config.server_base_url}/auth/verify?token={attempt.magic_token}"
+  let text = "Click the link to sign in to Maestro:\n\n{link}\n\nIf the link opens in your browser, return to Maestro to finish signing in. You can also enter this code in Maestro:\n\n{attempt.code}\n\nThe link and code expire soon."
+  let html = "<p>Use the link below to sign in to Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>If the link opens in your browser, return to Maestro to finish signing in.</p><p>Or enter this code in Maestro:</p><p><strong>{attempt.code}</strong></p><p>The link and code expire soon.</p>"
 
   // A send failure shouldn't leak upstream — the user can retry.
   match email::send(a.config, address, "Your Maestro sign-in link", text, html) {
-    ok => Result::ok(()),
+    ok => Result::ok(attempt),
     err(message) => {
       fmt::Println("email send failed for {address}: {message}")
-      Result::ok(())
+      Result::ok(attempt)
     },
+  }
+}
+
+struct AttemptClaim {
+  complete: Bool,
+  payload: [Str: Any],
+}
+
+private fn claim_attempt(a: app::App, id: Str, claim_token: Str) AttemptClaim!Str {
+  let approved = try login_attempts::find_approved(a, id, claim_token)
+  match approved {
+    attempt => Result::ok(completed_claim(attempt)),
+    _ => Result::ok(AttemptClaim{complete: false, payload: ["status": "pending"]}),
+  }
+}
+
+private fn redeem_code(a: app::App, id: Str, claim_token: Str, code: Str) AttemptClaim!Str {
+  let tx = try a.db.begin()
+  match redeem_code_tx(a, tx, id, claim_token, code) {
+    ok(result) => {
+      match tx.commit() {
+        ok => Result::ok(result),
+        err(message) => Result::err("committing login code redemption: {message}"),
+      }
+    },
+    err(message) => {
+      // Incorrect guesses increment code_attempts and must be committed.
+      match message == login_attempts::INVALID_CODE {
+        true => {
+          match tx.commit() {
+            ok => Result::err(message),
+            err(commit_message) => Result::err("committing rejected login code: {commit_message}"),
+          }
+        },
+        false => {
+          match tx.rollback() {
+            ok => Result::err(message),
+            err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+          }
+        },
+      }
+    },
+  }
+}
+
+private fn redeem_code_tx(
+  a: app::App,
+  tx: sql::Transaction,
+  id: Str,
+  claim_token: Str,
+  code: Str,
+) AttemptClaim!Str {
+  let existing = try login_attempts::find_approved_tx(tx, id, claim_token)
+  match existing {
+    attempt => Result::ok(completed_claim(attempt)),
+    _ => {
+      let magic_token = try login_attempts::consume_code_tx(tx, id, claim_token, code)
+      let address = try magic_links::consume_tx(tx, magic_token)
+      let user = try users::get_or_create_by_email_tx(tx, address)
+      let session = try sessions::mint_tx(tx, a, user.id)
+      try login_attempts::attach_code_session_tx(tx, id, claim_token, session.token)
+      Result::ok(
+        completed_claim(
+          login_attempts::ApprovedAttempt{
+            session_token: session.token,
+            user_id: user.id,
+            email: user.email,
+            display_name: user.display_name,
+          },
+        ),
+      )
+    },
+  }
+}
+
+private fn completed_claim(attempt: login_attempts::ApprovedAttempt) AttemptClaim {
+  let user_payload: [Str: Any] = [
+    "id": attempt.user_id,
+    "email": attempt.email,
+    "display_name": attempt.display_name,
+  ]
+  AttemptClaim{
+    complete: true,
+    payload: [
+      "status": "complete",
+      "session_token": attempt.session_token,
+      "user": user_payload,
+    ],
   }
 }
 
@@ -147,6 +285,7 @@ private fn verify_tx(a: app::App, tx: sql::Transaction, token: Str) [Str: Any]!S
   let addr = try magic_links::consume_tx(tx, token)
   let user = try users::get_or_create_by_email_tx(tx, addr)
   let session = try sessions::mint_tx(tx, a, user.id)
+  try login_attempts::attach_magic_session_tx(tx, token, session.token)
 
   let user_payload: [Str: Any] = [
     "id": user.id,

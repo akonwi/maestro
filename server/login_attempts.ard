@@ -1,0 +1,184 @@
+use decode
+use maestro/app
+use maestro/crypto
+use sql
+use go:time
+
+let MAX_CODE_ATTEMPTS = 5
+let INVALID_ATTEMPT = "login attempt is invalid or expired"
+let INVALID_CODE = "verification code is invalid or expired"
+
+struct LoginAttempt {
+  id: Str,
+  claim_token: Str,
+  code: Str,
+  magic_token: Str,
+  expires_at: Int64,
+}
+
+struct ApprovedAttempt {
+  session_token: Str,
+  user_id: Int,
+  email: Str,
+  display_name: Str?,
+}
+
+// Create both sides of a login handoff atomically: the originating app keeps
+// id + claim_token, while the email carries the magic token and short code.
+fn create(a: app::App, email: Str) LoginAttempt!Str {
+  let id = try crypto::generate_token(16)
+  let claim_token = try crypto::generate_token(32)
+  let code = try crypto::generate_numeric_code()
+  let magic_token = try crypto::generate_token(32)
+  let now = time::Now().UnixMilli()
+  let expires_at = now + Int64::from(a.config.magic_link_ttl_secs) * 1000
+  let attempt = LoginAttempt{
+    id: id,
+    claim_token: claim_token,
+    code: code,
+    magic_token: magic_token,
+    expires_at: expires_at,
+  }
+  let tx = try a.db.begin()
+  match create_tx(tx, email, attempt) {
+    ok => {
+      match tx.commit() {
+        ok => Result::ok(attempt),
+        err(message) => Result::err("committing login attempt creation: {message}"),
+      }
+    },
+    err(message) => {
+      match tx.rollback() {
+        ok => Result::err(message),
+        err(rollback_message) => Result::err("{message}; rollback failed: {rollback_message}"),
+      }
+    },
+  }
+}
+
+private fn create_tx(tx: sql::Transaction, email: Str, attempt: LoginAttempt) Void!Str {
+  try tx.query(
+    "INSERT INTO magic_links (token, email, expires_at) VALUES (@token, @email, @expires_at)",
+  ).run(["token": attempt.magic_token, "email": email, "expires_at": attempt.expires_at])
+  tx.query(
+    "INSERT INTO login_attempts (id, email, claim_token, code, magic_token, expires_at) VALUES (@id, @email, @claim_token, @code, @magic_token, @expires_at)",
+  ).run([
+    "id": attempt.id,
+    "email": email,
+    "claim_token": attempt.claim_token,
+    "code": attempt.code,
+    "magic_token": attempt.magic_token,
+    "expires_at": attempt.expires_at,
+  ])
+}
+
+// Link verification creates a browser session as before and also makes that
+// same session claimable by the app that initiated this attempt. Plain magic
+// links (such as group invitations) have no matching row and are unaffected.
+fn attach_magic_session_tx(tx: sql::Transaction, magic_token: Str, session_token: Str) Void!Str {
+  let now = time::Now().UnixMilli()
+  tx.query(
+    "UPDATE login_attempts SET approved_at = COALESCE(approved_at, @now), session_token = COALESCE(session_token, @session_token) WHERE magic_token = @magic_token",
+  ).run(["now": now, "session_token": session_token, "magic_token": magic_token])
+}
+
+fn attach_code_session_tx(
+  tx: sql::Transaction,
+  id: Str,
+  claim_token: Str,
+  session_token: Str,
+) Void!Str {
+  let now = time::Now().UnixMilli()
+  tx.query(
+    "UPDATE login_attempts SET approved_at = @now, session_token = @session_token WHERE id = @id AND claim_token = @claim_token AND session_token IS NULL",
+  ).run(["now": now, "session_token": session_token, "id": id, "claim_token": claim_token])
+}
+
+// Return none while the email is still awaiting approval. Unknown, expired,
+// or incorrectly claimed attempts all collapse to the same public error.
+fn find_approved(a: app::App, id: Str, claim_token: Str) ApprovedAttempt?!Str {
+  let now = time::Now().UnixMilli()
+  let rows = try a.db.query(approved_query()).all([
+    "id": id,
+    "claim_token": claim_token,
+    "now": now,
+  ])
+  approved_from_rows(rows)
+}
+
+fn find_approved_tx(tx: sql::Transaction, id: Str, claim_token: Str) ApprovedAttempt?!Str {
+  let now = time::Now().UnixMilli()
+  let rows = try tx.query(approved_query()).all([
+    "id": id,
+    "claim_token": claim_token,
+    "now": now,
+  ])
+  approved_from_rows(rows)
+}
+
+// Increment before comparing so every submitted code, including a correct
+// one, consumes one of the five allowed attempts. The caller commits INVALID_CODE
+// errors so incorrect guesses remain counted.
+fn consume_code_tx(tx: sql::Transaction, id: Str, claim_token: Str, provided: Str) Str!Str {
+  let now = time::Now().UnixMilli()
+  let rows = try tx.query(
+    "UPDATE login_attempts SET code_attempts = code_attempts + 1 WHERE id = @id AND claim_token = @claim_token AND expires_at > @now AND approved_at IS NULL AND code_attempts < @max_attempts RETURNING magic_token, code",
+  ).all([
+    "id": id,
+    "claim_token": claim_token,
+    "now": now,
+    "max_attempts": MAX_CODE_ATTEMPTS,
+  ])
+  match rows.at(0) {
+    row => {
+      let magic_token = try decode::run(row, decode::field("magic_token", decode::string)).map_err(describe)
+      let expected = try decode::run(row, decode::field("code", decode::string)).map_err(describe)
+      match expected == provided {
+        true => Result::ok(magic_token),
+        false => Result::err(INVALID_CODE),
+      }
+    },
+    _ => Result::err(INVALID_CODE),
+  }
+}
+
+private fn approved_query() Str {
+  "SELECT la.session_token, u.id AS user_id, u.email, u.display_name FROM login_attempts la LEFT JOIN sessions s ON s.token = la.session_token LEFT JOIN users u ON u.id = s.user_id WHERE la.id = @id AND la.claim_token = @claim_token AND la.expires_at > @now LIMIT 1"
+}
+
+private fn approved_from_rows(rows: [Any]) ApprovedAttempt?!Str {
+  match rows.at(0) {
+    row => {
+      let session_token = try decode::run(
+        row,
+        decode::field("session_token", decode::nullable(decode::string)),
+      ).map_err(describe)
+      match session_token {
+        token => {
+          let user_id = try decode::run(row, decode::field("user_id", decode::int)).map_err(describe)
+          let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
+          let display_name = try decode::run(
+            row,
+            decode::field("display_name", decode::nullable(decode::string)),
+          ).map_err(describe)
+          Result::ok(
+            Maybe::new(
+              ApprovedAttempt{
+                session_token: token,
+                user_id: user_id,
+                email: email,
+                display_name: display_name,
+              },
+            ),
+          )
+        },
+        _ => Result::ok(Maybe::new()),
+      }
+    },
+    _ => Result::err(INVALID_ATTEMPT),
+  }
+}
+
+private fn describe(e: decode::Err) Str {
+  "decoding login attempt row: {e.to_str()}"
+}

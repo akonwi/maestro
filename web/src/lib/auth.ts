@@ -6,10 +6,20 @@ export type User = {
   display_name: string | null
 }
 
-type VerifyResponse = {
+export type AuthenticatedSession = {
   session_token: string
   user: User
 }
+
+export type LoginAttempt = {
+  attempt_id: string
+  claim_token: string
+  expires_in: number
+}
+
+export type CompletedLogin = AuthenticatedSession & { status: 'complete' }
+
+export type LoginClaim = { status: 'pending' } | CompletedLogin
 
 /** API error carrying the HTTP status so callers can tell a definitive
  * auth rejection (401/403) apart from a transient failure. */
@@ -57,11 +67,30 @@ async function authRequest<T>(
 }
 
 export function requestMagicLink(email: string) {
-  return authRequest<void>('/auth/request', { body: { email } })
+  return authRequest<LoginAttempt>('/auth/request', { body: { email } })
+}
+
+export function claimLoginAttempt(attempt: LoginAttempt) {
+  return authRequest<LoginClaim>('/auth/attempt/claim', {
+    body: {
+      attempt_id: attempt.attempt_id,
+      claim_token: attempt.claim_token,
+    },
+  })
+}
+
+export function redeemLoginCode(attempt: LoginAttempt, code: string) {
+  return authRequest<CompletedLogin>('/auth/attempt/code', {
+    body: {
+      attempt_id: attempt.attempt_id,
+      claim_token: attempt.claim_token,
+      code,
+    },
+  })
 }
 
 export function verifyMagicLink(token: string) {
-  return authRequest<VerifyResponse>('/auth/verify', { body: { token } })
+  return authRequest<AuthenticatedSession>('/auth/verify', { body: { token } })
 }
 
 export function currentUserQuery(token: string | null) {
