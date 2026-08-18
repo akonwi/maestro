@@ -93,7 +93,7 @@ describe("GET /auth/verify?token=X", () => {
       "SELECT token, consumed_at FROM magic_links WHERE email = ?;",
       "ada@example.com",
     );
-    const token = before!.token;
+    const token = before?.token;
 
     const res = await harness.api("GET", `/auth/verify?token=${token}`);
     expect(res.status).toBe(302);
@@ -132,7 +132,8 @@ describe("POST /auth/verify", () => {
       "SELECT token FROM magic_links WHERE email = ? AND consumed_at IS NULL ORDER BY expires_at DESC LIMIT 1;",
       email,
     );
-    return row!.token;
+    if (!row) throw new Error("magic link was not created");
+    return row.token;
   }
 
   it("returns 200 with session_token and user; consumes the link; mints a session", async () => {
@@ -143,8 +144,8 @@ describe("POST /auth/verify", () => {
     }>("POST", "/auth/verify", { body: { token } });
 
     expect(res.status).toBe(200);
-    expect(res.json!.session_token.length).toBe(64);
-    expect(res.json!.user).toEqual({
+    expect(res.json?.session_token.length).toBe(64);
+    expect(res.json?.user).toEqual({
       id: expect.any(Number),
       email: "ada@example.com",
       display_name: "ada",
@@ -160,9 +161,9 @@ describe("POST /auth/verify", () => {
     // Session persisted.
     const session = harness.sqlOne<{ user_id: number }>(
       "SELECT user_id FROM sessions WHERE token = ?;",
-      res.json!.session_token,
+      res.json?.session_token,
     );
-    expect(session?.user_id).toBe(res.json!.user.id);
+    expect(session?.user_id).toBe(res.json?.user.id);
   });
 
   it("is idempotent per email: same email on second verify returns the same user id", async () => {
@@ -184,7 +185,7 @@ describe("POST /auth/verify", () => {
       },
     );
 
-    expect(first.json!.user.id).toBe(second.json!.user.id);
+    expect(first.json?.user.id).toBe(second.json?.user.id);
   });
 
   it("returns 400 when the token was already used", async () => {
@@ -230,14 +231,16 @@ describe("POST /auth/logout", () => {
       "SELECT token FROM magic_links WHERE email = ? AND consumed_at IS NULL ORDER BY expires_at DESC LIMIT 1;",
       email,
     );
+    if (!link) throw new Error("magic link was not created");
     const res = await harness.api<{ session_token: string }>(
       "POST",
       "/auth/verify",
       {
-        body: { token: link!.token },
+        body: { token: link.token },
       },
     );
-    return res.json!.session_token;
+    if (!res.json) throw new Error("session was not created");
+    return res.json.session_token;
   }
 
   it("returns 204 and deletes the session", async () => {
@@ -291,14 +294,16 @@ describe("GET /auth/me", () => {
       "SELECT token FROM magic_links WHERE email = ? AND consumed_at IS NULL ORDER BY expires_at DESC LIMIT 1;",
       email,
     );
+    if (!link) throw new Error("magic link was not created");
     const res = await harness.api<{ session_token: string }>(
       "POST",
       "/auth/verify",
       {
-        body: { token: link!.token },
+        body: { token: link.token },
       },
     );
-    return res.json!.session_token;
+    if (!res.json) throw new Error("session was not created");
+    return res.json.session_token;
   }
 
   it("returns the current user for a valid session", async () => {

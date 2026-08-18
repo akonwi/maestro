@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "bun:test";
 import { createHarness } from "../test-support/harness";
 
 const ADMIN_TOKEN = "test-admin-token";
@@ -47,35 +54,51 @@ describe("admin competitions", () => {
   });
 
   it("creates a competition with defaults and lists it", async () => {
-    const created = await harness.api<Competition>("POST", "/admin/competitions", {
-      ...authed,
-      body: { api_football_league_id: 39, name: "Premier League" },
-    });
+    const created = await harness.api<Competition>(
+      "POST",
+      "/admin/competitions",
+      {
+        ...authed,
+        body: { api_football_league_id: 39, name: "Premier League" },
+      },
+    );
     expect(created.status).toBe(200);
     expect(created.json?.kind).toBe("league");
     expect(created.json?.is_active).toBe(true);
 
-    const list = await harness.api<Competition[]>("GET", "/admin/competitions", authed);
+    const list = await harness.api<Competition[]>(
+      "GET",
+      "/admin/competitions",
+      authed,
+    );
     expect(list.status).toBe(200);
     const pl = list.json?.find((c) => c.api_football_league_id === 39);
     expect(pl?.name).toBe("Premier League");
   });
 
   it("upserts by league and can deactivate", async () => {
-    const created = await harness.api<Competition>("POST", "/admin/competitions", {
-      ...authed,
-      body: { api_football_league_id: 40, name: "EFL Championship" },
-    });
+    const created = await harness.api<Competition>(
+      "POST",
+      "/admin/competitions",
+      {
+        ...authed,
+        body: { api_football_league_id: 40, name: "EFL Championship" },
+      },
+    );
     expect(created.status).toBe(200);
 
-    const deactivated = await harness.api<Competition>("POST", "/admin/competitions", {
-      ...authed,
-      body: {
-        api_football_league_id: 40,
-        name: "EFL Championship",
-        is_active: false,
+    const deactivated = await harness.api<Competition>(
+      "POST",
+      "/admin/competitions",
+      {
+        ...authed,
+        body: {
+          api_football_league_id: 40,
+          name: "EFL Championship",
+          is_active: false,
+        },
       },
-    });
+    );
     expect(deactivated.status).toBe(200);
     expect(deactivated.json?.id).toBe(created.json?.id as number);
     expect(deactivated.json?.is_active).toBe(false);

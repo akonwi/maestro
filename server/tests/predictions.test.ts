@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "bun:test";
 import { createHarness } from "../test-support/harness";
 
 const harness = createHarness({ id: "predictions", port: 8097 });
@@ -13,18 +20,24 @@ beforeEach(() => {
   harness.resetDb();
 });
 
-async function sessionFor(email: string): Promise<{ token: string; userId: number }> {
+async function sessionFor(
+  email: string,
+): Promise<{ token: string; userId: number }> {
   await harness.api("POST", "/auth/request", { body: { email } });
   const link = harness.sqlOne<{ token: string }>(
     "SELECT token FROM magic_links WHERE email = ? AND consumed_at IS NULL ORDER BY expires_at DESC LIMIT 1;",
     email,
   );
-  const verified = await harness.api<{ session_token: string; user: { id: number } }>(
-    "POST",
-    "/auth/verify",
-    { body: { token: link!.token } },
-  );
-  return { token: verified.json!.session_token, userId: verified.json!.user.id };
+  if (!link) throw new Error("magic link was not created");
+  const verified = await harness.api<{
+    session_token: string;
+    user: { id: number };
+  }>("POST", "/auth/verify", { body: { token: link.token } });
+  if (!verified.json) throw new Error("session was not created");
+  return {
+    token: verified.json.session_token,
+    userId: verified.json.user.id,
+  };
 }
 
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
@@ -41,7 +54,11 @@ describe("predictions", () => {
       headers: bearer(user.token),
     });
     expect(response.status).toBe(200);
-    expect(response.json).toMatchObject({ fixture_id: 100, home_score: 2, away_score: 1 });
+    expect(response.json).toMatchObject({
+      fixture_id: 100,
+      home_score: 2,
+      away_score: 1,
+    });
   });
 
   it("returns 404 when the current user has no prediction", async () => {
@@ -60,7 +77,7 @@ describe("predictions", () => {
       headers: bearer(owner.token),
       body: { name: "Sunday League" },
     });
-    const groupId = created.json!.id;
+    const groupId = created.json?.id;
     harness.sqlOne(
       "INSERT INTO group_members (group_id, user_id, joined_at) VALUES (?, ?, 1) RETURNING user_id;",
       groupId,
@@ -86,7 +103,7 @@ describe("predictions", () => {
     );
     expect(response.status).toBe(200);
     expect(response.json).toHaveLength(2);
-    expect(response.json!.map(prediction => prediction.user.email)).toEqual([
+    expect(response.json?.map((prediction) => prediction.user.email)).toEqual([
       "owner@example.com",
       "member@example.com",
     ]);
@@ -102,7 +119,7 @@ describe("predictions", () => {
 
     const response = await harness.api(
       "GET",
-      `/groups/${created.json!.id}/fixtures/100/predictions`,
+      `/groups/${created.json?.id}/fixtures/100/predictions`,
       { headers: bearer(outsider.token) },
     );
     expect(response.status).toBe(404);

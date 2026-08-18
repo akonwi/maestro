@@ -149,12 +149,17 @@ export function createHarness(opts: HarnessOptions) {
   async function api<T = unknown>(
     method: string,
     path: string,
-    init: { body?: unknown; headers?: Record<string, string>; redirect?: RequestRedirect } = {},
+    init: {
+      body?: unknown;
+      headers?: Record<string, string>;
+      redirect?: RequestRedirect;
+    } = {},
   ): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = { ...(init.headers ?? {}) };
     let body: string | undefined;
     if (init.body !== undefined) {
-      body = typeof init.body === "string" ? init.body : JSON.stringify(init.body);
+      body =
+        typeof init.body === "string" ? init.body : JSON.stringify(init.body);
       headers["Content-Type"] ??= "application/json";
     }
     const res = await fetch(`${base}${path}`, {
@@ -175,12 +180,18 @@ export function createHarness(opts: HarnessOptions) {
     return { status: res.status, text, json, headers: res.headers };
   }
 
-  function sqlOne<T = Record<string, unknown>>(sql: string, ...params: unknown[]): T | null {
+  function sqlOne<T = Record<string, unknown>>(
+    sql: string,
+    ...params: unknown[]
+  ): T | null {
     if (!db) throw new Error("harness not set up");
     return db.query(sql).get(...(params as any)) as T | null;
   }
 
-  function sqlAll<T = Record<string, unknown>>(sql: string, ...params: unknown[]): T[] {
+  function sqlAll<T = Record<string, unknown>>(
+    sql: string,
+    ...params: unknown[]
+  ): T[] {
     if (!db) throw new Error("harness not set up");
     return db.query(sql).all(...(params as any)) as T[];
   }
