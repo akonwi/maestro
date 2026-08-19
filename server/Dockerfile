@@ -8,7 +8,7 @@
 # --- Published Ard compiler --------------------------------------------------
 FROM alpine:latest AS ard
 
-ARG ARD_VERSION=v0.36.0
+ARG ARD_VERSION=v0.37.0
 ARG TARGETARCH
 RUN apk add --no-cache ca-certificates curl \
   && mkdir -p /out \
