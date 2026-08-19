@@ -126,8 +126,6 @@ fn build_app() app::App!Str {
     email_from: "login@example.com",
     server_base_url: "http://test.local",
     app_base_url: "http://test.local",
-    magic_link_ttl_secs: 900,
-    session_ttl_secs: 2592000,
     api_football_key: "test",
     push_enabled: false,
     vapid_public_key: "",

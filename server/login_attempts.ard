@@ -31,7 +31,7 @@ fn create(a: app::App, email: Str) LoginAttempt!Str {
   let code = try crypto::generate_numeric_code()
   let magic_token = try crypto::generate_token(32)
   let now = time::Now().UnixMilli()
-  let expires_at = now + Int64::from(a.config.magic_link_ttl_secs) * 1000
+  let expires_at = now + Int64::from(900) * 1000
   let attempt = LoginAttempt{
     id: id,
     claim_token: claim_token,

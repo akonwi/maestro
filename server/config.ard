@@ -4,7 +4,7 @@ use go:strconv
 // All configuration comes from environment variables. Read once at startup;
 // required values fail the process before any HTTP surface is up.
 
-let MAX_TTL_SECONDS = 315360000
+let MAX_TTL_SECONDS = 315_360_000
 
 struct Config {
   database_url: Str,
@@ -15,8 +15,6 @@ struct Config {
   email_from: Str,
   server_base_url: Str,
   app_base_url: Str,
-  magic_link_ttl_secs: Int,
-  session_ttl_secs: Int,
   api_football_key: Str,
   push_enabled: Bool,
   vapid_public_key: Str,
@@ -29,14 +27,12 @@ struct Config {
 fn load() Config!Str {
   let database_url = getenv_or("DATABASE_URL", "maestro.db")
   let port = getenv_or("PORT", "8080")
-  let email_enabled = try parse_bool("EMAIL_ENABLED", os::Getenv("EMAIL_ENABLED"), false)
+  let email_enabled = os::Getenv("EMAIL_ENABLED") == "true"
   let cloudflare_account_id = try require_when(email_enabled, "CLOUDFLARE_ACCOUNT_ID")
   let cloudflare_email_api_token = try require_when(email_enabled, "CLOUDFLARE_EMAIL_API_TOKEN")
   let email_from = try require_when(email_enabled, "EMAIL_FROM")
   let server_base_url = getenv_or("SERVER_BASE_URL", "http://localhost:{port}")
   let app_base_url = try require("APP_BASE_URL")
-  let magic_link_ttl_secs = try parse_ttl("MAGIC_LINK_TTL_SECONDS", os::Getenv("MAGIC_LINK_TTL_SECONDS"), 900)
-  let session_ttl_secs = try parse_ttl("SESSION_TTL_SECONDS", os::Getenv("SESSION_TTL_SECONDS"), 2592000)
   let api_football_key = try require("API_FOOTBALL_KEY")
   // Push is enabled by supplying a VAPID keypair; no separate flag.
   let vapid_public_key = os::Getenv("VAPID_PUBLIC_KEY")
@@ -44,7 +40,7 @@ fn load() Config!Str {
   let push_enabled = (not vapid_public_key.is_empty()) and not vapid_private_key.is_empty()
   let push_subscriber = try require_when(push_enabled, "PUSH_SUBSCRIBER")
   let admin_token = os::Getenv("ADMIN_TOKEN")
-  
+
   Result::ok(
     Config{
       database_url: database_url,
@@ -55,8 +51,6 @@ fn load() Config!Str {
       email_from: email_from,
       server_base_url: server_base_url,
       app_base_url: app_base_url,
-      magic_link_ttl_secs: magic_link_ttl_secs,
-      session_ttl_secs: session_ttl_secs,
       api_football_key: api_football_key,
       push_enabled: push_enabled,
       vapid_public_key: vapid_public_key,
@@ -91,46 +85,10 @@ private fn require_when(needed: Bool, name: Str) Str!Str {
   }
 }
 
-// Parses "true"/"1"/"yes" as true; "false"/"0"/"no" as false; empty as
-// the fallback. Any other value is an error.
-fn parse_bool(name: Str, raw: Str, fallback: Bool) Bool!Str {
+fn get_int(name: Str) Int!Str {
+  let raw = os::Getenv(name)
   match raw.is_empty() {
-    true => Result::ok(fallback),
-    false => {
-      match raw {
-        "true" => Result::ok(true),
-        "1" => Result::ok(true),
-        "yes" => Result::ok(true),
-        "false" => Result::ok(false),
-        "0" => Result::ok(false),
-        "no" => Result::ok(false),
-        _ => Result::err("{name} must be one of true, false, 1, 0, yes, or no"),
-      }
-    },
-  }
-}
-
-fn parse_ttl(name: Str, raw: Str, fallback: Int) Int!Str {
-  let value = try parse_positive_int(name, raw, fallback)
-  match value <= MAX_TTL_SECONDS {
-    true => Result::ok(value),
-    false => Result::err("{name} must not exceed {MAX_TTL_SECONDS} seconds"),
-  }
-}
-
-fn parse_positive_int(name: Str, raw: Str, fallback: Int) Int!Str {
-  match raw.is_empty() {
-    true => Result::ok(fallback),
-    false => {
-      match strconv::Atoi(raw) {
-        ok(value) => {
-          match value > 0 {
-            true => Result::ok(value),
-            false => Result::err("{name} must be greater than zero"),
-          }
-        },
-        err(message) => Result::err("{name} must be an integer: {message}"),
-      }
-    },
+    true => Result::err("{name} is missing"),
+    false => strconv::Atoi(raw)
   }
 }

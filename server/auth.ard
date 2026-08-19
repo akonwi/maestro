@@ -28,7 +28,7 @@ fn register(router: mut dram::App, a: app::App) {
         let payload: [Str: Any] = [
           "attempt_id": attempt.id,
           "claim_token": attempt.claim_token,
-          "expires_in": a.config.magic_link_ttl_secs,
+          "expires_in": 900,
         ]
         res.json(http::StatusOK, payload)
       },
