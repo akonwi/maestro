@@ -118,7 +118,7 @@ fn register(router: mut dram::App, a: app::App) {
       },
     }
   })
-
+  
   let protected = mut router.group("/")
   protected.use(middleware(a))
   protected.get("/auth/me", fn(req: dram::Request, res: mut dram::Response) {
@@ -133,7 +133,7 @@ fn register(router: mut dram::App, a: app::App) {
                   "email": user.email,
                   "display_name": user.display_name,
                 ]
-
+                
                 res.json(http::StatusOK, payload)
               },
               _ => res.json(http::StatusUnauthorized, ["error": "authenticated user no longer exists"]),
@@ -164,7 +164,7 @@ private fn request_login(a: app::App, address: Str) login_attempts::LoginAttempt
   let link = "{a.config.server_base_url}/auth/verify?token={attempt.magic_token}"
   let text = "Click the link to sign in to Maestro:\n\n{link}\n\nIf the link opens in your browser, return to Maestro to finish signing in. You can also enter this code in Maestro:\n\n{attempt.code}\n\nThe link and code expire soon."
   let html = "<p>Use the link below to sign in to Maestro.</p><p><a href=\"{link}\">Sign in to Maestro</a></p><p>If the link opens in your browser, return to Maestro to finish signing in.</p><p>Or enter this code in Maestro:</p><p><strong>{attempt.code}</strong></p><p>The link and code expire soon.</p>"
-
+  
   // A send failure shouldn't leak upstream — the user can retry.
   match email::send(a.config, address, "Your Maestro sign-in link", text, html) {
     ok => Result::ok(attempt),
@@ -217,13 +217,7 @@ private fn redeem_code(a: app::App, id: Str, claim_token: Str, code: Str) Attemp
   }
 }
 
-private fn redeem_code_tx(
-  a: app::App,
-  tx: sql::Transaction,
-  id: Str,
-  claim_token: Str,
-  code: Str,
-) AttemptClaim!Str {
+private fn redeem_code_tx(a: app::App, tx: sql::Transaction, id: Str, claim_token: Str, code: Str) AttemptClaim!Str {
   let existing = try login_attempts::find_approved_tx(tx, id, claim_token)
   match existing {
     attempt => Result::ok(completed_claim(attempt)),
@@ -255,11 +249,7 @@ private fn completed_claim(attempt: login_attempts::ApprovedAttempt) AttemptClai
   ]
   AttemptClaim{
     complete: true,
-    payload: [
-      "status": "complete",
-      "session_token": attempt.session_token,
-      "user": user_payload,
-    ],
+    payload: ["status": "complete", "session_token": attempt.session_token, "user": user_payload],
   }
 }
 
@@ -286,15 +276,15 @@ private fn verify_tx(a: app::App, tx: sql::Transaction, token: Str) [Str: Any]!S
   let user = try users::get_or_create_by_email_tx(tx, addr)
   let session = try sessions::mint_tx(tx, a, user.id)
   try login_attempts::attach_magic_session_tx(tx, token, session.token)
-
+  
   let user_payload: [Str: Any] = [
     "id": user.id,
     "email": user.email,
     "display_name": user.display_name,
   ]
-
+  
   let payload: [Str: Any] = ["session_token": session.token, "user": user_payload]
-
+  
   Result::ok(payload)
 }
 
@@ -302,7 +292,7 @@ private fn verify_tx(a: app::App, tx: sql::Transaction, token: Str) [Str: Any]!S
 // server-side and intentionally collapse to an unauthenticated result.
 fn authenticate(a: app::App, req: dram::Request) Int? {
   let token = bearer_token(req)
-
+  
   let out = mut Maybe::new<Int>()
   match token.is_empty() {
     true => (),

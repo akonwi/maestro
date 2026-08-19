@@ -62,14 +62,16 @@ private fn create_tx(tx: sql::Transaction, email: Str, attempt: LoginAttempt) Vo
   ).run(["token": attempt.magic_token, "email": email, "expires_at": attempt.expires_at])
   tx.query(
     "INSERT INTO login_attempts (id, email, claim_token, code, magic_token, expires_at) VALUES (@id, @email, @claim_token, @code, @magic_token, @expires_at)",
-  ).run([
-    "id": attempt.id,
-    "email": email,
-    "claim_token": attempt.claim_token,
-    "code": attempt.code,
-    "magic_token": attempt.magic_token,
-    "expires_at": attempt.expires_at,
-  ])
+  ).run(
+    [
+      "id": attempt.id,
+      "email": email,
+      "claim_token": attempt.claim_token,
+      "code": attempt.code,
+      "magic_token": attempt.magic_token,
+      "expires_at": attempt.expires_at,
+    ],
+  )
 }
 
 // Link verification creates a browser session as before and also makes that
@@ -82,12 +84,7 @@ fn attach_magic_session_tx(tx: sql::Transaction, magic_token: Str, session_token
   ).run(["now": now, "session_token": session_token, "magic_token": magic_token])
 }
 
-fn attach_code_session_tx(
-  tx: sql::Transaction,
-  id: Str,
-  claim_token: Str,
-  session_token: Str,
-) Void!Str {
+fn attach_code_session_tx(tx: sql::Transaction, id: Str, claim_token: Str, session_token: Str) Void!Str {
   let now = time::Now().UnixMilli()
   tx.query(
     "UPDATE login_attempts SET approved_at = @now, session_token = @session_token WHERE id = @id AND claim_token = @claim_token AND session_token IS NULL",
@@ -98,21 +95,13 @@ fn attach_code_session_tx(
 // or incorrectly claimed attempts all collapse to the same public error.
 fn find_approved(a: app::App, id: Str, claim_token: Str) ApprovedAttempt?!Str {
   let now = time::Now().UnixMilli()
-  let rows = try a.db.query(approved_query()).all([
-    "id": id,
-    "claim_token": claim_token,
-    "now": now,
-  ])
+  let rows = try a.db.query(approved_query()).all(["id": id, "claim_token": claim_token, "now": now])
   approved_from_rows(rows)
 }
 
 fn find_approved_tx(tx: sql::Transaction, id: Str, claim_token: Str) ApprovedAttempt?!Str {
   let now = time::Now().UnixMilli()
-  let rows = try tx.query(approved_query()).all([
-    "id": id,
-    "claim_token": claim_token,
-    "now": now,
-  ])
+  let rows = try tx.query(approved_query()).all(["id": id, "claim_token": claim_token, "now": now])
   approved_from_rows(rows)
 }
 
@@ -123,12 +112,7 @@ fn consume_code_tx(tx: sql::Transaction, id: Str, claim_token: Str, provided: St
   let now = time::Now().UnixMilli()
   let rows = try tx.query(
     "UPDATE login_attempts SET code_attempts = code_attempts + 1 WHERE id = @id AND claim_token = @claim_token AND expires_at > @now AND approved_at IS NULL AND code_attempts < @max_attempts RETURNING magic_token, code",
-  ).all([
-    "id": id,
-    "claim_token": claim_token,
-    "now": now,
-    "max_attempts": MAX_CODE_ATTEMPTS,
-  ])
+  ).all(["id": id, "claim_token": claim_token, "now": now, "max_attempts": MAX_CODE_ATTEMPTS])
   match rows.at(0) {
     row => {
       let magic_token = try decode::run(row, decode::field("magic_token", decode::string)).map_err(describe)
@@ -149,18 +133,12 @@ private fn approved_query() Str {
 private fn approved_from_rows(rows: [Any]) ApprovedAttempt?!Str {
   match rows.at(0) {
     row => {
-      let session_token = try decode::run(
-        row,
-        decode::field("session_token", decode::nullable(decode::string)),
-      ).map_err(describe)
+      let session_token = try decode::run(row, decode::field("session_token", decode::nullable(decode::string))).map_err(describe)
       match session_token {
         token => {
           let user_id = try decode::run(row, decode::field("user_id", decode::int)).map_err(describe)
           let email = try decode::run(row, decode::field("email", decode::string)).map_err(describe)
-          let display_name = try decode::run(
-            row,
-            decode::field("display_name", decode::nullable(decode::string)),
-          ).map_err(describe)
+          let display_name = try decode::run(row, decode::field("display_name", decode::nullable(decode::string))).map_err(describe)
           Result::ok(
             Maybe::new(
               ApprovedAttempt{

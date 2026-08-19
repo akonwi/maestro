@@ -20,11 +20,11 @@ fn mint(a: app::App, user_id: Int) Session!Str {
   let now = time::Now().UnixMilli()
   let ttl_ms = Int64::from(2592000) * 1000
   let expires_at = now + ttl_ms
-
+  
   try a.db.query(
     "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)",
   ).run(["token": token, "user_id": user_id, "created_at": now, "expires_at": expires_at])
-
+  
   Result::ok(
     Session{
       token: token,
@@ -40,11 +40,11 @@ fn mint_tx(tx: sql::Transaction, a: app::App, user_id: Int) Session!Str {
   let now = time::Now().UnixMilli()
   let ttl_ms = Int64::from(2592000) * 1000
   let expires_at = now + ttl_ms
-
+  
   try tx.query(
     "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (@token, @user_id, @created_at, @expires_at)",
   ).run(["token": token, "user_id": user_id, "created_at": now, "expires_at": expires_at])
-
+  
   Result::ok(
     Session{
       token: token,

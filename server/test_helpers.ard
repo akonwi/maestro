@@ -7,28 +7,28 @@ use sql
 // (:memory: guarantees isolation because our pool caps MaxOpenConns=1).
 
 let SCHEMA: Str = `
-
+  
   CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
     display_name TEXT,
     created_at INTEGER NOT NULL
   );
-
+  
   CREATE TABLE magic_links (
     token TEXT PRIMARY KEY,
     email TEXT NOT NULL,
     expires_at INTEGER NOT NULL,
     consumed_at INTEGER
   );
-
+  
   CREATE TABLE sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
   );
-
+  
   CREATE TABLE login_attempts (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
@@ -40,7 +40,7 @@ let SCHEMA: Str = `
     approved_at INTEGER,
     session_token TEXT REFERENCES sessions(token) ON DELETE SET NULL
   );
-
+  
   CREATE TABLE competitions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     api_football_league_id INTEGER NOT NULL UNIQUE,
@@ -48,21 +48,21 @@ let SCHEMA: Str = `
     kind TEXT NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1
   );
-
+  
   CREATE TABLE groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     owner_id INTEGER NOT NULL REFERENCES users(id),
     created_at INTEGER NOT NULL
   );
-
+  
   CREATE TABLE group_members (
     group_id INTEGER NOT NULL REFERENCES groups(id),
     user_id INTEGER NOT NULL REFERENCES users(id),
     joined_at INTEGER NOT NULL,
     PRIMARY KEY (group_id, user_id)
   );
-
+  
   CREATE TABLE predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -74,9 +74,9 @@ let SCHEMA: Str = `
     updated_at INTEGER NOT NULL,
     UNIQUE (user_id, fixture_id)
   );
-
+  
   CREATE INDEX idx_predictions_fixture ON predictions(fixture_id);
-
+  
   CREATE TABLE fixture_scoring_state (
     fixture_id INTEGER PRIMARY KEY,
     competition_id INTEGER NOT NULL REFERENCES competitions(id),
@@ -96,10 +96,10 @@ let SCHEMA: Str = `
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
-
+  
   CREATE INDEX fixture_scoring_state_due
   ON fixture_scoring_state (state, next_check_at);
-
+  
   CREATE TABLE push_subscriptions (
     endpoint TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -107,10 +107,10 @@ let SCHEMA: Str = `
     auth TEXT NOT NULL,
     created_at INTEGER NOT NULL
   );
-
+  
   CREATE INDEX idx_push_subscriptions_user ON push_subscriptions(user_id);
-
-
+  
+  
   `
 
 fn build_app() app::App!Str {
@@ -133,7 +133,7 @@ fn build_app() app::App!Str {
     push_subscriber: "",
     admin_token: "",
   }
-
+  
   Result::ok(
     app::App{
       db: db,

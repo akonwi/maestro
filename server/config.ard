@@ -40,7 +40,7 @@ fn load() Config!Str {
   let push_enabled = (not vapid_public_key.is_empty()) and not vapid_private_key.is_empty()
   let push_subscriber = try require_when(push_enabled, "PUSH_SUBSCRIBER")
   let admin_token = os::Getenv("ADMIN_TOKEN")
-
+  
   Result::ok(
     Config{
       database_url: database_url,
@@ -89,6 +89,6 @@ fn get_int(name: Str) Int!Str {
   let raw = os::Getenv(name)
   match raw.is_empty() {
     true => Result::err("{name} is missing"),
-    false => strconv::Atoi(raw)
+    false => strconv::Atoi(raw),
   }
 }
