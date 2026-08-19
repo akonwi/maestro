@@ -40,7 +40,7 @@ private fn run(a: app::App, stop: Receiver<Bool>, done: Sender<Bool>) {
   fmt::Println("maintenance worker started")
   mut running = true
   while running {
-    run_once_at(a, time::Now().UnixMilli())
+    run_now(a, time::Now().UnixMilli())
     select {
       stop.recv() => { running = false },
       time::After(CLEANUP_INTERVAL).recv() => (),
@@ -50,14 +50,12 @@ private fn run(a: app::App, stop: Receiver<Bool>, done: Sender<Bool>) {
   done.send(true)
 }
 
-fn run_once_at(a: app::App, now: Int64) {
-  match sessions::delete_expired_at(a, now) {
-    ok => (),
-    err(message) => fmt::Println("expired session cleanup failed: {message}"),
+fn run_now(a: app::App, now: Int64) {
+  try sessions::delete_expired_at(a, now) -> err {
+    fmt::Println("expired session cleanup failed: {err}")
   }
   let consumed_before = now - CONSUMED_LINK_RETENTION_MS
-  match magic_links::delete_stale_at(a, now, consumed_before) {
-    ok => (),
-    err(message) => fmt::Println("stale magic-link cleanup failed: {message}"),
+  try magic_links::delete_stale_at(a, now, consumed_before) -> err {
+    fmt::Println("stale magic-link cleanup failed: {err}")
   }
 }

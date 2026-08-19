@@ -26,7 +26,7 @@ test fn cleanup_removes_stale_rows_and_keeps_current_rows() Void!Str {
     "UPDATE magic_links SET consumed_at = 1 WHERE token = @token",
   ).run(["token": old_consumed_link])
   
-  maintenance_worker::run_once_at(app, now)
+  maintenance_worker::run_now(app, now)
   
   let session_rows = try app.db.query("SELECT token FROM sessions").all([:])
   try testing::assert(session_rows.size() == 1, "cleanup leaves only the active session")
