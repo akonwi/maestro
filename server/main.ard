@@ -16,23 +16,14 @@ use go:syscall
 use go:time
 
 fn main() {
-  let cfg = match config::load() {
-    ok(c) => c,
-    err(message) => panic("config error: {message}"),
-  }
+  let cfg = config::load().expect("config error")
   
   let sqlite_url = match strings::Contains(cfg.database_url, "?") {
     true => "{cfg.database_url}&_pragma=foreign_keys(1)",
     false => "{cfg.database_url}?_pragma=foreign_keys(1)",
   }
-  let db = match sql::open(sqlite_url) {
-    ok(database) => database,
-    err(message) => panic("failed to open database at {cfg.database_url}: {message}"),
-  }
-  match db.exec("PRAGMA foreign_keys = ON;") {
-    ok => (),
-    err(message) => panic("failed to enable SQLite foreign keys: {message}"),
-  }
+  let db = sql::open(sqlite_url).expect("failed to open database at {cfg.database_url}")
+  db.exec("PRAGMA foreign_keys = ON;").expect("failed to enable SQLite foreign keys")
   fmt::Println("database ready at {cfg.database_url}")
   
   let application = app::App{
@@ -50,14 +41,11 @@ fn main() {
   signal::Notify(interrupts.sender(), syscall::SIGTERM)
   
   async::start(fn() {
-    match server.ListenAndServe() {
-      ok => (),
-      err(message) => {
-        match message == "http: Server closed" {
-          true => (),
-          false => panic(message),
-        }
-      },
+    try server.ListenAndServe() -> err {
+      match err == "http: Server closed" {
+        true => (),
+        false => panic("Server error: {err}"),
+      }
     }
   })
   fmt::Println("listening on {cfg.listen_addr}")
