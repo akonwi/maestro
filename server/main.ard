@@ -1,5 +1,6 @@
 use ard/async
 
+use go:errors
 use go:fmt
 use maestro/app
 use maestro/config
@@ -42,7 +43,7 @@ fn main() {
   
   async::start(fn() {
     try server.ListenAndServe() -> err {
-      match err == "http: Server closed" {
+      match errors::Is(err, http::ErrServerClosed) {
         true => (),
         false => panic("Server error: {err}"),
       }
