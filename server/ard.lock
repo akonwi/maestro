@@ -3,20 +3,20 @@
   "root": "root",
   "packages": [
     {
-      "id": "git:1e87c43dc8d1202a:1fc5cdb24d10fc470a15b75c852255a92d18670e",
+      "id": "git:1e87c43dc8d1202a:6e1809ccac7c5ed8c6aa3e91d9015f80bba48b1a",
       "name": "dram",
       "git": "https://github.com/akonwi/dram.git",
-      "commit": "1fc5cdb24d10fc470a15b75c852255a92d18670e",
-      "requested": "1fc5cdb24d10fc470a15b75c852255a92d18670e",
-      "integrity": "sha256:5eaea67aa020235810e2b282e3084f042aec54e41f5fc886c03bcaca03473340"
+      "commit": "6e1809ccac7c5ed8c6aa3e91d9015f80bba48b1a",
+      "requested": "6e1809ccac7c5ed8c6aa3e91d9015f80bba48b1a",
+      "integrity": "sha256:70807d569c53642af194033f9fc6c16a5bfe4f9bc2e5fabd7d5f61a6f6ad5566"
     },
     {
-      "id": "git:795eb0d192b4efcf:4e0c13798c4ff0459ccb632b6edd9b8b07e5e6cb",
+      "id": "git:795eb0d192b4efcf:578f52d8f63d91532f31491a9125087519a8e128",
       "name": "sql",
       "git": "https://github.com/akonwi/ard-sql.git",
-      "commit": "4e0c13798c4ff0459ccb632b6edd9b8b07e5e6cb",
-      "requested": "4e0c13798c4ff0459ccb632b6edd9b8b07e5e6cb",
-      "integrity": "sha256:296be2c930b15d14dc066e892b704985562e970d445843b2e28d54ef728f250f",
+      "commit": "578f52d8f63d91532f31491a9125087519a8e128",
+      "requested": "578f52d8f63d91532f31491a9125087519a8e128",
+      "integrity": "sha256:1b6052aa6d14d1a614ea7f2a6cd11251363f0dabc4e19c2bb5f7046bc5712caf",
       "dependencies": {
         "decode": "git:c5125d0dd6cd13cc:c590f42ec43c5d362844925a8a978d64a1846c5c"
       }
@@ -35,8 +35,8 @@
       "path": ".",
       "dependencies": {
         "decode": "git:c5125d0dd6cd13cc:c590f42ec43c5d362844925a8a978d64a1846c5c",
-        "dram": "git:1e87c43dc8d1202a:1fc5cdb24d10fc470a15b75c852255a92d18670e",
-        "sql": "git:795eb0d192b4efcf:4e0c13798c4ff0459ccb632b6edd9b8b07e5e6cb"
+        "dram": "git:1e87c43dc8d1202a:6e1809ccac7c5ed8c6aa3e91d9015f80bba48b1a",
+        "sql": "git:795eb0d192b4efcf:578f52d8f63d91532f31491a9125087519a8e128"
       }
     }
   ]

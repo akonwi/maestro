@@ -401,7 +401,7 @@ private fn decode_string_field(req: dram::Request, name: Str) Str!Str {
   }
 }
 
-private fn invalid_group_id(_: Str) Str {
+private fn invalid_group_id(_: Error) Str {
   "group id must be an integer"
 }
 private fn describe(e: decode::Err) Str {

@@ -7,6 +7,10 @@ use go:maestro/ffi
 use go:net/http
 use go:time
 
+private fn error_message(error: Error) Str {
+  error.error()
+}
+
 // Client for the API-Football v3 REST API.
 // https://www.api-football.com/documentation-v3
 
@@ -27,17 +31,17 @@ fn cached_get(a: app::App, path: Str, ttl_ms: Int64) Str!Str {
 }
 
 private fn get(cfg: config::Config, url: Str) Str!Str {
-  mut req = try http::NewRequest("GET", url, http::NoBody)
+  mut req = try http::NewRequest("GET", url, http::NoBody).map_err(error_message)
   req.Header.Set("x-apisports-key", cfg.api_football_key)
   
   let client = mut http::Client{Timeout: 15 * time::Second}
-  let resp = try client.Do(req)
+  let resp = try client.Do(req).map_err(error_message)
   match unsafe::is_nil(resp) {
     true => Result::err("api-football: nil response"),
     false => {
       let status = resp.StatusCode
-      let bytes = try io::ReadAll(resp.Body)
-      try resp.Body.Close()
+      let bytes = try io::ReadAll(resp.Body).map_err(error_message)
+      try resp.Body.Close().map_err(error_message)
       match status == 200 {
         true => Result::ok(Str::from(bytes)),
         false => Result::err("api-football: HTTP {status} for {url}"),

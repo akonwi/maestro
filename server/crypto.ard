@@ -4,6 +4,10 @@ use go:encoding/hex
 use go:fmt
 use go:math/big
 
+private fn error_message(error: Error) Str {
+  error.error()
+}
+
 // Cryptographic helpers. Small enough to stay one file.
 
 // Return a URL-safe hex token backed by `n` bytes of crypto/rand
@@ -13,11 +17,11 @@ fn generate_token(n: Int) Str!Str {
   // equivalent; bytes.Repeat is the idiomatic path.
   mut seed: [Byte] = [0]
   mut buf = bytes::Repeat(mut seed, n)
-  try rand::Read(mut buf)
+  try rand::Read(mut buf).map_err(error_message)
   Result::ok(hex::EncodeToString(mut buf))
 }
 
 fn generate_numeric_code() Str!Str {
-  let number = try rand::Int(rand::Reader, big::NewInt(1_000_000))
+  let number = try rand::Int(rand::Reader, big::NewInt(1_000_000)).map_err(error_message)
   Result::ok(fmt::Sprintf("%06d", number.Int64()))
 }

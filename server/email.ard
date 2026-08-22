@@ -6,6 +6,10 @@ use go:io
 use maestro/config
 use go:net/http
 
+private fn error_message(error: Error) Str {
+  error.error()
+}
+
 // Minimal Cloudflare Email Service REST client. One plain-text message per
 // request; the sender must belong to a domain configured for Email Service.
 
@@ -27,23 +31,23 @@ private fn send_via_cloudflare(cfg: config::Config, to: Str, subject: Str, text:
     "html": html,
   ]
   
-  let body_bytes = try json::Marshal(payload)
+  let body_bytes = try json::Marshal(payload).map_err(error_message)
   mut buf = body_bytes
   let reader = bytes::NewReader(mut buf)
   let endpoint = "{API_BASE}/accounts/{cfg.cloudflare_account_id}/email/sending/send"
   
-  mut req = try http::NewRequest("POST", endpoint, reader)
+  mut req = try http::NewRequest("POST", endpoint, reader).map_err(error_message)
   req.Header.Set("Authorization", "Bearer {cfg.cloudflare_email_api_token}")
   req.Header.Set("Content-Type", "application/json")
   
   let client = mut http::Client{}
-  let resp = try client.Do(req)
+  let resp = try client.Do(req).map_err(error_message)
   match unsafe::is_nil(resp) {
     true => Result::err("cloudflare email: nil response"),
     false => {
       let status = resp.StatusCode
-      let response_bytes = try io::ReadAll(resp.Body)
-      try resp.Body.Close()
+      let response_bytes = try io::ReadAll(resp.Body).map_err(error_message)
+      try resp.Body.Close().map_err(error_message)
       match status >= 200 and status < 300 {
         true => Result::ok(()),
         false => {

@@ -1,6 +1,10 @@
 use go:os
 use go:strconv
 
+private fn error_message(error: Error) Str {
+  error.error()
+}
+
 // All configuration comes from environment variables. Read once at startup;
 // required values fail the process before any HTTP surface is up.
 
@@ -89,6 +93,6 @@ fn get_int(name: Str) Int!Str {
   let raw = os::Getenv(name)
   match raw.is_empty() {
     true => Result::err("{name} is missing"),
-    false => strconv::Atoi(raw),
+    false => strconv::Atoi(raw).map_err(error_message),
   }
 }

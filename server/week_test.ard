@@ -3,8 +3,12 @@ use ard/testing
 use maestro/week
 use go:time
 
+private fn error_message(error: Error) Str {
+  error.error()
+}
+
 test fn tuesday_before_six_belongs_to_previous_week() Void!Str {
-  let before = try time::Parse(time::RFC3339, "2026-03-10T09:59:59Z")
+  let before = try time::Parse(time::RFC3339, "2026-03-10T09:59:59Z").map_err(error_message)
   // 05:59:59 EDT
   let bounds = try week::bounds("", before)
   try testing::assert(bounds.key == "2026-03-03", "before cutoff uses prior Tuesday")
@@ -12,7 +16,7 @@ test fn tuesday_before_six_belongs_to_previous_week() Void!Str {
 }
 
 test fn tuesday_at_six_starts_new_week() Void!Str {
-  let cutoff = try time::Parse(time::RFC3339, "2026-03-10T10:00:00Z")
+  let cutoff = try time::Parse(time::RFC3339, "2026-03-10T10:00:00Z").map_err(error_message)
   // 06:00 EDT
   let bounds = try week::bounds("", cutoff)
   try testing::assert(bounds.key == "2026-03-10", "cutoff starts new week")
@@ -20,7 +24,7 @@ test fn tuesday_at_six_starts_new_week() Void!Str {
 }
 
 test fn explicit_week_is_dst_safe() Void!Str {
-  let now = try time::Parse(time::RFC3339, "2026-03-05T12:00:00Z")
+  let now = try time::Parse(time::RFC3339, "2026-03-05T12:00:00Z").map_err(error_message)
   let bounds = try week::bounds("2026-03-03", now)
   try testing::assert(bounds.start_ms == 1772535600000, "Tuesday 06:00 EST")
   try testing::assert(bounds.end_ms == 1773136800000, "next Tuesday 06:00 EDT")
@@ -32,7 +36,7 @@ test fn explicit_week_is_dst_safe() Void!Str {
 }
 
 test fn explicit_week_must_be_a_valid_tuesday() Void!Str {
-  let now = try time::Parse(time::RFC3339, "2026-03-05T12:00:00Z")
+  let now = try time::Parse(time::RFC3339, "2026-03-05T12:00:00Z").map_err(error_message)
   match week::bounds("2026-03-04", now) {
     ok(_) => try testing::fail("Wednesday should fail"),
     err(_) => (),
